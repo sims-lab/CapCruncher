@@ -1,0 +1,31 @@
+name: capture-c
+
+channels:
+- bioconda
+- conda-forge
+- defaults
+
+dependencies:
+- python=3.7
+- numpy
+- pandas
+- scipy
+- matplotlib
+- seaborn
+- pysam
+- pybedtools
+- ruffus
+- drmaa
+- cgatcore
+- spyder
+- jupyterlab
+- nbconvert
+- fastqc
+- multiqc
+- trim_galore
+- flash
+- bowtie2
+- samtools
+- picard
+- bedtools
+

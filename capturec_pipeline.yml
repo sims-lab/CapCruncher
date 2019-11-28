@@ -1,0 +1,19 @@
+queue: all.q
+threads: 12
+memory: 4G
+scripts_dir: /ifs/projects/davids/capture-c/src
+trim:
+    options: --paired --length 21
+bowtie2:
+    # Ask bowtie to return reads in the same order as the fastq file (slower if threads > 1)
+    options: --reorder
+    index: /ifs/mirror/genomes/bowtie/mm10
+genome:
+    fasta: /ifs/mirror/genomes/plain/mm10.fasta
+    fai: /ifs/mirror/genomes/plain/mm10.fasta.fai
+ccanalyser:
+    capture: /ifs/projects/davids/capture-c/data/capture_site.bed
+    re_map: /ifs/projects/davids/capture-c/digest_genome/mm10.bed
+    exclude_window: 1000
+    memory: 16G
+    re: DpnII
