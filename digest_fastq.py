@@ -44,6 +44,12 @@ min_slice_length = int(args.minimum_slice_length)
 
 cut_offset = 0
 
+def open_logfile(fn):
+    if not isinstance(fn, type(sys.stdout)):
+        return open(fn, 'w')
+    else:
+        return fn
+
 def main():
     with gzip.open(args.output_file, 'wb') as fastq_out:
         # Compile regular expression 
@@ -55,7 +61,9 @@ def main():
             # Split the sequence using the restriction enzyme sequence
             seq_length = len(seq_entry.sequence)
             match_positions = [m.start() for m in re.finditer(cut_sequence, seq_entry.sequence)]
+            
             # Record how many re digestion sites were found in the read
+                        
             if len(match_positions) not in cut_site_counts:
                 cut_site_counts[len(match_positions)] = 0  
             cut_site_counts[len(match_positions)] += 1
@@ -90,7 +98,7 @@ def main():
                         fastq_out.write('+\n'.encode())
                         fastq_out.write(f'{seq_entry.quality[slice_start:slice_end]}\n'.encode())
 
-    with open(args.logfile, 'w') as logfile:
+    with open_logfile(args.logfile) as logfile:
         logfile.write(f'Records processed: {seq_counter+1}\n')
         logfile.write(f'Records with cutsites: {cutsite_counter}\n')
         logfile.write(f'slices output: {total_slices}\n')

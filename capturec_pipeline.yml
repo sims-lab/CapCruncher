@@ -1,4 +1,4 @@
-queue: all.q
+queue: batchq
 threads: 12
 memory: 4G
 scripts_dir: /ifs/projects/davids/capture-c/src
@@ -17,3 +17,9 @@ ccanalyser:
     exclude_window: 1000
     memory: 16G
     re: DpnII
+hub:
+    publoc: /public/asmith/capture-c/
+    name: test_pipeline
+    genome: mm10
+    short: hub_to_test_pipeline
+    long: This is a test hub for the capturec pipeline
