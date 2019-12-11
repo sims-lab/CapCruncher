@@ -88,6 +88,7 @@ def open_logfile(fn):
     else:
         return fn
 
+
 def write_slices(read, slices, fastq_out):
     slice_counter = 0
     invalid_slice_counter = 0
@@ -109,12 +110,10 @@ def main():
 
     r1_cut_site_counts = defaultdict(int)
     r2_cut_site_counts = defaultdict(int)
-    min_slice_len = args.minimum_slice_length
-    r1_slice_counter = 0
-    r2_slice_counter = 0 
-    r1_invalid_slice_counter = 0
-    r2_invalid_slice_counter = 0
+    valid_slices = defaultdict(int)
+    invalid_slices = defaultdict(int)
 
+    min_slice_len = args.minimum_slice_length
 
     with gzip.open(args.output_file, 'wb', compresslevel=args.compression_level) as fastq_out:
         
@@ -134,24 +133,23 @@ def main():
             r2_cut_site_counts[len(r2_match_positions) - 1] += 1
 
 
-            #If insilico digestion has occured then split the read into slices
+            #Split each read into slices
             r1_slices, r2_slices = [get_slices(r_sequence, r_match_positions, min_slice_len) 
                                     for r_sequence, r_match_positions in
                                     [(r1.sequence, r1_match_positions), (r2.sequence, r2_match_positions)]
                                     ]
-  
-
+            
             valid_slice_count, invalid_slice_count = write_slices(r1, r1_slices, fastq_out)
-            r1_slice_counter += valid_slice_count
-            r1_invalid_slice_counter += invalid_slice_count
+            valid_slices['read_1'] += valid_slice_count
+            invalid_slices['read_1'] += invalid_slice_count
 
             valid_slice_count, invalid_slice_count = write_slices(r2, r2_slices, fastq_out)
-            r2_slice_counter += valid_slice_count
-            r2_invalid_slice_counter += invalid_slice_count
+            valid_slices['read_2'] += valid_slice_count
+            invalid_slices['read_2'] += invalid_slice_count
         
 
     with open_logfile(args.logfile) as logfile:
-        print('==============')
+        print('\n')
         logfile.write(f'Number of read pairs processed {seq_counter+1}\n')
         
         logfile.write('Frequency of slices observed in read 1:\n')
@@ -161,9 +159,9 @@ def main():
         logfile.write('Frequency of slices observed in read 2:\n')
         for k in sorted(r2_cut_site_counts):
             logfile.write(f'{k}: {r2_cut_site_counts[k]}\n')
-          
-        logfile.write(f'Number of slices below the minimum slice length: {r1_invalid_slice_counter + r2_invalid_slice_counter}\n')
-        print('==============')
+        
+        logfile.write(f'Number of valid slices: {valid_slices["read_1"] + valid_slices["read_2"]}\n')
+        logfile.write(f'Number of slices below the minimum slice length: {invalid_slices["read_1"] + invalid_slices["read_2"]}\n')
 
 if __name__ == '__main__':
     main()
