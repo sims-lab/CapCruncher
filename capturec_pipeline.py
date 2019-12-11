@@ -66,10 +66,10 @@ def multiqc_reads (infile, outfile):
           job_memory='16G')
 
 
-@follows(qc_reads, mkdir('trim'))
+@follows(qc_reads, mkdir('deduplicated'))
 @collate('*.fastq.gz', 
          regex(r'(.*)_[12].fastq.gz'), 
-         r'trim/\1_dedup.fastq.gz')
+         r'deduplicated/\1.fastq.gz')
 def deduplicate_reads(infiles, outfile):
 
     fq1, fq2 = infiles
@@ -84,8 +84,8 @@ def deduplicate_reads(infiles, outfile):
     P.run(statement, 
           job_queue=P.PARAMS['queue'], 
           job_memory='32G')
-    
 
+@follows(mkdir('trim'))
 @collate(deduplicate_reads, 
          regex(r'(.*)_dedup_[12].fastq.gz'), 
          r'trim/\1_1_val_1.fq.gz')
