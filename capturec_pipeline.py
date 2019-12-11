@@ -87,7 +87,7 @@ def deduplicate_reads(infiles, outfile):
 
 @follows(mkdir('trim'))
 @collate(deduplicate_reads, 
-         regex(r'(.*)_dedup_[12].fastq.gz'), 
+         regex(r'deduplicated/(.*)_[12].fastq.gz'), 
          r'trim/\1_1_val_1.fq.gz')
 def trim_reads(infiles, outfile):
     '''Trim adaptor sequences using Trim-galore'''
