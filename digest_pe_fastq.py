@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+@author: asmith
+"""
+
 import argparse
 import itertools
 import os
@@ -82,12 +88,33 @@ def open_logfile(fn):
     else:
         return fn
 
+def write_slices(read, slices, fastq_out):
+    slice_counter = 0
+    invalid_slice_counter = 0
+    for s in slices:
+        if s:
+            fastq_out.write(f'@{read.name}|PE1|{slice_counter}\n'.encode())
+            fastq_out.write(f'{s["sequence"]}\n'.encode())
+            fastq_out.write('+\n'.encode())
+            fastq_out.write(f'{read.quality[s["slice_start"]:s["slice_end"]]}\n'.encode())
+            slice_counter += 1
+        else:
+            # If a slice does not pass the threshold then count these
+            invalid_slice_counter += 1
+    
+    return (slice_counter, invalid_slice_counter)
+
+
 def main():
 
     r1_cut_site_counts = defaultdict(int)
     r2_cut_site_counts = defaultdict(int)
     min_slice_len = args.minimum_slice_length
-    invalid_slice_counter = 0
+    r1_slice_counter = 0
+    r2_slice_counter = 0 
+    r1_invalid_slice_counter = 0
+    r2_invalid_slice_counter = 0
+
 
     with gzip.open(args.output_file, 'wb', compresslevel=args.compression_level) as fastq_out:
         
@@ -110,34 +137,22 @@ def main():
             #If insilico digestion has occured then split the read into slices
             r1_slices, r2_slices = [get_slices(r_sequence, r_match_positions, min_slice_len) 
                                     for r_sequence, r_match_positions in
-                                    [(r1.sequence, r1_match_positions), (r2.sequence, r2_match_positions),]
+                                    [(r1.sequence, r1_match_positions), (r2.sequence, r2_match_positions)]
                                     ]
   
-              # Write the slices for read 1 to a new fastq file
-            for ii, s in enumerate(r1_slices):
-                if s:
-                    fastq_out.write(f'@{r1.name}|PE1|{ii}\n'.encode())
-                    fastq_out.write(f'{s["sequence"]}\n'.encode())
-                    fastq_out.write('+\n'.encode())
-                    fastq_out.write(f'{r1.quality[s["slice_start"]:s["slice_end"]]}\n'.encode())
-                else:
-                    # If a slice does not pass the threshold then count these
-                    invalid_slice_counter += 1
 
-            # Repeat for read 2
-            for ii, s in enumerate(r2_slices):
-                if s:
-                    fastq_out.write(f'@{r2.name}|PE2|{ii}\n'.encode())
-                    fastq_out.write(f'{s["sequence"]}\n'.encode())
-                    fastq_out.write('+\n'.encode())
-                    fastq_out.write(f'{r2.quality[s["slice_start"]:s["slice_end"]]}\n'.encode())
-                else:
-                    invalid_slice_counter += 1
-            
+            valid_slice_count, invalid_slice_count = write_slices(r1, r1_slices, fastq_out)
+            r1_slice_counter += valid_slice_count
+            r1_invalid_slice_counter += invalid_slice_count
+
+            valid_slice_count, invalid_slice_count = write_slices(r2, r2_slices, fastq_out)
+            r2_slice_counter += valid_slice_count
+            r2_invalid_slice_counter += invalid_slice_count
+        
 
     with open_logfile(args.logfile) as logfile:
         print('==============')
-        logfile.write(f'Number of read pairs processed {seq_counter}\n')
+        logfile.write(f'Number of read pairs processed {seq_counter+1}\n')
         
         logfile.write('Frequency of slices observed in read 1:\n')
         for k in sorted(r1_cut_site_counts):
@@ -147,7 +162,7 @@ def main():
         for k in sorted(r2_cut_site_counts):
             logfile.write(f'{k}: {r2_cut_site_counts[k]}\n')
           
-        logfile.write(f'Number of slices below the minimum slice length: {invalid_slice_counter}\n')
+        logfile.write(f'Number of slices below the minimum slice length: {r1_invalid_slice_counter + r2_invalid_slice_counter}\n')
         print('==============')
 
 if __name__ == '__main__':
