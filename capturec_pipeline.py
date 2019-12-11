@@ -69,6 +69,25 @@ def multiqc_reads (infile, outfile):
 @follows(qc_reads, mkdir('trim'))
 @collate('*.fastq.gz', 
          regex(r'(.*)_[12].fastq.gz'), 
+         r'trim/\1_dedup.fastq.gz')
+def deduplicate_reads(infiles, outfile):
+
+    fq1, fq2 = infiles
+    out1, out2 = outfile.replace('.fastq.gz', '_1.fastq.gz'), outfile.replace('.fastq.gz', '_2.fastq.gz')
+
+    statement = '''python %(scripts_dir)s/deduplicate_fastq.py
+                   -1 %(fq1)s -2 %(fq2)s
+                   --out1 %(out1)s --out2 %(out2)s
+                   -l deduplication_logfile.txt
+                '''
+    
+    P.run(statement, 
+          job_queue=P.PARAMS['queue'], 
+          job_memory='32G')
+    
+
+@collate(deduplicate_reads, 
+         regex(r'(.*)_dedup_[12].fastq.gz'), 
          r'trim/\1_1_val_1.fq.gz')
 def trim_reads(infiles, outfile):
     '''Trim adaptor sequences using Trim-galore'''
