@@ -86,7 +86,7 @@ def deduplicate_reads(infiles, outfile):
           job_memory='32G')
 
 @follows(mkdir('trim'))
-@collate(deduplicate_reads, 
+@collate(r'deduplicated/*.fastq.gz',
          regex(r'deduplicated/(.*)_[12].fastq.gz'), 
          r'trim/\1_1_val_1.fq.gz')
 def trim_reads(infiles, outfile):
