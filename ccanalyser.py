@@ -7,23 +7,20 @@ Created on Sun Nov 17 21:11:23 2019
 
 TODO
 
-
 - don't allow multiple reports for the same RE fragment from the same capture (DS)
     - filter step before output
-    - integrate fragment into perslice dataframe
 - output per viewpoint - bedgraph
     - groupby pandas
 - stat file output tab delimited (DS)
     - Digestion efficiency - capture + exclusion stats
 - report / plots (AS)
     - jupyter notebook
-    - Jelena Python code?
 - make trackhub (overlay) (AS)
     - colours in yml
 
-- tri-c support
+- tri-c support - talk to Marieke
 - mnase support
-- chunk input fastq files and recombining
+- chunk input fastq files and recombining - big test file
 - wobble is base positions for deduplication
     - do this at merge / final step - will be slow
 - more test data

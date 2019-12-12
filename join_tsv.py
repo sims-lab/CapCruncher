@@ -13,6 +13,7 @@ Assumes files have headers.
 
 import argparse
 import pandas as pd
+import numpy as np
 
 p = argparse.ArgumentParser()
 p.add_argument('-f', '--index_field', help='shared column name to join on')
@@ -28,8 +29,11 @@ if len(args.input_files) > 1:
         df2join = pd.read_csv(args.input_files[list_index], sep='\t', header = 0)
         df = df.merge(df2join, on = args.index_field,
                         how = "outer")
-        df.select_dtypes(include=["int"]).fillna(0, inplace = True)
-        df.select_dtypes(include=["object"]).fillna("-", inplace = True)
+    numeric_cols = df.select_dtypes(include=["number"]).fillna(0).astype(np.int64)
+    df[numeric_cols.columns] = numeric_cols
+    string_cols = df.select_dtypes(include=["object"]).fillna("-")
+    df[string_cols.columns] = string_cols
+    
 #write joined df to file
     with open(args.output_file, 'w') as fout:
         df.to_csv(fout, header = True, sep = '\t', index = False)
