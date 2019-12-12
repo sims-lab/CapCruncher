@@ -1,7 +1,7 @@
 queue: all.q
 threads: 12
 memory: 4G
-scripts_dir: /ifs/projects/davids/capture-c/src
+scripts_dir: /ifs/projects/davids/capture-c/src/ 
 trim:
     options: --paired --length 21
 bowtie2:
@@ -18,3 +18,10 @@ ccanalyser:
     memory: 16G
     re: DpnII
     blacklist: /ifs/projects/davids/capture-c/data/mm10_encode_blacklist.bed.gz
+hub:
+    publoc: /public/asmith/capture-c/
+    name: test_pipeline
+    genome: hg19
+    short: hub_to_test_pipeline
+    long: This is a test hub for the capturec pipeline
+    email: alastair.smith@ndcls.ox.ac.uk
