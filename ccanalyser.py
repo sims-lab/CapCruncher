@@ -11,36 +11,18 @@ TODO
 - don't allow multiple reports for the same RE fragment from the same capture (DS)
     - filter step before output
     - integrate fragment into perslice dataframe
-- blacklist (DS)
-    - ucsc chipseq blacklist as example
-- remove duplicate from flashed fastq file or raw fastq (AS)
-    - iterate fastq(s) and remove identical reads (both ends identical seq) 
-    - use set
-    - implement as dedup_fastq.py script
 - output per viewpoint - bedgraph
     - groupby pandas
-- make trackhub (overlay) (AS)
-    - seperate pipeline step
-    - colours in yml
 - stat file output tab delimited (DS)
-    - per fragment
-    - per slice
-    - PCR duplicate rate - stats
     - Digestion efficiency - capture + exclusion stats
 - report / plots (AS)
     - jupyter notebook
     - Jelena Python code?
-- unflashed reads  (DS, AS)
-    - new digest_pe_fastq.py script (AS)
-    - regex
-    - read names the same for both ends
-    - additional info in reads names - PE1/2, last fragment?
-    - iterate both fastq together
-    - no digestion stats and digestion site might be missed
-    - output single fastq file with all slices together (interleaved)
+- make trackhub (overlay) (AS)
+    - colours in yml
+
 - tri-c support
 - mnase support
-- Do we need bam2bed?
 - chunk input fastq files and recombining
 - wobble is base positions for deduplication
     - do this at merge / final step - will be slow
@@ -69,7 +51,7 @@ args = p.parse_args()
 chunk_size = 100000
 debug = False
 
-# commmand line options: -i test.digest.bam -a annotations.tsv -o test
+# commmand line options: -i /ifs/projects/davids/capture-c/pipeline/miseq30/bam/miseq.digest.bam -a /ifs/projects/davids/capture-c/pipeline/miseq30/ccanalyser/annotations.tsv -o test
 
 # assertions - check all input files exist
 assert os.path.isfile(args.input_bam), "Input sam file not found"

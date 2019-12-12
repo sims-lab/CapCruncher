@@ -27,7 +27,9 @@ if len(args.input_files) > 1:
     for list_index in range(1,len(args.input_files)):
         df2join = pd.read_csv(args.input_files[list_index], sep='\t', header = 0)
         df = df.merge(df2join, on = args.index_field,
-                        how = "outer").fillna("-")
+                        how = "outer")
+        df.select_dtypes(include=["int"]).fillna(0, inplace = True)
+        df.select_dtypes(include=["object"]).fillna("-", inplace = True)
 #write joined df to file
     with open(args.output_file, 'w') as fout:
         df.to_csv(fout, header = True, sep = '\t', index = False)
