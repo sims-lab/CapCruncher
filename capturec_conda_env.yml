@@ -22,7 +22,7 @@ dependencies:
 - nbconvert
 - fastqc
 - multiqc
-- trim_galore
+- trim-galore
 - flash
 - bowtie2
 - samtools

@@ -66,7 +66,7 @@ def multiqc_reads (infile, outfile):
           job_memory='16G')
 
 
-@follows(qc_reads, mkdir('deduplicated'))
+@follows(mkdir('deduplicated'))
 @collate('*.fastq.gz', 
          regex(r'(.*)_[12].fastq.gz'), 
          r'deduplicated/\1.fastq.gz')
@@ -78,7 +78,7 @@ def deduplicate_reads(infiles, outfile):
     statement = '''python %(scripts_dir)s/deduplicate_fastq.py
                    -1 %(fq1)s -2 %(fq2)s
                    --out1 %(out1)s --out2 %(out2)s
-                   -l deduplication_logfile.txt
+                   -l deduplicated/deduplication_logfile.txt
                 '''
     
     P.run(statement, 
