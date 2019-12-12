@@ -183,6 +183,7 @@ def capture_intersect_count(infile, outfile):
     statement =  '''bedtools intersect -c -f 1
                     -a %(infile)s -b %(ccanalyser_capture)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
+                    | sed '1i read_name\\tcapture_count'
                     > %(outfile)s 2> %(outfile)s.log''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
@@ -197,6 +198,7 @@ def exclusion_intersect_count(infile, outfile):
     statement =  '''bedtools intersect -c
                     -a %(infile)s -b ccanalyser/exclude.bed
                     | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
+                    | sed '1i read_name\\texclusion_count'
                     > %(outfile)s 2> %(outfile)s.log''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
@@ -208,6 +210,7 @@ def capture_intersect(infile, outfile):
     statement =  '''bedtools intersect -loj -f 1
                     -a %(infile)s -b %(ccanalyser_capture)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
+                    | sed '1i read_name\\tcapture'
                     > %(outfile)s 2> %(outfile)s.log''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
@@ -220,34 +223,62 @@ def exclusion_intersect(infile, outfile):
     statement =  '''bedtools intersect -loj
                     -a %(infile)s -b ccanalyser/exclude.bed
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
+                    | sed '1i read_name\\texclusion'
                     > %(outfile)s 2> %(outfile)s.log''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
-@follows(capture_intersect_count, exclusion_intersect_count,
-         capture_intersect, exclusion_intersect)
-def build_intersections():
-    pass
 
-@follows(build_intersections)
+@follows(digest_genome)
+@transform(bam_to_bed, 
+           regex(r'ccanalyser/(.*).bam.bed'), 
+           r'ccanalyser/\1.re.intersect')
+def re_intersect(infile, outfile):
+    statement =  '''bedtools intersect -loj
+                    -a %(infile)s -b ccanalyser/mm10.digest.bed
+                    | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
+                    | sed '1i read_name\\trestriction_fragment'
+                    > %(outfile)s 2> %(outfile)s.log''' 
+    P.run(statement, job_queue=P.PARAMS['queue'])
+
+@transform(bam_to_bed, 
+           regex(r'ccanalyser/(.*).bam.bed'), 
+           r'ccanalyser/\1.blacklist.count')
+def blacklist_intersect_count(infile, outfile):
+    '''Intersect reads with blacklisted regions.
+    report count of overlaps for each input bed using -C '''
+    statement =  '''bedtools intersect -c 
+                    -a %(infile)s -b %(ccanalyser_blacklist)s
+                    | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
+                    | sed '1i read_name\\tblacklist' 
+                    > %(outfile)s 2> %(outfile)s.log''' 
+    P.run(statement, job_queue=P.PARAMS['queue'])
+
+@merge([capture_intersect_count, exclusion_intersect_count,
+         capture_intersect, exclusion_intersect,
+         re_intersect, blacklist_intersect_count], "ccanalyser/annotations.tsv")
+def merge_annotations(infiles, outfile):
+    '''merge all intersections into a single file '''
+    inlist = " ".join(infiles)
+    statement = '''python %(scripts_dir)s/join_tsv.py  
+                        -f read_name
+                        -o %(outfile)s
+                        -i %(inlist)s'''
+    P.run(statement,
+          job_queue=P.PARAMS['queue'])
+
+
+@follows(merge_annotations)
 @transform(align_reads, 
            regex(r'bam/(.*).bam'), 
-           add_inputs([r"ccanalyser/\1.capture.intersect", 
-                       r"ccanalyser/\1.capture.count", 
-                       r"ccanalyser/\1.exclude.intersect", 
-                       r"ccanalyser/\1.exclude.count"]),
+           add_inputs("ccanalyser/annotations.tsv"),
            r'ccanalyser/\1.reporter.bed')
 def ccanalyser(infiles, outfile):
-    bam, inputs = infiles
-    capture, capture_count, exclude, exclude_count = inputs
+    bam, annotations = infiles
     outfile_base = outfile.replace('.reporter.bed', '') 
     statement =  '''python %(scripts_dir)s/ccanalyser.py 
                     -i %(bam)s
-                    -c %(capture)s 
-                    -d %(capture_count)s
-                    -x %(exclude)s
-                    -y %(exclude_count)s
-                    -o %(outfile_base)s 
-                    -l %(outfile_base)s.log''' 
+                    -a %(annotations)s
+                    -o %(outfile_base)s ''' 
     P.run(statement,
           job_queue=P.PARAMS['queue'], 
           job_memory=P.PARAMS['ccanalyser_memory'])

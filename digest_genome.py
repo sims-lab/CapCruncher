@@ -41,14 +41,17 @@ def main():
                 match_positions = [m.start() for m in re.finditer(args.cut_sequence, seq_entry.sequence)]
                 # iterate through matches and write to bed file
                 slice_start = 0
-                for match_pos in match_positions:
+                for match_index, match_pos in enumerate(match_positions):
                     slice_end = match_pos + cut_offset
-                    bed_out.write(f'{seq_entry.name}\t{slice_start}\t{slice_end}\n')
+                    if slice_start != slice_end:
+                        slice_name = f'{args.restriction_enzyme}_{seq_entry.name}_{match_index}'
+                        bed_out.write(f'{seq_entry.name}\t{slice_start}\t{slice_end}\t{slice_name}\n')
                     slice_start = slice_end
                 # handle last slice
                 if slice_start != seq_length:
                     slice_end = seq_length
-                    bed_out.write(f'{seq_entry.name}\t{slice_start}\t{slice_end}\n')
+                    slice_name = f'{args.restriction_enzyme}_{seq_entry.name}_{match_index}'
+                    bed_out.write(f'{seq_entry.name}\t{slice_start}\t{slice_end}\t{slice_name}\n')
                 # Print total slices per chr to log file
                 logfile.write(f'{seq_entry.name}: {len(match_positions)}\n')
     logfile.close()

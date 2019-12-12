@@ -61,35 +61,20 @@ start = time.time()
 # Parse input parameters
 p = argparse.ArgumentParser()
 p.add_argument('-i', '--input_bam', help='BAM file to parse')
-#p.add_argument('-r', '--genome_digest_bed', 
-#               help='BED file of restriction enzyme sites in the genome (sorted)')
-#p.add_argument('-b', '--blacklist', 
-#               help='BED file of blacklist regions')
-p.add_argument('-c', '--capture', 
-               help='intersection  of reads and capture sites from bedtools')
-p.add_argument('-d', '--capture_count',
-               help='capture site counts')
-p.add_argument('-x', '--exclude', 
-               help='intersection  of reads and exclusion sites from bedtools')
-p.add_argument('-y', '--exclude_count',
-               help='exculsion site counts')
+p.add_argument('-a', '--annotations', 
+               help='Tab-delimited text file containing annotation for each read in bam file')
 p.add_argument('-o', '--output', help='output file prefix')
-p.add_argument('-l', '--logfile', help='log file name')
 args = p.parse_args()
 
 chunk_size = 100000
 debug = False
 
-# commmand line options: -i test.digest.bam -c miseq.digest.capture.intersect -x miseq.digest.exclude.intersect -d miseq.digest.capture.count.bed -y miseq.digest.exclude.count.bed -o test
+# commmand line options: -i test.digest.bam -a annotations.tsv -o test
 
 # assertions - check all input files exist
 assert os.path.isfile(args.input_bam), "Input sam file not found"
-#assert os.path.isfile(args.genome_digest_bed), "Genome restriction enzyme digest bed file not found"
-#assert os.path.isfile(args.blacklist), "Blacklist bed file not found"
-assert os.path.isfile(args.capture), "Capture site overlap file  not found"
-assert os.path.isfile(args.capture_count), "Capture site count file  not found"
-assert os.path.isfile(args.exclude), "Exclusion site overlap file  not found"
-assert os.path.isfile(args.exclude_count), "Exclusion site count file  not found"
+assert os.path.isfile(args.annotations), "Annotation file  not found"
+
 
 # Set default output files
 output_prefix = None
@@ -98,22 +83,10 @@ if args.output is None:
 else:
     output_prefix = args.output
 
-log_file = None
-if args.logfile is None:
-    log_file = output_prefix + '.log'
-else:
-    log_file = args.logfile
+# Set stat file names
+slice_stats_file = output_prefix + '.slice.stats'
+frag_stats_file = output_prefix + '.frag.stats'
 
-# Load genome digest bed into memory
-# N.B. 1 million lines
-#bed_col_names = ['chr', 'start', 'stop']
-#re_df = pd.read_csv(args.genome_digest_bed, 
-#                    header = None, names = bed_col_names, sep = '\t', 
-#                    dtype = {'chr':'U','start':'int32','stop':'int32'})
-## report chromosomes found
-#idx_stats = re_df.groupby('chr').count()
-
-# compare with chr from sam file header
 
 # Define functions
 def parse_sam_entry(sam_entry):
@@ -183,15 +156,19 @@ def classify_fragments(alignment_df):
                  'mapped': 'sum',
                  'multimapped':'sum', 
                  'capture':'nunique', 
-                 'capture_counts':'sum',
-                 'exclude':'nunique',
-                 'exclusion_counts': 'sum',
+                 'capture_count':'sum',
+                 'exclusion':'nunique',
+                 'exclusion_count': 'sum',
+                 'restriction_fragment': 'nunique',
+                 'blacklist': 'sum',
                  'coordinates':'|'.join})
     fragment_df['capture'] = fragment_df['capture']-1
-    fragment_df['exclude'] = fragment_df['exclude']-1
+    fragment_df['exclusion'] = fragment_df['exclusion']-1
+    fragment_df['restriction_fragment'] = fragment_df['restriction_fragment']-1
     fragment_df['reporter'] = (fragment_df['mapped'] 
-                                - fragment_df['exclusion_counts'] 
-                                - fragment_df['capture_counts'])
+                                - fragment_df['exclusion_count'] 
+                                - fragment_df['capture_count']
+                                - fragment_df['blacklist'])
     return fragment_df
 
 
@@ -200,63 +177,41 @@ def slice_stats(slice_df):
                          'parent_read': 'nunique',
                          'mapped': 'sum',
                          'multimapped':'sum',
-                         'capture': lambda col: col.nunique() - 1,
-                         'capture_counts': 'sum',
-                         'exclusion_counts': 'sum'})
+                         'capture': 'nunique',
+                         'capture_count': 'sum',
+                         'exclusion_count': 'sum',
+                         'blacklist': 'sum'})
     return stats
 
 def frag_stats(frag_df):
     stats = frag_df.agg({'parent_read': 'nunique',
                          'mapped': lambda col: (col > 1).sum(),
                          'multimapped': lambda col: (col > 0).sum(),
-                         'capture_counts': lambda col: (col > 0).sum(),
-                         'exclusion_counts': lambda col: (col > 0).sum(),
+                         'capture_count': lambda col: (col > 0).sum(),
+                         'exclusion_count': lambda col: (col > 0).sum(),
+                         'blacklist': lambda col: (col > 0).sum(),
+                         'reporter': lambda col: (col > 0).sum(),
                  })
     return stats
 
 def main():
-    # Open log file
-    logf = open(log_file, 'w')
     # Process bam file
     bam_df = process_bam(args.input_bam)
     bam_time = time.time()
-    logf.write(f"Bam file processed: {bam_df.shape[0]} records in {bam_time-start} seconds\n")
     print(f"Bam file processed: {bam_df.shape[0]} records in {bam_time-start} seconds")
     # Intersect with bed files to get capture and exclusion site intersections
-    capture_df = pd.read_csv(args.capture, header = None, 
-                         names = ["read_name","capture"], sep = '\t', 
-                         index_col = 'read_name')
-    logf.write(f"Capture file loaded: {capture_df.shape[0]} captured slices\n")
-    print(f"Capture file loaded: {capture_df.shape[0]} captured slices")
-    cc_df = pd.read_csv(args.capture_count, sep='\t', 
-                        header=None, names=['read_name', 'capture_counts'], 
-                        index_col = 'read_name')
-    logf.write(f"Capture count file loaded: {cc_df.shape[0]} captured slices\n")
-    print(f"Capture count file loaded: {cc_df.shape[0]} captured slices")
-    exclude_df = pd.read_csv(args.exclude, header = None, 
-                         names = ["read_name","exclude"], sep = '\t', 
-                         index_col = 'read_name')
-    logf.write(f"Exclude file loaded: {exclude_df.shape[0]} excluded slices\n")
-    print(f"Exclude file loaded: {exclude_df.shape[0]} excluded slices")
-    ex_df = pd.read_csv(args.exclude_count, sep='\t', 
-                        header=None, names=['read_name', 'exclusion_counts'], 
-                        index_col = 'read_name')
-    logf.write(f"Excluded count file loaded: {ex_df.shape[0]} excluded slices\n")
-    print(f"Excluded count file loaded: {ex_df.shape[0]} excluded slices")
-    bed_time = time.time()
-    print(f"All external files loaded in {bed_time-bam_time} seconds")
+    annotation_df = pd.read_csv(args.annotations, header = 0, sep = '\t')
+    print(f"Annotations file loaded: {annotation_df.shape[0]} annotated slices")
+    annotation_time = time.time()
+    print(f"Annotations loaded in {annotation_time-bam_time} seconds")
     # Merge all dataframes
     print(f'Merging dataframes...')
-    slice_df = bam_df.merge(capture_df, 
-                        on = "read_name", how = "left").merge(exclude_df, 
+    slice_df = bam_df.merge(annotation_df, 
                         on = "read_name", how = "left").fillna("-")
-    slice_df = slice_df.merge(cc_df, 
-                        on = "read_name", how = "left").merge(ex_df, 
-                        on = "read_name", how = "left").fillna(0)
-    # Drop dataframes after merge
-    del capture_df, exclude_df, cc_df, ex_df
+    # Drop dataframe after merge
+    del annotation_df
     merge_time = time.time()
-    print(f"Dataframes merged in {merge_time-bed_time} seconds")
+    print(f"Dataframes merged in {merge_time-annotation_time} seconds")
     # Write results to file
     write_aln_time = merge_time
     if debug:
@@ -279,34 +234,39 @@ def main():
         write_frag_time = time.time()
         print(f"Fragment dataframe written to file in {write_frag_time-classify_time} seconds")
     # Fragment filtering and stats
-    logf.write(f'Unfiltered fragment stats:\n{frag_stats(frag_df)}\n')
+    # Open frag stats file
+    frag_stats = open(frag_stats_file, 'w')
+    frag_stats.write(f'Unfiltered fragment stats:\n{frag_stats(frag_df)}\n')
     print(f'Unfiltered fragment stats:\n{frag_stats(frag_df)}\n')
     # remove duplicate fragments based on slice coordinates
     print('Removing duplicates')
     frag_df.drop_duplicates(subset="coordinates", 
                                 keep = False, inplace = True)
-    logf.write(f'After duplicate filtering:\n{frag_stats(frag_df)}\n')
+    frag_stats.write(f'After duplicate filtering:\n{frag_stats(frag_df)}\n')
     print(f'After duplicate filtering:\n{frag_stats(frag_df)}\n')
     # Report only fragments with capture site and reporter site
     print('Filtering for useful fragments')
     frag_df.query('capture == 1  and reporter > 0', inplace = True)
-    logf.write(f'Useful Fragments:\n{frag_stats(frag_df)}\n')
+    frag_stats.write(f'Useful Fragments:\n{frag_stats(frag_df)}\n')
+    frag_stats.close()
     print(f'Useful Fragments:\n{frag_stats(frag_df)}\n')
     frag_filter_time = time.time()
     print(f"Fragments filtered in {frag_filter_time-write_frag_time} seconds")
     # Filter slice dataframe to only slices from fragments containing both capture and reporter sites
-    logf.write(f'Unfiltered slice stats:\n{slice_stats(slice_df)}\n')
+    # Open slice stats file
+    slice_stats = open(slice_stats_file, 'w')
+    slice_stats.write(f'Unfiltered slice stats:\n{slice_stats(slice_df)}\n')
     print(f'Unfiltered slice stats:\n{slice_stats(slice_df)}\n')
     print('Filtering for useful slices')
     filt_slice_df = slice_df[slice_df['parent_read'].isin(frag_df['parent_read'])]
-    logf.write(f'After filtering for slices within useful fragments:\n{slice_stats(filt_slice_df)}\n')
+    slice_stats.write(f'After filtering for slices within useful fragments:\n{slice_stats(filt_slice_df)}\n')
     print(f'After filtering for slices within useful fragments:\n{slice_stats(filt_slice_df)}\n')
     # Filter again to remove fragments mapping to excluded regions and unmapped reads
     print('Removing excluded and unmapped fragments')
-    filt_slice_df = filt_slice_df.query('exclusion_counts == 0 and mapped == 1')
-    logf.write(f'After filtering to remove excluded and unmapped slices\n{slice_stats(filt_slice_df)}\n')
+    filt_slice_df = filt_slice_df.query('exclusion_count == 0 and mapped == 1')
+    slice_stats.write(f'After filtering to remove excluded and unmapped slices\n{slice_stats(filt_slice_df)}\n')
     print(f'After filtering to remove excluded and unmapped slices:\n{slice_stats(filt_slice_df)}\n')
-    logf.close()
+    slice_stats.close()
     slice_filter_time = time.time()
     print(f"Slices filtered in {slice_filter_time-frag_filter_time} seconds")
     # Write useful slices to file
@@ -316,7 +276,7 @@ def main():
     write_aln_time = time.time()
     print(f"Dataframe written to file in {write_aln_time-slice_filter_time} seconds")
     # Filter capture slices and write to bed
-    filt_slice_df = filt_slice_df.query('capture_counts == 0')
+    filt_slice_df = filt_slice_df.query('capture_count == 0')
     slice_bed = filt_slice_df[['chr','start','stop','read_name']]
     print(f'Writing reporter read slices to bed file...')
     with open(output_prefix + ".reporter.bed", 'w') as aln_out:

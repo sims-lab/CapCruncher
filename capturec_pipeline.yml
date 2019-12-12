@@ -17,3 +17,4 @@ ccanalyser:
     exclude_window: 1000
     memory: 16G
     re: DpnII
+    blacklist: /ifs/projects/davids/capture-c/data/mm10_encode_blacklist.bed.gz
