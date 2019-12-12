@@ -31,7 +31,7 @@ P.get_parameters('capturec_pipeline.yml')
 
 @follows(mkdir('ccanalyser'))
 @transform(P.PARAMS['genome_fasta'], 
-           regex(r'.*/(.*).fasta'), 
+           regex(r'.*/(.*).fa.*'), 
            r'ccanalyser/\1.digest.bed')
 def digest_genome(infile, outfile):
     '''Digest genome using restriction enzyme and output fragments in bed file'''
@@ -69,11 +69,11 @@ def multiqc_reads (infile, outfile):
 @follows(mkdir('deduplicated'))
 @collate('*.fastq.gz', 
          regex(r'(.*)_[12].fastq.gz'), 
-         r'deduplicated/\1.fastq.gz')
+         r'deduplicated/\1_1.fastq.gz')
 def deduplicate_reads(infiles, outfile):
 
     fq1, fq2 = infiles
-    out1, out2 = outfile.replace('.fastq.gz', '_1.fastq.gz'), outfile.replace('.fastq.gz', '_2.fastq.gz')
+    out1, out2 = outfile, outfile.replace('_1.fastq.gz', '_2.fastq.gz')
 
     statement = '''python %(scripts_dir)s/deduplicate_fastq.py
                    -1 %(fq1)s -2 %(fq2)s
@@ -85,7 +85,7 @@ def deduplicate_reads(infiles, outfile):
           job_queue=P.PARAMS['queue'], 
           job_memory='32G')
 
-@follows(mkdir('trim'))
+@follows(mkdir('trim'), deduplicate_reads)
 @collate(r'deduplicated/*.fastq.gz',
          regex(r'deduplicated/(.*)_[12].fastq.gz'), 
          r'trim/\1_1_val_1.fq.gz')
@@ -247,13 +247,18 @@ def exclusion_intersect(infile, outfile):
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 
-@follows(digest_genome)
 @transform(bam_to_bed, 
-           regex(r'ccanalyser/(.*).bam.bed'), 
+           regex(r'ccanalyser/(.*).bam.bed'),
+           add_inputs(digest_genome),
            r'ccanalyser/\1.re.intersect')
 def re_intersect(infile, outfile):
+    
+    bam = infile[0]
+    genome = infile[1]
+    
+    
     statement =  '''bedtools intersect -loj
-                    -a %(infile)s -b ccanalyser/mm10.digest.bed
+                    -a %(bam)s -b %(genome)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
                     | sed '1i read_name\\trestriction_fragment'
                     > %(outfile)s 2> %(outfile)s.log''' 
