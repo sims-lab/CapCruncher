@@ -118,8 +118,8 @@ def combine_reads(infiles, outfile):
 @follows(mkdir('digest'))          
 @transform(combine_reads, 
            regex(r'flash/(.*).extendedFrags.fastq.gz'), 
-           r'digest/\1.digest.fastq.gz')
-def digest_reads(infile, outfile):
+           r'digest/\1.digest_flashed.fastq.gz')
+def digest_flashed_reads(infile, outfile):
     '''in silico restriction enzyme digest
         Need to remove reads less than 22bp long'''
     statement = '''python %(scripts_dir)s/digest_fastq.py 
@@ -129,9 +129,27 @@ def digest_reads(infile, outfile):
           job_queue=P.PARAMS['queue'], 
           job_threads=P.PARAMS['threads'])
 
+@follows(combine_reads)
+@collate('flash/*.fastq.gz', 
+               regex(r'flash/(.*).notCombined_[12].fastq.gz'), 
+               r'digest/\1.digest_pe.fastq.gz')
+def digest_pe_reads(infiles, outfile):
+    '''in silico restriction enzyme digest
+        Need to remove reads less than 22bp long'''
+    
+    fq1, fq2 = infiles
+    
+    statement = '''python %(scripts_dir)s/digest_pe_fastq.py 
+                   -1 %(fq1)s -2 %(fq2)s -o %(outfile)s 
+                   -l %(outfile)s.log -r %(ccanalyser_re)s'''
+    
+    P.run(statement, 
+          job_queue=P.PARAMS['queue'], 
+          job_threads=P.PARAMS['threads'])
+
 
 @follows(mkdir('bam'))
-@transform(digest_reads, 
+@transform([digest_flashed_reads, digest_pe_reads], 
            regex(r'digest/(.*).fastq.gz'), 
            r'bam/\1.bam')
 def align_reads(infile, outfile):
@@ -195,7 +213,7 @@ def build_exclusion_bed(infile, outfile):
 
 @transform(bam_to_bed, 
            regex(r'ccanalyser/(.*).bam.bed'), 
-           r'ccanalyser/\1.capture.count')
+           r'ccanalyser/\1.annotation.capture.count')
 def capture_intersect_count(infile, outfile):
     '''Intersect reads with capture and exclusion files.
     report count of overlaps for each input bed using -C '''
@@ -210,7 +228,7 @@ def capture_intersect_count(infile, outfile):
 @follows(build_exclusion_bed)
 @transform(bam_to_bed, 
            regex(r'ccanalyser/(.*).bam.bed'), 
-           r'ccanalyser/\1.exclude.count')
+           r'ccanalyser/\1.annotation.exclude.count')
 def exclusion_intersect_count(infile, outfile):
     '''Intersect reads with capture and exclusion files.
     report count of overlaps for each input bed using -C '''
@@ -224,7 +242,7 @@ def exclusion_intersect_count(infile, outfile):
 
 @transform(bam_to_bed, 
            regex(r'ccanalyser/(.*).bam.bed'), 
-           r'ccanalyser/\1.capture.intersect')
+           r'ccanalyser/\1.annotation.capture')
 def capture_intersect(infile, outfile):
     statement =  '''bedtools intersect -loj -f 1
                     -a %(infile)s -b %(ccanalyser_capture)s
@@ -237,7 +255,7 @@ def capture_intersect(infile, outfile):
 @follows(build_exclusion_bed)
 @transform(bam_to_bed, 
            regex(r'ccanalyser/(.*).bam.bed'), 
-           r'ccanalyser/\1.exclude.intersect')
+           r'ccanalyser/\1.annotation.exclude')
 def exclusion_intersect(infile, outfile):
     statement =  '''bedtools intersect -loj
                     -a %(infile)s -b ccanalyser/exclude.bed
@@ -250,13 +268,9 @@ def exclusion_intersect(infile, outfile):
 @transform(bam_to_bed, 
            regex(r'ccanalyser/(.*).bam.bed'),
            add_inputs(digest_genome),
-           r'ccanalyser/\1.re.intersect')
-def re_intersect(infile, outfile):
-    
-    bam = infile[0]
-    genome = infile[1]
-    
-    
+           r'ccanalyser/\1.annotation.re')
+def re_intersect(infiles, outfile):   
+    bam, genome = infiles        
     statement =  '''bedtools intersect -loj
                     -a %(bam)s -b %(genome)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
@@ -266,7 +280,7 @@ def re_intersect(infile, outfile):
 
 @transform(bam_to_bed, 
            regex(r'ccanalyser/(.*).bam.bed'), 
-           r'ccanalyser/\1.blacklist.count')
+           r'ccanalyser/\1.annotation.blacklist.count')
 def blacklist_intersect_count(infile, outfile):
     '''Intersect reads with blacklisted regions.
     report count of overlaps for each input bed using -C '''
@@ -277,9 +291,11 @@ def blacklist_intersect_count(infile, outfile):
                     > %(outfile)s 2> %(outfile)s.log''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
-@merge([capture_intersect_count, exclusion_intersect_count,
+@collate([capture_intersect_count, exclusion_intersect_count,
          capture_intersect, exclusion_intersect,
-         re_intersect, blacklist_intersect_count], "ccanalyser/annotations.tsv")
+         re_intersect, blacklist_intersect_count], 
+    regex(r'ccanalyser/(.*).annotation.*'),
+    r"ccanalyser/\1.annotations.tsv")
 def merge_annotations(infiles, outfile):
     '''merge all intersections into a single file '''
     inlist = " ".join(infiles)
@@ -290,11 +306,20 @@ def merge_annotations(infiles, outfile):
     P.run(statement,
           job_queue=P.PARAMS['queue'])
 
+@merge(merge_annotations, 'ccanalyser/merged_annotations.tsv')
+def combine_annotations(infiles, outfile):
+    
+    fnames = ' '.join(infiles)
+    statement = '''cat %(fnames)s > %(outfile)s'''
+    
+    P.run(statement,
+          job_queue=P.PARAMS['queue'])
 
-@follows(merge_annotations)
+
+@follows(combine_annotations)
 @transform(align_reads, 
            regex(r'bam/(.*).bam'), 
-           add_inputs("ccanalyser/annotations.tsv"),
+           add_inputs("ccanalyser/merged_annotations.tsv"),
            r'ccanalyser/\1.reporter.bed')
 def ccanalyser(infiles, outfile):
     bam, annotations = infiles

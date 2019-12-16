@@ -94,7 +94,7 @@ def write_slices(read, slices, fastq_out):
     invalid_slice_counter = 0
     for s in slices:
         if s:
-            fastq_out.write(f'@{read.name}|PE1|{slice_counter}\n'.encode())
+            fastq_out.write(f'@{read.name}|Unflashed|{slice_counter}\n'.encode())
             fastq_out.write(f'{s["sequence"]}\n'.encode())
             fastq_out.write('+\n'.encode())
             fastq_out.write(f'{read.quality[s["slice_start"]:s["slice_end"]]}\n'.encode())
