@@ -23,8 +23,10 @@ as input and performs the following steps:
 # import packages
 import sys
 import os
+import gzip
+from pysam import FastxFile
 from cgatcore import pipeline as P
-from ruffus import *
+from ruffus import mkdir, follows, transform, merge, originate, collate, split, regex
 
 # Read in parameter file
 P.get_parameters('capturec_pipeline.yml')
@@ -115,6 +117,36 @@ def combine_reads(infiles, outfile):
       job_threads=P.PARAMS['threads'])
 
 
+@follows(mkdir('split_fastq'))
+@split('flash/*.fastq.gz', 'split_fastq/*.fastq.gz')
+def split_fastq(infile, outfiles):
+
+
+    fn = os.path.join('split_fastq', os.path.basename(infile).replace('fastq.gz', ''))
+
+    split_counter = 0
+
+    for read_counter, read in enumerate(FastxFile(infile)):
+
+        processed_read = f'{read}\n'.encode()
+
+        if read_counter == 0:
+            out_name = f'fn_{split_counter}.fastq.gz'
+            out_handle = gzip.open(out_name, 'wb')
+            out_handle.write(processed_read)
+        
+        elif read_counter % P.PARAMS['chunksize'] == 0:
+            split_counter += 1
+            out_handle.close()
+            out_name = f'fn_{split_counter}.fastq.gz'
+            out_handle = gzip.open(out_name, 'wb')
+            out_handle.write(processed_read)       
+        else:
+            out_handle.write(processed_read)
+        
+    out_handle.close()    
+
+
 @follows(mkdir('digest'))          
 @transform(combine_reads, 
            regex(r'flash/(.*).extendedFrags.fastq.gz'), 
@@ -123,8 +155,12 @@ def digest_flashed_reads(infile, outfile):
     '''in silico restriction enzyme digest
         Need to remove reads less than 22bp long'''
     statement = '''python %(scripts_dir)s/digest_fastq.py 
-                   -i %(infile)s -o %(outfile)s 
-                   -l %(outfile)s.log'''
+                   -o %(outfile)s 
+                   -l %(outfile)s.log
+                   -r %(ccanalyser_re)s
+                   -m 22
+                   flashed
+                   -i %(infile)s'''
     P.run(statement, 
           job_queue=P.PARAMS['queue'], 
           job_threads=P.PARAMS['threads'])
@@ -139,9 +175,15 @@ def digest_pe_reads(infiles, outfile):
     
     fq1, fq2 = infiles
     
-    statement = '''python %(scripts_dir)s/digest_pe_fastq.py 
-                   -1 %(fq1)s -2 %(fq2)s -o %(outfile)s 
-                   -l %(outfile)s.log -r %(ccanalyser_re)s'''
+    statement = '''python %(scripts_dir)s/digest_fastq.py 
+                   -l %(outfile)s.log 
+                   -r %(ccanalyser_re)s
+                   -o %(outfile)s
+                   -m 22
+                   unflashed
+                   -1 %(fq1)s 
+                   -2 %(fq2)s  
+                   '''
     
     P.run(statement, 
           job_queue=P.PARAMS['queue'], 
