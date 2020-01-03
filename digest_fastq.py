@@ -67,6 +67,8 @@ class DigestedRead():
                 if (not self.flashed) or (self.flashed and slice_length != len(self.read.sequence)):
                     self.slices_valid_counter += 1
                     slices_lst.append(s)
+            
+            slice_start = slice_end
 
         return slices_lst
     
