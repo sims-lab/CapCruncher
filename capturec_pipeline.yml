@@ -1,23 +1,27 @@
-queue: all.q
+queue: batchq
 threads: 12
 memory: 4G
-scripts_dir: /ifs/projects/davids/capture-c/src/ 
+chunksize: 1000000
+compression: 1
+scripts_dir: /t1-data/user/asmith/Projects/capturec_dev/capture-c 
 trim:
     options: --paired --length 21
 bowtie2:
     # Ask bowtie to return reads in the same order as the fastq file (slower if threads > 1)
     options: --reorder
-    index: /ifs/mirror/genomes/bowtie/mm10
+    index: /databank/igenomes/Mus_musculus/UCSC/mm10/Sequence/Bowtie2Index/genome  
 genome:
-    fasta: /ifs/mirror/genomes/plain/mm10.fasta
-    fai: /ifs/mirror/genomes/plain/mm10.fasta.fai
+    fasta: /databank/igenomes/Mus_musculus/UCSC/mm10/Sequence/WholeGenomeFasta/genome.fa
+    fai: /databank/igenomes/Mus_musculus/UCSC/mm10/Sequence/WholeGenomeFasta/genome.fa.fai
+
 ccanalyser:
-    capture: /ifs/projects/davids/capture-c/data/capture_site.bed
-    re_map: /ifs/projects/davids/capture-c/digest_genome/mm10.bed
+    capture: /t1-home/nuffmed/asmith/Data/Projects/capture-c/test/test_capture_sites.bed
+    re_map: /t1-home/nuffmed/asmith/Data/Projects/capture-c/test/mm10.bed
     exclude_window: 1000
     memory: 16G
     re: DpnII
-    blacklist: /ifs/projects/davids/capture-c/data/mm10_encode_blacklist.bed.gz
+    blacklist: /t1-home/nuffmed/asmith/Data/Projects/capture-c/test/mm10_blacklist.bed.gz
+    
 hub:
     publoc: /public/asmith/capture-c/
     name: test_pipeline

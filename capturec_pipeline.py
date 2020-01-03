@@ -26,7 +26,7 @@ import os
 import gzip
 from pysam import FastxFile
 from cgatcore import pipeline as P
-from ruffus import mkdir, follows, transform, merge, originate, collate, split, regex
+from ruffus import mkdir, follows, transform, merge, originate, collate, split, regex, add_inputs, suffix
 
 # Read in parameter file
 P.get_parameters('capturec_pipeline.yml')
@@ -78,10 +78,11 @@ def deduplicate_reads(infiles, outfile):
     out1, out2 = outfile, outfile.replace('_1.fastq.gz', '_2.fastq.gz')
 
     statement = '''python %(scripts_dir)s/deduplicate_fastq.py
-                   -1 %(fq1)s -2 %(fq2)s
-                   --out1 %(out1)s --out2 %(out2)s
-                   -l deduplicated/deduplication_logfile.txt
-                '''
+                           -1 %(fq1)s -2 %(fq2)s
+                           --out1 %(out1)s --out2 %(out2)s
+                           -l deduplicated/deduplication_logfile.txt
+                           -c %(compression)s
+                          '''
     
     P.run(statement, 
           job_queue=P.PARAMS['queue'], 
@@ -117,29 +118,29 @@ def combine_reads(infiles, outfile):
       job_threads=P.PARAMS['threads'])
 
 
-@follows(mkdir('split_fastq'))
-@split('flash/*.fastq.gz', 'split_fastq/*.fastq.gz')
-def split_fastq(infile, outfiles):
-
-
-    fn = os.path.join('split_fastq', os.path.basename(infile).replace('fastq.gz', ''))
+@follows(mkdir('split_fastq'), combine_reads)
+@transform('flash/*.fastq.gz', regex(r'flash/(.*).fastq.gz'), r'split_fastq/\1_0.fastq.gz')
+def split_fastq(infile, outfile):
+    
+    chunksize = int(P.PARAMS['chunksize'])
+    compression_level = int(P.PARAMS['compression'])
+    fn = os.path.join('split_fastq', os.path.basename(outfile).replace('_0.fastq.gz', ''))
 
     split_counter = 0
-
     for read_counter, read in enumerate(FastxFile(infile)):
 
         processed_read = f'{read}\n'.encode()
 
         if read_counter == 0:
-            out_name = f'fn_{split_counter}.fastq.gz'
-            out_handle = gzip.open(out_name, 'wb')
+            out_name = f'{fn}_{split_counter}.fastq.gz'
+            out_handle = gzip.open(out_name, 'wb', compresslevel=compression_level)
             out_handle.write(processed_read)
         
-        elif read_counter % P.PARAMS['chunksize'] == 0:
+        elif read_counter % chunksize == 0:
             split_counter += 1
             out_handle.close()
-            out_name = f'fn_{split_counter}.fastq.gz'
-            out_handle = gzip.open(out_name, 'wb')
+            out_name = f'{fn}_{split_counter}.fastq.gz'
+            out_handle = gzip.open(out_name, 'wb', compresslevel=compression_level)
             out_handle.write(processed_read)       
         else:
             out_handle.write(processed_read)
@@ -147,10 +148,10 @@ def split_fastq(infile, outfiles):
     out_handle.close()    
 
 
-@follows(mkdir('digest'))          
-@transform(combine_reads, 
-           regex(r'flash/(.*).extendedFrags.fastq.gz'), 
-           r'digest/\1.digest_flashed.fastq.gz')
+@follows(mkdir('digest'), split_fastq)          
+@transform('split_fastq/*.fastq.gz', 
+                   regex(r'split_fastq/(.*).extendedFrags_(\d+).fastq.gz'), 
+                    r'digest/\1.digest_flashed_\2.fastq.gz')
 def digest_flashed_reads(infile, outfile):
     '''in silico restriction enzyme digest
         Need to remove reads less than 22bp long'''
@@ -159,16 +160,17 @@ def digest_flashed_reads(infile, outfile):
                    -l %(outfile)s.log
                    -r %(ccanalyser_re)s
                    -m 22
+                   -c %(compression)s
                    flashed
                    -i %(infile)s'''
     P.run(statement, 
           job_queue=P.PARAMS['queue'], 
           job_threads=P.PARAMS['threads'])
 
-@follows(combine_reads)
-@collate('flash/*.fastq.gz', 
-               regex(r'flash/(.*).notCombined_[12].fastq.gz'), 
-               r'digest/\1.digest_pe.fastq.gz')
+@follows(combine_reads, split_fastq)
+@collate('split_fastq/*.fastq.gz', 
+               regex(r'split_fastq/(.*).notCombined_[12]_(\d+).fastq.gz'), 
+               r'digest/\1.digest_pe_\2.fastq.gz')
 def digest_pe_reads(infiles, outfile):
     '''in silico restriction enzyme digest
         Need to remove reads less than 22bp long'''
@@ -179,6 +181,7 @@ def digest_pe_reads(infiles, outfile):
                    -l %(outfile)s.log 
                    -r %(ccanalyser_re)s
                    -o %(outfile)s
+                   -c %(compression)s
                    -m 22
                    unflashed
                    -1 %(fq1)s 

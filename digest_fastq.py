@@ -59,7 +59,7 @@ class DigestedRead():
             slice_length = slice_end - slice_start
 
             if slice_length > self.min_slice_len and slice_end != 0:
-                s = '\n'.join([f'{self.read.name}|{self.read_type}|{self.slices_valid_counter + self.slice_offset}',
+                s = '\n'.join([f'@{self.read.name}|{self.read_type}|{self.slices_valid_counter + self.slice_offset}',
                                self.read.sequence[slice_start:slice_end],
                                '+',
                                self.read.quality[slice_start:slice_end]])
@@ -150,12 +150,14 @@ def main():
                 
 
                 for read_name, sliced_read in zip(['read_1', 'read_2'], [sliced_read_1, sliced_read_2]):
-                    fastq_out.write((sliced_read.slices_string + '\n').encode())
+                    if sliced_read.slices_string:
+                        s = (sliced_read.slices_string + '\n').encode()
+                        fastq_out.write(s)
+  
                     slice_total_dict[read_name][sliced_read.slices_total_counter] += 1
                     slice_valid_dict[read_name][sliced_read.slices_valid_counter] += 1
         
 
-      
         logfile = open_logfile(args.logfile)
         
         logfile.write(f'Reads processed\t{seq_counter}\n')
