@@ -35,7 +35,7 @@ import time
 import numba
 #import pdb
 
-start = time.time()
+start = time.time() 
 
 # Parse input parameters
 p = argparse.ArgumentParser()
@@ -125,9 +125,10 @@ def process_bam(bam_file):
     return aln_df
 
 
-@numba.jit
+#@numba.jit
 def classify_fragments(alignment_df):
     '''Summarise data across all sam entries for a fragment (read_name)'''
+
     fragment_df = alignment_df.sort_values(['parent_read','coordinates']).groupby(
                 'parent_read', as_index=False).agg(
                 {'slice':'count', 
@@ -174,10 +175,12 @@ def frag_stats(frag_df):
     return stats
 
 def main():
+    
     # Process bam file
     bam_df = process_bam(args.input_bam)
     bam_time = time.time()
-    print(f"Bam file processed: {bam_df.shape[0]} records in {bam_time-start} seconds")
+    print(f"Bam file processed: {bam_df.shape[0]} records in {bam_time-start} seconds") 
+
     # Intersect with bed files to get capture and exclusion site intersections
     annotation_df = pd.read_csv(args.annotations, header = 0, sep = '\t')
     print(f"Annotations file loaded: {annotation_df.shape[0]} annotated slices")
@@ -187,18 +190,23 @@ def main():
     print(f'Merging dataframes...')
     slice_df = bam_df.merge(annotation_df, 
                         on = "read_name", how = "left").fillna("-")
+    
     # Drop dataframe after merge
     del annotation_df
     merge_time = time.time()
     print(f"Dataframes merged in {merge_time-annotation_time} seconds")
     # Write results to file
-    write_aln_time = merge_time
+    write_aln_time = merge_time 
+    
+    
     if debug:
         print(f'Writing annotated sam data to file...')
         with open(output_prefix + ".all.slice.tsv", 'w') as aln_out:
             slice_df.to_csv(aln_out, header = True, sep = '\t', index = False)
         write_aln_time = time.time()
         print(f"Dataframe written to file in {write_aln_time-merge_time} seconds")
+   
+   
     # Groupby read name to classify capture-c fragments
     print('Classifying fragments...')
     frag_df = classify_fragments(slice_df)
@@ -206,12 +214,18 @@ def main():
     print(f"Fragments classified in {classify_time-write_aln_time} seconds")
     # Write unfiltered fragment data to file
     write_frag_time = classify_time
+       
     if debug:
         print('Writing fragments to file')
         with open(output_prefix + ".all.frag.tsv", 'w') as frag_out:
             frag_df.to_csv(frag_out, header = True, sep = '\t', index = False)
         write_frag_time = time.time()
         print(f"Fragment dataframe written to file in {write_frag_time-classify_time} seconds")
+    
+    
+    
+    
+    
     # Fragment filtering and stats
     # Open frag stats file
     frag_stats = open(frag_stats_file, 'w')
