@@ -350,21 +350,21 @@ def merge_annotations(infiles, outfile):
                         -i %(inlist)s'''
     P.run(statement,
           job_queue=P.PARAMS['queue'])
-
+'''
 @merge(merge_annotations, 'ccanalyser/merged_annotations.tsv')
 def combine_annotations(infiles, outfile):
     
     fnames = ' '.join(infiles)
-    statement = '''cat %(fnames)s > %(outfile)s'''
+    statement = 'cat %(fnames)s > %(outfile)s'
     
     P.run(statement,
           job_queue=P.PARAMS['queue'])
+'''
 
-
-@follows(combine_annotations)
+@follows(merge_annotations)
 @transform(align_reads, 
            regex(r'bam/(.*).bam'), 
-           add_inputs("ccanalyser/merged_annotations.tsv"),
+           add_inputs(r'ccanalyser/\1.annotations.tsv'),
            r'ccanalyser/\1.reporter.bed')
 def ccanalyser(infiles, outfile):
     bam, annotations = infiles
