@@ -159,7 +159,7 @@ def digest_flashed_reads(infile, outfile):
                    -o %(outfile)s 
                    -l %(outfile)s.log
                    -r %(ccanalyser_re)s
-                   -m 22
+                   -m 18
                    -c %(compression)s
                    flashed
                    -i %(infile)s'''
@@ -369,13 +369,23 @@ def combine_annotations(infiles, outfile):
 def ccanalyser(infiles, outfile):
     bam, annotations = infiles
     outfile_base = outfile.replace('.reporter.bed', '') 
-    statement =  '''python %(scripts_dir)s/ccanalyser.py 
+    statement =  '''python %(scripts_dir)s/ccanalyser_dev.py 
                     -i %(bam)s
                     -a %(annotations)s
                     -o %(outfile_base)s ''' 
     P.run(statement,
           job_queue=P.PARAMS['queue'], 
           job_memory=P.PARAMS['ccanalyser_memory'])
+@follows(ccanalyser)
+@collate('ccanalyser/*.bed',
+         regex(r'ccanalyser/(.*).digest_.*_\d+_(.*).bed'),
+         r'ccanalyser/\1_\2.bed')
+def collate_ccanalyser_output(infiles, outfile):
+    
+    infiles = ' '.join(infiles)
+    statement = '''cat %(infiles)s > %(outfile)s'''
+    P.run(statement,
+          job_queue=P.PARAMS['queue'])
 
 
 @transform(ccanalyser, suffix('.reporter.bed'), '.bedgraph')
