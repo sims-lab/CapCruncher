@@ -21,6 +21,8 @@ parser.add_argument('-l', '--logfile', help='filename for logfile',
                default=sys.stdout)
 parser.add_argument('-c', '--compression_level', help='Level of gzip compression (1-9 with 9 being the most compressed/slowest)',
                default=6, type=int)
+parser.add_argument('--keep_cutsite', help='Determines if cutsite is stripped from the start of each slice',
+                    action='store_true', default=False)
 
 subparsers = parser.add_subparsers(help='Run in either flashed or unflashed', dest='command')
 parser_flashed = subparsers.add_parser('flashed', help='For flashed reads')
@@ -35,12 +37,14 @@ args = parser.parse_args()
 
 
 class DigestedRead():
-    def __init__(self, read, cutsite, flashed=False, minimum_slice_length=0, slice_offset=0):
+    def __init__(self, read, cutsite, flashed=False, minimum_slice_length=0, slice_offset=0, keep_cutsite=False):
         self.read = read
         self.cutsite = cutsite
         self.min_slice_len = minimum_slice_length
         self.flashed = flashed
         self.read_type = 'flashed' if flashed else 'unflashed'
+        self.keep_cutsite = keep_cutsite
+
 
         self.recognition_sites = [site.start() for site in cutsite.finditer(self.read.sequence)] + [len(self.read.sequence)]
         self.slices_total_counter = 0
@@ -56,6 +60,12 @@ class DigestedRead():
             
             self.slices_total_counter += 1
             slice_end = site
+
+            if not self.keep_cutsite:
+                cutsite_removed = re.sub(f'^{self.cutsite.pattern}', '', self.read.sequence[slice_start:slice_end])
+                slice_shift = len(self.read.sequence[slice_start:slice_end]) - len(cutsite_removed)
+                slice_start += slice_shift #Shift the slice by the length of the removed cutsite
+            
             slice_length = slice_end - slice_start
 
             if slice_length > self.min_slice_len and slice_end != 0:
@@ -109,6 +119,7 @@ def main():
     
     min_slice_len = args.minimum_slice_length
     cut_site = re.compile(get_re_site(args.cut_sequence, args.restriction_enzyme))
+    keep_cutsite = args.keep_cutsite
     
 
     with gzip.open(args.output_file, 'w', compresslevel=args.compression_level) as fastq_out: 
@@ -122,7 +133,8 @@ def main():
                 sliced_read = DigestedRead(read,
                                            cut_site,
                                            flashed=True,
-                                           minimum_slice_length=min_slice_len)
+                                           minimum_slice_length=min_slice_len,
+                                           keep_cutsite=keep_cutsite)
                 
                 if sliced_read.slices_string:
                     s = (sliced_read.slices_string + '\n').encode()
@@ -141,14 +153,16 @@ def main():
                 sliced_read_1 = DigestedRead(read1,
                                              cut_site,
                                              flashed=False,
-                                             minimum_slice_length=min_slice_len)
+                                             minimum_slice_length=min_slice_len,
+                                             keep_cutsite=keep_cutsite)
 
                
                 sliced_read_2 = DigestedRead(read2,
                                              cut_site,
                                              flashed=False,
                                              minimum_slice_length=min_slice_len,
-                                             slice_offset=sliced_read_1.slices_valid_counter)
+                                             slice_offset=sliced_read_1.slices_valid_counter,
+                                             keep_cutsite=keep_cutsite)
                 
 
                 for read_name, sliced_read in zip(['read_1', 'read_2'], [sliced_read_1, sliced_read_2]):
