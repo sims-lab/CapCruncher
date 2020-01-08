@@ -39,7 +39,7 @@ def format_dataframe_for_printing(f):
     @wraps(f)
     def wrapped(*args, **kwargs):
         df = f(*args, **kwargs)
-        return '\n'.join(str(df).split('\n')[:-1])
+        return df.to_string()
     return wrapped
 
 def get_prefix():
@@ -119,7 +119,6 @@ def classify_fragments(df_align):
                                              }))    
     return df_fragments
 
-@format_dataframe_for_printing
 def get_slice_stats(df):
     stats = (df.agg({'read_name': 'nunique',
                      'parent_read': 'nunique',
@@ -140,7 +139,6 @@ def get_slice_stats(df):
              )
     return stats
 
-@format_dataframe_for_printing
 def get_frag_stats(df):
     stats = (df.agg({'parent_read': 'nunique',
                     'mapped': lambda col: (col > 1).sum(),
@@ -164,45 +162,47 @@ def filter_slices(df_fragments, df_slices, output_prefix):
     fragstats_fn = f'{output_prefix}.frag.stats'
     slicestats_fn = f'{output_prefix}.slice.stats'
 
-    with open(fragstats_fn, 'w') as fragstats_out,\
-         open(slicestats_fn, 'w') as slicestats_out:
+    # Unfiltered fragments
+    print('Writing unfiltered fragment and slice stats')
+    get_frag_stats(df_fragments).to_csv(f'{fragstats_fn.replace(".frag.stats", "unfiltered.frag.stats")}',
+                                         header=False)
+    get_slice_stats(df_slices.reset_index()).to_csv(f'{slicestats_fn.replace(".slice.stats", ".unfiltered.slice.stats")}',
+                                       header=False)
+    
+    #Duplicate filtering
+    print('Duplicate filtered fragments (looking for exact matches)')
+    df_fragments.drop_duplicates(subset="coordinates", keep=False, inplace=True)
+    get_frag_stats(df_fragments).to_csv(f'{fragstats_fn.replace(".frag.stats", ".deduplicated.frag.stats")}',
+                         header=False)
+    
+    #Valid reporter filtering
+    print('Filtered for only fragments with valid reporter slices')
+    df_fragments.query('reporter_count > 0', inplace=True)
+    get_frag_stats(df_fragments).to_csv(f'{fragstats_fn.replace(".frag.stats", ".valid.frag.stats")}',
+                         header=False)
 
-        # Unfiltered fragments
-        print('Writing unfiltered fragment and slice stats')
-        fragstats_out.write(f'Unfiltered fragment stats:\n{get_frag_stats(df_fragments)}\n')
-        slicestats_out.write(f'Unfiltered slice stats:\n{get_slice_stats(df_slices.reset_index())}\n')
-        
-        #Duplicate filtering
-        print('Duplicate filtered fragments (looking for exact matches)')
-        df_fragments.drop_duplicates(subset="coordinates", keep=False, inplace=True)
-        fragstats_out.write(f'Duplicate filtered fragment stats:\n{get_frag_stats(df_fragments)}\n')
-        
-        #Valid reporter filtering
-        print('Filtered for only fragments with valid reporter slices')
-        df_fragments.query('reporter_count > 0', inplace=True)
-        fragstats_out.write(f'Valid reporter filtered fragment stats:\n{get_frag_stats(df_fragments)}\n')
+    #Useful slice filtering
+    print('Filtered for useful slices (removing unmapped, excluded, blacklisted, not paired with a capture and slices mapping to two restriction fragments)')
+    df_slices_filt = df_slices[df_slices['parent_read'].isin(df_fragments['parent_read'])]
+    df_slices_filt = df_slices_filt.query('mapped == 1 and exclusion_count == 0 and blacklist == 0')
+    df_slices_filt = (df_slices_filt.sort_values('capture_count', ascending=False) #Sort by capture sites first
+                                    .drop_duplicates(subset=['parent_read', 'restriction_fragment']))  #Stops the same restriction fragment being refered to multiple times
+    get_slice_stats(df_slices_filt.reset_index()).to_csv(f'{slicestats_fn.replace(".slice.stats", ".valid.slice.stats")}',
+                                       header=False)
+    
+    # Generate .tsv of useful slices
+    print(f'Writing useful slices to {output_prefix}.tsv')
+    df_slices_filt.to_csv(f'{output_prefix}.useful_slices.tsv', sep='\t')
 
-        #Useful slice filtering
-        print('Filtered for useful slices (removing unmapped, excluded, blacklisted, not paired with a capture and slices mapping to two restriction fragments)')
-        df_slices_filt = df_slices[df_slices['parent_read'].isin(df_fragments['parent_read'])]
-        df_slices_filt = df_slices_filt.query('mapped == 1 and exclusion_count == 0 and blacklist == 0')
-        df_slices_filt = (df_slices_filt.sort_values('capture_count', ascending=False) #Sort by capture sites first
-                                        .drop_duplicates(subset=['parent_read', 'restriction_fragment']))  #Stops the same restriction fragment being refered to multiple times
-        slicestats_out.write(f'Useful slice stats:\n{get_slice_stats(df_slices_filt.reset_index())}\n')
-        
-        # Generate .tsv of useful slices
-        print(f'Writing useful slices to {output_prefix}.tsv')
-        df_slices_filt.to_csv(f'{output_prefix}.useful_slices.tsv', sep='\t')
-
-        # Generate .bed file of capture and reporter slices
-        print(f'Writing reporter slices to {output_prefix}.reporter.bed')
-        df_slices_capture = (df_slices_filt.reset_index()
-                                           .query('capture_count > 0'))
-        df_slices_reporter = (df_slices_filt.reset_index()
-                                           .query('capture_count == 0'))
-        
-        df_slices_capture[['chrom', 'start', 'end', 'read_name']].to_csv(f'{output_prefix}.capture.bed', sep='\t', header=None, index=False)
-        df_slices_reporter[['chrom', 'start', 'end', 'read_name']].to_csv(f'{output_prefix}.reporter.bed', sep='\t', header=None, index=False)        
+    # Generate .bed file of capture and reporter slices
+    print(f'Writing reporter slices to {output_prefix}.reporter.bed')
+    df_slices_capture = (df_slices_filt.reset_index()
+                                       .query('capture_count > 0'))
+    df_slices_reporter = (df_slices_filt.reset_index()
+                                       .query('capture_count == 0'))
+    
+    df_slices_capture[['chrom', 'start', 'end', 'read_name']].to_csv(f'{output_prefix}.capture.bed', sep='\t', header=None, index=False)
+    df_slices_reporter[['chrom', 'start', 'end', 'read_name']].to_csv(f'{output_prefix}.reporter.bed', sep='\t', header=None, index=False)        
         
     return df_fragments, df_slices_capture, df_slices_reporter
 

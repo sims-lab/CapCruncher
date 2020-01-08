@@ -388,12 +388,17 @@ def collate_ccanalyser_output(infiles, outfile):
           job_queue=P.PARAMS['queue'])
 
 
-@transform(ccanalyser, suffix('.reporter.bed'), '.bedgraph')
-def build_bedgraph(infile, outfile):
+@transform('ccanalyser/*.bed', 
+           regex(r'ccanalyser/(\w+_.*).bed'),
+           add_inputs(digest_genome),
+           r'ccanalyser/\1.bedgraph')
+def build_bedgraph(infiles, outfile):
     '''Intersect reporters with genome restriction fragments to create bedgraph'''
-    re_map = 'ccanalyser/' + os.path.basename(P.PARAMS['genome_fasta']).replace('.fasta', '.digest.bed')
+    bed_fn = infiles[0]
+    re_map = infiles[1]
     statement = '''bedtools annotate -counts -i %(re_map)s 
-                    -files %(infile)s > %(outfile)s'''
+                    -files %(bed_fn)s | awk 'BEGIN{OFS="\t"}{print $1, $2, $3, $5}'
+                    > %(outfile)s'''
     P.run(statement,
           job_queue=P.PARAMS['queue'])
     
