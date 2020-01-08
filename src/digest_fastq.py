@@ -110,13 +110,12 @@ def get_re_site(cut_sequence=None, restriction_enzyme=None):
 def get_digestion_stats(n_processed, total_slices, valid_slices):
     stats_combined = dict()
     for read_type in total_slices:
-        total_slices = sum(
-            k * v for k, v in total_slices[read_type].items())
+        total_count = sum(k * v for k, v in total_slices[read_type].items())
 
-        if total_slices:
+        if total_count:
             stats = {'total_read_pairs_processed': n_processed,
-                        'total_slices': sum(k * v for k, v in total_slices[read_type].items()),
-                        'total_valid_slices': sum(k * v for k, v in valid_slices[read_type].items())}
+                     'total_slices': sum(k * v for k, v in total_slices[read_type].items()),
+                     'total_valid_slices': sum(k * v for k, v in valid_slices[read_type].items())}
 
             hist = {f'frequency_of_{k}_slices': valid_slices[read_type][k] 
                     for k in sorted(valid_slices[read_type])}
