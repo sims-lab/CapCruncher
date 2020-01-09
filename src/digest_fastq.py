@@ -117,7 +117,7 @@ def get_digestion_stats(n_processed, total_slices, valid_slices):
                      'total_slices': sum(k * v for k, v in total_slices[read_type].items()),
                      'total_valid_slices': sum(k * v for k, v in valid_slices[read_type].items())}
 
-            hist = {f'frequency_of_{k}_slices': valid_slices[read_type][k] 
+            hist = {k: valid_slices[read_type][k] 
                     for k in sorted(valid_slices[read_type])}
             stats.update(hist)
         else:

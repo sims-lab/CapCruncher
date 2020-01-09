@@ -121,31 +121,15 @@ def combine_reads(infiles, outfile):
 @follows(mkdir('split_fastq'), combine_reads)
 @transform('flash/*.fastq.gz', regex(r'flash/(.*).fastq.gz'), r'split_fastq/\1_0.fastq.gz')
 def split_fastq(infile, outfile):
+    '''Splits flashed fastq files into chunks for parallel processing'''
     
-    chunksize = int(P.PARAMS['chunksize'])
-    compression_level = int(P.PARAMS['compression'])
-    fn = os.path.join('split_fastq', os.path.basename(outfile).replace('_0.fastq.gz', ''))
-
-    split_counter = 0
-    for read_counter, read in enumerate(FastxFile(infile)):
-
-        processed_read = f'{read}\n'.encode()
-
-        if read_counter == 0:
-            out_name = f'{fn}_{split_counter}.fastq.gz'
-            out_handle = gzip.open(out_name, 'wb', compresslevel=compression_level)
-            out_handle.write(processed_read)
-        
-        elif read_counter % chunksize == 0:
-            split_counter += 1
-            out_handle.close()
-            out_name = f'{fn}_{split_counter}.fastq.gz'
-            out_handle = gzip.open(out_name, 'wb', compresslevel=compression_level)
-            out_handle.write(processed_read)       
-        else:
-            out_handle.write(processed_read)
-        
-    out_handle.close()    
+    #Small error in function as only processes chunksize - 1 reads
+    output_prefix = outfile.replace('_0.fastq.gz', '')
+    statement = '''python %(scripts_dir)s/split_fastq.py
+                  -i %(infile)s -o %(output_prefix)
+                  --chunk_size %(chunksize)s -c %(compression)s '''
+    P.run(statement, 
+          job_queue=P.PARAMS['queue'])
 
 
 @follows(mkdir('digest'), split_fastq)          
@@ -381,7 +365,7 @@ def collate_ccanalyser_output(infiles, outfile):
     P.run(statement,
           job_queue=P.PARAMS['queue'])
 
-@follows(mkdir('ccanalyser/bedgraphs'))
+@follows(mkdir('ccanalyser/bedgraphs'), collate_ccanalyser_output)
 @transform('ccanalyser/bed_files_combined/*.bed', 
            regex(r'ccanalyser/bed_files_combined/(\w+_.*).bed'),
            add_inputs(digest_genome),
