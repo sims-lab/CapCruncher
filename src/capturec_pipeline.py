@@ -375,7 +375,7 @@ def build_bedgraph(infiles, outfile):
     bed_fn = infiles[0]
     re_map = infiles[1]
     statement = '''bedtools annotate -counts -i %(re_map)s 
-                    -files %(bed_fn)s | awk 'BEGIN{OFS="\t"}{print $1, $2, $3, $5}'
+                    -files %(bed_fn)s | awk 'BEGIN{OFS="\\t"}{print $1, $2, $3, $5}'
                     > %(outfile)s'''
     P.run(statement,
           job_queue=P.PARAMS['queue'])

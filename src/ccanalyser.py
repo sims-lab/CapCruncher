@@ -77,6 +77,14 @@ def merge_annotations(df, annotations):
     df_ann = pd.read_csv(annotations, sep='\t', header=0, index_col=0)
     return df.join(df_ann, how='inner')
 
+def prefilter_slices(df):
+    return (df.sort_values('capture_count', ascending=False)
+              .drop_duplicates(subset=['parent_read', 'restriction_fragment'], keep='first'))
+    
+
+
+
+
 @get_timing(task_name='classifying fragments')
 def classify_fragments(df_align):
    
@@ -206,6 +214,7 @@ def main():
 
     df_alignment = parse_bam(args.input_bam)
     df_alignment = merge_annotations(df_alignment, args.annotations)
+    df_alignment = prefilter_slices(df_alignment)
     df_fragments = classify_fragments(df_alignment)
 
     df_fragments_filt, df_capture, df_reporter = filter_slices(df_fragments, df_alignment)
