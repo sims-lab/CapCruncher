@@ -49,7 +49,7 @@ class DigestedRead():
         self.read_type = 'flashed' if flashed else 'unflashed'
         self.keep_cutsite = keep_cutsite
 
-        self.recognition_sites = ([site.start() for site in cutsite.finditer(self.read.sequence)] + 
+        self.recognition_sites = ([site.start() for site in cutsite.finditer(self.read.sequence.upper())] + 
                                   [len(self.read.sequence)])
         self.slices_total_counter = 0
         self.slices_valid_counter = 0
