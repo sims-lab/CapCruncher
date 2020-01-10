@@ -1,1 +1,6 @@
 test_duplicates_miseq_X.fastq - 7 entries - 1 perfect duplicate pair & 1 different by 1 base in read 1
+
+test_digestion_miseq_1.fastq - 2 entry - slice1: 85, slice2: 53, slice3: 13
+					 no digestion
+
+			     
