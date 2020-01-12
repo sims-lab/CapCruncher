@@ -126,7 +126,7 @@ def split_fastq(infile, outfile):
     #Small error in function as only processes chunksize - 1 reads
     output_prefix = outfile.replace('_0.fastq.gz', '')
     statement = '''python %(scripts_dir)s/split_fastq.py
-                  -i %(infile)s -o %(output_prefix)
+                  -i %(infile)s -o %(output_prefix)s
                   --chunk_size %(chunksize)s -c %(compression)s '''
     P.run(statement, 
           job_queue=P.PARAMS['queue'])
@@ -151,7 +151,7 @@ def digest_flashed_reads(infile, outfile):
           job_queue=P.PARAMS['queue'], 
           job_threads=P.PARAMS['threads'])
 
-@follows(combine_reads, split_fastq)
+@follows(split_fastq)
 @collate('split_fastq/*.fastq.gz', 
                regex(r'split_fastq/(.*).notCombined_[12]_(\d+).fastq.gz'), 
                r'digest/\1.digest_pe_\2.fastq.gz')
@@ -174,7 +174,7 @@ def digest_pe_reads(infiles, outfile):
     
     P.run(statement, 
           job_queue=P.PARAMS['queue'], 
-          job_threads=P.PARAMS['threads'])
+          )
 
 
 @follows(mkdir('bam'))
@@ -222,101 +222,111 @@ def mapping_multiqc (infile, outfile):
 @follows(mkdir('ccanalyser/annotations'))
 @transform(align_reads, 
            regex(r'bam/(.*).bam'), 
-           r'ccanalyser/annotations/\1.bam.bed')
+           r'ccanalyser/annotations/\1.bam.bed.gz')
 def bam_to_bed(infile, outfile):
+    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools bamtobed 
-                    -i %(infile)s > %(outfile)s''' 
+                    -i %(infile)s | gzip > %(outfile)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 
 @transform(P.PARAMS["ccanalyser_capture"], 
            regex(P.PARAMS["ccanalyser_capture"]), 
-           r'ccanalyser/annotations/exclude.bed')
+           r'ccanalyser/annotations/exclude.bed.gz')
 def build_exclusion_bed(infile, outfile):
+    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools slop  
                     -i %(infile)s -g %(genome_fai)s -b %(ccanalyser_exclude_window)s
                     | bedtools subtract -a - -b %(ccanalyser_capture)s
-                    > %(outfile)s''' 
+                    > %(tmp)s && gzip %(tmp)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 @transform(bam_to_bed, 
-           regex(r'ccanalyser/annotations/(.*).bam.bed'), 
-           r'ccanalyser/annotations/\1.annotation.capture.count')
+           regex(r'ccanalyser/annotations/(.*).bam.bed.gz'), 
+           r'ccanalyser/annotations/\1.annotation.capture.count.gz')
 def capture_intersect_count(infile, outfile):
     '''Intersect reads with capture and exclusion files.
     report count of overlaps for each input bed using -C '''
+    
+    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools intersect -c -f 1
                     -a %(infile)s -b %(ccanalyser_capture)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
                     | sed '1i read_name\\tcapture_count'
-                    > %(outfile)s''' 
+                    > %(tmp)s && gzip %(tmp)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 
 @follows(build_exclusion_bed)
 @transform(bam_to_bed, 
-           regex(r'ccanalyser/annotations/(.*).bam.bed'), 
-           r'ccanalyser/annotations/\1.annotation.exclude.count')
+           regex(r'ccanalyser/annotations/(.*).bam.bed.gz'), 
+           r'ccanalyser/annotations/\1.annotation.exclude.count.gz')
 def exclusion_intersect_count(infile, outfile):
     '''Intersect reads with capture and exclusion files.
     report count of overlaps for each input bed using -C '''
+    
+    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools intersect -c
-                    -a %(infile)s -b ccanalyser/annotations/exclude.bed
+                    -a %(infile)s -b ccanalyser/annotations/exclude.bed.gz
                     | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
                     | sed '1i read_name\\texclusion_count'
-                    > %(outfile)s''' 
+                    > %(tmp)s && gzip %(tmp)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 
 @transform(bam_to_bed, 
-           regex(r'ccanalyser/annotations/(.*).bam.bed'), 
-           r'ccanalyser/annotations/\1.annotation.capture')
+           regex(r'ccanalyser/annotations/(.*).bam.bed.gz'), 
+           r'ccanalyser/annotations/\1.annotation.capture.gz')
 def capture_intersect(infile, outfile):
+    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools intersect -loj -f 1
                     -a %(infile)s -b %(ccanalyser_capture)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
                     | sed '1i read_name\\tcapture'
-                    > %(outfile)s''' 
+                    > %(tmp)s && gzip %(tmp)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 
 @follows(build_exclusion_bed)
 @transform(bam_to_bed, 
-           regex(r'ccanalyser/annotations/(.*).bam.bed'), 
-           r'ccanalyser/annotations/\1.annotation.exclude')
+           regex(r'ccanalyser/annotations/(.*).bam.bed.gz'), 
+           r'ccanalyser/annotations/\1.annotation.exclude.gz')
 def exclusion_intersect(infile, outfile):
+    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools intersect -loj
-                    -a %(infile)s -b ccanalyser/annotations/exclude.bed
+                    -a %(infile)s -b ccanalyser/annotations/exclude.bed.gz
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
                     | sed '1i read_name\\texclusion'
-                    > %(outfile)s''' 
+                    > %(tmp)s && gzip %(tmp)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 
 @transform(bam_to_bed, 
-           regex(r'ccanalyser/annotations/(.*).bam.bed'),
+           regex(r'ccanalyser/annotations/(.*).bam.bed.gz'),
            add_inputs(digest_genome),
-           r'ccanalyser/annotations/\1.annotation.re')
+           r'ccanalyser/annotations/\1.annotation.re.gz')
 def re_intersect(infiles, outfile):   
+    tmp = outfile.replace('.gz', '')
     bam, genome = infiles        
     statement =  '''bedtools intersect -loj
                     -a %(bam)s -b %(genome)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
                     | sed '1i read_name\\trestriction_fragment'
-                    > %(outfile)s''' 
+                    > %(tmp)s && gzip %(tmp)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 @transform(bam_to_bed, 
-           regex(r'ccanalyser/annotations/(.*).bam.bed'), 
-           r'ccanalyser/annotations/\1.annotation.blacklist.count')
+           regex(r'ccanalyser/annotations/(.*).bam.bed.gz'), 
+           r'ccanalyser/annotations/\1.annotation.blacklist.count.gz')
 def blacklist_intersect_count(infile, outfile):
     '''Intersect reads with blacklisted regions.
     report count of overlaps for each input bed using -C '''
+    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools intersect -c 
                     -a %(infile)s -b %(ccanalyser_blacklist)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
-                    | sed '1i read_name\\tblacklist' 
-                    > %(outfile)s''' 
+                    | sed '1i read_name\\tblacklist'
+                    | gzip > %(outfile)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 
@@ -324,7 +334,7 @@ def blacklist_intersect_count(infile, outfile):
          capture_intersect, exclusion_intersect,
          re_intersect, blacklist_intersect_count], 
     regex(r'ccanalyser/annotations/(.*).annotation.*'),
-    r"ccanalyser/annotations/\1.annotations.tsv")
+    r"ccanalyser/annotations/\1.annotations.tsv.gz")
 def merge_annotations(infiles, outfile):
     '''merge all intersections into a single file '''
     inlist = " ".join(infiles)
@@ -339,7 +349,7 @@ def merge_annotations(infiles, outfile):
 @follows(merge_annotations, mkdir('ccanalyser/bed_files'), mkdir('ccanalyser/stats'))
 @transform(align_reads, 
            regex(r'bam/(.*).bam'), 
-           add_inputs(r'ccanalyser/annotations/\1.annotations.tsv'),
+           add_inputs(r'ccanalyser/annotations/\1.annotations.tsv.gz'),
            r'ccanalyser/bed_files/\1.reporter.bed')
 def ccanalyser(infiles, outfile):
     bam, annotations = infiles
@@ -361,7 +371,7 @@ def ccanalyser(infiles, outfile):
 def collate_ccanalyser_output(infiles, outfile):
     
     infiles = ' '.join(infiles)
-    statement = '''cat %(infiles)s > %(outfile)s'''
+    statement = '''cat %(infiles)s | sort -k1,1 -k2,2n > %(outfile)s'''
     P.run(statement,
           job_queue=P.PARAMS['queue'])
 
@@ -370,15 +380,31 @@ def collate_ccanalyser_output(infiles, outfile):
            regex(r'ccanalyser/bed_files_combined/(\w+_.*).bed'),
            add_inputs(digest_genome),
            r'ccanalyser/bedgraphs/\1.bedgraph')
-def build_bedgraph(infiles, outfile):
+
+def make_bedgraph(infiles, outfile):
     '''Intersect reporters with genome restriction fragments to create bedgraph'''
     bed_fn = infiles[0]
     re_map = infiles[1]
-    statement = '''bedtools annotate -counts -i %(re_map)s 
-                    -files %(bed_fn)s | awk 'BEGIN{OFS="\\t"}{print $1, $2, $3, $5}'
-                    > %(outfile)s'''
+    statement = '''bedtools annotate -counts -i %(re_map)s -files %(bed_fn)s 
+                   | awk 'BEGIN{OFS="\\t"}{print $1, $2, $3, $5}'
+                   | sort -k1,1 -k2,2n
+                   > %(outfile)s'''
     P.run(statement,
           job_queue=P.PARAMS['queue'])
+
+
+@follows(mkdir('ccanalyser/bigwigs'))
+@transform(make_bedgraph,
+           regex(r'ccanalyser/bedgraphs/(.*).bedgraph'),
+           r'ccanalyser/bigwigs/\1.bigWig')
+def make_bigwig(infile, outfile):
+    
+    statement = '''bedGraphToBigWig %(infile)s %(genome_chrom_sizes)s %(outfile)s'''
+    
+    P.run(statement,
+          job_queue=P.PARAMS['queue'])
+    
+    
     
 
 #@follows(ccanalyser)

@@ -206,26 +206,6 @@ def filter_slices(df_slices):
 
 
     return slice_filterer.captures, slice_filterer.reporters
-    
-    
-    
-
-    
-    
-
-
-
-
-
-
-
-
-
-    
-    df_slices_capture[['chrom', 'start', 'end', 'read_name']].to_csv(f'{args.bed_output}.capture.bed', sep='\t', header=None, index=False)
-    df_slices_reporter[['chrom', 'start', 'end', 'read_name']].to_csv(f'{args.bed_output}.reporter.bed', sep='\t', header=None, index=False)        
-        
-    return df_fragments, df_slices_capture, df_slices_reporter
 
 @get_timing(task_name='aggregating reporter slices by capture site and outputing .bed files')
 def aggregate_by_capture_site(capture, reporter):
@@ -253,7 +233,8 @@ def aggregate_by_capture_site(capture, reporter):
     #Output bed files by capture site
     bed_output_prefix = args.bed_output
     for capture_site, df in captures_and_reporters.groupby('capture'):
-        df[['chrom', 'start', 'end', 'read_name']].to_csv(f'{bed_output_prefix}_{capture_site}.bed', header=False, index=False)
+        df[['chrom', 'start', 'end', 'read_name']].to_csv(f'{bed_output_prefix}_{capture_site}.bed', 
+                                                            sep='\t', header=False, index=False)
 
 @get_timing(task_name='analysis of bam file')
 def main():
