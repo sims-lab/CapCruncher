@@ -205,7 +205,7 @@ def filter_slices(df_slices):
     slice_filterer.frag_stats.to_csv(f'{stats_prefix}.only_reporters.frag.stats', sep='\t', header=False)
 
 
-    return slice_filterer.captures, slice_filterer.reporters
+    return slice_filterer
 
 @get_timing(task_name='aggregating reporter slices by capture site and outputing .bed files')
 def aggregate_by_capture_site(capture, reporter):
@@ -230,20 +230,36 @@ def aggregate_by_capture_site(capture, reporter):
                                                                  .value_counts())
     interactions_by_capture.to_csv(f'{args.stats_output}.cis_or_trans.stats')
 
-    #Output bed files by capture site
-    bed_output_prefix = args.bed_output
-    for capture_site, df in captures_and_reporters.groupby('capture'):
-        df[['chrom', 'start', 'end', 'read_name']].to_csv(f'{bed_output_prefix}_{capture_site}.bed', 
-                                                            sep='\t', header=False, index=False)
+    
+    return captures_and_reporters.groupby('capture')
+    
 
 @get_timing(task_name='analysis of bam file')
 def main():
-
+    
+    # Read bam file and merege annotations
     df_alignment = parse_bam(args.input_bam)
     df_alignment = merge_annotations(df_alignment, args.annotations).reset_index()
-    df_capture_slices, df_reporter_slices = filter_slices(df_alignment)
-
-    aggregate_by_capture_site(df_capture_slices, df_reporter_slices)
+    
+    #Filter slices using annotations
+    filtered_slices = filter_slices(df_alignment)
+    
+    # Get capture and reporter slices from filtered slices
+    df_capture_slices, df_reporter_slices = filtered_slices.captures, filtered_slices.reporters
+    
+    #Output combined capture and reporter fragments
+    (df_capture_slices[['chrom', 'start', 'end', 'read_name']]
+                      .to_csv(f'{args.bed_output}.capture.bed.gz', sep='\t', header=False, index=False))
+    
+    (df_reporter_slices[['chrom', 'start', 'end', 'read_name']]
+                      .to_csv(f'{args.bed_output}.reporter.bed.gz', sep='\t', header=False, index=False))
+    
+    #Aggregate reporters by capture site and output these as bed files
+    capture_site_aggregated_slices = aggregate_by_capture_site(df_capture_slices, df_reporter_slices)
+    
+    for capture_site, df_rep in capture_site_aggregated_slices:
+        df_rep[['chrom', 'start', 'end', 'read_name']].to_csv(f'{args.bed_output}_{capture_site}.bed.gz', 
+                                                            sep='\t', header=False, index=False)
 
 
     

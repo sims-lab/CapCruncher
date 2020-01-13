@@ -24,22 +24,28 @@ as input and performs the following steps:
 import sys
 import os
 import gzip
+import seaborn as sns
 from pysam import FastxFile
 from cgatcore import pipeline as P
 from ruffus import mkdir, follows, transform, merge, originate, collate, split, regex, add_inputs, suffix
 
 # Read in parameter file
 P.get_parameters('capturec_pipeline.yml')
+hub_dir = os.path.join(P.PARAMS["hub_publoc"], P.PARAMS['hub_name'])
+assembly_dir = os.path.join(hub_dir, P.PARAMS['hub_genome'])
+
 
 @follows(mkdir('ccanalyser'), mkdir('ccanalyser/restriction_enzyme_map/'))
 @transform(P.PARAMS['genome_fasta'], 
            regex(r'.*/(.*).fa.*'), 
-           r'ccanalyser/restriction_enzyme_map/\1.digest.bed')
+           r'ccanalyser/restriction_enzyme_map/\1.digest.bed.gz')
 def digest_genome(infile, outfile):
     '''Digest genome using restriction enzyme and output fragments in bed file'''
+    tmp = outfile.replace('.gz', '')
     statement = '''python %(scripts_dir)s/digest_genome.py 
-                   -i %(infile)s -o %(outfile)s -r %(ccanalyser_re)s
-                   -l %(outfile)s.log'''
+                   -i %(infile)s -o %(tmp)s -r %(ccanalyser_re)s
+                   -l %(tmp)s.log
+                   && gzip %(tmp)s'''
     P.run(statement, 
           job_queue=P.PARAMS['queue'])
 
@@ -350,10 +356,10 @@ def merge_annotations(infiles, outfile):
 @transform(align_reads, 
            regex(r'bam/(.*).bam'), 
            add_inputs(r'ccanalyser/annotations/\1.annotations.tsv.gz'),
-           r'ccanalyser/bed_files/\1.reporter.bed')
+           r'ccanalyser/bed_files/\1.reporter.bed.gz')
 def ccanalyser(infiles, outfile):
     bam, annotations = infiles
-    bed_out = outfile.replace('.reporter.bed', '') 
+    bed_out = outfile.replace('.reporter.bed.gz', '') 
     stats_out = bed_out.replace('bed_files', 'stats')
     statement =  '''python %(scripts_dir)s/ccanalyser.py 
                     -i %(bam)s
@@ -365,45 +371,139 @@ def ccanalyser(infiles, outfile):
           job_memory=P.PARAMS['ccanalyser_memory'])
 
 @follows(ccanalyser, mkdir('ccanalyser/bed_files_combined'))
-@collate('ccanalyser/bed_files/*.bed',
-         regex(r'ccanalyser/bed_files/(.*).digest_.*_\d+_(.*).bed'),
-         r'ccanalyser/bed_files_combined/\1_\2.bed')
+@collate('ccanalyser/bed_files/*.bed.gz',
+         regex(r'ccanalyser/bed_files/(.*).digest_.*_\d+_(.*).bed.gz'),
+         r'ccanalyser/bed_files_combined/\1_\2.bed.gz')
 def collate_ccanalyser_output(infiles, outfile):
-    
     infiles = ' '.join(infiles)
-    statement = '''cat %(infiles)s | sort -k1,1 -k2,2n > %(outfile)s'''
+    statement = '''cat %(infiles)s > %(outfile)s'''
     P.run(statement,
           job_queue=P.PARAMS['queue'])
 
-@follows(mkdir('ccanalyser/bedgraphs'), collate_ccanalyser_output)
-@transform('ccanalyser/bed_files_combined/*.bed', 
-           regex(r'ccanalyser/bed_files_combined/(\w+_.*).bed'),
+@follows(mkdir('ccanalyser/bedgraphs'))
+@transform(collate_ccanalyser_output, 
+           regex(r'ccanalyser/bed_files_combined/(\w+_.*).bed.gz'),
            add_inputs(digest_genome),
-           r'ccanalyser/bedgraphs/\1.bedgraph')
+           r'ccanalyser/bedgraphs/\1.bedgraph.gz')
 
 def make_bedgraph(infiles, outfile):
     '''Intersect reporters with genome restriction fragments to create bedgraph'''
     bed_fn = infiles[0]
     re_map = infiles[1]
-    statement = '''bedtools annotate -counts -i %(re_map)s -files %(bed_fn)s 
+    statement = '''bedtools coverage -counts -a %(re_map)s -b %(bed_fn)s 
                    | awk 'BEGIN{OFS="\\t"}{print $1, $2, $3, $5}'
                    | sort -k1,1 -k2,2n
-                   > %(outfile)s'''
+                   | gzip > %(outfile)s'''
     P.run(statement,
           job_queue=P.PARAMS['queue'])
 
 
 @follows(mkdir('ccanalyser/bigwigs'))
 @transform(make_bedgraph,
-           regex(r'ccanalyser/bedgraphs/(.*).bedgraph'),
+           regex(r'ccanalyser/bedgraphs/(.*).bedgraph.gz'),
            r'ccanalyser/bigwigs/\1.bigWig')
 def make_bigwig(infile, outfile):
-    
-    statement = '''bedGraphToBigWig %(infile)s %(genome_chrom_sizes)s %(outfile)s'''
+    tmp = infile.replace('.gz', '')
+    statement = '''zcat %(infile)s > %(tmp)s
+                   && bedGraphToBigWig %(tmp)s %(genome_chrom_sizes)s %(outfile)s
+                   && rm %(tmp)s'''
     
     P.run(statement,
           job_queue=P.PARAMS['queue'])
+
+
+@follows(mkdir(hub_dir))
+@originate(os.path.join(hub_dir, 'hub.txt'))
+def generate_hub_metadata(outfile):
+
+    content = {'hub': P.PARAMS['hub_name'],
+               'shortLabel': P.PARAMS['hub_short'] if P.PARAMS['hub_short'] else P.PARAMS['hub_name'],
+               'longLabel': P.PARAMS['hub_long'] if P.PARAMS['hub_long'] else P.PARAMS['hub_name'],
+               'genomesFile': 'genomes.txt',
+               'email': P.PARAMS['hub_email'],
+               'descriptionUrl': f'http://userweb.molbiol.ox.ac.uk/{P.PARAMS["hub_publoc"].strip("/")}',
+               }
+
+    with open(outfile, 'w') as w:
+        for label, info in content.items():
+            w.write(f'{label} {info}\n')
+            
+
+@follows(generate_hub_metadata)
+@originate(os.path.join(hub_dir, 'genomes.txt'))
+def generate_assembly_metadata(outfile):
+
+    content = {'genome': P.PARAMS['hub_genome'],
+                      'trackDb': os.path.join(P.PARAMS['hub_genome'], 'trackDb.txt'),
+                     }
+
+    with open(outfile, 'w') as w:
+        for label, info in content.items():
+            w.write(f'{label} {info}\n')
+
+
+@follows(generate_hub_metadata, mkdir(assembly_dir))
+@merge(make_bigwig, f'{assembly_dir}/trackDb.txt')
+def generate_trackdb_metadata(infiles, outfile):
+    def get_track_data(fn):
+        return {'track': fn,
+                'bigDataUrl': f'http://userweb.molbiol.ox.ac.uk/{(os.path.join(assembly_dir, fn)).lstrip("/")}',
+                'shortLabel': fn,
+                'longLabel': fn,
+                'type': f'{fn.split(".")[-1]}',
+                }
     
+    # Generate all separate tracks
+    tracks = [get_track_data(os.path.basename(fn)) for fn in infiles]
+    
+    # Add colours to tracks
+    colors = sns.color_palette('husl', len(tracks))
+    for track, color in zip(tracks, colors):
+        track['color'] = ','.join([str(c * 255) for c in color])
+    
+    
+    # Write track data separated
+    with open(outfile, 'w') as w:
+        for track in tracks:
+            for label, data in track.items():
+                w.write(f'{label} {data}\n')
+            # Need to separate each track with a new line
+            w.write('\n')
+        
+        
+        # Generate overlay track
+        combined_track_details = {'track': f'{P.PARAMS["hub_name"]}_combined',
+                                                   'container': 'multiWig',
+                                                   'aggregate': 'transparentOverlay',
+                                                   'showSubtrackColorOnUi': 'on',
+                                                   'type': 'bigWig 0 1000',
+                                                   'shortLabel': f'{P.PARAMS["hub_name"]}_combined',
+                                                   'longLabel': f'{P.PARAMS["hub_name"]}_combined',}
+        
+        # Write overlay track
+        for label, data in combined_track_details.items():
+            w.write(f'{label} {data}\n')
+        w.write('\n')
+        
+        # Write sub-tracks
+        for track in tracks:
+            track['track'] = track['track'].replace('.bigWig', '_subtrack.bigWig')
+            for label, data in track.items():
+                w.write(f'\t{label} {data}\n')
+            w.write(f'\tparent {combined_track_details["track"]}\n')
+            # Need to separate each track with a new line
+            w.write('\n') 
+            
+            
+@follows(generate_trackdb_metadata)
+@transform(make_bigwig, regex('ccanalyser/bigwigs/(.*).bigWig'),  f'{assembly_dir}' + r'/\1.bigWig')
+def link_bigwigs(infile, outfile):
+    
+    infile_fp = os.path.abspath(infile)
+    os.symlink(infile_fp, outfile)
+
+
+
     
     
 
