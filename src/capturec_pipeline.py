@@ -82,11 +82,11 @@ def deduplicate_reads(infiles, outfile):
 
     fq1, fq2 = infiles
     out1, out2 = outfile, outfile.replace('_1.fastq.gz', '_2.fastq.gz')
-
+    logfile = fq1.replace('_1.fastq.gz', '.log')
     statement = '''python %(scripts_dir)s/deduplicate_fastq.py
                            -1 %(fq1)s -2 %(fq2)s
                            --out1 %(out1)s --out2 %(out2)s
-                           -l deduplicated/deduplication_logfile.txt
+                           -l %(outfile)s.log
                            -c %(compression)s
                           '''
     
@@ -141,10 +141,9 @@ def split_fastq(infile, outfile):
 @follows(mkdir('digest'), split_fastq)          
 @transform('split_fastq/*.fastq.gz', 
                    regex(r'split_fastq/(.*).extendedFrags_(\d+).fastq.gz'), 
-                    r'digest/\1.digest_flashed_\2.fastq.gz')
+                    r'digest/\1.flashed_\2.fastq.gz')
 def digest_flashed_reads(infile, outfile):
-    '''in silico restriction enzyme digest
-        Need to remove reads less than 22bp long'''
+    '''In silico restriction enzyme digest of combined (flashed) readpairs'''
     statement = '''python %(scripts_dir)s/digest_fastq.py 
                    -o %(outfile)s 
                    -l %(outfile)s.log
@@ -154,16 +153,14 @@ def digest_flashed_reads(infile, outfile):
                    flashed
                    -i %(infile)s'''
     P.run(statement, 
-          job_queue=P.PARAMS['queue'], 
-          job_threads=P.PARAMS['threads'])
+          job_queue=P.PARAMS['queue'])
 
 @follows(split_fastq)
 @collate('split_fastq/*.fastq.gz', 
                regex(r'split_fastq/(.*).notCombined_[12]_(\d+).fastq.gz'), 
-               r'digest/\1.digest_pe_\2.fastq.gz')
+               r'digest/\1.pe_\2.fastq.gz')
 def digest_pe_reads(infiles, outfile):
-    '''in silico restriction enzyme digest
-        Need to remove reads less than 22bp long'''
+    '''In silico restriction enzyme digest of non-combined (non-flashed) readpairs'''
     
     fq1, fq2 = infiles
     
@@ -172,15 +169,14 @@ def digest_pe_reads(infiles, outfile):
                    -r %(ccanalyser_re)s
                    -o %(outfile)s
                    -c %(compression)s
-                   -m 22
+                   -m 18
                    unflashed
                    -1 %(fq1)s 
                    -2 %(fq2)s  
                    '''
     
     P.run(statement, 
-          job_queue=P.PARAMS['queue'], 
-          )
+          job_queue=P.PARAMS['queue'])
 
 
 @follows(mkdir('bam'))
@@ -189,30 +185,45 @@ def digest_pe_reads(infiles, outfile):
            r'bam/\1.bam')
 def align_reads(infile, outfile):
     ''' Aligns digested fq files using bowtie2'''
-    options = ''
-    if P.PARAMS['bowtie2_options']:
-        options = P.PARAMS['bowtie2_options']
+    
+    options = P.PARAMS['bowtie2_options'] if P.PARAMS['bowtie2_options'] else ''
+        
     statement = '''bowtie2 -x %(bowtie2_index)s -U %(infile)s 
                     -p %(threads)s %(options)s 
-                    | samtools view -bS > %(outfile)s 2> %(outfile)s.log'''
+                    | samtools view -bS > %(outfile)s 2> %(outfile)s.log
+                    && samtools sort %(outfile)s -o %(outfile)s.sorted.bam -m 2G -@ %(threads)s
+                    && mv %(outfile)s.sorted.bam %(outfile)s'''
     P.run(statement, 
           job_queue=P.PARAMS['queue'], 
           job_threads=P.PARAMS['threads'],
-          job_memory='4G')
-
-
-@transform(align_reads, 
-           regex(r'(.*).bam'), 
-           r'\1.picard.metrics')
-def mapping_qc (infile, outfile):
-    sorted_file = infile.replace('.bam', '.sorted.bam')
-    statement = ('samtools sort %(infile)s -o %(sorted_file)s &> %(sorted_file)s.log ' 
-                 '&& picard CollectAlignmentSummaryMetrics '
-                 'R=%(genome_fasta)s I=%(sorted_file)s O=%(outfile)s '
-                 '&> %(outfile)s.log')
-    P.run(statement, 
-          job_queue=P.PARAMS['queue'], 
           job_memory='20G')
+
+@collate(align_reads, 
+         regex(r'bam/(.*)_\d+.bam'), 
+         r'bam/\1.bam')
+def merge_bam_files(infiles, outfile):
+    '''Combines bam files (by flashed/non-flashed status and sample)'''
+    fnames = ' '.join(infiles)
+    
+    statement = '''samtools merge %(outfile)s %(fnames)s'''
+    P.run(statement, 
+          job_queue=P.PARAMS['queue'])
+    
+    
+@transform(merge_bam_files, 
+           regex(r'bam/(.*).bam'), 
+           r'\1.picard.metrics')
+def mapping_qc(infile, outfile):
+    
+    cmd = ['picard CollectAlignmentSummaryMetrics',
+           '-R %(genome_fasta)s -I %(infile)s -O %(outfile)s',
+           '&> %(outfile)s.log',
+           ]
+    
+    statement = ' '.join(cmd)
+         
+    P.run(statement, 
+          job_queue=P.PARAMS['queue'])
 
 
 @merge(mapping_qc, 'report/mapping_report.html')
@@ -240,11 +251,10 @@ def bam_to_bed(infile, outfile):
            regex(P.PARAMS["ccanalyser_capture"]), 
            r'ccanalyser/annotations/exclude.bed.gz')
 def build_exclusion_bed(infile, outfile):
-    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools slop  
                     -i %(infile)s -g %(genome_fai)s -b %(ccanalyser_exclude_window)s
                     | bedtools subtract -a - -b %(ccanalyser_capture)s
-                    > %(tmp)s && gzip %(tmp)s''' 
+                    | gzip > %(outfile)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 @transform(bam_to_bed, 
@@ -254,12 +264,11 @@ def capture_intersect_count(infile, outfile):
     '''Intersect reads with capture and exclusion files.
     report count of overlaps for each input bed using -C '''
     
-    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools intersect -c -f 1
                     -a %(infile)s -b %(ccanalyser_capture)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
                     | sed '1i read_name\\tcapture_count'
-                    > %(tmp)s && gzip %(tmp)s''' 
+                    | gzip > %(outfile)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 
@@ -271,12 +280,11 @@ def exclusion_intersect_count(infile, outfile):
     '''Intersect reads with capture and exclusion files.
     report count of overlaps for each input bed using -C '''
     
-    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools intersect -c
                     -a %(infile)s -b ccanalyser/annotations/exclude.bed.gz
                     | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
                     | sed '1i read_name\\texclusion_count'
-                    > %(tmp)s && gzip %(tmp)s''' 
+                    | gzip > %(outfile)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 
@@ -284,12 +292,11 @@ def exclusion_intersect_count(infile, outfile):
            regex(r'ccanalyser/annotations/(.*).bam.bed.gz'), 
            r'ccanalyser/annotations/\1.annotation.capture.gz')
 def capture_intersect(infile, outfile):
-    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools intersect -loj -f 1
                     -a %(infile)s -b %(ccanalyser_capture)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
                     | sed '1i read_name\\tcapture'
-                    > %(tmp)s && gzip %(tmp)s''' 
+                    | gzip > %(outfile)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 
@@ -298,12 +305,11 @@ def capture_intersect(infile, outfile):
            regex(r'ccanalyser/annotations/(.*).bam.bed.gz'), 
            r'ccanalyser/annotations/\1.annotation.exclude.gz')
 def exclusion_intersect(infile, outfile):
-    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools intersect -loj
                     -a %(infile)s -b ccanalyser/annotations/exclude.bed.gz
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
                     | sed '1i read_name\\texclusion'
-                    > %(tmp)s && gzip %(tmp)s''' 
+                    | gzip > %(outfile)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 
@@ -311,14 +317,13 @@ def exclusion_intersect(infile, outfile):
            regex(r'ccanalyser/annotations/(.*).bam.bed.gz'),
            add_inputs(digest_genome),
            r'ccanalyser/annotations/\1.annotation.re.gz')
-def re_intersect(infiles, outfile):   
-    tmp = outfile.replace('.gz', '')
+def re_intersect(infiles, outfile):  
     bam, genome = infiles        
     statement =  '''bedtools intersect -loj
                     -a %(bam)s -b %(genome)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
                     | sed '1i read_name\\trestriction_fragment'
-                    > %(tmp)s && gzip %(tmp)s''' 
+                    | gzip > %(outfile)s''' 
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 @transform(bam_to_bed, 
@@ -327,7 +332,6 @@ def re_intersect(infiles, outfile):
 def blacklist_intersect_count(infile, outfile):
     '''Intersect reads with blacklisted regions.
     report count of overlaps for each input bed using -C '''
-    tmp = outfile.replace('.gz', '')
     statement =  '''bedtools intersect -c 
                     -a %(infile)s -b %(ccanalyser_blacklist)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'

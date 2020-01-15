@@ -9,6 +9,7 @@ import argparse
 import sys
 from pysam import FastxFile
 import gzip
+import pandas as pd
 
 p = argparse.ArgumentParser()
 p.add_argument('-1', '--fq1', help='fastq file to parse containing read 1')
@@ -49,13 +50,10 @@ def main():
             else:
                 reads_removed += 1
         
-
         with open_logfile(args.logfile) as logfile:
-            print('='*10)
-            logfile.write(f'Number of read pairs processed: {i+1}\n')
-            logfile.write(f'Number of unique read pairs: {i-reads_removed}\n')
-            logfile.write(f'Number of read pairs removed: {reads_removed}\n')
-            print('='*10)
+            logfile.write(f'Read_pairs_processed\t{i+1}\n')
+            logfile.write(f'Read_pairs_unique\t{i-reads_removed}\n')
+            logfile.write(f'Read_pairs_removed\t{reads_removed}\n')
     
 if __name__ == '__main__':
     main()

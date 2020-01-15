@@ -176,33 +176,33 @@ def filter_slices(df_slices):
     stats_prefix = args.stats_output
     
     # Unfiltered fragments
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.unfiltered.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.unfiltered.frag.stats', sep='\t', header=False)
+    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.1_unfiltered.slice.stats', sep='\t', header=False)
+    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.1_unfiltered.frag.stats', sep='\t', header=False)
 
     # Remove excluded and blacklisted slices
     slice_filterer.remove_exluded_and_blacklisted_slices()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.no_blacklist.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.no_blacklist.frag.stats', sep='\t', header=False)
+    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.2_no_blacklist.slice.stats', sep='\t', header=False)
+    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.2_no_blacklist.frag.stats', sep='\t', header=False)
 
     # Remove multiple occurences of the same restriction fragment from the same fragment
     slice_filterer.remove_duplicate_re_frags()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.no_duplicate_rf.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.no_duplicate_rf.frag.stats', sep='\t', header=False)
+    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.3_no_duplicate_rf.slice.stats', sep='\t', header=False)
+    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.3_no_duplicate_rf.frag.stats', sep='\t', header=False)
 
     # Remove duplicate slices
     slice_filterer.remove_duplicate_slices()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.no_duplicate_slices.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.no_duplicate_slices.frag.stats', sep='\t', header=False)
+    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.4_no_duplicate_slices.slice.stats', sep='\t', header=False)
+    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.4_no_duplicate_slices.frag.stats', sep='\t', header=False)
 
     # Remove fragments that do not have at least one unique capture site
     slice_filterer.remove_non_unique_capture_fragments()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.have_unique_capture.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.have_unique_capture.frag.stats', sep='\t', header=False)
+    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.5_have_unique_capture.slice.stats', sep='\t', header=False)
+    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.5_have_unique_capture.frag.stats', sep='\t', header=False)
 
     # Remove fragments that do not have any reporter slices
     slice_filterer.remove_non_reporter_fragments()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.only_reporters.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.only_reporters.frag.stats', sep='\t', header=False)
+    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.6_only_reporters.slice.stats', sep='\t', header=False)
+    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.6_only_reporters.frag.stats', sep='\t', header=False)
 
 
     return slice_filterer
@@ -228,7 +228,7 @@ def aggregate_by_capture_site(capture, reporter):
                                                    'cis', 'trans')
     interactions_by_capture = pd.DataFrame(captures_and_reporters.groupby('capture')['cis/trans']
                                                                  .value_counts())
-    interactions_by_capture.to_csv(f'{args.stats_output}.cis_or_trans.stats')
+    interactions_by_capture.to_csv(f'{args.stats_output}.cis_or_trans.reporter.stats')
 
     
     return captures_and_reporters.groupby('capture')
