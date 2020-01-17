@@ -106,6 +106,28 @@ class SliceFilter():
         frags_capture = self.fragments.query('0 < unique_capture_sites < 2')
         self.slices = self.slices[self.slices['parent_read'].isin(frags_capture['parent_read'])]
     
+    def remove_multicapture_reporters(self):
+        
+        '''Deals with an odd situation in which a reporter spanning two capture sites is not removed.
+           This is due to the slice not being considered a capture or exclusion. To get around this
+           the reporters on restriction fragments adjacent to capture sites are explicitly removed.'''
+        
+        captures = self.captures
+        captures['re_no'] = captures['restriction_fragment'].str.split('_').str[-1].astype('int')
+        captures['re_no_pre'] = captures['re_no'] - 1
+        captures['re_no_next'] = captures['re_no'] + 1
+
+        captures['re_base'] = captures['restriction_fragment'].str.split('_').str[0] + '_' + captures['chrom']
+        captures['re_pre'] = captures['re_base'] + '_' + captures['re_no_pre'].astype('str')
+        captures['re_next'] = captures['re_base'] + '_' + captures['re_no_next'].astype('str')
+        
+        excluded_fragments = pd.concat([captures['re_pre'], captures['re_next']]).unique()
+        
+        multicapture_reporters = self.reporters.loc[lambda df: df['restriction_fragment'].isin(excluded_fragments)]
+        
+        self.slices = self.slices[~(self.slices['read_name'].isin(multicapture_reporters['read_name']))]
+    
+    
     @property
     def reporters(self):
         return self.slices.query('capture == "-"')
@@ -113,6 +135,7 @@ class SliceFilter():
     @property
     def captures(self):
         return self.slices.query('~(capture == "-")')
+    
    
 def get_timing(task_name=None):
     def wrapper(f):
@@ -176,35 +199,35 @@ def filter_slices(df_slices):
     stats_prefix = args.stats_output
     
     # Unfiltered fragments
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.1_unfiltered.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.1_unfiltered.frag.stats', sep='\t', header=False)
+    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.1_Unfiltered.slice.stats', sep='\t', header=False)
+    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.1_Unfiltered.frag.stats', sep='\t', header=False)
 
     # Remove excluded and blacklisted slices
     slice_filterer.remove_exluded_and_blacklisted_slices()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.2_no_blacklist.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.2_no_blacklist.frag.stats', sep='\t', header=False)
+    slice_filterer.remove_multicapture_reporters() 
+    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.2_No_blacklist.slice.stats', sep='\t', header=False)
+    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.2_No_blacklist.frag.stats', sep='\t', header=False)
 
     # Remove multiple occurences of the same restriction fragment from the same fragment
     slice_filterer.remove_duplicate_re_frags()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.3_no_duplicate_rf.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.3_no_duplicate_rf.frag.stats', sep='\t', header=False)
+    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.3_No_duplicate_rf.slice.stats', sep='\t', header=False)
+    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.3_No_duplicate_rf.frag.stats', sep='\t', header=False)
 
     # Remove duplicate slices
     slice_filterer.remove_duplicate_slices()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.4_no_duplicate_slices.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.4_no_duplicate_slices.frag.stats', sep='\t', header=False)
+    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.4_No_duplicate_slices.slice.stats', sep='\t', header=False)
+    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.4_No_duplicate_slices.frag.stats', sep='\t', header=False)
 
     # Remove fragments that do not have at least one unique capture site
     slice_filterer.remove_non_unique_capture_fragments()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.5_have_unique_capture.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.5_have_unique_capture.frag.stats', sep='\t', header=False)
+    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.5_Have_unique_capture.slice.stats', sep='\t', header=False)
+    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.5_Have_unique_capture.frag.stats', sep='\t', header=False)
 
     # Remove fragments that do not have any reporter slices
     slice_filterer.remove_non_reporter_fragments()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.6_only_reporters.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.6_only_reporters.frag.stats', sep='\t', header=False)
-
-
+    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.6_Only_reporters.slice.stats', sep='\t', header=False)
+    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.6_Only_reporters.frag.stats', sep='\t', header=False)
+    
     return slice_filterer
 
 @get_timing(task_name='aggregating reporter slices by capture site and outputing .bed files')
@@ -232,7 +255,7 @@ def aggregate_by_capture_site(capture, reporter):
 
     
     return captures_and_reporters.groupby('capture')
-    
+ 
 
 @get_timing(task_name='analysis of bam file')
 def main():

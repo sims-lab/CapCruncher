@@ -25,6 +25,8 @@ import sys
 import os
 import gzip
 import seaborn as sns
+from pybedtools import BedTool
+import itertools
 from pysam import FastxFile
 from cgatcore import pipeline as P
 from ruffus import mkdir, follows, transform, merge, originate, collate, split, regex, add_inputs, suffix
@@ -34,7 +36,17 @@ P.get_parameters('capturec_pipeline.yml')
 hub_dir = os.path.join(P.PARAMS["hub_publoc"], P.PARAMS['hub_name'])
 assembly_dir = os.path.join(hub_dir, P.PARAMS['hub_genome'])
 
-
+def check_adjacent_captures(capture_sites, exclusion_zone):
+    '''Uses bedtools merge to identify overlapping/adjacent intervals'''
+    return (BedTool(capture_sites)
+            .sort()
+            .merge(c=[4, 1], o=['distinct', 'count'], d=int(exclusion_zone))
+            .to_dataframe()
+            .loc[lambda df: df['score'] > 1]
+            ['name']
+            .str.split(',')
+            .to_list())
+    
 @follows(mkdir('ccanalyser'), mkdir('ccanalyser/restriction_enzyme_map/'))
 @transform(P.PARAMS['genome_fasta'], 
            regex(r'.*/(.*).fa.*'), 
@@ -79,6 +91,9 @@ def multiqc_reads (infile, outfile):
          regex(r'(.*)_[12].fastq.gz'), 
          r'deduplicated/\1_1.fastq.gz')
 def deduplicate_reads(infiles, outfile):
+    
+    '''Checks for duplicate read1/read2 pairs in a pair of fastq files
+       any duplicates are discarded'''
 
     fq1, fq2 = infiles
     out1, out2 = outfile, outfile.replace('_1.fastq.gz', '_2.fastq.gz')
@@ -127,7 +142,7 @@ def combine_reads(infiles, outfile):
 @follows(mkdir('split_fastq'), combine_reads)
 @transform('flash/*.fastq.gz', regex(r'flash/(.*).fastq.gz'), r'split_fastq/\1_0.fastq.gz')
 def split_fastq(infile, outfile):
-    '''Splits flashed fastq files into chunks for parallel processing'''
+    '''Splits the combined (flashed) fastq files into chunks for parallel processing'''
     
     #Small error in function as only processes chunksize - 1 reads
     output_prefix = outfile.replace('_0.fastq.gz', '')
@@ -143,7 +158,7 @@ def split_fastq(infile, outfile):
                    regex(r'split_fastq/(.*).extendedFrags_(\d+).fastq.gz'), 
                     r'digest/\1.flashed_\2.fastq.gz')
 def digest_flashed_reads(infile, outfile):
-    '''In silico restriction enzyme digest of combined (flashed) readpairs'''
+    '''In silico restriction enzyme digest of combined (flashed) read pairs'''
     statement = '''python %(scripts_dir)s/digest_fastq.py 
                    -o %(outfile)s 
                    -l %(outfile)s.log
@@ -160,7 +175,7 @@ def digest_flashed_reads(infile, outfile):
                regex(r'split_fastq/(.*).notCombined_[12]_(\d+).fastq.gz'), 
                r'digest/\1.pe_\2.fastq.gz')
 def digest_pe_reads(infiles, outfile):
-    '''In silico restriction enzyme digest of non-combined (non-flashed) readpairs'''
+    '''In silico restriction enzyme digest of non-combined (non-flashed) read pairs'''
     
     fq1, fq2 = infiles
     
@@ -212,11 +227,12 @@ def merge_bam_files(infiles, outfile):
     
 @transform(merge_bam_files, 
            regex(r'bam/(.*).bam'), 
-           r'\1.picard.metrics')
+           r'bam/\1.picard.metrics')
 def mapping_qc(infile, outfile):
+    '''Uses picard CollectAlignmentSummaryMetrics to get mapping information.'''
     
     cmd = ['picard CollectAlignmentSummaryMetrics',
-           '-R %(genome_fasta)s -I %(infile)s -O %(outfile)s',
+           'R=%(genome_fasta)s I=%(infile)s O=%(outfile)s',
            '&> %(outfile)s.log',
            ]
     
@@ -228,6 +244,7 @@ def mapping_qc(infile, outfile):
 
 @merge(mapping_qc, 'report/mapping_report.html')
 def mapping_multiqc (infile, outfile):
+    '''Combines mapping metrics using multiqc'''
     statement = '''export LC_ALL=en_US.UTF-8 &&
                    export LANG=en_US.UTF-8 &&
                    multiqc bam/ -o report -n mapping_report.html'''
@@ -241,6 +258,7 @@ def mapping_multiqc (infile, outfile):
            regex(r'bam/(.*).bam'), 
            r'ccanalyser/annotations/\1.bam.bed.gz')
 def bam_to_bed(infile, outfile):
+    '''Converts bam files to bed for faster intersection'''
     tmp = outfile.replace('.gz', '')
     statement =  '''bedtools bamtobed 
                     -i %(infile)s | gzip > %(outfile)s''' 
@@ -251,6 +269,8 @@ def bam_to_bed(infile, outfile):
            regex(P.PARAMS["ccanalyser_capture"]), 
            r'ccanalyser/annotations/exclude.bed.gz')
 def build_exclusion_bed(infile, outfile):
+    '''Generates exclusion window around each capture site'''
+    
     statement =  '''bedtools slop  
                     -i %(infile)s -g %(genome_fai)s -b %(ccanalyser_exclude_window)s
                     | bedtools subtract -a - -b %(ccanalyser_capture)s
@@ -261,8 +281,8 @@ def build_exclusion_bed(infile, outfile):
            regex(r'ccanalyser/annotations/(.*).bam.bed.gz'), 
            r'ccanalyser/annotations/\1.annotation.capture.count.gz')
 def capture_intersect_count(infile, outfile):
-    '''Intersect reads with capture and exclusion files.
-    report count of overlaps for each input bed using -C '''
+    '''Report count of overlaps for the capture sites'''
+    
     
     statement =  '''bedtools intersect -c -f 1
                     -a %(infile)s -b %(ccanalyser_capture)s
@@ -277,8 +297,8 @@ def capture_intersect_count(infile, outfile):
            regex(r'ccanalyser/annotations/(.*).bam.bed.gz'), 
            r'ccanalyser/annotations/\1.annotation.exclude.count.gz')
 def exclusion_intersect_count(infile, outfile):
-    '''Intersect reads with capture and exclusion files.
-    report count of overlaps for each input bed using -C '''
+    '''Intersect reads with exclusion files.
+    report count of overlaps for each input bed using -c'''
     
     statement =  '''bedtools intersect -c
                     -a %(infile)s -b ccanalyser/annotations/exclude.bed.gz
@@ -292,6 +312,8 @@ def exclusion_intersect_count(infile, outfile):
            regex(r'ccanalyser/annotations/(.*).bam.bed.gz'), 
            r'ccanalyser/annotations/\1.annotation.capture.gz')
 def capture_intersect(infile, outfile):
+    '''Intersect reads with capture files.'''
+    
     statement =  '''bedtools intersect -loj -f 1
                     -a %(infile)s -b %(ccanalyser_capture)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
@@ -305,6 +327,8 @@ def capture_intersect(infile, outfile):
            regex(r'ccanalyser/annotations/(.*).bam.bed.gz'), 
            r'ccanalyser/annotations/\1.annotation.exclude.gz')
 def exclusion_intersect(infile, outfile):
+    '''Intersect reads with exclusion files'''
+    
     statement =  '''bedtools intersect -loj
                     -a %(infile)s -b ccanalyser/annotations/exclude.bed.gz
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
@@ -317,7 +341,8 @@ def exclusion_intersect(infile, outfile):
            regex(r'ccanalyser/annotations/(.*).bam.bed.gz'),
            add_inputs(digest_genome),
            r'ccanalyser/annotations/\1.annotation.re.gz')
-def re_intersect(infiles, outfile):  
+def re_intersect(infiles, outfile):
+    '''Intersect reads with restriction fragment map'''
     bam, genome = infiles        
     statement =  '''bedtools intersect -loj
                     -a %(bam)s -b %(genome)s
@@ -331,7 +356,7 @@ def re_intersect(infiles, outfile):
            r'ccanalyser/annotations/\1.annotation.blacklist.count.gz')
 def blacklist_intersect_count(infile, outfile):
     '''Intersect reads with blacklisted regions.
-    report count of overlaps for each input bed using -C '''
+    report count of overlaps for each input bed using -c '''
     statement =  '''bedtools intersect -c 
                     -a %(infile)s -b %(ccanalyser_blacklist)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
@@ -346,7 +371,7 @@ def blacklist_intersect_count(infile, outfile):
     regex(r'ccanalyser/annotations/(.*).annotation.*'),
     r"ccanalyser/annotations/\1.annotations.tsv.gz")
 def merge_annotations(infiles, outfile):
-    '''merge all intersections into a single file '''
+    '''Merge all intersections into a single file '''
     inlist = " ".join(infiles)
     statement = '''python %(scripts_dir)s/join_tsv.py  
                         -f read_name
@@ -362,6 +387,9 @@ def merge_annotations(infiles, outfile):
            add_inputs(r'ccanalyser/annotations/\1.annotations.tsv.gz'),
            r'ccanalyser/bed_files/\1.reporter.bed.gz')
 def ccanalyser(infiles, outfile):
+    '''Processes bam files and annotations, filteres slices and outputs
+       reporter slices for each capture site'''    
+    
     bam, annotations = infiles
     bed_out = outfile.replace('.reporter.bed.gz', '') 
     stats_out = bed_out.replace('bed_files', 'stats')
@@ -376,9 +404,11 @@ def ccanalyser(infiles, outfile):
 
 @follows(ccanalyser, mkdir('ccanalyser/bed_files_combined'))
 @collate('ccanalyser/bed_files/*.bed.gz',
-         regex(r'ccanalyser/bed_files/(.*).digest_.*_\d+_(.*).bed.gz'),
+         regex(r'ccanalyser/bed_files/(.*)\..*_\d+_(.*).bed.gz'),
          r'ccanalyser/bed_files_combined/\1_\2.bed.gz')
 def collate_ccanalyser_output(infiles, outfile):
+    '''Combines multiple capture site bed files'''
+    
     infiles = ' '.join(infiles)
     statement = '''cat %(infiles)s > %(outfile)s'''
     P.run(statement,
@@ -386,10 +416,9 @@ def collate_ccanalyser_output(infiles, outfile):
 
 @follows(mkdir('ccanalyser/bedgraphs'))
 @transform(collate_ccanalyser_output, 
-           regex(r'ccanalyser/bed_files_combined/(\w+_.*).bed.gz'),
+           regex(r'ccanalyser/bed_files_combined/(.*).bed.gz'),
            add_inputs(digest_genome),
            r'ccanalyser/bedgraphs/\1.bedgraph.gz')
-
 def make_bedgraph(infiles, outfile):
     '''Intersect reporters with genome restriction fragments to create bedgraph'''
     bed_fn = infiles[0]
@@ -407,6 +436,8 @@ def make_bedgraph(infiles, outfile):
            regex(r'ccanalyser/bedgraphs/(.*).bedgraph.gz'),
            r'ccanalyser/bigwigs/\1.bigWig')
 def make_bigwig(infile, outfile):
+    '''Uses UCSC tools bedGraphToBigWig to generate bigWigs for each bedgraph'''
+    
     tmp = infile.replace('.gz', '')
     statement = '''zcat %(infile)s > %(tmp)s
                    && bedGraphToBigWig %(tmp)s %(genome_chrom_sizes)s %(outfile)s
@@ -456,48 +487,56 @@ def generate_trackdb_metadata(infiles, outfile):
                 'longLabel': fn,
                 'type': f'{fn.split(".")[-1]}',
                 }
-    
+     
     # Generate all separate tracks
-    tracks = [get_track_data(os.path.basename(fn)) for fn in infiles]
+    bigwig_tracks_all = [get_track_data(os.path.basename(fn)) for fn in infiles]
     
     # Add colours to tracks
-    colors = sns.color_palette('husl', len(tracks))
-    for track, color in zip(tracks, colors):
+    colors = sns.color_palette('husl', len(bigwig_tracks_all))
+    for track, color in zip(bigwig_tracks_all, colors):
         track['color'] = ','.join([str(c * 255) for c in color])
     
     
     # Write track data separated
     with open(outfile, 'w') as w:
-        for track in tracks:
+        for track in bigwig_tracks_all:
             for label, data in track.items():
                 w.write(f'{label} {data}\n')
             # Need to separate each track with a new line
             w.write('\n')
         
+        #Group tracks by sample name and make separate combined tracks for each
+        sample_key = lambda d: d['track'].split('.')[0].split('_')[0]
+        bigwig_tracks_grouped = {sample: list(track) for sample, track in 
+                                 itertools.groupby(sorted(bigwig_tracks_all, key=sample_key), key=sample_key)}
         
-        # Generate overlay track
-        combined_track_details = {'track': f'{P.PARAMS["hub_name"]}_combined',
-                                                   'container': 'multiWig',
-                                                   'aggregate': 'transparentOverlay',
-                                                   'showSubtrackColorOnUi': 'on',
-                                                   'type': 'bigWig 0 1000',
-                                                   'shortLabel': f'{P.PARAMS["hub_name"]}_combined',
-                                                   'longLabel': f'{P.PARAMS["hub_name"]}_combined',}
+        for sample, grouped_tracks in bigwig_tracks_grouped.items():  
         
-        # Write overlay track
-        for label, data in combined_track_details.items():
-            w.write(f'{label} {data}\n')
-        w.write('\n')
-        
-        # Write sub-tracks
-        for track in tracks:
-            track['track'] = track['track'].replace('.bigWig', '_subtrack.bigWig')
-            for label, data in track.items():
-                w.write(f'\t{label} {data}\n')
-            w.write(f'\tparent {combined_track_details["track"]}\n')
-            # Need to separate each track with a new line
-            w.write('\n') 
+            # Generate overlay track
+            combined_track_details = {'track': f'{sample}_combined',
+                                      'container': 'multiWig',
+                                      'aggregate': 'transparentOverlay',
+                                      'showSubtrackColorOnUi': 'on',
+                                      'type': 'bigWig 0 250',
+                                      'shortLabel': f'{sample}_combined',
+                                      'longLabel': f'{sample}_all_capture_probes_combined',
+                                     }
             
+            # Write overlay track
+            for label, data in combined_track_details.items():
+                w.write(f'{label} {data}\n')
+            w.write('\n')
+            
+            
+            # Write sub-tracks
+            for track in grouped_tracks:
+                track['track'] = track['track'].replace('.bigWig', '_subtrack.bigWig')
+                for label, data in track.items():
+                    w.write(f'\t{label} {data}\n')
+                w.write(f'\tparent {combined_track_details["track"]}\n')
+                # Need to separate each track with a new line
+                w.write('\n') 
+                
             
 @follows(generate_trackdb_metadata)
 @transform(make_bigwig, regex('ccanalyser/bigwigs/(.*).bigWig'),  f'{assembly_dir}' + r'/\1.bigWig')
@@ -505,16 +544,11 @@ def link_bigwigs(infile, outfile):
     
     infile_fp = os.path.abspath(infile)
     os.symlink(infile_fp, outfile)
-
-
-
-    
-    
-
+      
 #@follows(ccanalyser)
 #@transform('ccanalyser/*.stats', regex(r'ccanalyser/(.*).stats'), r'report/\1.html')
 #def build_report(infile, outfile):
 #    '''Run jupyter notebook for reporting and plotting'''
 
 if __name__ == "__main__":
-    sys.exit( P.main(sys.argv))
+        sys.exit( P.main(sys.argv))
