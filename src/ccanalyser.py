@@ -138,6 +138,7 @@ class SliceFilter():
     
    
 def get_timing(task_name=None):
+    '''Gets the time taken by the wrapped function'''
     def wrapper(f):
         @wraps(f)
         def wrapped(*args, **kwargs):
@@ -152,6 +153,7 @@ def get_timing(task_name=None):
     return wrapper
 
 def parse_alignment(aln):
+    '''Parses reads from a bam file into a list'''
     
     read_name = aln.query_name
     parent_read, pe, slice_number = read_name.split("|")
@@ -179,6 +181,8 @@ def parse_alignment(aln):
 
 @get_timing(task_name='processing BAM file')
 def parse_bam(bam):
+    '''Uses parse_alignment function to extract all data from the bam file and convert this to a dataframe'''
+    
     df_bam = pd.DataFrame([parse_alignment(aln) for aln in pysam.AlignmentFile(bam, 'rb').fetch(until_eof=True)],
                           columns=['read_name','parent_read', 'pe', 'slice', 'mapped', 'multimapped',
                                    'chrom', 'start', 'end', 'coordinates'
@@ -189,11 +193,13 @@ def parse_bam(bam):
 
 @get_timing(task_name='merging annotations with BAM input')
 def merge_annotations(df, annotations):
+    '''Combines annotations with the parsed bam file output'''
     df_ann = pd.read_csv(annotations, sep='\t', header=0, index_col=0)
     return df.join(df_ann, how='inner')
 
 @get_timing(task_name='filtering slices')
 def filter_slices(df_slices):
+    '''Performs filtering of slices using the SliceFilter class and outputs statitsics'''
 
     slice_filterer = SliceFilter(df_slices)
     stats_prefix = args.stats_output

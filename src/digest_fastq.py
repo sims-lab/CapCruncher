@@ -41,19 +41,21 @@ args = parser.parse_args()
 
 
 class DigestedRead():
+    '''Class performs in silico digestion of fastq reads and contains relevant stats'''
     def __init__(self, read, cutsite, flashed=False, minimum_slice_length=0, slice_offset=0, keep_cutsite=False):
-        self.read = read
-        self.cutsite = cutsite
-        self.min_slice_len = minimum_slice_length
+        self.read = read # object with attributes: name, sequence, quality
+        self.cutsite = cutsite # compiled regex designating the cutsite
+        self.min_slice_len = minimum_slice_length 
         self.flashed = flashed
         self.read_type = 'flashed' if flashed else 'unflashed'
-        self.keep_cutsite = keep_cutsite
+        self.keep_cutsite = keep_cutsite # Determines if the recognition site is removed from each slice
 
         self.recognition_sites = ([site.start() for site in cutsite.finditer(self.read.sequence.upper())] + 
-                                  [len(self.read.sequence)])
+                                  [len(self.read.sequence)]) # Find the start location of each recognition site
+                                                             # the end position of the sequence is also added
         self.slices_total_counter = 0
         self.slices_valid_counter = 0
-        self.slice_offset = slice_offset
+        self.slice_offset = slice_offset # Enables adjusting the slice output number
 
         self.slices = self.get_slices()
         self.slices_string = self.get_slices_string()
@@ -74,15 +76,16 @@ class DigestedRead():
                     self.read.sequence[slice_start:slice_end]) - len(cutsite_removed)
                 slice_start += slice_shift  # Shift the slice by the length of the removed cutsite
                 slice_length = slice_end - slice_start
-
+            
+            
+            # Make a temporary variable to hold the unvalidated slice
             s = '\n'.join([f'@{self.read.name}|{self.read_type}|{self.slices_valid_counter + self.slice_offset}',
                            self.read.sequence[slice_start:slice_end],
                            '+',
                            self.read.quality[slice_start:slice_end]])
-
-            if slice_length >= self.min_slice_len:
-                if (not self.flashed) or (self.flashed and slice_length < len(self.read.sequence)):
-                    # Only allow a slice to be recorded if the read is unflashed or digestion has occured
+            
+            if slice_length >= self.min_slice_len: # Confirm that the slice meets minimum length requirement
+                if (not self.flashed) or (self.flashed and slice_length < len(self.read.sequence)): # Only allow a slice to be recorded if the read is unflashed or digestion has occured
                     self.slices_valid_counter += 1
                     slices_lst.append(s)
 
@@ -108,19 +111,20 @@ def get_re_site(cut_sequence=None, restriction_enzyme=None):
 
 
 def get_digestion_stats(n_processed, total_slices, valid_slices):
+    '''Processes and formats slice stats for output'''
     stats_combined = dict()
     for read_type in total_slices:
-        total_count = sum(k * v for k, v in total_slices[read_type].items())
+        total_count = sum(k * v for k, v in total_slices[read_type].items()) # Multiplies the bin by the frquency
 
-        if total_count:
+        if total_count: # Checks that slices exist for this read type (flashed| read_1,read_2 are mutually exclusive)
             stats = {'total_read_pairs_processed': n_processed,
                      'total_slices': sum(k * v for k, v in total_slices[read_type].items()),
                      'total_valid_slices': sum(k * v for k, v in valid_slices[read_type].items())}
 
             hist = {k: valid_slices[read_type][k] 
-                    for k in sorted(valid_slices[read_type])}
-            stats.update(hist)
-        else:
+                    for k in sorted(valid_slices[read_type])} # Makes histogram of slice frequency
+            stats.update(hist) # Adds the histogram to the pre-calculated stats
+        else: # If no slices are present then report this, do not generate histogram
             stats = {'total_read_pairs_processed': 0,
                         'total_slices': 0,
                         'total_valid_slices': 0}
@@ -147,7 +151,7 @@ def main():
 
     with gzip.open(args.output_file, 'w', compresslevel=args.compression_level) as fastq_out:
 
-        if args.command == 'flashed':
+        if args.command == 'flashed': # Checks the subcommand to see in which mode to run
             for seq_counter, read in enumerate(FastxFile(args.input_fastq)):
 
                 if seq_counter % 10000 == 0:

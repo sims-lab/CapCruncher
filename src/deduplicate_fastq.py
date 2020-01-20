@@ -22,6 +22,7 @@ p.add_argument('-l', '--logfile', help='filename for logfile',
 args = p.parse_args()
 
 def open_logfile(fn):
+    '''Deals with the logfile being set to stdout'''
     if not isinstance(fn, type(sys.stdout)):
         return open(fn, 'w')
     else:
@@ -29,24 +30,24 @@ def open_logfile(fn):
 
 def main():
 
-    fq1, fq2 = FastxFile(args.fq1), FastxFile(args.fq2)
+    fq1, fq2 = FastxFile(args.fq1), FastxFile(args.fq2) # Use pysam to open both fastq files
 
     with gzip.open(args.out1, 'wb', compresslevel=args.compression_level) as of1,\
          gzip.open(args.out2, 'wb', compresslevel=args.compression_level) as of2:
         
-        read_encountered = set()
+        read_encountered = set() # Used to store all unique read hashes
         
         reads_removed = 0
         for i, (r1, r2) in enumerate(zip(fq1, fq2)):
-            read_pair = hash(r1.sequence +  r2.sequence)
-            
+            read_pair = hash(r1.sequence +  r2.sequence) # Stores the hash of the combined sequence
+                                                         # hashing is performed to save memory 
             if i % 100000 == 0:
                 print('Processed %s reads' % (i))
 
-            if not read_pair in read_encountered:
+            if not read_pair in read_encountered: # If read is unique then write it to a fastq file
                 of1.write((str(r1) +'\n').encode())
                 of2.write((str(r2) +'\n').encode())
-                read_encountered.add(read_pair)
+                read_encountered.add(read_pair) # Add the unique read to the set
             else:
                 reads_removed += 1
         
