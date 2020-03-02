@@ -203,37 +203,31 @@ def filter_slices(df_slices):
 
     slice_filterer = SliceFilter(df_slices)
     stats_prefix = args.stats_output
-    
+
+    df_slice_stats = pd.DataFrame()
+        
     # Unfiltered fragments
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.1_Unfiltered.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.1_Unfiltered.frag.stats', sep='\t', header=False)
-
-    # Remove excluded and blacklisted slices
-    slice_filterer.remove_exluded_and_blacklisted_slices()
-    slice_filterer.remove_multicapture_reporters() 
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.2_No_blacklist.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.2_No_blacklist.frag.stats', sep='\t', header=False)
-
-    # Remove multiple occurences of the same restriction fragment from the same fragment
-    slice_filterer.remove_duplicate_re_frags()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.3_No_duplicate_rf.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.3_No_duplicate_rf.frag.stats', sep='\t', header=False)
-
-    # Remove duplicate slices
-    slice_filterer.remove_duplicate_slices()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.4_No_duplicate_slices.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.4_No_duplicate_slices.frag.stats', sep='\t', header=False)
+    df_slice_stats['mapped'] = slice_filterer.slice_stats
 
     # Remove fragments that do not have at least one unique capture site
     slice_filterer.remove_non_unique_capture_fragments()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.5_Have_unique_capture.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.5_Have_unique_capture.frag.stats', sep='\t', header=False)
+    df_slice_stats['contains_single_capture'] = slice_filterer.slice_stats
 
-    # Remove fragments that do not have any reporter slices
+    # Filter reporters
+    slice_filterer.remove_exluded_and_blacklisted_slices()
     slice_filterer.remove_non_reporter_fragments()
-    slice_filterer.slice_stats.to_csv(f'{stats_prefix}.6_Only_reporters.slice.stats', sep='\t', header=False)
-    slice_filterer.frag_stats.to_csv(f'{stats_prefix}.6_Only_reporters.frag.stats', sep='\t', header=False)
+    slice_filterer.remove_multicapture_reporters()
+    df_slice_stats['contains_capture_and_reporter'] = slice_filterer.slice_stats
     
+    # Remove multiple occurences of the same restriction fragment and remove duplicate slices
+    slice_filterer.remove_duplicate_re_frags()
+    slice_filterer.remove_duplicate_slices()
+    df_slice_stats['duplicate_filtered'] = slice_filterer.slice_stats
+
+    # Report statistics
+    stats_output_path = os.path.join(stats_prefix, '.slice.stats')
+    df_slice_stats.to_csv(stats_output_path, sep='\t')
+
     return slice_filterer
 
 @get_timing(task_name='aggregating reporter slices by capture site and outputing .bed files')

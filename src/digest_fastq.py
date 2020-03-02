@@ -3,9 +3,10 @@ import gzip
 import os
 import re
 import sys
-import pandas as pd
 from collections import defaultdict
 
+import pandas as pd
+import pysam
 from pysam import FastxFile
 
 parser = argparse.ArgumentParser(prog='digest_fastq')
@@ -42,20 +43,29 @@ args = parser.parse_args()
 
 class DigestedRead():
     '''Class performs in silico digestion of fastq reads and contains relevant stats'''
-    def __init__(self, read, cutsite, flashed=False, minimum_slice_length=0, slice_offset=0, keep_cutsite=False):
-        self.read = read # object with attributes: name, sequence, quality
-        self.cutsite = cutsite # compiled regex designating the cutsite
-        self.min_slice_len = minimum_slice_length 
+
+    def __init__(self,
+                 read: pysam.FastqProxy,
+                 cutsite: re.compile,
+                 flashed=False,
+                 minimum_slice_length=0,
+                 slice_offset=0,
+                 keep_cutsite=False):
+
+        self.read = read  # object with attributes: name, sequence, quality
+        self.cutsite = cutsite  # compiled regex designating the cutsite
+        self.min_slice_len = minimum_slice_length
         self.flashed = flashed
         self.read_type = 'flashed' if flashed else 'unflashed'
-        self.keep_cutsite = keep_cutsite # Determines if the recognition site is removed from each slice
+        # Determines if the recognition site is removed from each slice
+        self.keep_cutsite = keep_cutsite
 
-        self.recognition_sites = ([site.start() for site in cutsite.finditer(self.read.sequence.upper())] + 
-                                  [len(self.read.sequence)]) # Find the start location of each recognition site
-                                                             # the end position of the sequence is also added
+        self.recognition_sites = ([site.start() for site in cutsite.finditer(self.read.sequence.upper())] +
+                                  [len(self.read.sequence)])  # Find the start location of each recognition site
+        # the end position of the sequence is also added
         self.slices_total_counter = 0
         self.slices_valid_counter = 0
-        self.slice_offset = slice_offset # Enables adjusting the slice output number
+        self.slice_offset = slice_offset  # Enables adjusting the slice output number
 
         self.slices = self.get_slices()
         self.slices_string = self.get_slices_string()
@@ -76,16 +86,16 @@ class DigestedRead():
                     self.read.sequence[slice_start:slice_end]) - len(cutsite_removed)
                 slice_start += slice_shift  # Shift the slice by the length of the removed cutsite
                 slice_length = slice_end - slice_start
-            
-            
+
             # Make a temporary variable to hold the unvalidated slice
             s = '\n'.join([f'@{self.read.name}|{self.read_type}|{self.slices_valid_counter + self.slice_offset}',
                            self.read.sequence[slice_start:slice_end],
                            '+',
                            self.read.quality[slice_start:slice_end]])
-            
-            if slice_length >= self.min_slice_len: # Confirm that the slice meets minimum length requirement
-                if (not self.flashed) or (self.flashed and slice_length < len(self.read.sequence)): # Only allow a slice to be recorded if the read is unflashed or digestion has occured
+
+            if slice_length >= self.min_slice_len:  # Confirm that the slice meets minimum length requirement
+                # Only allow a slice to be recorded if the read is unflashed or digestion has occured
+                if (not self.flashed) or (self.flashed and slice_length < len(self.read.sequence)):
                     self.slices_valid_counter += 1
                     slices_lst.append(s)
 
@@ -114,44 +124,50 @@ def get_digestion_stats(n_processed, total_slices, valid_slices):
     '''Processes and formats slice stats for output'''
     stats_combined = dict()
     for read_type in total_slices:
-        total_count = sum(k * v for k, v in total_slices[read_type].items()) # Multiplies the bin by the frquency
+        # Multiplies the bin by the frquency
+        total_count = sum(k * v for k, v in total_slices[read_type].items())
 
-        if total_count: # Checks that slices exist for this read type (flashed| read_1,read_2 are mutually exclusive)
+        # Checks that slices exist for this read type (flashed | read_1,read_2 are mutually exclusive)
+        if total_count:
             stats = {'total_read_pairs_processed': n_processed,
                      'total_slices': sum(k * v for k, v in total_slices[read_type].items()),
                      'total_valid_slices': sum(k * v for k, v in valid_slices[read_type].items())}
 
-            hist = {k: valid_slices[read_type][k] 
-                    for k in sorted(valid_slices[read_type])} # Makes histogram of slice frequency
-            stats.update(hist) # Adds the histogram to the pre-calculated stats
-        else: # If no slices are present then report this, do not generate histogram
+            hist = {k: valid_slices[read_type][k]
+                    for k in sorted(valid_slices[read_type])}  # Makes histogram of slice frequency
+            # Adds the histogram to the pre-calculated stats
+            stats.update(hist)
+
+        else:  # If no slices are present then report this, do not generate histogram
             stats = {'total_read_pairs_processed': 0,
-                        'total_slices': 0,
-                        'total_valid_slices': 0}
+                     'total_slices': 0,
+                     'total_valid_slices': 0}
 
         stats_combined[read_type] = stats
-    
+
     return pd.DataFrame(stats_combined)
+
 
 def main():
 
     total_slices = {'flashed': defaultdict(int),
-                        'read_1': defaultdict(int),
-                        'read_2': defaultdict(int),
-                        }
+                    'read_1': defaultdict(int),
+                    'read_2': defaultdict(int),
+                    }
 
     valid_slices = {'flashed': defaultdict(int),
-                        'read_1': defaultdict(int),
-                        'read_2': defaultdict(int),
-                        }
+                    'read_1': defaultdict(int),
+                    'read_2': defaultdict(int),
+                    }
 
     min_slice_len = args.minimum_slice_length
-    cut_site = re.compile(get_re_site(args.cut_sequence, args.restriction_enzyme))
+    cut_site = re.compile(get_re_site(
+        args.cut_sequence, args.restriction_enzyme))
     keep_cutsite = args.keep_cutsite
 
     with gzip.open(args.output_file, 'w', compresslevel=args.compression_level) as fastq_out:
 
-        if args.command == 'flashed': # Checks the subcommand to see in which mode to run
+        if args.command == 'flashed':  # Checks the subcommand to see in which mode to run
             for seq_counter, read in enumerate(FastxFile(args.input_fastq)):
 
                 if seq_counter % 10000 == 0:
@@ -197,7 +213,6 @@ def main():
                     total_slices[read_name][sliced_read.slices_total_counter] += 1
                     valid_slices[read_name][sliced_read.slices_valid_counter] += 1
 
-        
         df_stats = get_digestion_stats(seq_counter, total_slices, valid_slices)
         df_stats.to_csv(f'{args.logfile}.tsv', sep='\t')
 
