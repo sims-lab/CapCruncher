@@ -117,14 +117,15 @@ def aggregate_ccanalyser_stats(fnames):
         dframes.append(df)
 
     df_ccanalyser_stats = pd.concat(dframes)
-    ccanalyser_stats = (df_ccanalyser_stats.reset_index()[
-                        'unique_fragments'])
+
     ccanalyser_stats = (df_ccanalyser_stats.reset_index()
                         ['index']
                         .str.split('|', expand=True)
                         .rename(columns={0: 'sample', 1: 'read_type', 2: 'stat_type'}))
 
-    ccanalyser_stats['values'] = ccanalyser_stats
+    ccanalyser_stats['values'] = (
+        df_ccanalyser_stats.reset_index()['unique_fragments'])
+        
     ccanalyser_stats = (ccanalyser_stats.set_index(['sample', 'read_type'])
                         .pivot(columns='stat_type')
                         ['values']
@@ -133,6 +134,7 @@ def aggregate_ccanalyser_stats(fnames):
                         .reset_index())
 
     return ccanalyser_stats
+
 
 def combine_stats(stats):
 
@@ -157,12 +159,14 @@ def main():
 
     dedup_stats_files = glob.glob(f'{working_dir}/deduplicated/*.log')
     digestion_stats_files = glob.glob(f'{working_dir}/digest/*.tsv')
-    ccanalyser_stats_files = glob.glob(f'{working_dir}/ccanalyser/stats/*.slice.stats')
+    ccanalyser_stats_files = glob.glob(
+        f'{working_dir}/ccanalyser/stats/*.slice.stats')
 
     total_reads, dedup = aggregate_dedup_stats(dedup_stats_files)
     flashed, digested = aggregate_digestion_stats(digestion_stats_files)
     slice_stats = aggregate_ccanalyser_stats(ccanalyser_stats_files)
-    combined_stats = combine_stats([total_reads, dedup, flashed, digested, slice_stats])
+    combined_stats = combine_stats(
+        [total_reads, dedup, flashed, digested, slice_stats])
 
     combined_stats.to_csv(args.output, sep='\t')
 
