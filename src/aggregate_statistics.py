@@ -10,8 +10,7 @@ import pandas as pd
 
 p = argparse.ArgumentParser()
 p.add_argument('-d', '--working_directory')
-p.add_argument('--stats')
-p.add_argument('--reporters')
+p.add_argument('--output')
 args = p.parse_args()
 
 
@@ -135,24 +134,6 @@ def aggregate_ccanalyser_stats(fnames):
 
     return ccanalyser_stats
 
-
-def aggregate_reporter_stats(fnames):
-
-    df_reporter = pd.concat([pd.read_csv(fn, sep=',', header=0,
-                                         names=['capture_probe', 'cis/trans', 'count'])
-                             .assign(fn=fn.split('/')[-1])
-                             for fn in fnames], sort=True)
-
-    df_reporter = pd.concat([split_fn(df_reporter['fn']),
-                             df_reporter], axis=1, ignore_index=True)
-
-    df_reporter_summary = (df_reporter.groupby(['capture_probe', 'cis/trans', 'sample', 'flashed_status'])
-                                      .sum()
-                                      .reset_index())
-
-    return df_reporter_summary
-
-
 def combine_stats(stats):
 
     stats = [df.set_index(['sample', 'read_type']) for df in stats]
@@ -177,17 +158,13 @@ def main():
     dedup_stats_files = glob.glob(f'{working_dir}/deduplicated/*.log')
     digestion_stats_files = glob.glob(f'{working_dir}/digest/*.tsv')
     ccanalyser_stats_files = glob.glob(f'{working_dir}/ccanalyser/stats/*.slice.stats')
-    ccanalyser_reporter_stats_files = glob.glob(f'{working_dir}/ccanalyser/stats/*.reporter.stats')
 
     total_reads, dedup = aggregate_dedup_stats(dedup_stats_files)
     flashed, digested = aggregate_digestion_stats(digestion_stats_files)
     slice_stats = aggregate_ccanalyser_stats(ccanalyser_stats_files)
-    reporter_stats = aggregate_reporter_stats(ccanalyser_reporter_stats_files)
-
     combined_stats = combine_stats([total_reads, dedup, flashed, digested, slice_stats])
 
-    combined_stats.to_csv(args.stats, sep='\t')
-    reporter_stats.to_csv(args.reporters, sep='\t')
+    combined_stats.to_csv(args.output, sep='\t')
 
 
 if __name__ == '__main__':
