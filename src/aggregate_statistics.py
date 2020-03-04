@@ -9,8 +9,11 @@ import pandas as pd
 
 
 p = argparse.ArgumentParser()
-p.add_argument('-d', '--working_directory')
-p.add_argument('--output')
+p.add_argument('--deduplication_stats')
+p.add_argument('--digestion_stats')
+p.add_argument('--ccanalyser_stats')
+p.add_argument('--reporter_stats')
+p.add_argument('--output_directory')
 args = p.parse_args()
 
 
@@ -20,8 +23,7 @@ def split_fn(fn_ser):
                          })
 
 
-def aggregate_dedup_stats(fnames):
-
+def combine_dedup_stats(fnames):
     dframes = [pd.read_csv(fn,
                            sep='\t',
                            header=None,
@@ -31,7 +33,10 @@ def aggregate_dedup_stats(fnames):
                .transpose()
                for fn in fnames]
 
-    df = pd.concat(dframes)
+    return pd.concat(dframes)
+
+
+def get_dedup_read_pair_stats(df):
 
     total_reads = (df['Read_pairs_processed']
                    .reset_index()
@@ -49,7 +54,7 @@ def aggregate_dedup_stats(fnames):
     return (total_reads, deduplicated)
 
 
-def aggregate_digestion_stats(fnames):
+def combine_digestion_stats(fnames):
 
     df = pd.concat([pd.read_csv(fn, sep='\t', header=0, index_col=0)
                     .transpose()
@@ -58,20 +63,23 @@ def aggregate_digestion_stats(fnames):
 
     df.fillna(0, inplace=True)
 
-    df_summary = (df.reset_index()
-                  .rename(columns={'index': 'read_type'})
-                  .groupby(['sample', 'read_type'])
-                  .sum())
+    return (df.reset_index()
+            .rename(columns={'index': 'read_type'})
+            .groupby(['sample', 'read_type'])
+            .sum())
+
+
+def get_digestion_read_pair_stats(df):
 
     # Get flashed stats
-    flashed = (df_summary['total_read_pairs_processed']
+    flashed = (df['total_read_pairs_processed']
                .drop_duplicates()
                .reset_index()
                .assign(read_type=lambda df: df['read_type'].str.replace('read_1', 'pe'))
                .rename(columns={'total_read_pairs_processed': 'flashed_or_unflashed'}))
 
     # Calculate reads with restriction sites from histogram
-    df_hist = df_summary.iloc[:, :-3]
+    df_hist = df.iloc[:, :-3]
     df_hist.columns = df_hist.columns.astype(int)
 
     digested = (df_hist.loc[:, df_hist.columns > 0]
@@ -87,7 +95,7 @@ def aggregate_digestion_stats(fnames):
     return (flashed, digested)
 
 
-def aggregate_ccanalyser_stats(fnames):
+def combine_ccanalyers_stats(fnames):
 
     fnames_ser = pd.Series(fnames, name='fnames')
 
@@ -116,16 +124,18 @@ def aggregate_ccanalyser_stats(fnames):
 
         dframes.append(df)
 
-    df_ccanalyser_stats = pd.concat(dframes)
+    return pd.concat(dframes)
 
-    ccanalyser_stats = (df_ccanalyser_stats.reset_index()
+
+def get_ccanalyser_read_pair_stats(df):
+
+    ccanalyser_stats = (df.reset_index()
                         ['index']
                         .str.split('|', expand=True)
                         .rename(columns={0: 'sample', 1: 'read_type', 2: 'stat_type'}))
 
-    ccanalyser_stats['values'] = (
-        df_ccanalyser_stats.reset_index()['unique_fragments'])
-        
+    ccanalyser_stats['values'] = (df.reset_index()['unique_fragments'])
+
     ccanalyser_stats = (ccanalyser_stats.set_index(['sample', 'read_type'])
                         .pivot(columns='stat_type')
                         ['values']
@@ -136,7 +146,7 @@ def aggregate_ccanalyser_stats(fnames):
     return ccanalyser_stats
 
 
-def combine_stats(stats):
+def combine_read_pair_stats(stats):
 
     stats = [df.set_index(['sample', 'read_type']) for df in stats]
     df_stats = stats[0].join(stats[1:], how='outer').fillna(0)
@@ -153,22 +163,44 @@ def combine_stats(stats):
     return df_stats_melt
 
 
+def combine_reporter_stats(fnames):
+
+    df_reporter = pd.concat([pd.read_csv(fn, sep=',', header=0,
+                                         names=['capture_probe', 'cis/trans', 'count'])
+                             .assign(fn=fn.split('/')[-1])
+                             for fn in fnames], sort=True)
+
+    df_reporter = pd.concat([split_fn(df_reporter['fn']),
+                             df_reporter], axis=1, ignore_index=True)
+    
+    return (df_reporter.groupby(['capture_probe', 'cis/trans', 'sample', 'flashed_status'])
+                                      .sum()
+                                      .reset_index())
+
 def main():
 
-    working_dir = args.working_directory
+    df_dedup = combine_dedup_stats(args.deduplication_stats)
+    df_digestion = combine_digestion_stats(args.digestion_stats)
+    df_ccanalyser = combine_ccanalyers_stats(args.ccanalyser_stats)
+    df_reporter = combine_reporter_stats(args.reporter_stats)
 
-    dedup_stats_files = glob.glob(f'{working_dir}/deduplicated/*.log')
-    digestion_stats_files = glob.glob(f'{working_dir}/digest/*.tsv')
-    ccanalyser_stats_files = glob.glob(
-        f'{working_dir}/ccanalyser/stats/*.slice.stats')
+    stats_dict = dict(zip(['deduplication_stats', 'digestion_stats', 'ccanalyser_stats', 'reporter_stats'],
+                          [df_dedup, df_digestion, df_ccanalyser, df_reporter]))
 
-    total_reads, dedup = aggregate_dedup_stats(dedup_stats_files)
-    flashed, digested = aggregate_digestion_stats(digestion_stats_files)
-    slice_stats = aggregate_ccanalyser_stats(ccanalyser_stats_files)
-    combined_stats = combine_stats(
-        [total_reads, dedup, flashed, digested, slice_stats])
 
-    combined_stats.to_csv(args.output, sep='\t')
+    # Output individual aggregated stats files
+    out_dir = args.output_dir.rstrip('/')
+    for name, df in stats_dict.items():
+        df.to_csv(f'{out_dir}/{name}.tsv', sep='\t')
+
+
+    # Output combined statst
+    total_reads, dedup = get_dedup_read_pair_stats(df_dedup)
+    flashed, digested = get_digestion_read_pair_stats(df_digestion)
+    slice_stats = get_ccanalyser_read_pair_stats(df_ccanalyser)
+    combined_stats = combine_read_pair_stats([total_reads, dedup, flashed, digested, slice_stats])
+
+    combined_stats.to_csv(f'{out_dir}/combined_stats.tsv', sep='\t')
 
 
 if __name__ == '__main__':
