@@ -544,6 +544,34 @@ def link_bigwigs(infile, outfile):
     
     infile_fp = os.path.abspath(infile)
     os.symlink(infile_fp, outfile)
+
+@follows(ccanalyser, mkdir('stats'))
+@merge(['deduplicated/*.log', 
+        'digest/*.tsv', 
+        'ccanalyser/stats/*.slice.stats',
+        'ccanalyser/stats/*.reporter.stats'
+        ],
+        'stats/combined_stats.tsv')
+def aggregate_stats(infiles, outfile):
+    
+    dedup = ' '.join([fn for fn in infiles if 'deduplicated/' in fn])
+    digestion = ' '.join([fn for fn in infiles if 'digest/' in fn])
+    slices = ' '.join([fn for fn in infiles if '.slice.stats' in fn])
+    reporters = ' '.join([fn for fn in infiles if '.reporter.stats' in fn])
+   
+
+
+    statement =  '''python %(scripts_dir)s/aggregate_statistics.py
+                    --deduplication_stats %(dedup)s
+                    --digestion_stats %(digestion)s
+                    --ccanalyser_stats %(slices)s
+                    --reporter_stats %(reporters)s
+                    --output_directory %(stats)s
+                '''
+                
+    P.run(statement, job_queue=P.PARAMS['queue'])
+
+
       
 #@follows(ccanalyser)
 #@transform('ccanalyser/*.stats', regex(r'ccanalyser/(.*).stats'), r'report/\1.html')
