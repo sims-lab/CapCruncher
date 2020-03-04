@@ -9,10 +9,10 @@ import pandas as pd
 
 
 p = argparse.ArgumentParser()
-p.add_argument('--deduplication_stats')
-p.add_argument('--digestion_stats')
-p.add_argument('--ccanalyser_stats')
-p.add_argument('--reporter_stats')
+p.add_argument('--deduplication_stats', nargs='+')
+p.add_argument('--digestion_stats', narg='+')
+p.add_argument('--ccanalyser_stats', nargs='+')
+p.add_argument('--reporter_stats', nargs='+')
 p.add_argument('--output_directory')
 args = p.parse_args()
 
@@ -178,6 +178,12 @@ def combine_reporter_stats(fnames):
                                       .reset_index())
 
 def main():
+
+    # dedup_stats_files = glob.glob(f'{working_dir}/deduplicated/*.log')
+    # digestion_stats_files = glob.glob(f'{working_dir}/digest/*.tsv')
+    # ccanalyser_stats_files = glob.glob(
+    #     f'{working_dir}/ccanalyser/stats/*.slice.stats')
+
 
     df_dedup = combine_dedup_stats(args.deduplication_stats)
     df_digestion = combine_digestion_stats(args.digestion_stats)
