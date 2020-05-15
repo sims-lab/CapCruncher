@@ -7,9 +7,9 @@ Created on Fri Oct  4 13:47:20 2019
 
 import argparse
 import sys
+import multiprocessing as mp
 from pysam import FastxFile
-import gzip
-import pandas as pd
+from xopen import xopen
 
 p = argparse.ArgumentParser()
 p.add_argument('-1', '--fq1', help='fastq file to parse containing read 1')
@@ -22,40 +22,90 @@ p.add_argument('-l', '--logfile', help='filename for logfile',
 args = p.parse_args()
 
 def open_logfile(fn):
-    '''Deals with the logfile being set to stdout'''
     if not isinstance(fn, type(sys.stdout)):
         return open(fn, 'w')
     else:
         return fn
 
+def read_paired_fastq(fq1, fq2, read_counter, outq):
+    for r1, r2 in zip(fq1, fq2):
+        read_counter.value = read_counter.value + 1
+        outq.put((r1, r2))
+        
+        if read_counter.value % 10000 == 0:
+            print(f'Processed {read_counter.value} reads')
+    
+    outq.put((None, None))
+
+def remove_read_duplicates(inq, outq, reads_removed):
+    seen = set()
+    counter = 0
+    r1, r2 = inq.get()
+    while r1:
+        read_pair = hash(r1.sequence + r2.sequence)
+        
+        if read_pair not in seen:
+            seen.add(read_pair)
+            outq.put((r1,r2))
+        else:
+            reads_removed.value = (reads_removed.value + 1)
+              
+        r1, r2 = inq.get()
+        
+    outq.put((None, None))
+
+
+def write_to_fastq(inq):
+    counter = 0
+    with xopen(filename=args.out1, mode='wb', compresslevel=args.compression_level, threads=4) as f1,\
+         xopen(filename=args.out2, mode='wb', compresslevel=args.compression_level, threads=4) as f2:
+        
+        r1, r2 = inq.get()
+        while r1:
+            f1.write((str(r1) + '\n' ).encode())
+            f2.write((str(r2) + '\n').encode())
+            
+            r1, r2 = inq.get()
+            
 def main():
+    
+    # Set up multiprocessing variables 
+    q1 = mp.Queue()
+    q2 = mp.Queue()
+    manager = mp.Manager()
+    r_counter = manager.Value('i', 0)
+    d_counter = manager.Value('i', 0)
 
-    fq1, fq2 = FastxFile(args.fq1), FastxFile(args.fq2) # Use pysam to open both fastq files
+    # Fastq files
+    fq1 = FastxFile(args.fq1)
+    fq2 = FastxFile(args.fq2)
 
-    with gzip.open(args.out1, 'wb', compresslevel=args.compression_level) as of1,\
-         gzip.open(args.out2, 'wb', compresslevel=args.compression_level) as of2:
-        
-        read_encountered = set() # Used to store all unique read hashes
-        
-        reads_removed = 0
-        for i, (r1, r2) in enumerate(zip(fq1, fq2)):
-            read_pair = hash(r1.sequence +  r2.sequence) # Stores the hash of the combined sequence
-                                                         # hashing is performed to save memory 
-            if i % 100000 == 0:
-                print('Processed %s reads' % (i))
+    # Writer process
+    writer = mp.Process(target=write_to_fastq, args=(q2,))
+    writer.start()
 
-            if not read_pair in read_encountered: # If read is unique then write it to a fastq file
-                of1.write((str(r1) +'\n').encode())
-                of2.write((str(r2) +'\n').encode())
-                read_encountered.add(read_pair) # Add the unique read to the set
-            else:
-                reads_removed += 1
-        
-        with open_logfile(args.logfile) as logfile:
-            logfile.write(f'Read_pairs_processed\t{i+1}\n')
-            logfile.write(f'Read_pairs_unique\t{i-reads_removed}\n')
-            logfile.write(f'Read_pairs_removed\t{reads_removed}\n')
+    # Define processes
+    processes = [mp.Process(target=read_paired_fastq, args=(fq1, fq2, r_counter, q1)),
+                 mp.Process(target=remove_read_duplicates, args=(q1, q2, d_counter)),
+                ]
+
+    # Start processes
+    for proc in processes:
+        proc.start()
+
+    # Join processes (wait for processes to finish before the main process)
+    writer.join()
+
+    # Terminate all processes
+    for proc in processes:
+        proc.terminate()
+    
+    # Write to log file
+    with open_logfile(args.logfile) as logfile:
+            logfile.write(f'Read_pairs_processed\t{r_counter.value}\n')
+            logfile.write(f'Read_pairs_unique\t{r_counter.value - d_counter.value}\n')
+            logfile.write(f'Read_pairs_removed\t{d_counter.value}\n')
+         
     
 if __name__ == '__main__':
     main()
-
