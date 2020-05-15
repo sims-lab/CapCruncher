@@ -1,5 +1,4 @@
 import argparse
-import gzip
 import os
 import re
 import sys
@@ -8,6 +7,7 @@ from collections import defaultdict
 import pandas as pd
 import pysam
 from pysam import FastxFile
+from xopen import xopen
 
 parser = argparse.ArgumentParser(prog='digest_fastq')
 parser.add_argument('-o', '--output_file', help='output file name',
@@ -165,7 +165,10 @@ def main():
         args.cut_sequence, args.restriction_enzyme))
     keep_cutsite = args.keep_cutsite
 
-    with gzip.open(args.output_file, 'w', compresslevel=args.compression_level) as fastq_out:
+    with xopen(args.output_file,
+               'w', 
+               compresslevel=args.compression_level,
+               threads=8) as fastq_out:
 
         if args.command == 'flashed':  # Checks the subcommand to see in which mode to run
             for seq_counter, read in enumerate(FastxFile(args.input_fastq)):

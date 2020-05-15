@@ -28,6 +28,7 @@ def open_logfile(fn):
         return fn
 
 def read_paired_fastq(fq1, fq2, read_counter, outq):
+    '''Reads R1 and R2 fastq files and places paired reads into a queue'''
     for r1, r2 in zip(fq1, fq2):
         read_counter.value = read_counter.value + 1
         outq.put((r1, r2))
@@ -38,6 +39,7 @@ def read_paired_fastq(fq1, fq2, read_counter, outq):
     outq.put((None, None))
 
 def remove_read_duplicates(inq, outq, reads_removed):
+    '''Hashes the combined read1/read2 sequence and discards duplicates'''
     seen = set()
     counter = 0
     r1, r2 = inq.get()
@@ -56,6 +58,7 @@ def remove_read_duplicates(inq, outq, reads_removed):
 
 
 def write_to_fastq(inq):
+    '''Writes all deduplicated read1/read2 to the appropriate file'''
     counter = 0
     with xopen(filename=args.out1, mode='wb', compresslevel=args.compression_level, threads=4) as f1,\
          xopen(filename=args.out2, mode='wb', compresslevel=args.compression_level, threads=4) as f2:
@@ -70,11 +73,11 @@ def write_to_fastq(inq):
 def main():
     
     # Set up multiprocessing variables 
-    q1 = mp.Queue()
-    q2 = mp.Queue()
+    q1 = mp.Queue() # reads are placed into this queue for deduplication
+    q2 = mp.Queue() # deduplicated reads are placed into the queue for writing
     manager = mp.Manager()
-    r_counter = manager.Value('i', 0)
-    d_counter = manager.Value('i', 0)
+    r_counter = manager.Value('i', 0) # counts the number of readpairs
+    d_counter = manager.Value('i', 0) # counts the number of duplicated readpairs
 
     # Fastq files
     fq1 = FastxFile(args.fq1)
