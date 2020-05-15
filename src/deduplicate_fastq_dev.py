@@ -7,11 +7,9 @@ Created on Fri Oct  4 13:47:20 2019
 
 import argparse
 import sys
-from multiprocessing import Manager
+import multiprocessing as mp
 from pysam import FastxFile
-import gzip
-from functools import partial
-import itertools
+from xopen import xopen
 
 p = argparse.ArgumentParser()
 p.add_argument('-1', '--fq1', help='fastq file to parse containing read 1')
@@ -29,43 +27,85 @@ def open_logfile(fn):
     else:
         return fn
 
-def remove_duplicates(read_counter, read_encountered, reads_removed, reads):
-
-    read_1, read_2 = reads
-    read_pair = hash(read_1.sequence +  read_2.sequence)
-    if not read_pair in read_encountered:
-        read_encountered[read_pair] = 1
-        return read_1, read_2
-    else:
-        reads_removed += 1
-
+def read_paired_fastq(fq1, fq2, read_counter, outq):
+    for r1, r2 in zip(fq1, fq2):
+        read_counter.value = read_counter.value + 1
+        outq.put((r1, r2))
         
+        if read_counter.value % 10000 == 0:
+            print(f'Processed {read_counter.value} reads')
+    
+    outq.put((None, None))
+
+def remove_read_duplicates(inq, outq, reads_removed):
+    seen = set()
+    counter = 0
+    r1, r2 = inq.get()
+    while r1:
+        read_pair = hash(r1.sequence + r2.sequence)
+        
+        if read_pair not in seen:
+            seen.add(read_pair)
+            outq.put((r1,r2))
+        else:
+            reads_removed.value = (reads_removed.value + 1)
+              
+        r1, r2 = inq.get()
+        
+    outq.put((None, None))
+
+
+def write_to_fastq(inq):
+    counter = 0
+    with xopen(filename=args.out1, mode='wb', compresslevel=args.compression_level, threads=4) as f1,\
+         xopen(filename=args.out2, mode='wb', compresslevel=args.compression_level, threads=4) as f2:
+        
+        r1, r2 = inq.get()
+        while r1:
+            f1.write((str(r1) + '\n' ).encode())
+            f2.write((str(r2) + '\n').encode())
+            
+            r1, r2 = inq.get()
+            
 def main():
-
-    fq1, fq2 = FastxFile(args.fq1), FastxFile(args.fq2)
-    out_1 = gzip.open(args.out1, 'wb', compresslevel=args.compression_level)
-    out_2 = gzip.open(args.out2, 'wb', compresslevel=args.compression_level)
-
-
-    manager = Manager()
-    read_counter = manager.Value('i', 0)
-    reads_removed = manager.Value('i', 0)
-    reads_encountered = manager.dict()
     
-    rm_dup = partial(remove_duplicates, read_counter, reads_removed, reads_encountered)
+    # Set up multiprocessing variables 
+    q1 = mp.Queue()
+    q2 = mp.Queue()
+    manager = mp.Manager()
+    r_counter = manager.Value('i', 0)
+    d_counter = manager.Value('i', 0)
 
-    with manager.Pool(3) as wp:
-        for read_1, read_2 in wp.imap(rm_dup, (iter(fq1), iter(fq2))):
-            out_1.write((read_1 + '\n').encode())
-            out_2.write((read_2 + '\n').encode())
-    
-    out_1.close()
-    out_2.close()
+    # Fastq files
+    fq1 = FastxFile(args.fq1)
+    fq2 = FastxFile(args.fq2)
 
-    
-    
+    # Writer process
+    writer = mp.Process(target=write_to_fastq, args=(q2,))
+    writer.start()
 
-          
+    # Define processes
+    processes = [mp.Process(target=read_paired_fastq, args=(fq1, fq2, r_counter, q1)),
+                 mp.Process(target=remove_read_duplicates, args=(q1, q2, d_counter)),
+                ]
+
+    # Start processes
+    for proc in processes:
+        proc.start()
+
+    # Join processes (wait for processes to finish before the main process)
+    writer.join()
+
+    # Terminate all processes
+    for proc in processes:
+        proc.terminate()
+    
+    # Write to log file
+    with open_logfile(args.logfile) as logfile:
+            logfile.write(f'Read_pairs_processed\t{r_counter.value}\n')
+            logfile.write(f'Read_pairs_unique\t{r_counter.value - d_counter.value}\n')
+            logfile.write(f'Read_pairs_removed\t{d_counter.value}\n')
+         
     
 if __name__ == '__main__':
     main()
