@@ -225,8 +225,7 @@ def filter_slices(df_slices):
     df_slice_stats['duplicate_filtered'] = slice_filterer.slice_stats
 
     # Report statistics
-    stats_output_path = os.path.join(stats_prefix, '.slice.stats')
-    df_slice_stats.to_csv(stats_output_path, sep='\t')
+    df_slice_stats.to_csv(f'{stats_prefix}.slice.stats', sep='\t')
 
     return slice_filterer
 

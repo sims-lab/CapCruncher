@@ -10,10 +10,10 @@ import pandas as pd
 
 p = argparse.ArgumentParser()
 p.add_argument('--deduplication_stats', nargs='+')
-p.add_argument('--digestion_stats', narg='+')
+p.add_argument('--digestion_stats', nargs='+')
 p.add_argument('--ccanalyser_stats', nargs='+')
 p.add_argument('--reporter_stats', nargs='+')
-p.add_argument('--output_directory')
+p.add_argument('--output_dir')
 args = p.parse_args()
 
 
@@ -164,25 +164,27 @@ def combine_read_pair_stats(stats):
 
 
 def combine_reporter_stats(fnames):
-
+    
     df_reporter = pd.concat([pd.read_csv(fn, sep=',', header=0,
                                          names=['capture_probe', 'cis/trans', 'count'])
                              .assign(fn=fn.split('/')[-1])
                              for fn in fnames], sort=True)
 
-    df_reporter = pd.concat([split_fn(df_reporter['fn']),
-                             df_reporter], axis=1, ignore_index=True)
+
+
+    df_reporter['sample']= df_reporter['fn'].str.split('.').str[0]
+    df_reporter['read_type'] = df_reporter['fn'].str.split('.').str[1].str.split('_').str[0]
+
     
-    return (df_reporter.groupby(['capture_probe', 'cis/trans', 'sample', 'flashed_status'])
-                                      .sum()
-                                      .reset_index())
+    return (df_reporter.drop(columns='fn')
+                .groupby(['capture_probe', 'cis/trans', 'sample', 'read_type'])
+                .sum()
+                .reset_index())
+    
+    
+
 
 def main():
-
-    # dedup_stats_files = glob.glob(f'{working_dir}/deduplicated/*.log')
-    # digestion_stats_files = glob.glob(f'{working_dir}/digest/*.tsv')
-    # ccanalyser_stats_files = glob.glob(
-    #     f'{working_dir}/ccanalyser/stats/*.slice.stats')
 
 
     df_dedup = combine_dedup_stats(args.deduplication_stats)

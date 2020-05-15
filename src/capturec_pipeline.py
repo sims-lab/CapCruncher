@@ -566,7 +566,7 @@ def aggregate_stats(infiles, outfile):
                     --digestion_stats %(digestion)s
                     --ccanalyser_stats %(slices)s
                     --reporter_stats %(reporters)s
-                    --output_directory %(stats)s
+                    --output_dir stats
                 '''
                 
     P.run(statement, job_queue=P.PARAMS['queue'])
