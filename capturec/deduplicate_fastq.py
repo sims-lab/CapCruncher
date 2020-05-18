@@ -29,62 +29,63 @@ def open_logfile(fn):
 
 def read_paired_fastq(fq1, fq2, read_counter, outq):
     '''Reads R1 and R2 fastq files and places paired reads into a queue'''
+    
     counter = 0
+    buffer = []
     for r1, r2 in zip(fq1, fq2):
         counter += 1
-        outq.put((r1, r2))
+        buffer.append((r1, r2))
         
-        if counter % 10000 == 0:
+        if counter % args.buffer == 0:
             print(f'Processed {counter} reads')
+            outq.put(buffer)
+            buffer = []
     
-    outq.put((None, None))
-    read_counter.value = counter
+    outq.put(buffer) # Add any reads that do not fit the batch size
+    outq.put(None) # Used to terminate the queue
+    read_counter.value = counter # Stores the number of processed reads.
 
 def remove_read_duplicates(inq, outq, reads_removed):
     '''Hashes the combined read1/read2 sequence and discards duplicates'''
     seen = set()
     removed_counter = 0
-    r1, r2 = inq.get() # Gets reads from the input queue
-    while r1:
-        read_pair = hash(r1.sequence + r2.sequence)
-        
-        if read_pair not in seen:
-            seen.add(read_pair)
-            outq.put((r1,r2)) # Puts deduplicated reads in output queue
-        else:
-            removed_counter += 1
+    buffer = []
+    
+    reads = inq.get() # Get list of reads from the input queue
+    while reads:
+        for read_counter, (r1, r2) in enumerate(reads):
+            read_pair = hash(r1.sequence + r2.sequence)
+
+            if read_pair not in seen:
+                seen.add(read_pair)
+                buffer.append((str(r1), str(r2)))
+            else:
+                removed_counter += 1
+
+            if read_counter % args.buffer == 0:
+                outq.put(buffer)
+                buffer = []
+
               
-        r1, r2 = inq.get()
-        
-    outq.put((None, None))
-    reads_removed.value = removed_counter
+        reads = inq.get()
+    
+    outq.put(buffer) # Add any reads that do not fit the batch size
+    outq.put(None) # Terminate the queue
+    reads_removed.value = removed_counter # Store the number of removed reads
 
 
 def write_to_fastq(inq):
     '''Writes all deduplicated read1/read2 to the appropriate file'''
-    counter = 1
-    r1_buffer, r2_buffer = [], []
-    with xopen(filename=args.out1, mode='wb', compresslevel=args.compression_level, threads=4) as f1,\
-         xopen(filename=args.out2, mode='wb', compresslevel=args.compression_level, threads=4) as f2:
+    with xopen(filename=args.out1, mode='wb', compresslevel=args.compression_level) as f1,\
+         xopen(filename=args.out2, mode='wb', compresslevel=args.compression_level) as f2:
         
-        r1, r2 = inq.get()
-        while r1:
-            r1_buffer.append(str(r1))
-            r2_buffer.append(str(r2))
-            
-            if counter % args.buffer == 0:
-                f1.write('\n'.join(r1_buffer).encode())
-                f2.write('\n'.join(r2_buffer).encode())
-                r1_buffer, r2_buffer = [], []
-            
-            r1, r2 = inq.get()
-            counter += 1
-        
-        # If the queue is empty write the rest
-        f1.write('\n'.join(r1_buffer).encode())
-        f2.write('\n'.join(r2_buffer).encode())
-        
-        
+        reads_paired = inq.get()
+        while reads_paired:
+            r1, r2 = zip(*reads_paired)
+            f1.write('\n'.join(r1).encode())
+            f2.write('\n'.join(r2).encode())
+            reads_paired = inq.get()
+       
             
 def main():
     
