@@ -55,7 +55,29 @@ args = parser.parse_args()
 
 
 class DigestedRead():
-    '''Class performs in silico digestion of fastq reads and contains relevant stats'''
+    '''Class performs in silico digestion of fastq reads and contains relevant stats.
+        
+        Arguments
+        ---------
+        read - read in fastq format to be digested.
+        cutsite - compiled regex for the site of digestion.
+        flashed - determines if reads have been combined (i.e. using FLASh).
+        minimum_slice_length - determines the minimum number of basepairs for a valid slice.
+        slice_offset - all output slices will be labled by slice_offset + slice number. (useful for unflashed pairs)
+        keep_cutsite - removes the cutsite from the output slice if False
+
+        Attributes
+        ---------
+        recognition_sites - list of identified restriction sites in the read
+        slices_total_counter - number of un-validated slices in the read
+        slices_valid_counter - number of validated slices in the read
+        slices - list of slices in fastq format (string)
+
+        Methods
+        --------
+        get_slices - splits the read based on recognition_sites, validates and returns all valid slices as a list.
+
+        '''
 
     def __init__(self,
                  read: pysam.FastqProxy,
@@ -238,7 +260,6 @@ def digest_read_unflashed(inq, outq, statq, **kwargs):
             sliced_read_2 = DigestedRead(r2, **kwargs) # Digest read 2
             kwargs['slice_offset'] = 0 # Reset slice offset
 
-
             read_buffer.append('\n'.join([str(sliced_read_1),
                                           str(sliced_read_2)]
                                     )
@@ -338,7 +359,6 @@ def main():
     q1 = mp.SimpleQueue() # reads are placed into this queue for deduplication
     q2 = mp.SimpleQueue() # digested reads are placed into the queue for writing
     q3 = mp.SimpleQueue() # stats queue
-    manager = mp.Manager()
 
     # Variables
     min_slice_len = args.minimum_slice_length

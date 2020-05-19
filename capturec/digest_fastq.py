@@ -166,9 +166,9 @@ def main():
     keep_cutsite = args.keep_cutsite
 
     with xopen(args.output_file,
-               'w', 
+               'wb', 
                compresslevel=args.compression_level,
-               threads=8) as fastq_out:
+               ) as fastq_out:
 
         if args.command == 'flashed':  # Checks the subcommand to see in which mode to run
             for seq_counter, read in enumerate(FastxFile(args.input_fastq)):
