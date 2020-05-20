@@ -11,6 +11,7 @@ import os
 import re
 import sys
 from collections import Counter
+import time
 
 import pandas as pd
 import pysam
@@ -141,7 +142,7 @@ class DigestedRead():
 
     def __str__(self):
         if self.slices:
-            return '\n'.join(self.slices)
+            return '\n'.join(self.slices) + '\n'
         else:
             return ''
 
@@ -157,70 +158,42 @@ def get_re_site(cut_sequence=None, restriction_enzyme=None):
     else:
         raise ValueError('No restriction site or recognised enzyme provided')
 
-
-def get_digestion_stats(n_processed, total_slices, valid_slices):
-    '''Processes and formats slice stats for output'''
-    stats_combined = dict()
-    for read_type in total_slices:
-        # Multiplies the bin by the frquency
-        total_count = sum(k * v for k, v in total_slices[read_type].items())
-
-        # Checks that slices exist for this read type (flashed | read_1,read_2 are mutually exclusive)
-        if total_count:
-            stats = {'total_read_pairs_processed': n_processed,
-                     'total_slices': sum(k * v for k, v in total_slices[read_type].items()),
-                     'total_valid_slices': sum(k * v for k, v in valid_slices[read_type].items())}
-
-            hist = {k: valid_slices[read_type][k]
-                    for k in sorted(valid_slices[read_type])}  # Makes histogram of slice frequency
-            # Adds the histogram to the pre-calculated stats
-            stats.update(hist)
-
-        else:  # If no slices are present then report this, do not generate histogram
-            stats = {'total_read_pairs_processed': 0,
-                     'total_slices': 0,
-                     'total_valid_slices': 0}
-
-        stats_combined[read_type] = stats
-
-    return pd.DataFrame(stats_combined)
-
-
 def read_fastq(fq,
                outq,
                n_workers=1):
     '''Reads fastq file and places reads into a queue'''
-    buffer = []
+    r_buffer = []
     for rc, read in enumerate(fq):
-        buffer.append(read)
+        r_buffer.append(read)
 
         if rc % args.buffer == 0:
-            outq.put(buffer)
-            buffer = []
+            outq.put(r_buffer)
+            r_buffer = []
             print(f'Processed {rc} reads') 
-
-    for _ in range(n_workers):
-        outq.put(None) # Places a terminator in the queue for every spawned worker
     
-
+    outq.put(r_buffer) # Add the reads that don't fit the buffer size
+    for _ in range(n_workers):
+        outq.put('TER') # Places a terminator in the queue for every spawned worker
+    
 
 def read_paired_fastqs(fq1, 
                        fq2,
                        outq,
                        n_workers=1):
     '''Reads R1 and R2 fastq files and places paired reads into a queue'''
-    buffer = []
+    r_buffer = []
     for rc, (r1, r2) in enumerate(zip(fq1, fq2)):
-        buffer.append((r1, r2))
+        r_buffer.append((r1, r2))
 
         if rc % args.buffer == 0:
-            outq.put(buffer)
-            buffer = []
+            outq.put(r_buffer)
+            r_buffer = []
             print(f'Processed {rc} reads')
-
-    for _ in range(n_workers):
-        outq.put(None) # Places a terminator in the queue for every spawned worker
     
+    outq.put(r_buffer)
+    for _ in range(n_workers):
+        outq.put('TER') # Places a terminator in the queue for every spawned worker
+
 
 
 def digest_read_flashed(inq, outq, statq, **kwargs):
@@ -229,13 +202,16 @@ def digest_read_flashed(inq, outq, statq, **kwargs):
     stat_buffer = []
     reads = inq.get()
 
-    while reads:
+    while not reads == 'TER':
         for read in reads:
             sliced_read = DigestedRead(read, **kwargs)
-            read_buffer.append(str(sliced_read))
+            sliced_read_str = str(sliced_read)
+            if sliced_read_str: # Only append if valid slices present
+                read_buffer.append(sliced_read_str)
+            
             stat_buffer.append((sliced_read.slices_total_counter,
                                 sliced_read.slices_valid_counter,
-                                ))
+                                  ))
         
         outq.put(read_buffer) # Add list of digested reads to the queue
         statq.put(stat_buffer)
@@ -243,8 +219,9 @@ def digest_read_flashed(inq, outq, statq, **kwargs):
         stat_buffer = [] # Clear buffer
         reads = inq.get() # Get new list of reads
 
-    outq.put(None)
-    statq.put(None)
+    outq.put('TER')
+    statq.put('TER')
+
 
 
 def digest_read_unflashed(inq, outq, statq, **kwargs):
@@ -252,24 +229,23 @@ def digest_read_unflashed(inq, outq, statq, **kwargs):
     read_buffer = []
     stat_buffer = []
     reads = inq.get()
-    
-    while reads:
+    while not reads == 'TER': # Checks to see if the queue has been terminated
         for r1, r2 in reads:
             sliced_read_1 = DigestedRead(r1, **kwargs) # Digest read 1
             kwargs['slice_offset'] = sliced_read_1.slices_valid_counter # Update slice offset
             sliced_read_2 = DigestedRead(r2, **kwargs) # Digest read 2
             kwargs['slice_offset'] = 0 # Reset slice offset
-
-            read_buffer.append('\n'.join([str(sliced_read_1),
-                                          str(sliced_read_2)]
-                                    )
-                         )
+            
+            s1, s2 = str(sliced_read_1), str(sliced_read_2)
+            
+            if s1 and s2: # Only store of both reads have valid slices
+                read_buffer.append(f'{s1}{s2}')
             
             stat_buffer.append((sliced_read_1.slices_total_counter, 
                                 sliced_read_1.slices_valid_counter,
                                 sliced_read_2.slices_total_counter,
                                 sliced_read_2.slices_valid_counter,
-                                ))
+                                    ))
                               
          
         
@@ -279,8 +255,8 @@ def digest_read_unflashed(inq, outq, statq, **kwargs):
         stat_buffer = []
         reads = inq.get()
 
-    outq.put(None)
-    statq.put(None)
+    outq.put('TER')
+    statq.put('TER')
 
 
 def write_to_fastq(inq):
@@ -288,8 +264,8 @@ def write_to_fastq(inq):
     with xopen(filename=args.output_file, mode='wb', compresslevel=args.compression_level) as f:
 
         reads = inq.get()
-        while reads:
-            f.write('\n'.join(reads).encode())
+        while not reads == 'TER':
+            f.write(''.join(reads).encode())
             reads = inq.get()
 
 def collate_stats_flashed(inq):
@@ -297,7 +273,7 @@ def collate_stats_flashed(inq):
     counts = inq.get()
     total_counter = Counter()
     valid_counter = Counter()
-    while counts:
+    while not counts == 'TER':
         total, valid = zip(*counts)
         total_counter = total_counter +  Counter(total)
         valid_counter = valid_counter + Counter(valid)
@@ -329,7 +305,7 @@ def collate_stats_unflashed(inq):
                 'r2': {'total': Counter(),
                         'valid': Counter()}
                 }
-    while counts:
+    while not counts == 'TER':
         r1_total, r1_valid, r2_total, r2_valid = zip(*counts)
         counters['r1']['total'] = counters['r1']['total'] + Counter(r1_total)
         counters['r1']['valid'] = counters['r1']['valid'] + Counter(r1_valid)
@@ -367,6 +343,10 @@ def main():
                                       )
                          )
     keep_cutsite = args.keep_cutsite
+    
+    # Remove logfile if present
+    if not args.logfile == sys.stdout and os.path.exists(args.logfile):
+        os.remove(args.logfile)
 
 
     if args.command == 'flashed':  # Checks the subcommand to see in which mode to run
@@ -391,7 +371,6 @@ def main():
         
         processes = processes + processes_repeated
         
-        
     elif args.command == 'unflashed':
 
         fq1, fq2 = FastxFile(args.fq1), FastxFile(args.fq2)
@@ -415,16 +394,22 @@ def main():
         
         processes = processes + processes_repeated
         
-
+    # Start all processes
     for proc in processes:
         proc.start()
-    
+
     # Join processes (wait for processes to finish before the main process)
     writer.join()
 
-    # Terminate all processes
     for proc in processes:
+        proc.join(10)
         proc.terminate()
+
+
+    
+      
+
+    
 
 if __name__ == '__main__':
     main()

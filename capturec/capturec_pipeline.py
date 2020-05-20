@@ -101,7 +101,7 @@ def deduplicate_reads(infiles, outfile):
     statement = '''python %(scripts_dir)s/deduplicate_fastq.py
                            -1 %(fq1)s -2 %(fq2)s
                            --out1 %(out1)s --out2 %(out2)s
-                           -l %(outfile)s.log
+                           -l deduplicated/%(logfile)s
                            -c %(compression)s
                           '''
     
@@ -147,7 +147,7 @@ def split_fastq(infile, outfile):
     #Small error in function as only processes chunksize - 1 reads
     output_prefix = outfile.replace('_0.fastq.gz', '')
     statement = '''python %(scripts_dir)s/split_fastq.py
-                  -i %(infile)s -o %(output_prefix)s
+                  -i %(infile)s -n %(output_prefix)s
                   --chunk_size %(chunksize)s -c %(compression)s '''
     P.run(statement, 
           job_queue=P.PARAMS['queue'])
@@ -159,16 +159,20 @@ def split_fastq(infile, outfile):
                     r'digest/\1.flashed_\2.fastq.gz')
 def digest_flashed_reads(infile, outfile):
     '''In silico restriction enzyme digest of combined (flashed) read pairs'''
+    threads = P.PARAMS['threads']
+    digestion_threads = 1
     statement = '''python %(scripts_dir)s/digest_fastq.py 
                    -o %(outfile)s 
                    -l %(outfile)s.log
                    -r %(ccanalyser_re)s
                    -m 18
                    -c %(compression)s
+                   -p %(digestion_threads)s
                    flashed
                    -i %(infile)s'''
     P.run(statement, 
-          job_queue=P.PARAMS['queue'])
+          job_queue=P.PARAMS['queue'],
+          job_threads=6)
 
 @follows(split_fastq)
 @collate('split_fastq/*.fastq.gz', 
@@ -178,6 +182,8 @@ def digest_pe_reads(infiles, outfile):
     '''In silico restriction enzyme digest of non-combined (non-flashed) read pairs'''
     
     fq1, fq2 = infiles
+    threads = P.PARAMS['threads']
+    digestion_threads = 1
     
     statement = '''python %(scripts_dir)s/digest_fastq.py 
                    -l %(outfile)s.log 
@@ -185,13 +191,15 @@ def digest_pe_reads(infiles, outfile):
                    -o %(outfile)s
                    -c %(compression)s
                    -m 18
+                   -p %(digestion_threads)s
                    unflashed
                    -1 %(fq1)s 
                    -2 %(fq2)s  
                    '''
     
     P.run(statement, 
-          job_queue=P.PARAMS['queue'])
+          job_queue=P.PARAMS['queue'],
+          job_threads=6)
 
 
 @follows(mkdir('bam'))
@@ -547,7 +555,7 @@ def link_bigwigs(infile, outfile):
 
 @follows(ccanalyser, mkdir('stats'))
 @merge(['deduplicated/*.log', 
-        'digest/*.tsv', 
+        'digest/*.log', 
         'ccanalyser/stats/*.slice.stats',
         'ccanalyser/stats/*.reporter.stats'
         ],

@@ -58,7 +58,9 @@ def remove_read_duplicates(inq, outq, reads_removed):
 
             if read_pair not in seen:
                 seen.add(read_pair)
-                buffer.append((str(r1), str(r2)))
+                buffer.append((str(r1),
+                               str(r2)
+                               ))
             else:
                 removed_counter += 1
 
@@ -82,8 +84,8 @@ def write_to_fastq(inq):
         reads_paired = inq.get()
         while reads_paired:
             r1, r2 = zip(*reads_paired)
-            f1.write('\n'.join(r1).encode())
-            f2.write('\n'.join(r2).encode())
+            f1.write(('\n'.join(r1) + '\n').encode())
+            f2.write(('\n'.join(r2) + '\n').encode())
             reads_paired = inq.get()
        
             

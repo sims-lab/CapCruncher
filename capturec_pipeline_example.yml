@@ -1,0 +1,30 @@
+queue: batchq
+threads: 6
+memory: 4G
+chunksize: 1000000
+compression: 1
+scripts_dir: /t1-data/user/asmith/Projects/capturec_dev/capture-c/capturec 
+trim:
+    options: --paired --length 21
+bowtie2:
+    # Ask bowtie to return reads in the same order as the fastq file (slower if threads > 1)
+    options: --reorder
+    index: /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/Bowtie2Index/genome 
+genome:
+    fasta: /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/WholeGenomeFasta/genome.fa
+    fai: /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/WholeGenomeFasta/genome.fa.fai
+    chrom_sizes: /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/WholeGenomeFasta/chr_sizes.txt
+ccanalyser:
+    capture: SEM_Hex_capture_sites.bed
+    re_map: ccanalyser/hg19.digested.fa
+    exclude_window: 1000
+    memory: 4G
+    re: DpnII
+    blacklist: /home/nuffmed/asmith/Data/Misc_data/Blacklist/lists/hg19-blacklist.v2.bed
+hub:
+    publoc: /public/asmith/capture-c/
+    name: SEM HEX 
+    genome: hg19
+    short: hub_to_test_pipeline
+    long: This is a test hub for the capturec pipeline
+    email: alastair.smith@ndcls.ox.ac.uk

@@ -55,43 +55,39 @@ def get_dedup_read_pair_stats(df):
 
 
 def combine_digestion_stats(fnames):
-
-    df = pd.concat([pd.read_csv(fn, sep='\t', header=0, index_col=0)
-                    .transpose()
-                    .assign(sample=fn.split('/')[-1].split('.')[0])
-                    for fn in fnames], sort=True)
-
-    df.fillna(0, inplace=True)
-
-    return (df.reset_index()
-            .rename(columns={'index': 'read_type'})
-            .groupby(['sample', 'read_type'])
-            .sum())
-
+    
+    dframes = [pd.read_csv(fn).assign(sample=fn.split('/')[-1].split('.')[0]) 
+               for fn in fnames]
+    df = pd.concat(dframes)
+    return (df.groupby(['bin', 'stat', 'read_type', 'sample'])
+              .sum()
+              .reset_index())
 
 def get_digestion_read_pair_stats(df):
 
     # Get flashed stats
-    flashed = (df['total_read_pairs_processed']
-               .drop_duplicates()
-               .reset_index()
-               .assign(read_type=lambda df: df['read_type'].str.replace('read_1', 'pe'))
-               .rename(columns={'total_read_pairs_processed': 'flashed_or_unflashed'}))
-
-    # Calculate reads with restriction sites from histogram
-    df_hist = df.iloc[:, :-3]
-    df_hist.columns = df_hist.columns.astype(int)
-
-    digested = (df_hist.loc[:, df_hist.columns > 0]
-                .sum(axis=1)
-                .reset_index()
-                .assign(read_type=lambda df: df['read_type'].str.replace('read_1', 'pe')
-                        .str.replace('read_2', 'pe'))
-                .groupby(['sample', 'read_type'])
-                .max()
-                .reset_index()
-                .rename(columns={0: 'read_pairs_with_restriction_sites'}))
-
+    flashed = (df.loc[lambda df: (df['read_type'].isin(['flashed', 'r1'])) &
+                                 (df['stat'] == 'total')]
+                     .groupby(['sample', 'read_type'])
+                     ['frequency']
+                     .sum()
+                     .reset_index()
+                     .assign(read_type=lambda df: df['read_type'].str.replace('r1', 'pe'))
+                     .rename(columns={'frequency': 'Flashed or Unflashed'}))
+   
+    
+    digested = (df.loc[lambda df: (df['stat'] == 'valid') &
+                                  (df['read_type'] != 'r2') &
+                                  (df['bin'] != 0)
+                      ]
+                  .drop(columns='bin')
+                  .groupby(['sample', 'read_type'])
+                  .sum()
+                  .reset_index()
+                  [['sample', 'read_type', 'frequency']]
+                  .assign(read_type=lambda df: df['read_type'].str.replace('r1', 'pe'))
+                  .rename(columns={'frequency': 'read_pairs_with_restriction_site(s)'}))
+    
     return (flashed, digested)
 
 
