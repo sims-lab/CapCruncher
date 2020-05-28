@@ -41,10 +41,30 @@ def replace_na(df):
 def main():
     
     index_field = format_index_var(args.index_field)
-    dataframes = [pd.read_csv(tsv, sep='\t', header=0, index_col=index_field) for tsv in args.input_files]
-
+    expected_columns = ['read_name', 'blacklist', 'capture_count', 
+                        'capture', 'exclusion_count', 'exclusion', 
+                        'restriction_fragment']
+    expected_columns_dtypes = ['object', 'number', 'number',
+                               'object', 'number', 'object', 'object']
+    
+    dataframes = []
+    for tsv in args.input_files:
+        try:
+            dataframes.append(pd.read_csv(tsv, 
+                                          sep='\t',
+                                          header=0,
+                                          index_col=index_field))
+        except Exception as e:
+            print(f'Error with {tsv}: {e}')
+            
+    
     df_merged = dataframes[0].join(dataframes[1:], how='outer')
     df_merged = replace_na(df_merged)
+    
+    fill_vals = {'object': '-', 'number': 0}
+    for col, dtype in zip(expected_columns, expected_columns_dtypes):
+        if not col in df_merged:
+            df_merged[col] = fill_vals[dtype]
 
     df_merged.to_csv(args.output_file, header=True, sep='\t')
 

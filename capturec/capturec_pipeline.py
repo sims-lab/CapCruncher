@@ -209,17 +209,20 @@ def digest_pe_reads(infiles, outfile):
 def align_reads(infile, outfile):
     ''' Aligns digested fq files using bowtie2'''
     
-    options = P.PARAMS['bowtie2_options'] if P.PARAMS['bowtie2_options'] else ''
+    
+    
+    aligner = P.PARAMS['align_aligner']
+    index_flag = P.PARAMS['align_index_flag'] if P.PARAMS['align_index_flag'] else ''
+    options = P.PARAMS['align_options'] if P.PARAMS['align_options'] else ''
         
-    statement = '''bowtie2 -x %(bowtie2_index)s -U %(infile)s 
-                    -p %(threads)s %(options)s 
+    statement = '''%(aligner)s %(options)s %(index_flag)s %(align_index)s %(infile)s  
                     | samtools view -bS > %(outfile)s 2> %(outfile)s.log
                     && samtools sort %(outfile)s -o %(outfile)s.sorted.bam -m 2G -@ %(threads)s
                     && mv %(outfile)s.sorted.bam %(outfile)s'''
     P.run(statement, 
           job_queue=P.PARAMS['queue'], 
           job_threads=P.PARAMS['threads'],
-          job_memory='20G')
+          job_memory='4G')
 
 @collate(align_reads, 
          regex(r'bam/(.*)_\d+.bam'), 
@@ -365,11 +368,16 @@ def re_intersect(infiles, outfile):
 def blacklist_intersect_count(infile, outfile):
     '''Intersect reads with blacklisted regions.
     report count of overlaps for each input bed using -c '''
-    statement =  '''bedtools intersect -c 
-                    -a %(infile)s -b %(ccanalyser_blacklist)s
-                    | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
-                    | sed '1i read_name\\tblacklist'
-                    | gzip > %(outfile)s''' 
+    
+    if P.PARAMS['ccanalyser_blacklist']:
+        statement =  '''bedtools intersect -c 
+                        -a %(infile)s -b %(ccanalyser_blacklist)s
+                        | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
+                        | sed '1i read_name\\tblacklist'
+                        | gzip > %(outfile)s'''
+    else:
+        statement = '''touch %(outfile)s'''
+        
     P.run(statement, job_queue=P.PARAMS['queue'])
 
 
