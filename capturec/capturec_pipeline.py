@@ -98,16 +98,28 @@ def deduplicate_reads(infiles, outfile):
     fq1, fq2 = infiles
     out1, out2 = outfile, outfile.replace('_1.fastq.gz', '_2.fastq.gz')
     logfile = fq1.replace('_1.fastq.gz', '.log')
-    statement = '''python %(scripts_dir)s/deduplicate_fastq.py
-                           -1 %(fq1)s -2 %(fq2)s
-                           --out1 %(out1)s --out2 %(out2)s
-                           -l deduplicated/%(logfile)s
-                           -c %(compression)s
-                          '''
+    
+    if P.PARAMS['pre-dedup']:
+        
+        statement = '''python %(scripts_dir)s/deduplicate_fastq.py
+                               -1 %(fq1)s -2 %(fq2)s
+                               --out1 %(out1)s --out2 %(out2)s
+                               -l deduplicated/%(logfile)s
+                               -c %(compression)s
+                              '''
+    else:
+        # If deduplication turned off sylink input files and count number of reads
+        statement = '''ln -s $(pwd)/%(fq1)s %(out1)s &&
+                       ln -s $(pwd)/%(fq2)s %(out2)s &&
+                       lc=$(zcat %(fq1)s | wc -l);
+                       logfile=deduplicated/%(logfile)s;
+                       echo -e "Read_pairs_processed\\t$(($lc / 4))\\n" > $logfile;
+                       echo -e "Read_pairs_unique\\t$(($lc / 4))\\n" >> $logfile;
+                       echo -e "Read_pairs_removed\\t0\\n" >> $logfile'''
     
     P.run(statement, 
           job_queue=P.PARAMS['queue'], 
-          job_memory='32G')
+          job_memory='8G')
 
 @follows(mkdir('trim'), deduplicate_reads)
 @collate(r'deduplicated/*.fastq.gz',
@@ -589,10 +601,15 @@ def aggregate_stats(infiles, outfile):
 
 
       
-#@follows(ccanalyser)
-#@transform('ccanalyser/*.stats', regex(r'ccanalyser/(.*).stats'), r'report/\1.html')
-#def build_report(infile, outfile):
-#    '''Run jupyter notebook for reporting and plotting'''
+@follows(aggregate_stats)
+@merge('stats/*.tsv', r'report/pipeline_run_stats.html')
+def build_report(infile, outfile):
+    '''Run jupyter notebook for reporting and plotting'''
+    statement = '''jupyter nbconvert %(scripts_dir)s/visualise_capture-c_stats.ipynb --to ipynb --output $(pwd)/stats/run_statistics.ipynb &&
+                   jupyter nbconvert stats/run_statistics.ipynb'''
+    
+    P.run(statement, job_queue=P.PARAMS['queue'])
+
 
 if __name__ == "__main__":
         sys.exit( P.main(sys.argv))
