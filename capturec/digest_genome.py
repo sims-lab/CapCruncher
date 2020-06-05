@@ -38,7 +38,7 @@ def main():
             for seq_entry in fasta_file:
                 # Find match positions of the restriction enzyme sequence
                 seq_length = len(seq_entry.sequence)
-                match_positions = [m.start() for m in re.finditer(args.cut_sequence, seq_entry.sequence)]
+                match_positions = [m.start() for m in re.finditer(args.cut_sequence, seq_entry.sequence.upper())]
                 # iterate through matches and write to bed file
                 slice_start = 0
                 for match_index, match_pos in enumerate(match_positions):

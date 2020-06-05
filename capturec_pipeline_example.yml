@@ -1,0 +1,32 @@
+queue: batchq
+threads: 6
+memory: 4G
+chunksize: 1000000
+compression: 5
+scripts_dir: /t1-data/user/asmith/Projects/capturec_dev/capture-c/capturec
+pre-dedup: True
+trim:
+    options: --paired --length 21
+align:
+    aligner: bowtie2
+    index_flag: -x
+    index: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/Bowtie2Index/genome
+    options: -k 5 --very-sensitive -p 6
+genome:
+    fasta: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa
+    fai: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa.fai
+    chrom_sizes: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/chr_sizes.txt
+ccanalyser:
+    capture: capture-c_oligos.bed
+    re_map: ccanalyser/mm9.digested.fa
+    exclude_window: 1000
+    memory: 4G
+    re: DpnII
+    blacklist:
+hub:
+    publoc: /public/asmith/capture-c/
+    name: ABM_asmith_bowtie2_k2
+    genome: mm9
+    short: ABM_asmith_pipeline
+    long: ABM dataset with python pipeline
+    email: alastair.smith@ndcls.ox.ac.uk
