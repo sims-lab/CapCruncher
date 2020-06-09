@@ -1,32 +1,35 @@
-queue: batchq
-threads: 6
-memory: 4G
-chunksize: 1000000
-compression: 5
-scripts_dir: /t1-data/user/asmith/Projects/capturec_dev/capture-c/capturec
-pre-dedup: True
+run_options:
+    queue: batchq # For use with cluster
+    scripts_dir: /t1-data/user/asmith/Projects/capturec_dev/capture-c/capturec # Location of scripts
+    threads: 6 # Maximum number of threads/cores to use
+    memory: 4G # Memory requirement for jobs
+    compression_level: 5 # Sets the level of gzip compression 1=low (faster) 9=high (slower but space saving)
+deduplication:
+    pre-dedup: True # Turns on initial removal of identical reads
 trim:
-    options: --paired --length 21
+    options: --paired --length 21 # Options passed to trim_galore
+split:
+    n_reads: 1000000 # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
 align:
-    aligner: bowtie2
-    index_flag: -x
-    index: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/Bowtie2Index/genome
-    options: -k 5 --very-sensitive -p 6
+    aligner: bowtie2 # Aligner to use
+    index_flag: -x # Flag to specify index for the aligner. Leave blank for none i.e. bowtie
+    index: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/Bowtie2Index/genome # Location of aligner index
+    options: -k 5 --very-sensitive -p 6 # Aligner parameters
 genome:
-    fasta: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa
-    fai: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa.fai
-    chrom_sizes: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/chr_sizes.txt
+    fasta: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa # Location of fasta for genome build
+    fai: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa.fai # Location of fasta index
+    chrom_sizes: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/chr_sizes.txt # List of chromosome sizes for genome build
 ccanalyser:
-    capture: capture-c_oligos.bed
-    re_map: ccanalyser/mm9.digested.fa
-    exclude_window: 1000
-    memory: 4G
-    re: DpnII
-    blacklist:
+    capture: capture-c_oligos.bed # Location of bed file specifying Capture-C restriction fragments (.bed format)
+    exclude_window: 1000 # Region around capture fragment to ignore interactions (re-ligation events v. likely)
+    re: DpnII # Name of restriction enzyme (case insensitive)
+    blacklist: # Regions to blacklist (.bed format)
 hub:
-    publoc: /public/asmith/capture-c/
-    name: ABM_asmith_bowtie2_k2
-    genome: mm9
-    short: ABM_asmith_pipeline
-    long: ABM dataset with python pipeline
-    email: alastair.smith@ndcls.ox.ac.uk
+    url: http://userweb.molbiol.ox.ac.uk/ # Url/IP of server to host bigWigs
+    publoc: /public/asmith/capture-c/ # Location of publically accessible location on the server
+    name: ABM_asmith_bowtie2_k2 # Name for the hub (UCSC required)
+    genome: mm9 # Genome build (UCSC required)
+    short: ABM_asmith_pipeline # Short hub name (UCSC required)
+    long: ABM dataset with python pipeline # Long hub name (UCSC required)
+    email: alastair.smith@ndcls.ox.ac.uk # Email address (UCSC required)
+    colors: red blue green yellow black # Colours to use for bigWig tracks. Leave blank for random. Colours are cycled if there are more tracks than colours
