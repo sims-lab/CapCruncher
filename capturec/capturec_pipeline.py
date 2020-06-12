@@ -421,19 +421,19 @@ def merge_annotations(infiles, outfile):
 
 
 @follows(merge_annotations,
-         mkdir('ccanalyser/bed_files'),
+         mkdir('ccanalyser/captures_and_reporters'),
          mkdir('ccanalyser/stats'))
 @transform(align_reads,
            regex(r'aligned/(.*).bam'),
            add_inputs(r'ccanalyser/annotations/\1.annotations.tsv.gz'),
-           r'ccanalyser/bed_files/\1.reporter.bed.gz')
+           r'ccanalyser/captures_and_reporters/\1.reporter.bed.gz')
 def ccanalyser(infiles, outfile):
     '''Processes bam files and annotations, filteres slices and outputs
        reporter slices for each capture site'''
 
     bam, annotations = infiles
     bed_out = outfile.replace('.reporter.bed.gz', '')
-    stats_out = bed_out.replace('bed_files', 'stats')
+    stats_out = bed_out.replace('captures_and_reporters', 'stats')
     statement =  '''python %(run_options_scripts_dir)s/ccanalyser.py
                     -i %(bam)s
                     -a %(annotations)s
@@ -443,10 +443,10 @@ def ccanalyser(infiles, outfile):
           job_queue=P.PARAMS['run_options_queue'],
           job_memory=P.PARAMS['run_options_memory'])
 
-@follows(ccanalyser, mkdir('ccanalyser/bed_files_combined'))
-@collate('ccanalyser/bed_files/*.bed.gz',
-         regex(r'ccanalyser/bed_files/(.*)\..*_\d+_(.*).bed.gz'),
-         r'ccanalyser/bed_files_combined/\1_\2.bed.gz')
+@follows(ccanalyser, mkdir('ccanalyser/reporters_aggregated'))
+@collate('ccanalyser/captures_and_reporters/*.tsv.gz',
+         regex(r'ccanalyser/captures_and_reporters/(.*)\..*_\d+_(.*).tsv.gz'),
+         r'ccanalyser/reporters_aggregated/\1_\2.tsv.gz')
 def collate_ccanalyser_output(infiles, outfile):
     '''Combines multiple capture site bed files'''
 
@@ -457,17 +457,19 @@ def collate_ccanalyser_output(infiles, outfile):
 
 @follows(mkdir('ccanalyser/bedgraphs'))
 @transform(collate_ccanalyser_output,
-           regex(r'ccanalyser/bed_files_combined/(.*).bed.gz'),
+           regex(r'ccanalyser/reporters_aggregated/(.*).tsv.gz'),
            add_inputs(digest_genome),
            r'ccanalyser/bedgraphs/\1.bedgraph.gz')
 def make_bedgraph(infiles, outfile):
     '''Intersect reporters with genome restriction fragments to create bedgraph'''
-    bed_fn = infiles[0]
+    tsv_fn = infiles[0]
     re_map = infiles[1]
-    statement = '''bedtools coverage -counts -a %(re_map)s -b %(bed_fn)s
-                   | awk 'BEGIN{OFS="\\t"}{print $1, $2, $3, $5}'
-                   | sort -k1,1 -k2,2n
-                   | gzip > %(outfile)s'''
+    statement = '''python
+                   %(run_options_scripts_dir)s/convert_tsv_to_bedgraph.py
+                   --reporter_tsv %(tsv_fn)s
+                   --re_map %(re_map)s
+                   --output %(outfile)s'''
+
     P.run(statement,
           job_queue=P.PARAMS['run_options_queue'])
 
