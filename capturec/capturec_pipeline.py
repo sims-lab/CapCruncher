@@ -499,7 +499,10 @@ def generate_hub_metadata(outfile):
                'longLabel': P.PARAMS['hub_long'] if P.PARAMS['hub_long'] else P.PARAMS['hub_name'],
                'genomesFile': 'genomes.txt',
                'email': P.PARAMS['hub_email'],
-               'descriptionUrl': f'{P.PARAMS["hub_url"].rstrip("/")}/{P.PARAMS["hub_publoc"].strip("/")}',
+               'descriptionUrl': '/'.join([P.PARAMS["hub_url"].rstrip('/'),
+                                           assembly_dir.rstrip('/'),
+                                           'visualise_run_statistics.html'
+                                           ])
                }
 
     with open(outfile, 'w') as w:
@@ -587,18 +590,6 @@ def generate_trackdb_metadata(infiles, outfile):
                 # Need to separate each track with a new line
                 w.write('\n')
 
-
-@follows(generate_trackdb_metadata)
-@transform(make_bigwig,
-          regex('visualise/(.*).bigWig'),
-          f'{assembly_dir}' + r'/\1.bigWig')
-def link_bigwigs(infile, outfile):
-    try:
-        infile_fp = os.path.abspath(infile)
-        os.symlink(infile_fp, outfile)
-    except Exception as e:
-        print(e)
-
 @follows(ccanalyser)
 @merge(['fastq_pre-processing/deduplicated/*.log',
         'fastq_pre-processing/digested/*.log',
@@ -643,6 +634,16 @@ def build_report(infile, outfile):
 
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
+@follows(generate_trackdb_metadata)
+@transform([make_bigwig, build_report],
+          regex('.*/(.*)$'),
+          assembly_dir + r'/\1')
+def link_files(infile, outfile):
+    try:
+        infile_fp = os.path.abspath(infile)
+        os.symlink(infile_fp, outfile)
+    except Exception as e:
+        print(e)
 
 if __name__ == "__main__":
         sys.exit( P.main(sys.argv))
