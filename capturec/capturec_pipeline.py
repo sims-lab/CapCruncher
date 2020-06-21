@@ -30,12 +30,27 @@ from pybedtools import BedTool
 import itertools
 from pysam import FastxFile
 from cgatcore import pipeline as P
-from ruffus import mkdir, follows, transform, merge, originate, collate, split, regex, add_inputs, suffix
+from ruffus import (mkdir,
+                    follows,
+                    transform,
+                    merge,
+                    originate,
+                    collate,
+                    split,
+                    regex,
+                    add_inputs,
+                    suffix,
+                    active_if)
 
 # Read in parameter file
 P.get_parameters('capturec_pipeline.yml')
-hub_dir = os.path.join(P.PARAMS["hub_publoc"], P.PARAMS['hub_name'])
-assembly_dir = os.path.join(hub_dir, P.PARAMS['hub_genome'])
+
+# Global vars
+ON_VALS = ['true', 't', 'on', 'yes', 'y', '1']
+CREATE_HUB = str(P.PARAMS['hub_create_hub']).lower() in ON_VALS
+if CREATE_HUB:
+    HUB_DIR = os.path.join(P.PARAMS["hub_publoc"], P.PARAMS['hub_name'])
+    ASSEMBLY_DIR = os.path.join(HUB_DIR, P.PARAMS['genome_name'])
 
 
 @follows(mkdir('ccanalyser'), mkdir('ccanalyser/restriction_enzyme_map/'))
@@ -78,7 +93,8 @@ def multiqc_reads (infile, outfile):
     bn = os.path.basename(outfile)
     dn = os.path.dirname(outfile)
 
-    statement = '''export LC_ALL=en_US.UTF-8 &&
+    statement = '''rm -f %(outfile)s &&
+                   export LC_ALL=en_US.UTF-8 &&
                    export LANG=en_US.UTF-8 &&
                    multiqc fastq_pre-processing/fastqc/
                    -o %(dn)s
@@ -101,7 +117,7 @@ def deduplicate_reads(infiles, outfile):
     out1, out2 = outfile, outfile.replace('_1.fastq.gz', '_2.fastq.gz')
     logfile = out1.replace('_1.fastq.gz', '.log')
 
-    if P.PARAMS['deduplication_pre-dedup']:
+    if str(P.PARAMS['deduplication_pre-dedup']).lower() in ON_VALS:
 
         statement = '''python %(run_options_scripts_dir)s/deduplicate_fastq.py
                                -1 %(fq1)s -2 %(fq2)s
@@ -276,7 +292,8 @@ def mapping_multiqc(infiles, outfile):
     indir = os.path.dirname(infiles[0])
     out_fn = os.path.basename(outfile)
     out_dn = os.path.dirname(outfile)
-    statement = '''export LC_ALL=en_US.UTF-8 &&
+    statement = '''rm -f %(outfile)s &&
+                   export LC_ALL=en_US.UTF-8 &&
                    export LANG=en_US.UTF-8 &&
                    multiqc
                    %(indir)s
@@ -446,7 +463,7 @@ def ccanalyser(infiles, outfile):
 @follows(ccanalyser, mkdir('ccanalyser/reporters_aggregated'))
 @collate('ccanalyser/captures_and_reporters/*.tsv.gz',
          regex(r'ccanalyser/captures_and_reporters/(.*)\..*_\d+_(.*).tsv.gz'),
-         r'ccanalyser/reporters_aggregated/\1_\2.tsv.gz')
+         r'ccanalyser/reporters_aggregated/\1.\2.tsv.gz')
 def collate_ccanalyser_output(infiles, outfile):
     '''Combines multiple capture site bed files'''
 
@@ -490,8 +507,32 @@ def make_bigwig(infile, outfile):
           job_queue=P.PARAMS['run_options_queue'])
 
 
-@follows(mkdir(hub_dir))
-@originate(os.path.join(hub_dir, 'hub.txt'))
+def write_dict_to_file(fn, dictionary):
+    with open(fn, 'w') as w:
+        for k, v in dictionary.items():
+            w.write(f'{k} {v}\n')
+
+def get_track_data(fn):
+    track_dict =    {'track': fn,
+                    'bigDataUrl': f'{P.PARAMS["hub_url"].rstrip("/")}/{(os.path.join(ASSEMBLY_DIR, fn)).lstrip("/")}',
+                    'shortLabel': fn,
+                    'longLabel': fn,
+                    'type': f'{fn.split(".")[-1]}',
+                    }
+
+    if P.PARAMS['hub_track_options']:
+        try:
+            options = [op.strip() for op in P.PARAMS['hub_track_options'].split()]
+            options_dict = dict(zip(options[0::2], options[1::2]))
+            track_dict.update(options_dict)
+        except Exception as e:
+            print('Invalid custom track options')
+
+    return track_dict
+
+@active_if(CREATE_HUB)
+@follows(mkdir(HUB_DIR))
+@originate(os.path.join(HUB_DIR, 'hub.txt'))
 def generate_hub_metadata(outfile):
 
     content = {'hub': P.PARAMS['hub_name'],
@@ -500,39 +541,29 @@ def generate_hub_metadata(outfile):
                'genomesFile': 'genomes.txt',
                'email': P.PARAMS['hub_email'],
                'descriptionUrl': '/'.join([P.PARAMS["hub_url"].rstrip('/'),
-                                           assembly_dir.rstrip('/'),
+                                           ASSEMBLY_DIR.rstrip('/'),
                                            'visualise_run_statistics.html'
                                            ])
                }
 
-    with open(outfile, 'w') as w:
-        for label, info in content.items():
-            w.write(f'{label} {info}\n')
+    write_dict_to_file(outfile, content)
+
 
 
 @follows(generate_hub_metadata)
-@originate(os.path.join(hub_dir, 'genomes.txt'))
+@originate(os.path.join(HUB_DIR, 'genomes.txt'))
 def generate_assembly_metadata(outfile):
 
-    content = {'genome': P.PARAMS['hub_genome'],
-               'trackDb': os.path.join(P.PARAMS['hub_genome'], 'trackDb.txt'),
+    content = {'genome': P.PARAMS['genome_name'],
+               'trackDb': os.path.join(P.PARAMS['genome_name'], 'trackDb.txt'),
               }
 
-    with open(outfile, 'w') as w:
-        for label, info in content.items():
-            w.write(f'{label} {info}\n')
+    write_dict_to_file(outfile, content)
 
-
-@follows(generate_hub_metadata, mkdir(assembly_dir))
-@merge(make_bigwig, f'{assembly_dir}/trackDb.txt')
+@active_if(CREATE_HUB)
+@follows(generate_hub_metadata, mkdir(ASSEMBLY_DIR))
+@merge(make_bigwig, f'{ASSEMBLY_DIR}/trackDb.txt')
 def generate_trackdb_metadata(infiles, outfile):
-    def get_track_data(fn):
-        return {'track': fn,
-                'bigDataUrl': f'{P.PARAMS["hub_url"].rstrip("/")}/{(os.path.join(assembly_dir, fn)).lstrip("/")}',
-                'shortLabel': fn,
-                'longLabel': fn,
-                'type': f'{fn.split(".")[-1]}',
-                }
 
     # Generate all separate tracks
     bigwig_tracks_all = [get_track_data(os.path.basename(fn)) for fn in infiles]
@@ -559,7 +590,7 @@ def generate_trackdb_metadata(infiles, outfile):
             w.write('\n')
 
         #Group tracks by sample name and make separate combined tracks for each
-        sample_key = lambda d: d['track'].split('.')[0].split('_')[0]
+        sample_key = lambda d: d['track'].split('.')[0]
         bigwig_tracks_grouped = {sample: list(track) for sample, track in
                                  itertools.groupby(sorted(bigwig_tracks_all, key=sample_key), key=sample_key)}
 
@@ -573,7 +604,8 @@ def generate_trackdb_metadata(infiles, outfile):
                                       'type': 'bigWig 0 250',
                                       'shortLabel': f'{sample}_combined',
                                       'longLabel': f'{sample}_all_capture_probes_combined',
-                                     }
+                                      'autoScale': 'on',
+                                      'windowingFunction': 'maximum' }
 
             # Write overlay track
             for label, data in combined_track_details.items():
@@ -620,13 +652,12 @@ def aggregate_stats(infiles, outfile):
 def build_report(infile, outfile):
     '''Run jupyter notebook for reporting and plotting. First moves the notebook
        then converts to html'''
-    statement = '''papermill
+    statement = '''rm run_statistics/visualise_run_statistics* -f &&
+                   papermill
                    %(run_options_scripts_dir)s/visualise_capture-c_stats.ipynb
                    run_statistics/visualise_run_statistics.ipynb
-                   -p directory $(pwd)/run_statistics/
-                   &&
-                   jupyter
-                   nbconvert
+                   -p directory $(pwd)/run_statistics/ &&
+                   jupyter nbconvert
                    --no-input
                    run_statistics/visualise_run_statistics.ipynb
                    run_statistics/visualise_run_statistics.html
@@ -634,10 +665,11 @@ def build_report(infile, outfile):
 
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
+@active_if(CREATE_HUB)
 @follows(generate_trackdb_metadata)
 @transform([make_bigwig, build_report],
           regex('.*/(.*)$'),
-          assembly_dir + r'/\1')
+          ASSEMBLY_DIR + r'/\1')
 def link_files(infile, outfile):
     try:
         infile_fp = os.path.abspath(infile)

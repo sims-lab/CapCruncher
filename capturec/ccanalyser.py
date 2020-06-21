@@ -123,14 +123,15 @@ class SliceFilter():
         return self
 
     def remove_duplicate_slices_pe(self):
-        fragments = self.fragments.assign(read_start=lambda df: df['coordinates'].str.split('|').str[0]
-                                                                                 .str.split('-').str[0]
-                                                                                 .str.split(':').str[1],
-                                          read_end=lambda df: df['coordinates'].str.split('|').str[-1]
-                                                                               .str.split('-').str[1])
-        frags_duplicated = fragments.loc[(fragments.duplicated(subset=['read_start', 'read_end']))
-                                         & (fragments['pe'] == 'pe')]
-        self.slices = self.slices[~self.slices['parent_read'].isin(frags_duplicated['parent_read'])]
+        if self.slices['pe'].str.contains('pe').sum() > 1: # if un-flashed
+            fragments = self.fragments.assign(read_start=lambda df: df['coordinates'].str.split('|').str[0]
+                                                                                     .str.split('-').str[0]
+                                                                                     .str.split(':').str[1],
+                                              read_end=lambda df: df['coordinates'].str.split('|').str[-1]
+                                                                                   .str.split('-').str[1])
+            frags_duplicated = fragments.loc[(fragments.duplicated(subset=['read_start', 'read_end']))
+                                             & (fragments['pe'] == 'pe')]
+            self.slices = self.slices[~self.slices['parent_read'].isin(frags_duplicated['parent_read'])]
         return self
 
     def remove_exluded_and_blacklisted_slices(self):
