@@ -26,6 +26,7 @@ import os
 import gzip
 import seaborn as sns
 import matplotlib.colors
+import pandas as pd
 from pybedtools import BedTool
 import itertools
 from pysam import FastxFile
@@ -42,16 +43,21 @@ from ruffus import (mkdir,
                     suffix,
                     active_if)
 
-# Read in parameter file
-P.get_parameters('capturec_pipeline.yml')
 
 # Global vars
 ON_VALS = ['true', 't', 'on', 'yes', 'y', '1']
-CREATE_HUB = str(P.PARAMS['hub_create_hub']).lower() in ON_VALS
-if CREATE_HUB:
-    HUB_DIR = os.path.join(P.PARAMS["hub_publoc"], P.PARAMS['hub_name'])
-    ASSEMBLY_DIR = os.path.join(HUB_DIR, P.PARAMS['genome_name'])
 
+# Script location
+SCRIPT_PATH = os.path.abspath(__file__)
+SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
+
+# Read in parameter file
+P.get_parameters('capturec_pipeline.yml')
+
+# Sort global variables
+P.PARAMS['SCRIPT_DIR'] = SCRIPT_DIR
+HUB_DIR = os.path.join(P.PARAMS["hub_publoc"], P.PARAMS['hub_name'])
+ASSEMBLY_DIR = os.path.join(HUB_DIR, P.PARAMS['genome_name'])
 
 @follows(mkdir('ccanalyser'), mkdir('ccanalyser/restriction_enzyme_map/'))
 @transform(P.PARAMS['genome_fasta'],
@@ -60,7 +66,7 @@ if CREATE_HUB:
 def digest_genome(infile, outfile):
     '''Digest genome using restriction enzyme and output fragments in bed file'''
     tmp = outfile.replace('.gz', '')
-    statement = '''python %(run_options_scripts_dir)s/digest_genome.py
+    statement = '''python %(SCRIPT_DIR)s/digest_genome.py
                    -i %(infile)s -o %(tmp)s -r %(ccanalyser_re)s
                    -l %(tmp)s.log
                    && gzip %(tmp)s'''
@@ -68,7 +74,9 @@ def digest_genome(infile, outfile):
           job_queue=P.PARAMS['run_options_queue'])
 
 
-@follows(mkdir('fastq_pre-processing'), mkdir('fastq_pre-processing/fastqc'))
+@follows(mkdir('fastq_pre-processing'),
+         mkdir('fastq_pre-processing/fastqc')
+        )
 @transform('*.fastq.gz',
            regex(r'(.*).fastq.gz'),
            r'fastq_pre-processing/fastqc/\1_fastqc.zip')
@@ -96,7 +104,8 @@ def multiqc_reads (infile, outfile):
     statement = '''rm -f %(outfile)s &&
                    export LC_ALL=en_US.UTF-8 &&
                    export LANG=en_US.UTF-8 &&
-                   multiqc fastq_pre-processing/fastqc/
+                   multiqc
+                   fastq_pre-processing/fastqc/
                    -o %(dn)s
                    -n %(bn)s'''
     P.run(statement,
@@ -119,7 +128,7 @@ def deduplicate_reads(infiles, outfile):
 
     if str(P.PARAMS['deduplication_pre-dedup']).lower() in ON_VALS:
 
-        statement = '''python %(run_options_scripts_dir)s/deduplicate_fastq.py
+        statement = '''python %(SCRIPT_DIR)s/deduplicate_fastq.py
                                -1 %(fq1)s -2 %(fq2)s
                                --out1 %(out1)s --out2 %(out2)s
                                -l %(logfile)s
@@ -145,9 +154,10 @@ def deduplicate_reads(infiles, outfile):
          r'fastq_pre-processing/trimmed/\1_1_val_1.fq.gz')
 def trim_reads(infiles, outfile):
     '''Trim adaptor sequences using Trim-galore'''
+
     fastq1, fastq2 = infiles
     outdir = os.path.dirname(outfile)
-    statement = '''trim_galore --cores %(run_options_threads)s %(trim_options)s -o %(outdir)s
+    statement = '''trim_galore --cores %(run_options_threads)s --paired %(trim_options)s -o %(outdir)s
                      %(fastq1)s %(fastq2)s'''
     P.run(statement,
           job_queue=P.PARAMS['run_options_queue'],
@@ -183,7 +193,7 @@ def split_fastq(infile, outfile):
     #Small error in function as only processes chunksize - 1 reads
     output_prefix = outfile.replace('_0.fastq.gz', '')
     statement = '''python
-                   %(run_options_scripts_dir)s/split_fastq.py
+                   %(SCRIPT_DIR)s/split_fastq.py
                   -i %(infile)s
                   -n %(output_prefix)s
                   --chunk_size %(split_n_reads)s
@@ -197,7 +207,7 @@ def split_fastq(infile, outfile):
            r'fastq_pre-processing/digested/\1.flashed_\2.fastq.gz')
 def digest_flashed_reads(infile, outfile):
     '''In silico restriction enzyme digest of combined (flashed) read pairs'''
-    statement = '''python %(run_options_scripts_dir)s/digest_fastq.py
+    statement = '''python %(SCRIPT_DIR)s/digest_fastq.py
                    -o %(outfile)s
                    -l %(outfile)s.log
                    -r %(ccanalyser_re)s
@@ -218,7 +228,7 @@ def digest_pe_reads(infiles, outfile):
     '''In silico restriction enzyme digest of non-combined (non-flashed) read pairs'''
 
     fq1, fq2 = infiles
-    statement = '''python %(run_options_scripts_dir)s/digest_fastq.py
+    statement = '''python %(SCRIPT_DIR)s/digest_fastq.py
                    -l %(outfile)s.log
                    -r %(ccanalyser_re)s
                    -o %(outfile)s
@@ -429,7 +439,7 @@ def blacklist_intersect_count(infile, outfile):
 def merge_annotations(infiles, outfile):
     '''Merge all intersections into a single file '''
     inlist = " ".join(infiles)
-    statement = '''python %(run_options_scripts_dir)s/join_tsv.py
+    statement = '''python %(SCRIPT_DIR)s/join_tsv.py
                    -f read_name
                    -o %(outfile)s
                    -i %(inlist)s'''
@@ -451,7 +461,7 @@ def ccanalyser(infiles, outfile):
     bam, annotations = infiles
     bed_out = outfile.replace('.reporter.bed.gz', '')
     stats_out = bed_out.replace('captures_and_reporters', 'stats')
-    statement =  '''python %(run_options_scripts_dir)s/ccanalyser.py
+    statement =  '''python %(SCRIPT_DIR)s/ccanalyser.py
                     -i %(bam)s
                     -a %(annotations)s
                     --bed_output %(bed_out)s
@@ -467,10 +477,8 @@ def ccanalyser(infiles, outfile):
 def collate_ccanalyser_output(infiles, outfile):
     '''Combines multiple capture site bed files'''
 
-    infiles = ' '.join(infiles)
-    statement = '''cat %(infiles)s > %(outfile)s'''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'])
+    dframes = pd.concat([pd.read_csv(fn) for fn in infiles])
+    dframes.to_csv(outfile, index=False)
 
 @follows(mkdir('ccanalyser/bedgraphs'))
 @transform(collate_ccanalyser_output,
@@ -482,7 +490,7 @@ def make_bedgraph(infiles, outfile):
     tsv_fn = infiles[0]
     re_map = infiles[1]
     statement = '''python
-                   %(run_options_scripts_dir)s/convert_tsv_to_bedgraph.py
+                   %(SCRIPT_DIR)s/convert_tsv_to_bedgraph.py
                    --reporter_tsv %(tsv_fn)s
                    --re_map %(re_map)s
                    --output %(outfile)s'''
@@ -530,8 +538,7 @@ def get_track_data(fn):
 
     return track_dict
 
-@active_if(CREATE_HUB)
-@follows(mkdir(HUB_DIR))
+@mkdir(HUB_DIR)
 @originate(os.path.join(HUB_DIR, 'hub.txt'))
 def generate_hub_metadata(outfile):
 
@@ -560,8 +567,8 @@ def generate_assembly_metadata(outfile):
 
     write_dict_to_file(outfile, content)
 
-@active_if(CREATE_HUB)
-@follows(generate_hub_metadata, mkdir(ASSEMBLY_DIR))
+@mkdir(ASSEMBLY_DIR)
+@follows(generate_hub_metadata)
 @merge(make_bigwig, f'{ASSEMBLY_DIR}/trackDb.txt')
 def generate_trackdb_metadata(infiles, outfile):
 
@@ -622,6 +629,17 @@ def generate_trackdb_metadata(infiles, outfile):
                 # Need to separate each track with a new line
                 w.write('\n')
 
+@follows(generate_trackdb_metadata)
+@transform([make_bigwig, build_report],
+          regex('.*/(.*)$'),
+          ASSEMBLY_DIR + r'/\1')
+def link_files(infile, outfile):
+    try:
+        infile_fp = os.path.abspath(infile)
+        os.symlink(infile_fp, outfile)
+    except Exception as e:
+        print(e)
+
 @follows(ccanalyser)
 @merge(['fastq_pre-processing/deduplicated/*.log',
         'fastq_pre-processing/digested/*.log',
@@ -637,7 +655,7 @@ def aggregate_stats(infiles, outfile):
     reporters = ' '.join([fn for fn in infiles if '.reporter.stats' in fn])
     outdir = os.path.dirname(outfile)
 
-    statement =  '''python %(run_options_scripts_dir)s/aggregate_statistics.py
+    statement =  '''python %(SCRIPT_DIR)s/aggregate_statistics.py
                     --deduplication_stats %(dedup)s
                     --digestion_stats %(digestion)s
                     --ccanalyser_stats %(slices)s
@@ -654,7 +672,7 @@ def build_report(infile, outfile):
        then converts to html'''
     statement = '''rm run_statistics/visualise_run_statistics* -f &&
                    papermill
-                   %(run_options_scripts_dir)s/visualise_capture-c_stats.ipynb
+                   %(SCRIPT_DIR)s/visualise_capture-c_stats.ipynb
                    run_statistics/visualise_run_statistics.ipynb
                    -p directory $(pwd)/run_statistics/ &&
                    jupyter nbconvert
@@ -665,17 +683,7 @@ def build_report(infile, outfile):
 
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
-@active_if(CREATE_HUB)
-@follows(generate_trackdb_metadata)
-@transform([make_bigwig, build_report],
-          regex('.*/(.*)$'),
-          ASSEMBLY_DIR + r'/\1')
-def link_files(infile, outfile):
-    try:
-        infile_fp = os.path.abspath(infile)
-        os.symlink(infile_fp, outfile)
-    except Exception as e:
-        print(e)
+
 
 if __name__ == "__main__":
         sys.exit( P.main(sys.argv))
