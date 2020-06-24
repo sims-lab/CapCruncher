@@ -5,35 +5,33 @@ import pandas as pd
 from pybedtools import BedTool
 
 p = argparse.ArgumentParser()
-p.add_argument('--reporter_tsv', help='File name of concatenated reporter_tsv')
-p.add_argument('--re_map', help='Bed file of restriction fragments')
-p.add_argument('--output', help='Output file name')
+p.add_argument('-i','--input', help='Reporter tsv file')
+p.add_argument('-b', '--bed', help='''Bed file to intersect with reporters
+                                      e.g. RE fragments bed file.''')
+p.add_argument('--output', help='Output file name', default='bedgraph.bedgraph')
 args = p.parse_args()
 
 def main():
 
-    df_reporters = pd.read_csv(args.reporter_tsv, sep='\t')
-    df_re_map = pd.read_csv(args.re_map, sep='\t',
-                            header=None,
-                            names=['re_chrom', 're_start', 're_end', 're_name'])
+    df_reporters = (pd.read_csv(args.input, sep='\t') )
+    df_reporters[['reporter_start', 'reporter_end']] = df_reporters[['reporter_start', 'reporter_end']].astype(int)
+    bt_reporters = BedTool.from_dataframe(df_reporters[['reporter_chrom',
+                                                        'reporter_start',
+                                                        'reporter_end',
+                                                        'reporter_read_name']])
+
+    bt_bed = BedTool(args.bed)
 
 
-    df_re_counts = (df_reporters.groupby('restriction_fragment')
-                                .size()
-                                .reset_index()
-                                .rename(columns={0: 'count'})
-                    )
+    #Debug
+    #bt_reporters.saveas('rep.bed')
+    #bt_bed.saveas('bed.bed')
 
-    df_re_counts = df_re_counts.merge(df_re_map,
-                                      left_on='restriction_fragment',
-                                      right_on='re_name')
-
-    bedgraph = (df_re_counts[['re_chrom', 're_start', 're_end', 'count']]
-                            .pipe(BedTool.from_dataframe)
-                            .sort()
-                            .saveas(args.output)
+    bedgraph = (bt_bed.intersect(bt_reporters, c=True)
+                      .sort()
+                      .cut([0,1,2,4])
+                      .saveas(args.output)
                 )
-
 
 if __name__ == '__main__':
     main()
