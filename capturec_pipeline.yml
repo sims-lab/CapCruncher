@@ -7,7 +7,7 @@ run_options:
 deduplication:
     pre-dedup: True 	# Turns on initial removal of identical reads
 trim:
-    options: --paired --length 21 	# Options passed to trim_galore
+    options: --length 21 	# Options passed to trim_galore
 split:
     n_reads: 1000000 	# Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
 align:

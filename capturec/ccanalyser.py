@@ -366,7 +366,7 @@ def main():
 
     # Output the reporter DataFrame for each capture site
     for capture_site, df_rep in capture_site_aggregated_slices:
-        df_rep.to_csv(f'{args.output_prefix}_{capture_site}.tsv.gz',
+        df_rep.to_csv(f'{args.output_prefix}.{capture_site}.tsv.gz',
                       sep='\t',
                       index=False)
 

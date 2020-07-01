@@ -77,8 +77,8 @@ def digest_genome(infile, outfile):
 @follows(mkdir('fastq_pre-processing'),
          mkdir('fastq_pre-processing/fastqc')
         )
-@transform('*.fastq.gz',
-           regex(r'(.*).fastq.gz'),
+@transform('*.fastq*',
+           regex(r'(.*).fastq.*'),
            r'fastq_pre-processing/fastqc/\1_fastqc.zip')
 def qc_reads(infile, outfile):
     '''Quality control of raw sequencing reads'''
@@ -114,8 +114,8 @@ def multiqc_reads (infile, outfile):
 
 
 @follows(mkdir('fastq_pre-processing/deduplicated'))
-@collate('*.fastq.gz',
-         regex(r'(.*)_[12].fastq.gz'),
+@collate('*.fastq*',
+         regex(r'(.*)_R*[12].fastq.*'),
          r'fastq_pre-processing/deduplicated/\1_1.fastq.gz')
 def deduplicate_reads(infiles, outfile):
 
@@ -134,19 +134,32 @@ def deduplicate_reads(infiles, outfile):
                                -l %(logfile)s
                                -c %(run_options_compression_level)s
                               '''
-    else:
+    elif '.fastq.gz' in fq1:
         # If deduplication turned off sylink input files and count number of reads
         statement = '''ln -s $(pwd)/%(fq1)s %(out1)s &&
                        ln -s $(pwd)/%(fq2)s %(out2)s &&
                        lc=$(zcat %(fq1)s | wc -l);
                        logfile=%(logfile)s;
-                       echo -e "Read_pairs_processed\\t$(($lc / 4))\\n" > $logfile;
-                       echo -e "Read_pairs_unique\\t$(($lc / 4))\\n" >> $logfile;
-                       echo -e "Read_pairs_removed\\t0\\n" >> $logfile'''
+                       echo -e "Read_pairs_processed\\t$(($lc / 4))" > $logfile;
+                       echo -e "Read_pairs_unique\\t$(($lc / 4))" >> $logfile;
+                       echo -e "Read_pairs_removed\\t0" >> $logfile'''
+
+    else:
+        # If deduplication turned off gzip input files and count number of reads
+        statement = '''cat %(fq1)s | pigz -p 6 > %(out1)s &
+                       cat %(fq2)s | pigz -p 6  > %(out2)s &
+                       lc=$(cat %(fq1)s | wc -l);
+                       logfile=%(logfile)s;
+                       echo -e "Read_pairs_processed\\t$(($lc / 4))" > $logfile;
+                       echo -e "Read_pairs_unique\\t$(($lc / 4))" >> $logfile;
+                       echo -e "Read_pairs_removed\\t0" >> $logfile'''
+
+
 
     P.run(statement,
           job_queue=P.PARAMS['run_options_queue'],
           job_memory='8G')
+
 
 @follows(mkdir('fastq_pre-processing/trimmed'), deduplicate_reads)
 @collate(r'fastq_pre-processing/deduplicated/*.fastq.gz',
@@ -367,7 +380,6 @@ def exclusion_intersect_count(infile, outfile):
                     | gzip > %(outfile)s'''
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
-
 @transform(bam_to_bed,
            regex(r'ccanalyser/annotations/(.*).bam.bed.gz'),
            r'ccanalyser/annotations/\1.annotation.capture.gz')
@@ -441,11 +453,16 @@ def merge_annotations(infiles, outfile):
     inlist = " ".join(infiles)
     statement = '''python %(SCRIPT_DIR)s/join_tsv.py
                    -f read_name
+                   -o %(outfile)s.tmp
+                   -i %(inlist)s
+                   --method join
+                   &&
+                   python %(SCRIPT_DIR)s/validate_annotations.py
+                   -i %(outfile)s.tmp
                    -o %(outfile)s
-                   -i %(inlist)s'''
+                   '''
     P.run(statement,
           job_queue=P.PARAMS['run_options_queue'])
-
 
 @follows(merge_annotations,
          mkdir('ccanalyser/captures_and_reporters'),
@@ -472,13 +489,19 @@ def ccanalyser(infiles, outfile):
 
 @follows(ccanalyser, mkdir('ccanalyser/reporters_aggregated'))
 @collate('ccanalyser/captures_and_reporters/*.tsv.gz',
-         regex(r'ccanalyser/captures_and_reporters/(.*)\..*_\d+_(.*).tsv.gz'),
+         regex(r'ccanalyser/captures_and_reporters/(.*)\..*_\d+.(.*).tsv.gz'),
          r'ccanalyser/reporters_aggregated/\1.\2.tsv.gz')
 def collate_ccanalyser_output(infiles, outfile):
     '''Combines multiple capture site bed files'''
 
-    dframes = pd.concat([pd.read_csv(fn) for fn in infiles])
-    dframes.to_csv(outfile, index=False)
+    inlist = " ".join(infiles)
+    statement = '''python %(SCRIPT_DIR)s/join_tsv.py
+                   -f reporter_read_name
+                   -i %(inlist)s
+                   -o %(outfile)s
+                   --method concatenate'''
+    P.run(statement,
+          job_queue=P.PARAMS['run_options_queue'])
 
 @follows(mkdir('ccanalyser/bedgraphs'))
 @transform(collate_ccanalyser_output,
@@ -498,7 +521,6 @@ def make_bedgraph(infiles, outfile):
     P.run(statement,
           job_queue=P.PARAMS['run_options_queue'])
 
-
 @follows(mkdir('visualise'))
 @transform(make_bedgraph,
            regex(r'ccanalyser/bedgraphs/(.*).bedgraph.gz'),
@@ -513,7 +535,6 @@ def make_bigwig(infile, outfile):
 
     P.run(statement,
           job_queue=P.PARAMS['run_options_queue'])
-
 
 def write_dict_to_file(fn, dictionary):
     with open(fn, 'w') as w:
@@ -683,6 +704,12 @@ def link_files(infile, outfile):
     except Exception as e:
         print(e)
 
+@originate('hub_url.txt')
+def write_hub_path(outfile):
+
+    with open(outfile, 'w') as w:
+        w.write(f'{P.PARAMS["hub_url"].rstrip("/")}/{os.path.join(HUB_DIR, "hub.txt").lstrip("/")}\n')
+
 
 if __name__ == "__main__":
-        sys.exit( P.main(sys.argv))
+        sys.exit(P.main(sys.argv))
