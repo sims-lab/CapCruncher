@@ -7,26 +7,51 @@ from functools import wraps
 import numpy as np
 from datetime import timedelta
 
+
 p = argparse.ArgumentParser()
 p.add_argument('-i', '--input_bam', help='BAM file to parse')
 p.add_argument('-a', '--annotations',
                help='Tab-delimited text file containing annotation for each read in bam file')
 p.add_argument('--output_prefix', help= 'Output file prefix', default='ccanalyser_out')
 p.add_argument('--stats_output', help= 'stats files output prefix', default='stats')
-args = p.parse_args()
-
-
-# assertions - check all input files exist
-assert os.path.isfile(args.input_bam), "Input sam file not found"
-assert os.path.isfile(args.annotations), "Annotation file  not found"
-
 
 class SliceFilter():
+    '''Class containing methods for filtering slices and reporting
+       slice/fragment statistics.
+
+       Attributes:
+        slices: DataFrame containing aligned reads and annotations.
+
+       Slices DataFrame must have the following columns:
+
+       - read_name: Unique aligned read identifier (e.g. XZKG:889:11|flashed|1)
+       - parent_read: Identifier shared by slices from same fragment (e.g.XZKG:889:11)
+       - pe: Read combined by FLASh or not (i.e. "flashed" or "pe")
+       - mapped: Alignment is mapped (e.g. 0/1)
+       - slice: Slice number (e.g. 0)
+       - capture: Capture site intersecting slice (e.g. Slc25A37)
+       - capture_count: Number of capture probes overlapping slice (e.g. 1)
+       - exclusion: Read present in excluded region (e.g. Slc25A37)
+       - exclusion_count: Number of excluded regions overlapping slice (e.g. 1)
+       - blacklist: Read present in excluded region (e.g. 0)
+       - coordinates: Genome coordinates (e.g. chr1|1000|2000)
+
+       '''
     def __init__(self, slices):
         self.slices = slices
 
     @property
     def fragments(self):
+        '''Summarises slices at the fragment level.
+
+           Uses pandas groupby to aggregate slices by their parental read name
+           (shared by all slices from the same fragment). Also determines the
+           number of reporter slices for each fragment.
+
+          Returns:
+            Dataframe of slices aggregated by fragment
+
+           '''
         df =  (self.slices.sort_values(['parent_read', 'chrom', 'start'])
                            .groupby('parent_read', as_index=False)
                            .agg({'slice':'nunique',
@@ -41,12 +66,19 @@ class SliceFilter():
                                  'blacklist': 'sum',
                                  'coordinates':'|'.join
                                 }))
-        df['capture'] = df['capture'] - 1
-        df['exclusion'] = df['exclusion'] - 1
-        df['reporter_count'] = np.where(df['capture_count'] > 0,
-                                        df['mapped'] - (df['exclusion_count'] + df['capture_count'] + df['blacklist']),
-                                        0)
+        df['capture'] = df['capture'] - 1 # nunique identifies '-' as a capture site
+        df['exclusion'] = df['exclusion'] - 1 # as above
 
+        # Add the number of reporters to the dataframe.
+        # Only consider a reporter if at least one capture slice is present
+        # in the fragment.
+        df['reporter_count'] = np.where(df['capture_count'] > 0,
+                                        df['mapped'] -
+                                        (df['exclusion_count'] +
+                                         df['capture_count'] +
+                                         df['blacklist']),
+                                         0)
+        # Rename for clarity
         df = df.rename(columns={'capture': 'unique_capture_sites',
                                 'exclusion': 'unique_exclusion_sites',
                                 'restriction_fragment': 'unique_restriction_fragments',
@@ -58,6 +90,20 @@ class SliceFilter():
 
     @property
     def slice_stats(self):
+        '''Gets statisics at a slice level.
+
+           Aggregates slices to determine the number of:
+           -unique slices
+           -unique fragments
+           -unique capture sites
+           -capture slices
+           -excluded slices
+           -blacklisted slices
+
+           Returns:
+            Dataframe containing slice statistics
+        '''
+
         return (self.slices.agg({'read_name': 'nunique',
                          'parent_read': 'nunique',
                          'mapped': 'sum',
@@ -93,23 +139,37 @@ class SliceFilter():
     @property
     def reporters(self):
         '''Extracts reporter slices from slices dataframe
-           i.e. non-capture slices'''
+           i.e. non-capture slices
+
+           Returns:
+            Dataframe containg all non-capture slices'''
         return self.slices.query('capture == "-"')
 
     @property
     def captures(self):
         '''Extracts capture slices from slices dataframe
-           i.e. slices that do not have a null capture name'''
+           i.e. slices that do not have a null capture name
+
+           Returns:
+            Dataframe containg all capture slices'''
         return self.slices.query('~(capture == "-")')
 
 
     def remove_unmapped_slices(self):
-        '''Removes slices marked as unmapped (Uncommon)'''
+        '''Removes slices marked as unmapped (Uncommon)
+
+           Returns:
+            SliceFilter
+        '''
         self.slices = self.slices.query('mapped == 1')
         return self
 
     def remove_orphan_slices(self):
-        '''Remove fragments with only one aligned slice (Common)'''
+        '''Remove fragments with only one aligned slice (Common)
+
+           Returns:
+            SliceFilter
+        '''
         fragments = self.fragments
         fragments_multislice = fragments.query('unique_slices > 1')
         self.slices = self.slices[self.slices['parent_read'].isin(fragments_multislice['parent_read'])]
@@ -118,22 +178,33 @@ class SliceFilter():
 
     def remove_duplicate_re_frags(self):
         '''Prevent the same restriction fragment being counted more than once (Uncommon).
-           i.e. --RE_FRAG1--|----Capture----|---RE_FRAG1----'''
+           i.e. --RE_FRAG1--\----Capture----\---RE_FRAG1----
+
+           Returns:
+             SliceFilter
+
+           '''
         self.slices = (self.slices.sort_values('capture_count', ascending=False)
                                   .drop_duplicates(subset=['parent_read', 'restriction_fragment'], keep='first'))
 
         return self
 
     def remove_duplicate_slices(self):
-        '''Remove all slices if the slice coordinates and slice order are shared with another fragment i.e. are PCR duplicates (Common).
-           e.g                  coordinates
-                Frag 1:  chr1|1000|1250|chr1|1500|1750
-                Frag 2:  chr1|1000|1250|chr1|1500|1750
-                Frag 3:  chr1|1050|1275|chr1|1600|1755
-                Frag 4:  chr1|1500|1750|chr1|1000|1250
+        '''Remove all slices if the slice coordinates and slice order are shared
+           with another fragment i.e. are PCR duplicates (Common).
 
-            Frag 2 removed. Frag 1,3,4 retained'''
+           e.g
+                             coordinates
+           | Frag 1:  chr1:1000-1250 chr1:1500-1750
+           | Frag 2:  chr1:1000-1250 chr1:1500-1750
+           | Frag 3:  chr1:1050-1275 chr1:1600-1755
+           | Frag 4:  chr1:1500-1750 chr1:1000-1250
 
+           Frag 2 removed. Frag 1,3,4 retained
+
+           Returns:
+            SliceFilter
+        '''
 
         frags_deduplicated = self.fragments.drop_duplicates(subset="coordinates", keep='first')
         self.slices = self.slices[self.slices['parent_read'].isin(frags_deduplicated['parent_read'])]
@@ -143,7 +214,10 @@ class SliceFilter():
         '''Removes PCR duplicates from non-flashed (PE) fragments (Common).
            Sequence quality is often lower at the 3' end of reads leading to variance in mapping coordinates.
            PCR duplicates are removed by checking that the fragment start and end are not duplicated in the dataframe.
-           '''
+
+           Returns:
+            SliceFilter
+        '''
         if self.slices['pe'].str.contains('pe').sum() > 1: # if un-flashed
             fragments = self.fragments.assign(read_start=lambda df: df['coordinates'].str.split('|').str[0]
                                                                                      .str.split('-').str[0]
@@ -156,48 +230,73 @@ class SliceFilter():
         return self
 
     def remove_exluded_and_blacklisted_slices(self):
-        '''Removes any slices in the exclusion region (default 1kb) and a blacklist (if supplied) (V. Common)'''
+        '''Removes any slices in the exclusion region (default 1kb) and a blacklist (if supplied) (V. Common)
+
+           Returns:
+            SliceFilter'''
         self.slices = self.slices.query('blacklist < 1 and exclusion_count < 1')
         return self
 
     def remove_non_reporter_fragments(self):
-        '''Removes all slices (i.e. the entire fragment) if it has no reporter slices present (Common)'''
+        '''Removes all slices (i.e. the entire fragment) if it has no reporter slices present (Common)
+
+           Returns:
+            SliceFilter
+        '''
         frags_reporter = self.fragments.query('reporter_count > 0')
         self.slices = self.slices[self.slices['parent_read'].isin(frags_reporter['parent_read'])]
         return self
 
     def remove_multi_capture_fragments(self):
-        '''Removes all slices (i.e. the entire fragment) if more than one capture probe is present i.e. double captures (V. Common)'''
+        '''Removes all slices (i.e. the entire fragment) if more than
+           one capture probe is present i.e. double captures (V. Common)
+
+           Returns:
+            SliceFilter
+           '''
         frags_capture = self.fragments.query('0 < unique_capture_sites < 2')
         self.slices = self.slices[self.slices['parent_read'].isin(frags_capture['parent_read'])]
         return self
 
+    @staticmethod
+    def modify_re_frag(frag: str, adjust=1):
+        '''Increases/Decreases the RE frag number.
+
+           e.g. modify_re_frag(DpnII_chr10_5, adjust=1) -> DpnII_chr10_6
+
+           Args:
+            frag: Name of restriction fragment (str)
+            adjust: Adjust fragment identifier number by value
+
+           Returns:
+            Modified fragment name (str)
+        '''
+
+        enzyme, chrom, index = frag.split('_')
+        return '_'.join([enzyme, chrom, str(int(index) + adjust)])
+
     def remove_multicapture_reporters(self, n_adjacent=1):
-        '''Deals with an odd situation in which a reporter spanning two adjacent capture sites is not removed.
-           e.g.
+        '''| Deals with an odd situation in which a reporter spanning two adjacent capture sites is not removed.
+           | e.g.
+           | ------Capture 1----/------Capture 2------
+           |                      -----REP--------
+           |
+           | In this case the "reporter" slice is not considered either a capture or exclusion.
 
-           ------Capture 1----|------Capture 2------
-                        -----REP--------
+           | These cases are dealt with by explicitly removing reporters on restriction fragments
+           | adjacent to capture sites.
 
-           In this case the "reporter" slice is not considered either a capture or exclusion.
+           | The number of adjacent RE fragments can be adjusted with n_adjacent.
 
-           These cases are dealt with by explicitly removing reporters on restriction fragments
-           adjacent to capture sites.
-
-           The number of adjacent RE fragments can be adjusted with n_adjacent.
-           '''
-
-        def modify_re_frag(frag, adjust=1):
-            '''Increases/Decreases the RE frag number by adjust.
-               Returns the modified fragment name.'''
-            enzyme, chrom, index = frag.split('_')
-            return '_'.join([enzyme, chrom, str(int(index) + adjust)])
+           | Returns:
+           |  SliceFilter
+        '''
 
         captures = self.captures
         re_frags = captures['restriction_fragment'].unique()
 
         # Generates a list of restriction fragments to be excluded from further analysis
-        excluded_fragments = [modify_re_frag(frag, modifier)
+        excluded_fragments = [SliceFilter.modify_re_frag(frag, modifier)
                               for frag in re_frags
                               for modifier in range(-n_adjacent, n_adjacent + 1)]
 
@@ -208,8 +307,11 @@ class SliceFilter():
 
         return self
 
+
 def get_timing(task_name=None):
-    '''Gets the time taken by the wrapped function'''
+    ''' Decorator:
+        Gets the time taken by the wrapped function
+    '''
     def wrapper(f):
         @wraps(f)
         def wrapped(*args, **kwargs):
@@ -224,7 +326,23 @@ def get_timing(task_name=None):
     return wrapper
 
 def parse_alignment(aln):
-    '''Parses reads from a bam file into a list'''
+    '''Parses reads from a bam file into a list.
+
+       Args:
+         aln: pysam.AlignmentFile
+       Returns:
+         List containing:
+         -read name
+         -parent reads
+         -flashed status
+         -slice number
+         -mapped status
+         -multimapping status
+         -chromosome number (e.g. chr10)
+         -start (e.g. 1000)
+         -end (e.g. 2000)
+         -coords e.g. (chr10:1000-2000)
+         '''
 
     read_name = aln.query_name
     parent_read, pe, slice_number = read_name.split("|")
@@ -252,11 +370,31 @@ def parse_alignment(aln):
 
 @get_timing(task_name='processing BAM file')
 def parse_bam(bam):
-    '''Uses parse_alignment function to extract all data from the bam file and convert this to a dataframe'''
+    '''Uses parse_alignment function convert bam file to a dataframe.
 
-    df_bam = pd.DataFrame([parse_alignment(aln) for aln in pysam.AlignmentFile(bam, 'rb').fetch(until_eof=True)],
-                          columns=['read_name','parent_read', 'pe', 'slice', 'mapped', 'multimapped',
-                                   'chrom', 'start', 'end', 'coordinates'
+      Args:
+       bam: File name of bam file to process.
+
+      Returns:
+       Dataframe with columns:
+       -'read_name'
+       -'parent_read'
+       -'pe'
+       -'slice'
+       -'mapped'
+       -'multimapped'
+       -'chrom'
+       -'start'
+       -'end'
+       -'coordinates'
+       '''
+
+    df_bam = pd.DataFrame([parse_alignment(aln)
+                           for aln in pysam.AlignmentFile(bam, 'rb').fetch(until_eof=True)
+                          ],
+                          columns=['read_name','parent_read', 'pe', 'slice',
+                                   'mapped', 'multimapped', 'chrom', 'start',
+                                   'end', 'coordinates'
                                    ]
                          )
     df_bam.set_index('read_name', inplace=True)
@@ -264,13 +402,41 @@ def parse_bam(bam):
 
 @get_timing(task_name='merging annotations with BAM input')
 def merge_annotations(df, annotations):
-    '''Combines annotations with the parsed bam file output'''
+    '''Combines annotations with the parsed bam file output.
+
+       Uses pandas outer join on the indexes to merge annotations
+       e.g. number of capture probe overlaps.
+
+       Annotation tsv must have the index as the first column and this index
+       must have intersecting keys with the first dataframe's index.
+
+       Args:
+        df: pd.Dataframe to merge with annotations
+        annotations: Filename of .tsv to read and merge with df
+
+       Returns:
+        Merged dataframe
+
+       '''
     df_ann = pd.read_csv(annotations, sep='\t', header=0, index_col=0)
-    return df.join(df_ann, how='inner').drop(columns=['read_name.1'], errors='ignore')
+
+    return (df.join(df_ann, how='inner')
+              .drop(columns=['read_name.1'], errors='ignore')
+            )
 
 @get_timing(task_name='filtering slices')
 def filter_slices(df_slices):
-    '''Performs filtering of slices using the SliceFilter class and outputs statitsics'''
+    '''Performs filtering of slices with the SliceFilter class.
+       Also outputs statitsics after each major filtering step.
+
+       Args:
+        df_slices: Dataframe. Must contain all of the columns required by
+                   SliceFilter.
+
+       Returns:
+        SliceFilter instance
+
+     '''
 
     slice_filterer = SliceFilter(df_slices)
     stats_prefix = args.stats_output
@@ -307,6 +473,17 @@ def filter_slices(df_slices):
 
 @get_timing(task_name='aggregating reporter slices by capture site and outputing .bed files')
 def aggregate_by_capture_site(capture, reporter):
+
+    '''Merges capture and reporter slices and aggregates dataframe by capture probe.
+
+       Args:
+        capture: Datframe containing capture slices i.e. SliceFilter.captures
+        reporter: Dataframe containing reporter slices i.e. SliceFilter.reporters
+
+       Returns:
+        pandas.core.groupby.generic.DataFrameGroupBy object
+        containing captures and reporters grouped by capture_probe.
+        '''
 
     capture = (capture.set_index('parent_read')
                       .add_prefix('capture_')
@@ -370,9 +547,12 @@ def main():
                       sep='\t',
                       index=False)
 
-
-
-
-
 if __name__ == '__main__':
+
+    args = p.parse_args()
+
+    # assertions - check all input files exist
+    assert os.path.isfile(args.input_bam), "Input sam file not found"
+    assert os.path.isfile(args.annotations), "Annotation file  not found"
+
     main()
