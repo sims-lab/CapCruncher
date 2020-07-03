@@ -9,7 +9,6 @@ p.add_argument('-i','--input', help='Reporter tsv file')
 p.add_argument('-b', '--bed', help='''Bed file to intersect with reporters
                                       e.g. RE fragments bed file.''')
 p.add_argument('--output', help='Output file name', default='bedgraph.bedgraph')
-args = p.parse_args()
 
 def main():
 
@@ -34,4 +33,5 @@ def main():
                 )
 
 if __name__ == '__main__':
+    args = p.parse_args()
     main()

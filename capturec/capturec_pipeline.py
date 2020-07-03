@@ -10,12 +10,21 @@ protocols designed to identify 3d interactions in the genome.
 It takes Illumina paired-end sequencing reads in fastq format (gz compressed)
 as input and performs the following steps:
 
-1: Quality control of raw reads (fastqc, multiqc)
-2: Trimming of reads to remove adaptor sequence (trim-galore)
-3: Combining overlapping read pairs (flash)
-4: In silico digestion of reads (digest_fastq.py)
-5: Classification of mapped read slices (ccanalyser.py)
-6: Deduplication of fragment (dedup_fragments.py)
+1: Identifies all restriction fragments in the genome (digest_genome.py)
+2: Quality control of raw reads (fastqc, multiqc)
+3: Removal of PCR duplicates (based on exact sequence matches; deduplicate_fastq.py)
+4: Trimming of reads to remove adaptor sequence (trim_galore)
+5: Combining overlapping read pairs (flash)
+6: Splits fastq(s) into smaller files (enables fast parallel processing; split_fastq.py)
+7: In silico digestion of reads (digest_fastq.py)
+8: Alignment of fastq files with a user specified aligner (i.e. bowtie/bowtie2; BWA is not supported)
+9: Analysis of alignment statistics (picard CollectAlignmentSummaryMetrics, multiqc)
+10: Intersection of mapped reads with: capture probes, exclusion regions, blacklist, restriction fragments
+11: Classification of mapped read slices (ccanalyser.py)
+12: Generation of bedgraphs/BigWigs (convert_tsv_to_bedgraph.py and make_bigwig)
+13: Generation of a UCSC track hub for visualisation
+14: Collation of run statistics and generation of a run report
+
 
 @authors: asmith, dsims
 """

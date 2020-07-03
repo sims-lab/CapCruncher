@@ -1,0 +1,149 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Running the pipeline &#8212; capture-c 0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="running-the-pipeline">
+<h1>Running the pipeline<a class="headerlink" href="#running-the-pipeline" title="Permalink to this headline">¶</a></h1>
+<p>This section provides details on how to run the pipeline.</p>
+<div class="section" id="pipeline-set-up">
+<h2>Pipeline set-up<a class="headerlink" href="#pipeline-set-up" title="Permalink to this headline">¶</a></h2>
+<p><strong>Step 1</strong>: To run the pipeline you will need to create a <span class="xref std std-term">working directory</span>
+and enter it. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="n">cc_pipeline</span><span class="o">/</span>
+<span class="n">cd</span> <span class="n">cc_pipeline</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>The pipeline will be executed here and all files will be generated
+in this directory.</p>
+<p>The original fastq files will not be modified.</p>
+<p><strong>Step 2</strong>: Edit a copy of capturec_pipeline.yml:</p>
+<p>The YAML file allows the pipeline to be parameterised for different situations.
+Furthermore the pipeline requires a number of additional files in order to run.
+See capturec_pipeline.yml for further details.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cp</span> <span class="n">PATH_TO_REPO</span><span class="o">/</span><span class="n">capture</span><span class="o">-</span><span class="n">c</span><span class="o">/</span><span class="n">capturec_pipeline</span><span class="o">.</span><span class="n">yml</span> <span class="o">.</span>
+<span class="n">gedit</span> <span class="n">capturec_pipeline</span><span class="o">.</span><span class="n">yml</span>
+</pre></div>
+</div>
+<p><strong>Step 3</strong>: Copy or link fastq files into the <span class="xref std std-term">working directory</span>:</p>
+<p>Copy example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cp</span> <span class="n">PATH_TO_FASTQ</span><span class="o">/</span><span class="n">example_R1</span><span class="o">.</span><span class="n">fastq</span><span class="o">.</span><span class="n">gz</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>Symlink example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ln</span> <span class="o">-</span><span class="n">s</span> <span class="n">ABSOLUTE_PATH_TO_FASTQ</span><span class="o">/</span><span class="n">example_R1</span><span class="o">.</span><span class="n">fastq</span><span class="o">.</span><span class="n">gz</span>
+</pre></div>
+</div>
+<p>The pipeline requires that fastq files are paired and in any of these formats:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>samplename_R1.fastq.gz</p></li>
+<li><p>samplename_1.fastq.gz</p></li>
+<li><p>samplename_R1.fastq</p></li>
+<li><p>samplename_1.fastq</p></li>
+</ul>
+</div></blockquote>
+<p>Gziped files are handled appropriately without the need for extraction if .gz is
+present at the end of the file name. Multi-lane fastq files should be
+concatenated prior to running the pipeline.</p>
+<p>All fastq files present in the directory will be processed by the pipeline. They
+will not be re-run if processing has already been completed i.e. if new fastq
+files are added to a pre-run pipeline, only the new files will be processed.</p>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">capture-c</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="ccanalyser.html">capturec/ccanalyser.py</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, asmith, dsims.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/running_the_pipeline.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

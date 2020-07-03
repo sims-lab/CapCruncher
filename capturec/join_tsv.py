@@ -24,7 +24,6 @@ p.add_argument('-m',
                help='join method to use (join/concatenate)',
                choices=['join', 'concatenate'],
                default='join')
-args = p.parse_args()
 
 def format_index_var(var):
     try:
@@ -70,7 +69,6 @@ def main():
         df.to_csv(args.output_file, header=True, sep='\t')
 
 
-
-
 if __name__ == '__main__':
+    args = p.parse_args()
     main()
