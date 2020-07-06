@@ -15,26 +15,33 @@ ccanalyser.py exist in the dataframe. This prevents dataframe missing key errors
 Additional columns can be added.
 
 """
-p = argparse.ArgumentParser()
-p.add_argument('-i', '--input_file', help='input .tsv file')
-p.add_argument('-o', '--output_file', help='output file name', default='joined.tsv')
-p.add_argument('--col_names',
-               help='additional col names to expect',
-               nargs='+',
-               default=[])
-p.add_argument('--dtypes',
-               help='dtypes of additional columns',
-               nargs='+',
-               default=[])
+def get_parser(parser=None):
+    if not parser:
+        parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--input_file', help='input .tsv file')
+    parser.add_argument('-o', '--output_file', help='output file name', default='joined.tsv')
+    parser.add_argument('--col_names',
+                   help='additional col names to expect',
+                   nargs='+',
+                   default=[])
+    parser.add_argument('--dtypes',
+                   help='dtypes of additional columns',
+                   nargs='+',
+                   default=[])
 
-def main():
+    return parser
+
+def main(input_file,
+         output_file='out.tsv.gz',
+         col_names=[],
+         dtypes=[]):
 
     expected_columns = ['blacklist', 'capture_count',
                         'capture', 'exclusion_count', 'exclusion',
-                        'restriction_fragment', *args.col_names]
+                        'restriction_fragment', *col_names]
     expected_columns_dtypes = ['number', 'number',
                                'object', 'number', 'object', 'object',
-                               *args.dtypes]
+                               *dtypes]
 
     df = pd.read_csv(args.input_file,
                      sep='\t',
@@ -45,10 +52,10 @@ def main():
         if not col in df.columns:
             df[col] = fill_vals[dtype]
 
-    df.to_csv(args.output_file, sep='\t')
+    df.to_csv(output_file, sep='\t')
 
 
 if __name__ == '__main__':
 
-    args = p.parse_args()
-    main()
+    args = get_parser().parse_args()
+    main(**vars(args))

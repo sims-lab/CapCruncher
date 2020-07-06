@@ -4,34 +4,33 @@ import sys
 import pandas as pd
 from pybedtools import BedTool
 
-p = argparse.ArgumentParser()
-p.add_argument('-i','--input', help='Reporter tsv file')
-p.add_argument('-b', '--bed', help='''Bed file to intersect with reporters
+def get_parser(parser=None):
+    if not parser:
+        parser = argparse.ArgumentParser()
+    parser.add_argument('-i','--tsv_input', help='Reporter tsv file')
+    parser.add_argument('-b', '--bed', help='''Bed file to intersect with reporters
                                       e.g. RE fragments bed file.''')
-p.add_argument('--output', help='Output file name', default='bedgraph.bedgraph')
+    parser.add_argument('--output', help='Output file name', default='out.bedgraph')
+    return parser
 
-def main():
+def main(tsv_input,
+         bed,
+         output='out.bedgraph'):
 
-    df_reporters = (pd.read_csv(args.input, sep='\t') )
+    df_reporters = (pd.read_csv(tsv_input, sep='\t') )
     df_reporters[['reporter_start', 'reporter_end']] = df_reporters[['reporter_start', 'reporter_end']].astype(int)
     bt_reporters = BedTool.from_dataframe(df_reporters[['reporter_chrom',
                                                         'reporter_start',
                                                         'reporter_end',
                                                         'reporter_read_name']])
 
-    bt_bed = BedTool(args.bed)
-
-
-    #Debug
-    #bt_reporters.saveas('rep.bed')
-    #bt_bed.saveas('bed.bed')
-
+    bt_bed = BedTool(bed)
     bedgraph = (bt_bed.intersect(bt_reporters, c=True)
                       .sort()
                       .cut([0,1,2,4])
-                      .saveas(args.output)
+                      .saveas(output)
                 )
 
 if __name__ == '__main__':
-    args = p.parse_args()
-    main()
+    args = get_parser().parse_args()
+    main(**vars(args))

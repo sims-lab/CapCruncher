@@ -7,15 +7,18 @@ from functools import wraps
 import numpy as np
 from datetime import timedelta
 
+def get_parser(parser=None):
+    if not parser:
+        parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--input_bam', help='BAM file to parse', required=True)
+    parser.add_argument('-a', '--annotations',
+               help='Tab-delimited text file containing annotation for each read in bam file',
+               required=True)
+    parser.add_argument('--output_prefix', help= 'Output file prefix', default='ccanalyser_out')
+    parser.add_argument('--stats_output', help= 'stats files output prefix', default='stats')
+    return parser
 
-p = argparse.ArgumentParser()
-p.add_argument('-i', '--input_bam', help='BAM file to parse')
-p.add_argument('-a', '--annotations',
-               help='Tab-delimited text file containing annotation for each read in bam file')
-p.add_argument('--output_prefix', help= 'Output file prefix', default='ccanalyser_out')
-p.add_argument('--stats_output', help= 'stats files output prefix', default='stats')
-
-class SliceFilter():
+class CCSliceFilter():
     '''Class containing methods for filtering slices and reporting
        slice/fragment statistics.
 
@@ -159,7 +162,7 @@ class SliceFilter():
         '''Removes slices marked as unmapped (Uncommon)
 
            Returns:
-            SliceFilter
+            CCSliceFilter
         '''
         self.slices = self.slices.query('mapped == 1')
         return self
@@ -168,7 +171,7 @@ class SliceFilter():
         '''Remove fragments with only one aligned slice (Common)
 
            Returns:
-            SliceFilter
+            CCSliceFilter
         '''
         fragments = self.fragments
         fragments_multislice = fragments.query('unique_slices > 1')
@@ -181,7 +184,7 @@ class SliceFilter():
            i.e. --RE_FRAG1--\----Capture----\---RE_FRAG1----
 
            Returns:
-             SliceFilter
+             CCSliceFilter
 
            '''
         self.slices = (self.slices.sort_values('capture_count', ascending=False)
@@ -203,7 +206,7 @@ class SliceFilter():
            Frag 2 removed. Frag 1,3,4 retained
 
            Returns:
-            SliceFilter
+            CCSliceFilter
         '''
 
         frags_deduplicated = self.fragments.drop_duplicates(subset="coordinates", keep='first')
@@ -216,7 +219,7 @@ class SliceFilter():
            PCR duplicates are removed by checking that the fragment start and end are not duplicated in the dataframe.
 
            Returns:
-            SliceFilter
+            CCSliceFilter
         '''
         if self.slices['pe'].str.contains('pe').sum() > 1: # if un-flashed
             fragments = self.fragments.assign(read_start=lambda df: df['coordinates'].str.split('|').str[0]
@@ -233,7 +236,7 @@ class SliceFilter():
         '''Removes any slices in the exclusion region (default 1kb) and a blacklist (if supplied) (V. Common)
 
            Returns:
-            SliceFilter'''
+            CCSliceFilter'''
         self.slices = self.slices.query('blacklist < 1 and exclusion_count < 1')
         return self
 
@@ -241,7 +244,7 @@ class SliceFilter():
         '''Removes all slices (i.e. the entire fragment) if it has no reporter slices present (Common)
 
            Returns:
-            SliceFilter
+            CCSliceFilter
         '''
         frags_reporter = self.fragments.query('reporter_count > 0')
         self.slices = self.slices[self.slices['parent_read'].isin(frags_reporter['parent_read'])]
@@ -252,7 +255,7 @@ class SliceFilter():
            one capture probe is present i.e. double captures (V. Common)
 
            Returns:
-            SliceFilter
+            CCSliceFilter
            '''
         frags_capture = self.fragments.query('0 < unique_capture_sites < 2')
         self.slices = self.slices[self.slices['parent_read'].isin(frags_capture['parent_read'])]
@@ -289,7 +292,7 @@ class SliceFilter():
            | The number of adjacent RE fragments can be adjusted with n_adjacent.
 
            | Returns:
-           |  SliceFilter
+           |  CCSliceFilter
         '''
 
         captures = self.captures
@@ -425,21 +428,21 @@ def merge_annotations(df, annotations):
             )
 
 @get_timing(task_name='filtering slices')
-def filter_slices(df_slices):
-    '''Performs filtering of slices with the SliceFilter class.
+def filter_slices(df_slices, stats_output):
+    '''Performs filtering of slices with the CCSliceFilter class.
        Also outputs statitsics after each major filtering step.
 
        Args:
         df_slices: Dataframe. Must contain all of the columns required by
-                   SliceFilter.
+                   CCSliceFilter.
 
        Returns:
-        SliceFilter instance
+        CCSliceFilter instance
 
      '''
 
-    slice_filterer = SliceFilter(df_slices)
-    stats_prefix = args.stats_output
+    slice_filterer = CCSliceFilter(df_slices)
+    stats_prefix =  stats_output
 
     df_slice_stats = pd.DataFrame()
 
@@ -472,13 +475,13 @@ def filter_slices(df_slices):
     return slice_filterer
 
 @get_timing(task_name='aggregating reporter slices by capture site and outputing .bed files')
-def aggregate_by_capture_site(capture, reporter):
+def aggregate_by_capture_site(capture, reporter, stats_output):
 
     '''Merges capture and reporter slices and aggregates dataframe by capture probe.
 
        Args:
-        capture: Datframe containing capture slices i.e. SliceFilter.captures
-        reporter: Dataframe containing reporter slices i.e. SliceFilter.reporters
+        capture: Datframe containing capture slices i.e. CCSliceFilter.captures
+        reporter: Dataframe containing reporter slices i.e. CCSliceFilter.reporters
 
        Returns:
         pandas.core.groupby.generic.DataFrameGroupBy object
@@ -497,7 +500,7 @@ def aggregate_by_capture_site(capture, reporter):
     # Get stats for capture sites
     (capture['capture']
             .value_counts()
-            .to_csv(f'{args.stats_output}.capture.stats')
+            .to_csv(f'{ stats_output}.capture.stats')
     )
 
     # Join reporters to captures using the parent read name
@@ -511,48 +514,47 @@ def aggregate_by_capture_site(capture, reporter):
     interactions_by_capture = pd.DataFrame(captures_and_reporters.groupby('capture')
                                                                  ['cis/trans']
                                                                  .value_counts())
-    interactions_by_capture.to_csv(f'{args.stats_output}.cis_or_trans.reporter.stats')
+    interactions_by_capture.to_csv(f'{ stats_output}.cis_or_trans.reporter.stats')
 
 
     return captures_and_reporters.groupby('capture')
 
 
 @get_timing(task_name='analysis of bam file')
-def main():
+def main(input_bam,
+         annotations,
+         output_prefix,
+         stats_output):
 
     # Read bam file and merege annotations
-    df_alignment = parse_bam(args.input_bam)
-    df_alignment = (merge_annotations(df_alignment, args.annotations)
+    df_alignment = parse_bam(input_bam)
+    df_alignment = (merge_annotations(df_alignment,  annotations)
                     .reset_index())
 
     #Filter slices using annotations
-    filtered_slices = filter_slices(df_alignment)
+    filtered_slices = filter_slices(df_alignment, stats_output)
 
     # Get capture and reporter slices from filtered slices
     df_capture_slices, df_reporter_slices = filtered_slices.captures, filtered_slices.reporters
 
     #Output combined capture and reporter fragments
     (df_capture_slices[['chrom', 'start', 'end', 'read_name']]
-                      .to_csv(f'{args.output_prefix}.capture.bed.gz', sep='\t', header=False, index=False))
+                      .to_csv(f'{ output_prefix}.capture.bed.gz', sep='\t', header=False, index=False))
 
     (df_reporter_slices[['chrom', 'start', 'end', 'read_name']]
-                      .to_csv(f'{args.output_prefix}.reporter.bed.gz', sep='\t', header=False, index=False))
+                      .to_csv(f'{ output_prefix}.reporter.bed.gz', sep='\t', header=False, index=False))
 
     #Aggregate reporters by capture site and output these as bed files
-    capture_site_aggregated_slices = aggregate_by_capture_site(df_capture_slices, df_reporter_slices)
+    capture_site_aggregated_slices = aggregate_by_capture_site(df_capture_slices,
+                                                               df_reporter_slices,
+                                                               stats_output)
 
     # Output the reporter DataFrame for each capture site
     for capture_site, df_rep in capture_site_aggregated_slices:
-        df_rep.to_csv(f'{args.output_prefix}.{capture_site}.tsv.gz',
+        df_rep.to_csv(f'{ output_prefix}.{capture_site}.tsv.gz',
                       sep='\t',
                       index=False)
 
 if __name__ == '__main__':
-
-    args = p.parse_args()
-
-    # assertions - check all input files exist
-    assert os.path.isfile(args.input_bam), "Input sam file not found"
-    assert os.path.isfile(args.annotations), "Annotation file  not found"
-
-    main()
+    args = get_parser().parse_args()
+    main(**vars(args))

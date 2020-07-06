@@ -719,6 +719,5 @@ def write_hub_path(outfile):
     with open(outfile, 'w') as w:
         w.write(f'{P.PARAMS["hub_url"].rstrip("/")}/{os.path.join(HUB_DIR, "hub.txt").lstrip("/")}\n')
 
-
 if __name__ == "__main__":
-        sys.exit(P.main(sys.argv))
+    sys.exit(P.main(sys.argv))

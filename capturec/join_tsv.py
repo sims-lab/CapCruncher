@@ -14,16 +14,19 @@ import argparse
 import pandas as pd
 import numpy as np
 
-p = argparse.ArgumentParser()
-p.add_argument('-f', '--index_field', help='shared column name to join on')
-p.add_argument('-o', '--output_file', help='output file name',
+def get_parser(parser=None):
+    if not parser:
+        parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--index_field', help='shared column name to join on')
+    parser.add_argument('-o', '--output_file', help='output file name',
                default='joined.tsv')
-p.add_argument('-i', '--input_files', nargs = "+", help='at least 2 input files')
-p.add_argument('-m',
-               '--method',
-               help='join method to use (join/concatenate)',
-               choices=['join', 'concatenate'],
-               default='join')
+    parser.add_argument('-i', '--input_files', nargs = "+", help='at least 2 input files')
+    parser.add_argument('-m',
+                        '--method',
+                        help='join method to use (join/concatenate)',
+                        choices=['join', 'concatenate'],
+                        default='join')
+    return parser
 
 def format_index_var(var):
     try:
@@ -46,11 +49,13 @@ def concatenate_tsv(dframes):
     return replace_na(pd.concat(dframes))
 
 
-def main():
+def main(input_files,
+         output_file,
+         index_field):
 
-    index_field = format_index_var(args.index_field)
+    index_field = format_index_var(index_field)
     dataframes = []
-    for tsv in args.input_files:
+    for tsv in input_files:
         try:
             dataframes.append(pd.read_csv(tsv,
                                           sep='\t',
@@ -62,13 +67,12 @@ def main():
 
     if args.method == 'join':
         df = join_tsv(dataframes)
-        df.to_csv(args.output_file, header=True, sep='\t')
+        df.to_csv(output_file, header=True, sep='\t')
     elif args.method == 'concatenate':
-        print(dataframes)
         df = concatenate_tsv(dataframes)
-        df.to_csv(args.output_file, header=True, sep='\t')
+        df.to_csv(output_file, header=True, sep='\t')
 
 
 if __name__ == '__main__':
-    args = p.parse_args()
-    main()
+    args = get_parser().parse_args()
+    main(**vars(args))

@@ -17,21 +17,16 @@ import pandas as pd
 import pysam
 from pysam import FastxFile
 from xopen import xopen
-
-# Make sure the script can find capturec scripts
-SCRIPT_PATH = os.path.abspath(__file__)
-SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
-PACKAGE_DIR = os.path.dirname(SCRIPT_DIR)
-sys.path.append(PACKAGE_DIR)
-
 from .digest_genome import get_re_site
 
-def parse_args():
-    parser = argparse.ArgumentParser(prog='digest_fastq')
+def get_parser(parser=None):
+
+    if not parser:
+        parser = argparse.ArgumentParser(prog='digest_fastq')
 
     subparsers = parser.add_subparsers(
         help='Run in either flashed or unflashed',
-        dest='command')
+        dest='subcommand')
     parser_flashed = subparsers.add_parser('flashed', help='For flashed reads')
     parser_flashed.add_argument('-i', '--input_fastq',
                                 help='fastq file to parse',
@@ -47,9 +42,9 @@ def parse_args():
                                   required=True)
 
     for subparser in [parser_unflashed, parser_flashed]:
-        subparser = add_shared_options(subparser)
+        add_shared_options(subparser)
 
-    return parser.parse_args()
+    return parser
 
 
 def add_shared_options(parser):
@@ -344,7 +339,7 @@ def collate_stats_unflashed(inq, stats_file='out.log'):
              .to_csv(stats_file, index=False))
 
 
-def main(command,
+def main(subcommand,
          input_fastq=None,
          fq1=None,
          fq2=None,
@@ -372,7 +367,7 @@ def main(command,
     #     os.remove(stats_file)
 
 
-    if command == 'flashed':  # Checks the subcommand to see in which mode to run
+    if subcommand == 'flashed':  # Checks the subsubcommand to see in which mode to run
 
         fq = FastxFile(input_fastq)
 
@@ -402,7 +397,7 @@ def main(command,
 
         processes = processes + processes_repeated
 
-    elif command == 'unflashed':
+    elif subcommand == 'unflashed':
 
         fq1, fq2 = FastxFile(fq1), FastxFile(fq2)
 
@@ -445,4 +440,4 @@ def main(command,
 
 
 if __name__ == '__main__':
-    main(**vars(parse_args()))
+    main(**vars(get_parser().parse_args()))

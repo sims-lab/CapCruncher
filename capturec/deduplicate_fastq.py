@@ -11,13 +11,28 @@ import multiprocessing as mp
 from pysam import FastxFile
 from xopen import xopen
 
-# Make sure the script can find capturec scripts
-SCRIPT_PATH = os.path.abspath(__file__)
-SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
-PACKAGE_DIR = os.path.dirname(SCRIPT_DIR)
-sys.path.append(PACKAGE_DIR)
+def get_parser(parser=None):
 
-from bin.capturec_commandline import get_args_deduplicate_fastq as get_args
+    if not parser:
+        parser = argparse.ArgumentParser()
+
+    parser.add_argument('-1', '--fq1', help='fastq file to parse containing read 1', required=True)
+    parser.add_argument('-2', '--fq2', help='fastq file to parse containing read 2', required=True)
+    parser.add_argument('--out1', help='fastq file to parse containing read 1',
+                       default='out1.fq.gz')
+    parser.add_argument('--out2', help='fastq file to parse containing read 2',
+                       default='out2.fq.gz')
+    parser.add_argument('--stats_file', help='name of deduplication statistics file',
+                   default=sys.stdout)
+    parser.add_argument('-c', '--compression_level',
+                        help='Level of compression (1-9 with 9 being the highest)',
+                        type=int, default=5)
+    parser.add_argument('--read_buffer',
+                   help='defines the number of reads processed before writing to file',
+                   default=10000, type=int)
+
+    return parser
+
 
 
 def open_logfile(fn):
@@ -149,5 +164,4 @@ def main(fq1,
 
 
 if __name__ == '__main__':
-    args = get_args().parse_args()
-    main(**vars(args))
+    main(**vars(get_parser().parse_args()))

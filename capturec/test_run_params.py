@@ -16,6 +16,10 @@ import glob
 SCRIPT_PATH = os.path.abspath(__file__)
 SCRIPT_DIR, SCRIPT_NAME = os.path.split(os.path.dirname(SCRIPT_PATH))
 
+def get_parser(parser=None):
+    return parser
+
+
 def load_yaml(yml):
     with open('capturec_pipeline.yml') as r:
         content = r.read().replace('\t', ' ' * 4)
@@ -35,11 +39,11 @@ def test_cmd(cmd, task, **kwargs):
             return True
         except Exception as e:
             print(f'Error with {task}:\n\n{e}\n\nSee stderr for further details\n')
-            
+
 def test_trim(parameters, test_dir='test'):
     task = 'Trim_galore'
-    cmd = f'''trim_galore 
-          --cores {parameters["run_options"]["threads"]} 
+    cmd = f'''trim_galore
+          --cores {parameters["run_options"]["threads"]}
           --paired
           {parameters["trim"]["options"]}
           -o {test_dir}/trim_test/
@@ -51,11 +55,11 @@ def test_trim(parameters, test_dir='test'):
 def test_align(parameters, test_dir='test'):
     task = 'Aligning'
     out_dir = f'{test_dir}/align_test'
-    
+
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
-    
-    cmd = f'''{parameters["align"]["aligner"]} 
+
+    cmd = f'''{parameters["align"]["aligner"]}
               {parameters["align"]["options"]}
               {parameters["align"]["index_flag"]}
               {parameters["align"]["index"]}
@@ -68,18 +72,16 @@ def test_align(parameters, test_dir='test'):
     return test_cmd(cmd, task, shell=True)
 
 def main():
-    
+
     params = load_yaml('capturec_pipeline.yml')
     test_dir = os.path.join(SCRIPT_DIR, 'test')
-    
+
     tasks = [test_trim, test_align]
     if not all([task(params, test_dir=test_dir) for task in tasks]): # check if all tasks succeed
         pass
     else:
         for err in glob.glob('*.stderr'):
             os.remove(err)
-
-
 
 if __name__ == '__main__':
     main()

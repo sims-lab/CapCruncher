@@ -15,8 +15,11 @@ import pysam
 import re
 #import pdb
 
-def parse_args():
-    parser= argparse.ArgumentParser()
+def get_parser(parser=None):
+
+    if not parser:
+        parser= argparse.ArgumentParser()
+
     parser.add_argument('-i', '--input_fasta', help='fasta file to parse', required=True)
     parser.add_argument('-o', '--output_file', help='output file name',
                    default='digested.bed')
@@ -28,7 +31,7 @@ def parse_args():
                               default='GATC')
     parser.add_argument('-l', '--logfile', help='filename for logfile',
                         default='test.log')
-    return parser.parse_args()
+    return parser
 
 
 def get_re_site(cut_sequence=None,
@@ -85,4 +88,4 @@ def main(input_fasta,
 
 
 if __name__ == '__main__':
-    main(**vars(parse_args()))
+    main(**vars(get_parser().parse_args()))

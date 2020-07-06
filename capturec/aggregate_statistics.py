@@ -6,16 +6,20 @@ import argparse
 import numpy as np
 import pandas as pd
 
-def parse_args():
-    p = argparse.ArgumentParser()
-    p.add_argument('--deduplication_stats', nargs='+',
+def get_parser(parser=None):
+
+    if not parser:
+        parser = argparse.ArgumentParser()
+
+    parser.add_argument('--deduplication_stats', nargs='+',
                    help='Deduplication stats paths' )
-    p.add_argument('--digestion_stats', nargs='+',
+    parser.add_argument('--digestion_stats', nargs='+',
                    help='Digestion stats paths')
-    p.add_argument('--ccanalyser_stats', nargs='+')
-    p.add_argument('--reporter_stats', nargs='+')
-    p.add_argument('--output_dir')
-    return p.parse_args()
+    parser.add_argument('--ccanalyser_stats', nargs='+')
+    parser.add_argument('--reporter_stats', nargs='+')
+    parser.add_argument('--output_dir')
+
+    return parser
 
 def split_fn(fn_ser):
     '''Extracts the sample and read_type attributes from a given file name.
@@ -204,20 +208,24 @@ def combine_reporter_stats(fnames):
 
 
 
-def main():
+def main(deduplication_stats,
+         digestion_stats,
+         ccanalyser_stats,
+         reporter_stats,
+         output_dir='.'):
 
 
-    df_dedup = combine_dedup_stats(args.deduplication_stats)
-    df_digestion = combine_digestion_stats(args.digestion_stats)
-    df_ccanalyser = combine_ccanalyers_stats(args.ccanalyser_stats)
-    df_reporter = combine_reporter_stats(args.reporter_stats)
+    df_dedup = combine_dedup_stats(deduplication_stats)
+    df_digestion = combine_digestion_stats(digestion_stats)
+    df_ccanalyser = combine_ccanalyers_stats(ccanalyser_stats)
+    df_reporter = combine_reporter_stats(reporter_stats)
 
     stats_dict = dict(zip(['deduplication_stats', 'digestion_stats', 'ccanalyser_stats', 'reporter_stats'],
                           [df_dedup, df_digestion, df_ccanalyser, df_reporter]))
 
 
     # Output individual aggregated stats files
-    out_dir = args.output_dir.rstrip('/')
+    out_dir = output_dir.rstrip('/')
     for name, df in stats_dict.items():
         df.to_csv(f'{out_dir}/{name}.tsv', sep='\t')
 
@@ -232,4 +240,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main(**parse_args())
+    main(**get_parser().parse_args())
