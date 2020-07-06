@@ -169,7 +169,12 @@ def add_validation_args(subcommand):
                    default=[])
 
 def add_test_parameters_args(subcommand):
-    parser = subcommand.add_parser('test_parameters')
+    parser = subcommand.add_parser('test_parameters',
+             help='Confirms that parameters in capturec_pipeline.yml are valid run parameters')
+
+def add_get_example_args(subcommand):
+    parser = subcommand.add_parser('get_example_yaml',
+             help='Gets an example copy of the parameters file.')
 
 def main():
 
@@ -185,7 +190,8 @@ def main():
                  add_join_tsv_args,
                  add_split_fastq_args,
                  add_validation_args,
-                 add_test_parameters_args,]
+                 add_test_parameters_args,
+                 add_get_example_args,]
 
     for func in functions:
         func(subcommand)
@@ -220,10 +226,12 @@ def main():
         split_fastq.main(**vars(args))
     elif subcommand == 'test_parameters':
         from capturec import test_run_params
-        test_run_params()
+        test_run_params.main()
     elif subcommand == 'validate_annotations':
         from capturec import validate_annotations
         validate_annotations.main(**vars(args))
+    elif subcommand == 'get_example_yaml':
+        from capturec import get_example_yaml
 
 
 if __name__ == '__main__':

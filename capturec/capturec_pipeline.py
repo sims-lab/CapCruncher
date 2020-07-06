@@ -28,7 +28,6 @@ as input and performs the following steps:
 
 @authors: asmith, dsims
 """
-
 # import packages
 import sys
 import os
@@ -53,6 +52,7 @@ from ruffus import (mkdir,
                     active_if)
 
 
+
 # Global vars
 ON_VALS = ['true', 't', 'on', 'yes', 'y', '1']
 
@@ -61,12 +61,14 @@ SCRIPT_PATH = os.path.abspath(__file__)
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
 
 # Read in parameter file
-P.get_parameters('capturec_pipeline.yml')
+params = 'capturec_pipeline.yml'
+P.get_parameters(params)
 
 # Sort global variables
 P.PARAMS['SCRIPT_DIR'] = SCRIPT_DIR
 HUB_DIR = os.path.join(P.PARAMS["hub_publoc"], P.PARAMS['hub_name'])
 ASSEMBLY_DIR = os.path.join(HUB_DIR, P.PARAMS['genome_name'])
+
 
 @follows(mkdir('ccanalyser'), mkdir('ccanalyser/restriction_enzyme_map/'))
 @transform(P.PARAMS['genome_fasta'],
@@ -719,5 +721,8 @@ def write_hub_path(outfile):
     with open(outfile, 'w') as w:
         w.write(f'{P.PARAMS["hub_url"].rstrip("/")}/{os.path.join(HUB_DIR, "hub.txt").lstrip("/")}\n')
 
-if __name__ == "__main__":
+def run_pipeline():
     sys.exit(P.main(sys.argv))
+
+if __name__ == "__main__":
+    run_pipeline()
