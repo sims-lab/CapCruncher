@@ -14,7 +14,7 @@ import subprocess as sub
 import glob
 
 SCRIPT_PATH = os.path.abspath(__file__)
-SCRIPT_DIR, SCRIPT_NAME = os.path.split(os.path.dirname(SCRIPT_PATH))
+SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
 
 def get_parser(parser=None):
     return parser
@@ -40,21 +40,21 @@ def test_cmd(cmd, task, **kwargs):
         except Exception as e:
             print(f'Error with {task}:\n\n{e}\n\nSee stderr for further details\n')
 
-def test_trim(parameters, test_dir='test'):
+def test_trim(parameters, data_dir='data', out_dir='test'):
     task = 'Trim_galore'
     cmd = f'''trim_galore
           --cores {parameters["run_options"]["threads"]}
           --paired
           {parameters["trim"]["options"]}
-          -o {test_dir}/trim_test/
-          {test_dir}/test_1.fastq.gz
-          {test_dir}/test_2.fastq.gz
+          -o {data_dir}/trim_test/
+          {out_dir}/test_1.fastq.gz
+          {out_dir}/test_2.fastq.gz
           '''
     return test_cmd(cmd.split(), task)
 
-def test_align(parameters, test_dir='test'):
+def test_align(parameters, data_dir='data', out_dir='test'):
     task = 'Aligning'
-    out_dir = f'{test_dir}/align_test'
+    out_dir = f'{out_dir}/align_test'
 
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
@@ -63,7 +63,7 @@ def test_align(parameters, test_dir='test'):
               {parameters["align"]["options"]}
               {parameters["align"]["index_flag"]}
               {parameters["align"]["index"]}
-              {test_dir}/test_1.fastq.gz
+              {data_dir}/test_1.fastq.gz
               | samtools view -b > {out_dir}/test.bam
               && samtools sort {out_dir}/test.bam -o {out_dir}/test.sorted.bam -m 2G -@ {parameters["run_options"]["threads"]}
               && mv {out_dir}/test.sorted.bam {out_dir}/test.bam'''
@@ -74,11 +74,12 @@ def test_align(parameters, test_dir='test'):
 def main():
 
     params = load_yaml('capturec_pipeline.yml')
-    test_dir = os.path.join(SCRIPT_DIR, 'test')
+    test_files_dir = os.path.join(SCRIPT_DIR, 'data')
+    test_out_dir = os.path.join(SCRIPT_DIR, 'test_params')
 
     tasks = [test_trim, test_align]
-    if not all([task(params, test_dir=test_dir) for task in tasks]): # check if all tasks succeed
-        pass
+    if not all([task(params, data_dir=test_files_dir, test_dir=test_dir) for task in tasks]): # check if all tasks succeed
+        raise ValueError('Parameters are not correct, see error messages')
     else:
         for err in glob.glob('*.stderr'):
             os.remove(err)

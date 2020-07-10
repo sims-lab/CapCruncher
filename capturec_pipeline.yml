@@ -1,37 +1,35 @@
 run_options:
-    queue: batchq     # For use with cluster
-    scripts_dir: /t1-data/user/asmith/Projects/capturec_dev/capture-c/capturec     # Location of scripts
-    threads: 6     # Maximum number of threads/cores to use
-    memory: 4G     # Memory requirement for jobs
-    compression_level: 5     # Sets the level of gzip compression 1=low (faster) 9=high (slower but space saving)
+    queue: batchq # For use with cluster
+    threads: 8 # Maximum number of threads/cores to use
+    memory: 10G # Memory requirement for jobs
+    compression_level: 5 # Sets the level of gzip compression 1=low (faster) 9=high (slower but space saving)
 deduplication:
-    pre-dedup: True     # Turns on initial removal of identical reads
+    pre-dedup: True # Turns on initial removal of identical reads
 trim:
-    options: --length 21     # Options passed to trim_galore
+    options: --length 21 # Options passed to trim_galore
 split:
-    n_reads: 1000000     # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
+    n_reads: 1000000 # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
 align:
-    aligner: bowtie     # Aligner to use
-    index_flag:     # Flag to specify index for the aligner. Leave blank for none i.e. bowtie
-    index: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/BowtieIndex/genome     # Location of aligner index
-    options: -p 6 -m 2 --best --strata --sam --chunkmb 256     # Aligner parameters
+    aligner: bowtie2 # Aligner to use
+    index_flag: -x # Flag to specify index for the aligner. Leave blank for none i.e. bowtie
+    index: /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/Bowtie2Index/genome # Location of aligner index
+    options: -p 6 --very-sensitive # Aligner parameters
 genome:
-    name: mm9
-    fasta: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa     # Location of fasta for genome build
-    fai: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa.fai     # Location of fasta index
-    chrom_sizes: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/chr_sizes.txt    # List of chromosome sizes for genome build
+    name: hg19
+    fasta: /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/WholeGenomeFasta/genome.fa # Location of fasta for genome build
+    fai: /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/WholeGenomeFasta/genome.fa.fai # Location of fasta index
+    chrom_sizes: /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/WholeGenomeFasta/chr_sizes.txt # List of chromosome sizes for genome build
 ccanalyser:
-    capture: capture-c_oligos.bed    # Location of bed file specifying Capture-C restriction fragments (.bed format)
-    exclude_window: 1000    # Region around capture fragment to ignore interactions (re-ligation events v. likely)
-    re: DpnII    # Name of restriction enzyme (case insensitive)
-    blacklist:    # Regions to blacklist (.bed format)
+    capture: capture_probes.bed  # Location of bed file specifying Capture-C restriction fragments (.bed format)
+    exclude_window: 1000 # Region around capture fragment to ignore interactions (re-ligation events v. likely)
+    re: DpnII # Name of restriction enzyme (case insensitive)
+    blacklist: # Regions to blacklist (.bed format)
 hub:
-    create_hub: True
-    url: http://userweb.molbiol.ox.ac.uk/    # Url/IP of server to host bigWigs
-    publoc: /public/asmith/capture-c/    # Location of publically accessible location on the server
-    name: MO_asmith_bowtie1    # Name for the hub (UCSC required)
-    short: ABM_asmith_pipeline    # Short hub name (UCSC required)
-    long: ABM dataset with python pipeline    # Long hub name (UCSC required)
-    email: alastair.smith@ndcls.ox.ac.uk    # Email address (UCSC required)
-    colors: red blue green yellow black    # Colours to use for bigWig tracks. Leave blank for random. Colours are cycled if there are more tracks than colours
-    track_options: autoScale on windowingFunction maximum    # Adjust track options for UCSC will fail if options are not paired
+    url: http://userweb.molbiol.ox.ac.uk/ # Url/IP of server to host bigWigs
+    publoc: /public/asmith/capture-c/ # Location of publically accessible location on the server
+    name: LG_SEM_EPZ # Name for the hub (UCSC required)
+    short: SEM cells treated with EPZ5676 # Short hub name (UCSC required)
+    long: SEM cells treated with EPZ5676 processed with the python pipeline # Long hub name (UCSC required)
+    email: alastair.smith@ndcls.ox.ac.uk # Email address (UCSC required)
+    colors: # Colours to use for bigWig tracks. Leave blank for random. Colours are cycled if there are more tracks than colours
+    track_options: autoScale on windowingFunction maximum # Adjust track options for UCSC; will fail if options are not paired

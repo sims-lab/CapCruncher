@@ -150,7 +150,7 @@ def add_split_fastq_args(subcommand):
 
     parser = subcommand.add_parser('split_fastq',  help='Splits fastq file into smaller chunks')
     parser.add_argument('-i', '--input_fastq', help='BAM file to parse')
-    parser.add_argument('--chunk_size', help='Number of reads per output file', default=1000000, type=int)
+    parser.add_argument('--chunksize', help='Number of reads per output file', default=1000000, type=int)
     parser.add_argument('-c', '--compression_level', help='Level of gzip compression (1-9 with 9 being the most compressed/slowest)',
                         default=6, type=int)
     parser.add_argument('-n','--output_prefix', help='output prefix')

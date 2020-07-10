@@ -420,7 +420,8 @@ def main(subcommand,
                                          args=(inputq, writeq, statq),
                                          kwargs={'cutsite': cut_site,
                                                  'flashed': False,
-                                                 'minimum_slice_length': min_slice_len,
+                                                 'minimum_slice_length':
+                                                 minimum_slice_length,
                                                  'keep_cutsite': keep_cutsite,
                                                  'slice_offset': 0})
                               for i in range(n_digestion_processes)]
