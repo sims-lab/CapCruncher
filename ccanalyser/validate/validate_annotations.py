@@ -43,7 +43,7 @@ def main(input_file,
                                'object', 'number', 'object', 'object',
                                *dtypes]
 
-    df = pd.read_csv(args.input_file,
+    df = pd.read_csv(input_file,
                      sep='\t',
                      index_col='read_name')
 

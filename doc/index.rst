@@ -3,14 +3,15 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to capture-c's documentation!
+Welcome to ccanalyser documentation!
 =====================================
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   ccanalyser.rst
+   installing.rst
+   running_the_pipeline.rst
 
 Indices and tables
 ==================

@@ -19,27 +19,27 @@ from pysam import FastxFile
 from xopen import xopen
 from .digest_genome import get_re_site
 
+
 def get_parser(parser=None):
 
     if not parser:
         parser = argparse.ArgumentParser(prog='digest_fastq')
 
     subparsers = parser.add_subparsers(
-        help='Run in either flashed or unflashed',
-        dest='subcommand')
+        help='Run in either flashed or unflashed', dest='subcommand'
+    )
     parser_flashed = subparsers.add_parser('flashed', help='For flashed reads')
-    parser_flashed.add_argument('-i', '--input_fastq',
-                                help='fastq file to parse',
-                                required=True)
+    parser_flashed.add_argument(
+        '-i', '--input_fastq', help='fastq file to parse', required=True
+    )
 
-    parser_unflashed = subparsers.add_parser(
-        'unflashed', help='For unflashed reads')
-    parser_unflashed.add_argument('-1', '--fq1',
-                                  help='fastq file containing read 1 to parse',
-                                  required=True)
-    parser_unflashed.add_argument('-2', '--fq2',
-                                  help='fastq file containing read 2 to parse',
-                                  required=True)
+    parser_unflashed = subparsers.add_parser('unflashed', help='For unflashed reads')
+    parser_unflashed.add_argument(
+        '-1', '--fq1', help='fastq file containing read 1 to parse', required=True
+    )
+    parser_unflashed.add_argument(
+        '-2', '--fq2', help='fastq file containing read 2 to parse', required=True
+    )
 
     for subparser in [parser_unflashed, parser_flashed]:
         add_shared_options(subparser)
@@ -48,32 +48,58 @@ def get_parser(parser=None):
 
 
 def add_shared_options(parser):
-    parser.add_argument('-o', '--output_file', help='output file name',
-                        default='digested.fastq.gz')
+    parser.add_argument(
+        '-o', '--output_file', help='output file name', default='digested.fastq.gz'
+    )
 
     enzyme_group = parser.add_mutually_exclusive_group(required=True)
-    enzyme_group.add_argument('-r', '--restriction_enzyme', help='Name of restriction enzyme',
-                              default='DpnII')
-    enzyme_group.add_argument('-s', '--cut_sequence',
-                               help='Sequence of restriction site')
-
-    parser.add_argument('-m', '--minimum_slice_length', help='Shortest length for a slice to be output',
-                        default=20, type=int)
-    parser.add_argument('--stats_file',
-                        help='stats_file_prefix', default='stats.log')
-    parser.add_argument('-c', '--compression_level', help='Level of gzip compression (1-9 with 9 being the most compressed/slowest)',
-                        default=6, type=int)
-    parser.add_argument('--keep_cutsite', help='Determines if cutsite is stripped from the start of each slice',
-                        action='store_true', default=False)
-    parser.add_argument(
-        '--buffer', help='Number of reads to process before writing output', default=10000, type=int)
+    enzyme_group.add_argument(
+        '-r', '--restriction_enzyme', help='Name of restriction enzyme', default='DpnII'
+    )
+    enzyme_group.add_argument(
+        '-s', '--cut_sequence', help='Sequence of restriction site'
+    )
 
     parser.add_argument(
-        '-p', '--n_digestion_processes',help='Number of digestion processes to spawn', default=1, type=int)
+        '-m',
+        '--minimum_slice_length',
+        help='Shortest length for a slice to be output',
+        default=20,
+        type=int,
+    )
+    parser.add_argument('--stats_file', help='stats_file_prefix', default='stats.log')
+    parser.add_argument(
+        '-c',
+        '--compression_level',
+        help='Level of gzip compression (1-9 with 9 being the most compressed/slowest)',
+        default=6,
+        type=int,
+    )
+    parser.add_argument(
+        '--keep_cutsite',
+        help='Determines if cutsite is stripped from the start of each slice',
+        action='store_true',
+        default=False,
+    )
+    parser.add_argument(
+        '--buffer',
+        help='Number of reads to process before writing output',
+        default=10000,
+        type=int,
+    )
+
+    parser.add_argument(
+        '-p',
+        '--n_digestion_processes',
+        help='Number of digestion processes to spawn',
+        default=1,
+        type=int,
+    )
 
     return parser
 
-class DigestedRead():
+
+class DigestedRead:
     '''Class performs in silico digestion of fastq reads and contains relevant stats.
 
         Args:
@@ -94,13 +120,15 @@ class DigestedRead():
 
         '''
 
-    def __init__(self,
-                 read: pysam.FastqProxy,
-                 cutsite: re.compile,
-                 flashed=False,
-                 minimum_slice_length=0,
-                 slice_offset=0,
-                 keep_cutsite=False):
+    def __init__(
+        self,
+        read: pysam.FastqProxy,
+        cutsite: re.compile,
+        flashed=False,
+        minimum_slice_length=0,
+        slice_offset=0,
+        keep_cutsite=False,
+    ):
 
         self.read = read  # object with attributes: name, sequence, quality
         self.cutsite = cutsite  # compiled regex designating the cutsite
@@ -110,9 +138,12 @@ class DigestedRead():
         # Determines if the recognition site is removed from each slice
         self.keep_cutsite = keep_cutsite
 
-        self.recognition_sites = ([site.start() for site in cutsite.finditer(self.read.sequence.upper())] +
-                                  [len(self.read.sequence)])  # Find the start location of each recognition site
-                                                              # the end position of the sequence is also added
+        self.recognition_sites = [
+            site.start() for site in cutsite.finditer(self.read.sequence.upper())
+        ] + [
+            len(self.read.sequence)
+        ]  # Find the start location of each recognition site
+        # the end position of the sequence is also added
         self.slices_total_counter = 0
         self.slices_valid_counter = 0
         self.slice_offset = slice_offset  # Enables adjusting the slice output number
@@ -133,22 +164,36 @@ class DigestedRead():
 
             if not self.keep_cutsite:  # Check if the cutsite needs to be removed
                 cutsite_removed = re.sub(
-                    f'^{self.cutsite.pattern}', '', self.read.sequence[slice_start:slice_end])
-                slice_shift = len(
-                    self.read.sequence[slice_start:slice_end]) - len(cutsite_removed)
-                slice_start += slice_shift  # Shift the slice by the length of the removed cutsite
+                    f'^{self.cutsite.pattern}',
+                    '',
+                    self.read.sequence[slice_start:slice_end],
+                )
+                slice_shift = len(self.read.sequence[slice_start:slice_end]) - len(
+                    cutsite_removed
+                )
+                slice_start += (
+                    slice_shift  # Shift the slice by the length of the removed cutsite
+                )
                 slice_length = slice_end - slice_start
 
             # Make a temporary variable to hold the unvalidated slice
-            s = '\n'.join([f'@{self.read.name}|{self.read_type}|{self.slices_valid_counter + self.slice_offset}',
-                           self.read.sequence[slice_start:slice_end],
-                           '+',
-                           self.read.quality[slice_start:slice_end]])
+            s = '\n'.join(
+                [
+                    f'@{self.read.name}|{self.read_type}|{self.slices_valid_counter + self.slice_offset}',
+                    self.read.sequence[slice_start:slice_end],
+                    '+',
+                    self.read.quality[slice_start:slice_end],
+                ]
+            )
 
-            if slice_length >= self.min_slice_len:  # Confirm that the slice meets minimum length requirement
+            if (
+                slice_length >= self.min_slice_len
+            ):  # Confirm that the slice meets minimum length requirement
 
                 # Only allow a slice to be recorded if the read is unflashed or digestion has occured
-                if (not self.flashed) or (self.flashed and slice_length < len(self.read.sequence)):
+                if (not self.flashed) or (
+                    self.flashed and slice_length < len(self.read.sequence)
+                ):
                     self.slices_valid_counter += 1
                     slices_lst.append(s)
 
@@ -162,10 +207,8 @@ class DigestedRead():
         else:
             return ''
 
-def read_fastq(fq,
-               outq,
-               n_workers=1,
-               buffer=10000):
+
+def read_fastq(fq, outq, n_workers=1, buffer=10000):
     '''Reads fastq file and places reads into a queue'''
     r_buffer = []
     for rc, read in enumerate(fq):
@@ -176,16 +219,12 @@ def read_fastq(fq,
             r_buffer = []
             print(f'Processed {rc} reads')
 
-    outq.put(r_buffer) # Add the reads that don't fit the buffer size
+    outq.put(r_buffer)  # Add the reads that don't fit the buffer size
     for _ in range(n_workers):
-        outq.put('TER') # Places a terminator in the queue for every spawned worker
+        outq.put('TER')  # Places a terminator in the queue for every spawned worker
 
 
-def read_paired_fastqs(fq1,
-                       fq2,
-                       outq,
-                       n_workers=1,
-                       buffer=10000):
+def read_paired_fastqs(fq1, fq2, outq, n_workers=1, buffer=10000):
     '''Reads R1 and R2 fastq files and places paired reads into a queue'''
     r_buffer = []
     for rc, (r1, r2) in enumerate(zip(fq1, fq2)):
@@ -198,8 +237,7 @@ def read_paired_fastqs(fq1,
 
     outq.put(r_buffer)
     for _ in range(n_workers):
-        outq.put('TER') # Places a terminator in the queue for every spawned worker
-
+        outq.put('TER')  # Places a terminator in the queue for every spawned worker
 
 
 def digest_read_flashed(inq, outq, statq, **kwargs):
@@ -212,23 +250,21 @@ def digest_read_flashed(inq, outq, statq, **kwargs):
         for read in reads:
             sliced_read = DigestedRead(read, **kwargs)
             sliced_read_str = str(sliced_read)
-            if sliced_read_str: # Only append if valid slices present
+            if sliced_read_str:  # Only append if valid slices present
                 read_buffer.append(sliced_read_str)
 
-            stat_buffer.append((sliced_read.slices_total_counter,
-                                sliced_read.slices_valid_counter,
-                                )
-                              )
+            stat_buffer.append(
+                (sliced_read.slices_total_counter, sliced_read.slices_valid_counter,)
+            )
 
-        outq.put(read_buffer) # Add list of digested reads to the queue
+        outq.put(read_buffer)  # Add list of digested reads to the queue
         statq.put(stat_buffer)
-        read_buffer = [] # Clear buffer
-        stat_buffer = [] # Clear buffer
-        reads = inq.get() # Get new list of reads
+        read_buffer = []  # Clear buffer
+        stat_buffer = []  # Clear buffer
+        reads = inq.get()  # Get new list of reads
 
     outq.put('TER')
     statq.put('TER')
-
 
 
 def digest_read_unflashed(inq, outq, statq, **kwargs):
@@ -236,25 +272,28 @@ def digest_read_unflashed(inq, outq, statq, **kwargs):
     read_buffer = []
     stat_buffer = []
     reads = inq.get()
-    while not reads == 'TER': # Checks to see if the queue has been terminated
+    while not reads == 'TER':  # Checks to see if the queue has been terminated
         for r1, r2 in reads:
-            sliced_read_1 = DigestedRead(r1, **kwargs) # Digest read 1
-            kwargs['slice_offset'] = sliced_read_1.slices_valid_counter # Update slice offset
-            sliced_read_2 = DigestedRead(r2, **kwargs) # Digest read 2
-            kwargs['slice_offset'] = 0 # Reset slice offset
+            sliced_read_1 = DigestedRead(r1, **kwargs)  # Digest read 1
+            kwargs[
+                'slice_offset'
+            ] = sliced_read_1.slices_valid_counter  # Update slice offset
+            sliced_read_2 = DigestedRead(r2, **kwargs)  # Digest read 2
+            kwargs['slice_offset'] = 0  # Reset slice offset
 
             s1, s2 = str(sliced_read_1), str(sliced_read_2)
 
-            if s1 and s2: # Only store of both reads have valid slices
+            if s1 and s2:  # Only store of both reads have valid slices
                 read_buffer.append(f'{s1}{s2}')
 
-            stat_buffer.append((sliced_read_1.slices_total_counter,
-                                sliced_read_1.slices_valid_counter,
-                                sliced_read_2.slices_total_counter,
-                                sliced_read_2.slices_valid_counter,
-                                    ))
-
-
+            stat_buffer.append(
+                (
+                    sliced_read_1.slices_total_counter,
+                    sliced_read_1.slices_valid_counter,
+                    sliced_read_2.slices_total_counter,
+                    sliced_read_2.slices_valid_counter,
+                )
+            )
 
         outq.put(read_buffer)
         statq.put(stat_buffer)
@@ -266,17 +305,16 @@ def digest_read_unflashed(inq, outq, statq, **kwargs):
     statq.put('TER')
 
 
-def write_to_fastq(inq,
-                   outfile='out.fq.gz',
-                   compression_level=5):
+def write_to_fastq(inq, output_file='out.fq.gz', compression_level=5):
 
     '''Writes all digested reads to the appropriate file'''
-    with xopen(filename=outfile, mode='wb', compresslevel=compression_level) as f:
+    with xopen(filename=output_file, mode='wb', compresslevel=compression_level) as f:
 
         reads = inq.get()
         while not reads == 'TER':
             f.write(''.join(reads).encode())
             reads = inq.get()
+
 
 def collate_stats_flashed(inq, stats_file='out.log'):
 
@@ -285,36 +323,34 @@ def collate_stats_flashed(inq, stats_file='out.log'):
     valid_counter = Counter()
     while not counts == 'TER':
         total, valid = zip(*counts)
-        total_counter = total_counter +  Counter(total)
+        total_counter = total_counter + Counter(total)
         valid_counter = valid_counter + Counter(valid)
         counts = inq.get()
 
-
     dframes = []
-    for key, values in zip(['total', 'valid'],
-                           [total_counter, valid_counter]):
+    for key, values in zip(['total', 'valid'], [total_counter, valid_counter]):
 
-        dframes.append(pd.DataFrame.from_dict(values, orient='index')
-                        .reset_index()
-                        .rename(columns={'index':'bin', 0: 'frequency'})
-                        .assign(stat=key))
+        dframes.append(
+            pd.DataFrame.from_dict(values, orient='index')
+            .reset_index()
+            .rename(columns={'index': 'bin', 0: 'frequency'})
+            .assign(stat=key)
+        )
 
     df_stats = pd.concat(dframes)
     df_stats['read_type'] = 'flashed'
     df_stats['bin'] = df_stats['bin'].astype(int)
 
-    (df_stats.sort_values('bin')
-             .to_csv(stats_file, index=False))
+    (df_stats.sort_values('bin').to_csv(stats_file, index=False))
+
 
 def collate_stats_unflashed(inq, stats_file='out.log'):
 
     counts = inq.get()
-    counters = {'r1': {'total': Counter(),
-                       'valid': Counter()
-                       },
-                'r2': {'total': Counter(),
-                        'valid': Counter()}
-                }
+    counters = {
+        'r1': {'total': Counter(), 'valid': Counter()},
+        'r2': {'total': Counter(), 'valid': Counter()},
+    }
     while not counts == 'TER':
         r1_total, r1_valid, r2_total, r2_valid = zip(*counts)
         counters['r1']['total'] = counters['r1']['total'] + Counter(r1_total)
@@ -327,73 +363,80 @@ def collate_stats_unflashed(inq, stats_file='out.log'):
     for read in counters:
         for key, values in counters[read].items():
 
-            dframes.append(pd.DataFrame.from_dict(values, orient='index')
-                            .reset_index()
-                            .rename(columns={'index':'bin', 0: 'frequency'})
-                            .assign(stat=key, read_type=read))
+            dframes.append(
+                pd.DataFrame.from_dict(values, orient='index')
+                .reset_index()
+                .rename(columns={'index': 'bin', 0: 'frequency'})
+                .assign(stat=key, read_type=read)
+            )
 
     df_stats = pd.concat(dframes)
     df_stats['bin'] = df_stats['bin'].astype(int)
 
-    (df_stats.sort_values('bin')
-             .to_csv(stats_file, index=False))
+    (df_stats.sort_values('bin').to_csv(stats_file, index=False))
 
 
-def main(subcommand,
-         input_fastq=None,
-         fq1=None,
-         fq2=None,
-         cut_sequence=None,
-         restriction_enzyme=None,
-         keep_cutsite=False,
-         output_file='out.fastq.gz',
-         minimum_slice_length=18,
-         stats_file=None,
-         compression_level=5,
-         n_digestion_processes=1,
-         buffer=10000):
-
+def main(
+    subcommand,
+    input_fastq=None,
+    fq1=None,
+    fq2=None,
+    cut_sequence=None,
+    restriction_enzyme=None,
+    keep_cutsite=False,
+    output_file='out.fastq.gz',
+    minimum_slice_length=18,
+    stats_file=None,
+    compression_level=5,
+    n_digestion_processes=1,
+    buffer=10000,
+):
 
     # Set up multiprocessing variables
-    inputq = mp.SimpleQueue() # reads are placed into this queue for processing
-    writeq = mp.SimpleQueue() # digested reads are placed into the queue for writing
-    statq = mp.SimpleQueue() # stats queue
+    inputq = mp.SimpleQueue()  # reads are placed into this queue for processing
+    writeq = mp.SimpleQueue()  # digested reads are placed into the queue for writing
+    statq = mp.SimpleQueue()  # stats queue
 
     # Variables
     cut_site = re.compile(get_re_site(cut_sequence, restriction_enzyme))
-
-    # # Remove stats_file if present
-    # if not stats_file == sys.stdout and os.path.exists(stats_file):
-    #     os.remove(stats_file)
-
 
     if subcommand == 'flashed':  # Checks the subsubcommand to see in which mode to run
 
         fq = FastxFile(input_fastq)
 
         # Writer process
-        writer = mp.Process(target=write_to_fastq, args=(writeq,))
+        writer = mp.Process(
+            target=write_to_fastq, args=(writeq,), kwargs={'output_file': output_file}
+        )
         writer.start()
 
         # Define processes
-        processes = [mp.Process(target=read_fastq,
-                                args=(fq, inputq),
-                                kwargs={'n_workers': n_digestion_processes}
-                                ),
-                     mp.Process(target=collate_stats_flashed,
-                                args=(statq,),
-                                kwargs={'stats_file': stats_file},
-                                )
-                    ]
+        processes = [
+            mp.Process(
+                target=read_fastq,
+                args=(fq, inputq),
+                kwargs={'n_workers': n_digestion_processes},
+            ),
+            mp.Process(
+                target=collate_stats_flashed,
+                args=(statq,),
+                kwargs={'stats_file': stats_file},
+            ),
+        ]
 
-        processes_repeated = [mp.Process(target=digest_read_flashed,
-                                         args=(inputq, writeq, statq),
-                                         kwargs={'cutsite': cut_site,
-                                                 'flashed': True,
-                                                 'minimum_slice_length':
-                                                  minimum_slice_length,
-                                                 'keep_cutsite': keep_cutsite})
-                              for i in range(n_digestion_processes)]
+        processes_repeated = [
+            mp.Process(
+                target=digest_read_flashed,
+                args=(inputq, writeq, statq),
+                kwargs={
+                    'cutsite': cut_site,
+                    'flashed': True,
+                    'minimum_slice_length': minimum_slice_length,
+                    'keep_cutsite': keep_cutsite,
+                },
+            )
+            for i in range(n_digestion_processes)
+        ]
 
         processes = processes + processes_repeated
 
@@ -402,29 +445,39 @@ def main(subcommand,
         fq1, fq2 = FastxFile(fq1), FastxFile(fq2)
 
         # Writer process
-        writer = mp.Process(target=write_to_fastq, args=(writeq,))
+        writer = mp.Process(
+            target=write_to_fastq, args=(writeq,), kwargs={'output_file': output_file}
+        )
         writer.start()
 
         # Define processes
-        processes = [mp.Process(target=read_paired_fastqs,
-                                args=(fq1, fq2, inputq),
-                                kwargs={'n_workers': n_digestion_processes}
-                                ),
-                     mp.Process(target=collate_stats_unflashed,
-                                args=(statq,),
-                                kwargs={'stats_file': stats_file},
-                                )
-                    ]
+        processes = [
+            mp.Process(
+                target=read_paired_fastqs,
+                args=(fq1, fq2, inputq),
+                kwargs={'n_workers': n_digestion_processes},
+            ),
+            mp.Process(
+                target=collate_stats_unflashed,
+                args=(statq,),
+                kwargs={'stats_file': stats_file},
+            ),
+        ]
 
-        processes_repeated = [mp.Process(target=digest_read_unflashed,
-                                         args=(inputq, writeq, statq),
-                                         kwargs={'cutsite': cut_site,
-                                                 'flashed': False,
-                                                 'minimum_slice_length':
-                                                 minimum_slice_length,
-                                                 'keep_cutsite': keep_cutsite,
-                                                 'slice_offset': 0})
-                              for i in range(n_digestion_processes)]
+        processes_repeated = [
+            mp.Process(
+                target=digest_read_unflashed,
+                args=(inputq, writeq, statq),
+                kwargs={
+                    'cutsite': cut_site,
+                    'flashed': False,
+                    'minimum_slice_length': minimum_slice_length,
+                    'keep_cutsite': keep_cutsite,
+                    'slice_offset': 0,
+                },
+            )
+            for i in range(n_digestion_processes)
+        ]
 
         processes = processes + processes_repeated
 
