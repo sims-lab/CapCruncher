@@ -299,7 +299,7 @@ class CCSliceFilter():
         re_frags = captures['restriction_fragment'].unique()
 
         # Generates a list of restriction fragments to be excluded from further analysis
-        excluded_fragments = [SliceFilter.modify_re_frag(frag, modifier)
+        excluded_fragments = [CCSliceFilter.modify_re_frag(frag, modifier)
                               for frag in re_frags
                               for modifier in range(-n_adjacent, n_adjacent + 1)]
 

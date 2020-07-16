@@ -36,6 +36,23 @@ def get_parser(parser=None):
 
 def get_re_site(cut_sequence=None,
                 restriction_enzyme=None):
+
+    '''
+    Obtains the recogniton sequence for a supplied restriction enzyme or correctly
+    formats a supplied recognition sequence.
+
+    Args:
+        cut_sequence - DNA sequence to use for fasta digestion e.g. "GATC"
+        restriction_enzyme - Name of restriction enzyme e.g. DpnII  (case insensitive)
+
+    Returns:
+        recognition sequence e.g. "GATC"
+
+    Raises:
+        ValueError if restriction_enzyme is not in known enzymes
+
+    '''
+
     known_enzymes = {'dpnii': 'GATC',
                      'mboi': 'GATC',
                      'hindiii': 'AAGCTT',

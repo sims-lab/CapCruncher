@@ -39,18 +39,19 @@ from pybedtools import BedTool
 import itertools
 from pysam import FastxFile
 from cgatcore import pipeline as P
-from ruffus import (mkdir,
-                    follows,
-                    transform,
-                    merge,
-                    originate,
-                    collate,
-                    split,
-                    regex,
-                    add_inputs,
-                    suffix,
-                    active_if)
-
+from ruffus import (
+    mkdir,
+    follows,
+    transform,
+    merge,
+    originate,
+    collate,
+    split,
+    regex,
+    add_inputs,
+    suffix,
+    active_if,
+)
 
 
 # Global vars
@@ -59,38 +60,45 @@ ON_VALS = ['true', 't', 'on', 'yes', 'y', '1']
 # Script location
 SCRIPT_PATH = os.path.abspath(__file__)
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
+PACKAGE_DIR = os.path.dirname(SCRIPT_DIR)
 
 # Read in parameter file
 params = 'capturec_pipeline.yml'
 P.get_parameters(params)
 
-# Sort global variables
+# Sort pipeline global params
 P.PARAMS['SCRIPT_DIR'] = SCRIPT_DIR
-HUB_DIR = os.path.join(P.PARAMS["hub_publoc"], P.PARAMS['hub_name'])
-ASSEMBLY_DIR = os.path.join(HUB_DIR, P.PARAMS['genome_name'])
+P.PARAMS['PACKAGE_DIR'] = PACKAGE_DIR
+P.PARAMS['HUB_DIR'] = os.path.join(P.PARAMS["hub_publoc"], P.PARAMS['hub_name'])
+P.PARAMS['ASSEMBLY_DIR'] = os.path.join(P.PARAMS['HUB_DIR'], P.PARAMS['genome_name'])
 
 
-@follows(mkdir('ccanalyser'), mkdir('ccanalyser/restriction_enzyme_map/'))
-@transform(P.PARAMS['genome_fasta'],
-           regex(r'.*/(.*).fa.*'),
-           r'ccanalyser/restriction_enzyme_map/\1.digest.bed.gz')
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv
+
+    P.main(argv)
+
+@follows(mkdir('ccanalysis/restriction_enzyme_map/'))
+@transform(
+    P.PARAMS['genome_fasta'],
+    regex(r'.*/(.*).fa.*'),
+    r'ccanalysis/restriction_enzyme_map/\1.digest.bed.gz',
+)
 def digest_genome(infile, outfile):
     '''Digest genome using restriction enzyme and output fragments in bed file'''
     tmp = outfile.replace('.gz', '')
-    statement = '''python %(SCRIPT_DIR)s/digest_genome.py
+    statement = '''ccanalyser utils digest_genome
                    -i %(infile)s -o %(tmp)s -r %(ccanalyser_re)s
                    -l %(tmp)s.log
                    && gzip %(tmp)s'''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
 
-@follows(mkdir('fastq_pre-processing'),
-         mkdir('fastq_pre-processing/fastqc')
-        )
-@transform('*.fastq*',
-           regex(r'(.*).fastq.*'),
-           r'fastq_pre-processing/fastqc/\1_fastqc.zip')
+@follows(mkdir('fastq_pre-processing'), mkdir('fastq_pre-processing/fastqc'))
+@transform(
+    '*.fastq*', regex(r'(.*).fastq.*'), r'fastq_pre-processing/fastqc/\1_fastqc.zip'
+)
 def qc_reads(infile, outfile):
     '''Quality control of raw sequencing reads'''
     outdir = os.path.dirname(outfile)
@@ -99,14 +107,16 @@ def qc_reads(infile, outfile):
                    -t %(run_options_threads)s
                    --nogroup %(infile)s
                    --outdir %(outdir)s'''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'],
-          job_threads=P.PARAMS['run_options_threads'])
+    P.run(
+        statement,
+        job_queue=P.PARAMS['run_options_queue'],
+        job_threads=P.PARAMS['run_options_threads'],
+    )
 
 
 @follows(mkdir('run_statistics'))
 @merge(qc_reads, 'run_statistics/fastqc_report.html')
-def multiqc_reads (infile, outfile):
+def multiqc_reads(infile, outfile):
     '''Collate fastqc reports into single report using multiqc'''
 
     bn = os.path.basename(outfile)
@@ -119,15 +129,15 @@ def multiqc_reads (infile, outfile):
                    fastq_pre-processing/fastqc/
                    -o %(dn)s
                    -n %(bn)s'''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'],
-          job_memory='2G')
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_memory='2G')
 
 
 @follows(mkdir('fastq_pre-processing/deduplicated'))
-@collate('*.fastq*',
-         regex(r'(.*)_R*[12].fastq.*'),
-         r'fastq_pre-processing/deduplicated/\1_1.fastq.gz')
+@collate(
+    '*.fastq*',
+    regex(r'(.*)_R*[12].fastq.*'),
+    r'fastq_pre-processing/deduplicated/\1_1.fastq.gz',
+)
 def deduplicate_reads(infiles, outfile):
 
     '''Checks for duplicate read1/read2 pairs in a pair of fastq files
@@ -135,14 +145,14 @@ def deduplicate_reads(infiles, outfile):
 
     fq1, fq2 = infiles
     out1, out2 = outfile, outfile.replace('_1.fastq.gz', '_2.fastq.gz')
-    logfile = out1.replace('_1.fastq.gz', '.log')
+    stats_file = out1.replace('_1.fastq.gz', '.log')
 
     if str(P.PARAMS['deduplication_pre-dedup']).lower() in ON_VALS:
 
-        statement = '''python %(SCRIPT_DIR)s/deduplicate_fastq.py
+        statement = '''ccanalyser utils deduplicate_fastq
                                -1 %(fq1)s -2 %(fq2)s
                                --out1 %(out1)s --out2 %(out2)s
-                               -l %(logfile)s
+                               --stats_file %(stats_file)s
                                -c %(run_options_compression_level)s
                               '''
     elif '.fastq.gz' in fq1:
@@ -150,7 +160,7 @@ def deduplicate_reads(infiles, outfile):
         statement = '''ln -s $(pwd)/%(fq1)s %(out1)s &&
                        ln -s $(pwd)/%(fq2)s %(out2)s &&
                        lc=$(zcat %(fq1)s | wc -l);
-                       logfile=%(logfile)s;
+                       logfile=%(stats_file)s;
                        echo -e "Read_pairs_processed\\t$(($lc / 4))" > $logfile;
                        echo -e "Read_pairs_unique\\t$(($lc / 4))" >> $logfile;
                        echo -e "Read_pairs_removed\\t0" >> $logfile'''
@@ -160,22 +170,20 @@ def deduplicate_reads(infiles, outfile):
         statement = '''cat %(fq1)s | pigz -p 6 > %(out1)s &
                        cat %(fq2)s | pigz -p 6  > %(out2)s &
                        lc=$(cat %(fq1)s | wc -l);
-                       logfile=%(logfile)s;
+                       logfile=%(stats_file)s;
                        echo -e "Read_pairs_processed\\t$(($lc / 4))" > $logfile;
                        echo -e "Read_pairs_unique\\t$(($lc / 4))" >> $logfile;
                        echo -e "Read_pairs_removed\\t0" >> $logfile'''
 
-
-
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'],
-          job_memory='8G')
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_memory='8G')
 
 
 @follows(mkdir('fastq_pre-processing/trimmed'), deduplicate_reads)
-@collate(r'fastq_pre-processing/deduplicated/*.fastq.gz',
-         regex(r'fastq_pre-processing/deduplicated/(.*)_[12].fastq.gz'),
-         r'fastq_pre-processing/trimmed/\1_1_val_1.fq.gz')
+@collate(
+    r'fastq_pre-processing/deduplicated/*.fastq.gz',
+    regex(r'fastq_pre-processing/deduplicated/(.*)_[12].fastq.gz'),
+    r'fastq_pre-processing/trimmed/\1_1_val_1.fq.gz',
+)
 def trim_reads(infiles, outfile):
     '''Trim adaptor sequences using Trim-galore'''
 
@@ -183,15 +191,19 @@ def trim_reads(infiles, outfile):
     outdir = os.path.dirname(outfile)
     statement = '''trim_galore --cores %(run_options_threads)s --paired %(trim_options)s -o %(outdir)s
                      %(fastq1)s %(fastq2)s'''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'],
-          job_threads=P.PARAMS['run_options_threads'])
+    P.run(
+        statement,
+        job_queue=P.PARAMS['run_options_queue'],
+        job_threads=P.PARAMS['run_options_threads'],
+    )
 
 
 @follows(trim_reads, mkdir('fastq_pre-processing/flashed'))
-@collate('fastq_pre-processing/trimmed/*.fq.gz',
-         regex(r'fastq_pre-processing/trimmed/(.*)_[12]_.*.fq.gz'),
-         r'fastq_pre-processing/flashed/\1.extendedFrags.fastq.gz')
+@collate(
+    'fastq_pre-processing/trimmed/*.fq.gz',
+    regex(r'fastq_pre-processing/trimmed/(.*)_[12]_.*.fq.gz'),
+    r'fastq_pre-processing/flashed/\1.extendedFrags.fastq.gz',
+)
 def combine_reads(infiles, outfile):
     '''Combine overlapping paired-end reads using flash'''
     fastq1, fastq2 = infiles
@@ -202,76 +214,91 @@ def combine_reads(infiles, outfile):
                    -o %(output_prefix)s
                     %(fastq1)s
                     %(fastq2)s'''
-    P.run(statement,
-      job_queue=P.PARAMS['run_options_queue'],
-      job_threads=P.PARAMS['run_options_threads'])
+    P.run(
+        statement,
+        job_queue=P.PARAMS['run_options_queue'],
+        job_threads=P.PARAMS['run_options_threads'],
+    )
 
 
 @follows(mkdir('fastq_pre-processing/split'), combine_reads)
-@transform('fastq_pre-processing/flashed/*.fastq.gz',
-           regex(r'fastq_pre-processing/flashed/(.*).fastq.gz'),
-           r'fastq_pre-processing/split/\1_0.fastq.gz')
+@transform(
+    'fastq_pre-processing/flashed/*.fastq.gz',
+    regex(r'fastq_pre-processing/flashed/(.*).fastq.gz'),
+    r'fastq_pre-processing/split/\1_0.fastq.gz',
+)
 def split_fastq(infile, outfile):
     '''Splits the combined (flashed) fastq files into chunks for parallel processing'''
 
-    #Small error in function as only processes chunksize - 1 reads
+    # Small error in function as only processes chunksize - 1 reads
     output_prefix = outfile.replace('_0.fastq.gz', '')
-    statement = '''python
-                   %(SCRIPT_DIR)s/split_fastq.py
+    statement = '''ccanalyser utils split_fastq
                   -i %(infile)s
                   -n %(output_prefix)s
-                  --chunk_size %(split_n_reads)s
+                  --chunksize %(split_n_reads)s
                   -c %(run_options_compression_level)s '''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+
 
 @follows(mkdir('fastq_pre-processing/digested'), split_fastq)
-@transform('fastq_pre-processing/split/*.fastq.gz',
-           regex(r'fastq_pre-processing/split/(.*).extendedFrags_(\d+).fastq.gz'),
-           r'fastq_pre-processing/digested/\1.flashed_\2.fastq.gz')
+@transform(
+    'fastq_pre-processing/split/*.fastq.gz',
+    regex(r'fastq_pre-processing/split/(.*).extendedFrags_(\d+).fastq.gz'),
+    r'fastq_pre-processing/digested/\1.flashed_\2.fastq.gz',
+)
 def digest_flashed_reads(infile, outfile):
     '''In silico restriction enzyme digest of combined (flashed) read pairs'''
-    statement = '''python %(SCRIPT_DIR)s/digest_fastq.py
+    statement = '''ccanalyser utils digest_fastq
+                   flashed
                    -o %(outfile)s
-                   -l %(outfile)s.log
+                   --stats_file %(outfile)s.log
                    -r %(ccanalyser_re)s
                    -m 18
                    -c %(run_options_compression_level)s
                    -p 1
-                   flashed
                    -i %(infile)s'''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'],
-          job_threads=P.PARAMS['run_options_threads'])
+    P.run(
+        statement,
+        job_queue=P.PARAMS['run_options_queue'],
+        job_threads=P.PARAMS['run_options_threads'],
+    )
+
 
 @follows(split_fastq)
-@collate('fastq_pre-processing/split/*.fastq.gz',
-         regex(r'fastq_pre-processing/split/(.*).notCombined_[12]_(\d+).fastq.gz'),
-         r'fastq_pre-processing/digested/\1.pe_\2.fastq.gz')
+@collate(
+    'fastq_pre-processing/split/*.fastq.gz',
+    regex(r'fastq_pre-processing/split/(.*).notCombined_[12]_(\d+).fastq.gz'),
+    r'fastq_pre-processing/digested/\1.pe_\2.fastq.gz',
+)
 def digest_pe_reads(infiles, outfile):
     '''In silico restriction enzyme digest of non-combined (non-flashed) read pairs'''
 
     fq1, fq2 = infiles
-    statement = '''python %(SCRIPT_DIR)s/digest_fastq.py
-                   -l %(outfile)s.log
+    statement = '''ccanalyser utils digest_fastq
+                   unflashed
+                   --stats_file %(outfile)s.log
                    -r %(ccanalyser_re)s
                    -o %(outfile)s
                    -c %(run_options_compression_level)s
                    -m 18
                    -p 1
-                   unflashed
                    -1 %(fq1)s
                    -2 %(fq2)s
                    '''
 
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'],
-          job_threads=P.PARAMS['run_options_threads'])
+    P.run(
+        statement,
+        job_queue=P.PARAMS['run_options_queue'],
+        job_threads=P.PARAMS['run_options_threads'],
+    )
+
 
 @follows(mkdir('aligned'))
-@transform([digest_flashed_reads, digest_pe_reads],
-           regex(r'fastq_pre-processing/digested/(.*).fastq.gz'),
-           r'aligned/\1.bam')
+@transform(
+    [digest_flashed_reads, digest_pe_reads],
+    regex(r'fastq_pre-processing/digested/(.*).fastq.gz'),
+    r'aligned/\1.bam',
+)
 def align_reads(infile, outfile):
     ''' Aligns digested fq files using bowtie2'''
     aligner = P.PARAMS['align_aligner']
@@ -282,41 +309,44 @@ def align_reads(infile, outfile):
                     | samtools view -bS > %(outfile)s
                     && samtools sort %(outfile)s -o %(outfile)s.sorted.bam -m 2G -@ %(run_options_threads)s
                     && mv %(outfile)s.sorted.bam %(outfile)s'''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'],
-          job_threads=P.PARAMS['run_options_threads'],
-          job_memory='4G')
+    P.run(
+        statement,
+        job_queue=P.PARAMS['run_options_queue'],
+        job_threads=P.PARAMS['run_options_threads'],
+        job_memory='4G',
+    )
 
-@collate(align_reads,
-         regex(r'aligned/(.*)_(\d+).bam'),
-         r'aligned/\1.bam')
+
+@collate(align_reads, regex(r'aligned/(.*)_(\d+).bam'), r'aligned/\1.bam')
 def merge_bam_files(infiles, outfile):
     '''Combines bam files (by flashed/non-flashed status and sample)'''
     fnames = ' '.join(infiles)
 
     statement = '''samtools merge %(outfile)s %(fnames)s'''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+
 
 @follows(mkdir('aligned/mapping_statistics'))
-@transform(merge_bam_files,
-           regex(r'aligned/(.*).bam'),
-           r'aligned/mapping_statistics/\1.picard.metrics')
+@transform(
+    merge_bam_files,
+    regex(r'aligned/(.*).bam'),
+    r'aligned/mapping_statistics/\1.picard.metrics',
+)
 def mapping_qc(infile, outfile):
     '''Uses picard CollectAlignmentSummaryMetrics to get mapping information.'''
 
-    cmd = ['picard',
-           'CollectAlignmentSummaryMetrics',
-           'R=%(genome_fasta)s',
-           'I=%(infile)s',
-           'O=%(outfile)s',
-           '&> %(outfile)s.log',
-           ]
+    cmd = [
+        'picard',
+        'CollectAlignmentSummaryMetrics',
+        'R=%(genome_fasta)s',
+        'I=%(infile)s',
+        'O=%(outfile)s',
+        '&> %(outfile)s.log',
+    ]
 
     statement = ' '.join(cmd)
 
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
 
 @merge(mapping_qc, 'run_statistics/mapping_report.html')
@@ -333,42 +363,45 @@ def mapping_multiqc(infiles, outfile):
                    %(indir)s
                    -o %(out_dn)s
                    -n %(out_fn)s'''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'],
-          job_memory='8G')
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_memory='8G')
 
 
-@follows(mkdir('ccanalyser/annotations'))
-@transform(align_reads,
-           regex(r'aligned/(.*).bam'),
-           r'ccanalyser/annotations/\1.bam.bed.gz')
+@follows(mkdir('ccanalysis/annotations'))
+@transform(
+    align_reads, regex(r'aligned/(.*).bam'), r'ccanalysis/annotations/\1.bam.bed.gz'
+)
 def bam_to_bed(infile, outfile):
     '''Converts bam files to bed for faster intersection'''
     tmp = outfile.replace('.gz', '')
-    statement =  '''bedtools bamtobed
+    statement = '''bedtools bamtobed
                     -i %(infile)s | gzip > %(outfile)s'''
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
 
-@transform(P.PARAMS["ccanalyser_capture"],
-           regex(P.PARAMS["ccanalyser_capture"]),
-           r'ccanalyser/annotations/exclude.bed.gz')
+@transform(
+    P.PARAMS["ccanalyser_capture"],
+    regex(P.PARAMS["ccanalyser_capture"]),
+    r'ccanalysis/annotations/exclude.bed.gz',
+)
 def build_exclusion_bed(infile, outfile):
     '''Generates exclusion window around each capture site'''
 
-    statement =  '''bedtools slop
+    statement = '''bedtools slop
                     -i %(infile)s -g %(genome_fai)s -b %(ccanalyser_exclude_window)s
                     | bedtools subtract -a - -b %(ccanalyser_capture)s
                     | gzip > %(outfile)s'''
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
-@transform(bam_to_bed,
-           regex(r'ccanalyser/annotations/(.*).bam.bed.gz'),
-           r'ccanalyser/annotations/\1.annotation.capture.count.gz')
+
+@transform(
+    bam_to_bed,
+    regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
+    r'ccanalysis/annotations/\1.annotation.capture.count.gz',
+)
 def capture_intersect_count(infile, outfile):
     '''Report count of overlaps for the capture sites'''
 
-    statement =  '''bedtools intersect -c -f 1
+    statement = '''bedtools intersect -c -f 1
                     -a %(infile)s -b %(ccanalyser_capture)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
                     | sed '1i read_name\\tcapture_count'
@@ -377,28 +410,33 @@ def capture_intersect_count(infile, outfile):
 
 
 @follows(build_exclusion_bed)
-@transform(bam_to_bed,
-           regex(r'ccanalyser/annotations/(.*).bam.bed.gz'),
-           r'ccanalyser/annotations/\1.annotation.exclude.count.gz')
+@transform(
+    bam_to_bed,
+    regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
+    r'ccanalysis/annotations/\1.annotation.exclude.count.gz',
+)
 def exclusion_intersect_count(infile, outfile):
     '''Intersect reads with exclusion files.
     report count of overlaps for each input bed using -c'''
 
-    statement =  '''bedtools intersect -c
-                    -a %(infile)s -b ccanalyser/annotations/exclude.bed.gz
+    statement = '''bedtools intersect -c
+                    -a %(infile)s -b ccanalysis/annotations/exclude.bed.gz
                     | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
                     | sed '1i read_name\\texclusion_count'
                     | gzip > %(outfile)s'''
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
-@transform(bam_to_bed,
-           regex(r'ccanalyser/annotations/(.*).bam.bed.gz'),
-           r'ccanalyser/annotations/\1.annotation.capture.gz')
+
+@transform(
+    bam_to_bed,
+    regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
+    r'ccanalysis/annotations/\1.annotation.capture.gz',
+)
 def capture_intersect(infile, outfile):
     '''Intersect reads with capture files.
     Capture slices must be fully contained within the capture restriction_fragment'''
 
-    statement =  '''bedtools intersect -loj -f 1
+    statement = '''bedtools intersect -loj -f 1
                     -a %(infile)s -b %(ccanalyser_capture)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
                     | sed '1i read_name\\tcapture'
@@ -407,43 +445,50 @@ def capture_intersect(infile, outfile):
 
 
 @follows(build_exclusion_bed)
-@transform(bam_to_bed,
-           regex(r'ccanalyser/annotations/(.*).bam.bed.gz'),
-           r'ccanalyser/annotations/\1.annotation.exclude.gz')
+@transform(
+    bam_to_bed,
+    regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
+    r'ccanalysis/annotations/\1.annotation.exclude.gz',
+)
 def exclusion_intersect(infile, outfile):
     '''Intersect reads with exclusion files'''
 
-    statement =  '''bedtools intersect -loj
-                    -a %(infile)s -b ccanalyser/annotations/exclude.bed.gz
+    statement = '''bedtools intersect -loj
+                    -a %(infile)s -b ccanalysis/annotations/exclude.bed.gz
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
                     | sed '1i read_name\\texclusion'
                     | gzip > %(outfile)s'''
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
 
-@transform(bam_to_bed,
-           regex(r'ccanalyser/annotations/(.*).bam.bed.gz'),
-           add_inputs(digest_genome),
-           r'ccanalyser/annotations/\1.annotation.re.gz')
+@transform(
+    bam_to_bed,
+    regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
+    add_inputs(digest_genome),
+    r'ccanalysis/annotations/\1.annotation.re.gz',
+)
 def re_intersect(infiles, outfile):
     '''Intersect reads with restriction fragment map'''
     bam, genome = infiles
-    statement =  '''bedtools intersect -loj
+    statement = '''bedtools intersect -loj
                     -a %(bam)s -b %(genome)s
                     | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
                     | sed '1i read_name\\trestriction_fragment'
                     | gzip > %(outfile)s'''
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
-@transform(bam_to_bed,
-           regex(r'ccanalyser/annotations/(.*).bam.bed.gz'),
-           r'ccanalyser/annotations/\1.annotation.blacklist.count.gz')
+
+@transform(
+    bam_to_bed,
+    regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
+    r'ccanalysis/annotations/\1.annotation.blacklist.count.gz',
+)
 def blacklist_intersect_count(infile, outfile):
     '''Intersect reads with blacklisted regions.
     report count of overlaps for each input bed using -c '''
 
     if P.PARAMS['ccanalyser_blacklist']:
-        statement =  '''bedtools intersect -c
+        statement = '''bedtools intersect -c
                         -a %(infile)s -b %(ccanalyser_blacklist)s
                         | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
                         | sed '1i read_name\\tblacklist'
@@ -454,34 +499,45 @@ def blacklist_intersect_count(infile, outfile):
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
 
-@collate([capture_intersect_count, exclusion_intersect_count,
-         capture_intersect, exclusion_intersect,
-         re_intersect, blacklist_intersect_count],
-    regex(r'ccanalyser/annotations/(.*).annotation.*'),
-         r"ccanalyser/annotations/\1.annotations.tsv.gz")
+@collate(
+    [
+        capture_intersect_count,
+        exclusion_intersect_count,
+        capture_intersect,
+        exclusion_intersect,
+        re_intersect,
+        blacklist_intersect_count,
+    ],
+    regex(r'ccanalysis/annotations/(.*).annotation.*'),
+    r"ccanalysis/annotations/\1.annotations.tsv.gz",
+)
 def merge_annotations(infiles, outfile):
     '''Merge all intersections into a single file '''
     inlist = " ".join(infiles)
-    statement = '''python %(SCRIPT_DIR)s/join_tsv.py
+    statement = '''ccanalyser utils join_tsv
                    -f read_name
                    -o %(outfile)s.tmp
                    -i %(inlist)s
                    --method join
                    &&
-                   python %(SCRIPT_DIR)s/validate_annotations.py
+                   ccanalyser validate validate_annotations
                    -i %(outfile)s.tmp
                    -o %(outfile)s
                    '''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
-@follows(merge_annotations,
-         mkdir('ccanalyser/captures_and_reporters'),
-         mkdir('ccanalyser/stats'))
-@transform(align_reads,
-           regex(r'aligned/(.*).bam'),
-           add_inputs(r'ccanalyser/annotations/\1.annotations.tsv.gz'),
-           r'ccanalyser/captures_and_reporters/\1.reporter.bed.gz')
+
+@follows(
+    merge_annotations,
+    mkdir('ccanalysis/captures_and_reporters'),
+    mkdir('ccanalysis/stats'),
+)
+@transform(
+    align_reads,
+    regex(r'aligned/(.*).bam'),
+    add_inputs(r'ccanalysis/annotations/\1.annotations.tsv.gz'),
+    r'ccanalysis/captures_and_reporters/\1.reporter.bed.gz',
+)
 def ccanalyser(infiles, outfile):
     '''Processes bam files and annotations, filteres slices and outputs
        reporter slices for each capture site'''
@@ -489,53 +545,61 @@ def ccanalyser(infiles, outfile):
     bam, annotations = infiles
     output_prefix = outfile.replace('.reporter.bed.gz', '')
     stats_out = output_prefix.replace('captures_and_reporters', 'stats')
-    statement =  '''python %(SCRIPT_DIR)s/ccanalyser.py
+    statement = '''ccanalyser ccanalysis ccanalyser
                     -i %(bam)s
                     -a %(annotations)s
                     --output_prefix %(output_prefix)s
                     --stats_out %(stats_out)s'''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'],
-          job_memory=P.PARAMS['run_options_memory'])
+    P.run(
+        statement,
+        job_queue=P.PARAMS['run_options_queue'],
+        job_memory=P.PARAMS['run_options_memory'],
+    )
 
-@follows(ccanalyser, mkdir('ccanalyser/reporters_aggregated'))
-@collate('ccanalyser/captures_and_reporters/*.tsv.gz',
-         regex(r'ccanalyser/captures_and_reporters/(.*)\..*_\d+.(.*).tsv.gz'),
-         r'ccanalyser/reporters_aggregated/\1.\2.tsv.gz')
+
+@follows(ccanalyser, mkdir('ccanalysis/reporters_aggregated'))
+@collate(
+    'ccanalysis/captures_and_reporters/*.tsv.gz',
+    regex(r'ccanalysis/captures_and_reporters/(.*)\..*_\d+.(.*).tsv.gz'),
+    r'ccanalysis/reporters_aggregated/\1.\2.tsv.gz',
+)
 def collate_ccanalyser_output(infiles, outfile):
     '''Combines multiple capture site bed files'''
 
     inlist = " ".join(infiles)
-    statement = '''python %(SCRIPT_DIR)s/join_tsv.py
+    statement = '''ccanalyser utils join_tsv
                    -f reporter_read_name
                    -i %(inlist)s
                    -o %(outfile)s
                    --method concatenate'''
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
-@follows(mkdir('ccanalyser/bedgraphs'))
-@transform(collate_ccanalyser_output,
-           regex(r'ccanalyser/reporters_aggregated/(.*).tsv.gz'),
-           add_inputs(digest_genome),
-           r'ccanalyser/bedgraphs/\1.bedgraph.gz')
+
+@follows(mkdir('ccanalysis/bedgraphs'))
+@transform(
+    collate_ccanalyser_output,
+    regex(r'ccanalysis/reporters_aggregated/(.*).tsv.gz'),
+    add_inputs(digest_genome),
+    r'ccanalysis/bedgraphs/\1.bedgraph.gz',
+)
 def make_bedgraph(infiles, outfile):
     '''Intersect reporters with genome restriction fragments to create bedgraph'''
     tsv_fn = infiles[0]
     re_map = infiles[1]
-    statement = '''python
-                   %(SCRIPT_DIR)s/convert_tsv_to_bedgraph.py
-                   --input %(tsv_fn)s
-                   --bed %(re_map)s
-                   --output %(outfile)s'''
+    statement = '''ccanalyser ccanalysis ccanalyser_to_bedgraph
+                   -i %(tsv_fn)s
+                   -b %(re_map)s
+                   -o %(outfile)s'''
 
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
-@follows(mkdir('visualise'))
-@transform(make_bedgraph,
-           regex(r'ccanalyser/bedgraphs/(.*).bedgraph.gz'),
-           r'visualise/\1.bigWig')
+
+@follows(mkdir('ccanalysis/bigwigs'))
+@transform(
+    make_bedgraph,
+    regex(r'ccanalysis/bedgraphs/(.*).bedgraph.gz'),
+    r'ccanalysis/bigwigs/\1.bigWig',
+)
 def make_bigwig(infile, outfile):
     '''Uses UCSC tools bedGraphToBigWig to generate bigWigs for each bedgraph'''
 
@@ -544,21 +608,26 @@ def make_bigwig(infile, outfile):
                    && bedGraphToBigWig %(tmp)s %(genome_chrom_sizes)s %(outfile)s
                    && rm %(tmp)s'''
 
-    P.run(statement,
-          job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+
 
 def write_dict_to_file(fn, dictionary):
     with open(fn, 'w') as w:
         for k, v in dictionary.items():
             w.write(f'{k} {v}\n')
 
+
 def get_track_data(fn):
-    track_dict =    {'track': fn,
-                    'bigDataUrl': f'{P.PARAMS["hub_url"].rstrip("/")}/{(os.path.join(ASSEMBLY_DIR, fn)).lstrip("/")}',
-                    'shortLabel': fn,
-                    'longLabel': fn,
-                    'type': f'{fn.split(".")[-1]}',
-                    }
+
+    track_name = ' '.join(os.path.basename(fn).replace('_', ' ').split('.')[:-1])
+
+    track_dict = {
+        'track': fn,
+        'bigDataUrl': f'{P.PARAMS["hub_url"].rstrip("/")}/{(os.path.join(P.PARAMS["ASSEMBLY_DIR"], fn)).lstrip("/")}',
+        'shortLabel': track_name,
+        'longLabel': track_name,
+        'type': f'{fn.split(".")[-1]}',
+    }
 
     if P.PARAMS['hub_track_options']:
         try:
@@ -570,38 +639,48 @@ def get_track_data(fn):
 
     return track_dict
 
-@mkdir(HUB_DIR)
-@originate(os.path.join(HUB_DIR, 'hub.txt'))
+
+@mkdir(P.PARAMS['HUB_DIR'])
+@originate(os.path.join(P.PARAMS['HUB_DIR'], 'hub.txt'))
 def generate_hub_metadata(outfile):
 
-    content = {'hub': P.PARAMS['hub_name'],
-               'shortLabel': P.PARAMS['hub_short'] if P.PARAMS['hub_short'] else P.PARAMS['hub_name'],
-               'longLabel': P.PARAMS['hub_long'] if P.PARAMS['hub_long'] else P.PARAMS['hub_name'],
-               'genomesFile': 'genomes.txt',
-               'email': P.PARAMS['hub_email'],
-               'descriptionUrl': '/'.join([P.PARAMS["hub_url"].rstrip('/'),
-                                           ASSEMBLY_DIR.rstrip('/'),
-                                           'visualise_run_statistics.html'
-                                           ])
-               }
+    content = {
+        'hub': P.PARAMS['hub_name'],
+        'shortLabel': P.PARAMS['hub_short']
+        if P.PARAMS['hub_short']
+        else P.PARAMS['hub_name'],
+        'longLabel': P.PARAMS['hub_long']
+        if P.PARAMS['hub_long']
+        else P.PARAMS['hub_name'],
+        'genomesFile': 'genomes.txt',
+        'email': P.PARAMS['hub_email'],
+        'descriptionUrl': '/'.join(
+            [
+                P.PARAMS["hub_url"].rstrip('/'),
+                P.PARAMS['ASSEMBLY_DIR'].rstrip('/'),
+                'visualise_run_statistics.html',
+            ]
+        ),
+    }
 
     write_dict_to_file(outfile, content)
 
 
-
 @follows(generate_hub_metadata)
-@originate(os.path.join(HUB_DIR, 'genomes.txt'))
+@originate(os.path.join(P.PARAMS['HUB_DIR'], 'genomes.txt'))
 def generate_assembly_metadata(outfile):
 
-    content = {'genome': P.PARAMS['genome_name'],
-               'trackDb': os.path.join(P.PARAMS['genome_name'], 'trackDb.txt'),
-              }
+    content = {
+        'genome': P.PARAMS['genome_name'],
+        'trackDb': os.path.join(P.PARAMS['genome_name'], 'trackDb.txt'),
+    }
 
     write_dict_to_file(outfile, content)
 
-@mkdir(ASSEMBLY_DIR)
+
+@mkdir(P.PARAMS['ASSEMBLY_DIR'])
 @follows(generate_hub_metadata)
-@merge(make_bigwig, f'{ASSEMBLY_DIR}/trackDb.txt')
+@merge(make_bigwig, f'{P.PARAMS["ASSEMBLY_DIR"]}/trackDb.txt')
 def generate_trackdb_metadata(infiles, outfile):
 
     # Generate all separate tracks
@@ -613,12 +692,13 @@ def generate_trackdb_metadata(infiles, outfile):
         for track, color in zip(bigwig_tracks_all, colors):
             track['color'] = ','.join([str(c * 255) for c in color])
     else:
-        for track, color in zip(bigwig_tracks_all,
-                                itertools.cycle(P.PARAMS['hub_colors'].split(' '))):
+        for track, color in zip(
+            bigwig_tracks_all, itertools.cycle(P.PARAMS['hub_colors'].split(' '))
+        ):
 
-            track['color'] = ','.join([str(c * 255)
-                                      for c in matplotlib.colors.to_rgb(color)])
-
+            track['color'] = ','.join(
+                [str(c * 255) for c in matplotlib.colors.to_rgb(color)]
+            )
 
     # Write track data separated
     with open(outfile, 'w') as w:
@@ -628,29 +708,34 @@ def generate_trackdb_metadata(infiles, outfile):
             # Need to separate each track with a new line
             w.write('\n')
 
-        #Group tracks by sample name and make separate combined tracks for each
+        # Group tracks by sample name and make separate combined tracks for each
         sample_key = lambda d: d['track'].split('.')[0]
-        bigwig_tracks_grouped = {sample: list(track) for sample, track in
-                                 itertools.groupby(sorted(bigwig_tracks_all, key=sample_key), key=sample_key)}
+        bigwig_tracks_grouped = {
+            sample: list(track)
+            for sample, track in itertools.groupby(
+                sorted(bigwig_tracks_all, key=sample_key), key=sample_key
+            )
+        }
 
         for sample, grouped_tracks in bigwig_tracks_grouped.items():
 
             # Generate overlay track
-            combined_track_details = {'track': f'{sample}_combined',
-                                      'container': 'multiWig',
-                                      'aggregate': 'transparentOverlay',
-                                      'showSubtrackColorOnUi': 'on',
-                                      'type': 'bigWig 0 250',
-                                      'shortLabel': f'{sample}_combined',
-                                      'longLabel': f'{sample}_all_capture_probes_combined',
-                                      'autoScale': 'on',
-                                      'windowingFunction': 'maximum' }
+            combined_track_details = {
+                'track': f'{sample}_combined',
+                'container': 'multiWig',
+                'aggregate': 'transparentOverlay',
+                'showSubtrackColorOnUi': 'on',
+                'type': 'bigWig 0 250',
+                'shortLabel': f'{sample}_combined',
+                'longLabel': f'{sample}_all_capture_probes_combined',
+                'autoScale': 'on',
+                'windowingFunction': 'maximum',
+            }
 
             # Write overlay track
             for label, data in combined_track_details.items():
                 w.write(f'{label} {data}\n')
             w.write('\n')
-
 
             # Write sub-tracks
             for track in grouped_tracks:
@@ -661,13 +746,17 @@ def generate_trackdb_metadata(infiles, outfile):
                 # Need to separate each track with a new line
                 w.write('\n')
 
+
 @follows(ccanalyser)
-@merge(['fastq_pre-processing/deduplicated/*.log',
+@merge(
+    [
+        'fastq_pre-processing/deduplicated/*.log',
         'fastq_pre-processing/digested/*.log',
-        'ccanalyser/stats/*.slice.stats',
-        'ccanalyser/stats/*.reporter.stats'
-        ],
-        'run_statistics/combined_stats.tsv')
+        'ccanalysis/stats/*.slice.stats',
+        'ccanalysis/stats/*.reporter.stats',
+    ],
+    'run_statistics/combined_stats.tsv',
+)
 def aggregate_stats(infiles, outfile):
 
     dedup = ' '.join([fn for fn in infiles if 'deduplicated/' in fn])
@@ -676,7 +765,7 @@ def aggregate_stats(infiles, outfile):
     reporters = ' '.join([fn for fn in infiles if '.reporter.stats' in fn])
     outdir = os.path.dirname(outfile)
 
-    statement =  '''python %(SCRIPT_DIR)s/aggregate_statistics.py
+    statement = '''ccanalyser stats aggregate_stats
                     --deduplication_stats %(dedup)s
                     --digestion_stats %(digestion)s
                     --ccanalyser_stats %(slices)s
@@ -686,6 +775,7 @@ def aggregate_stats(infiles, outfile):
 
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
+
 @follows(aggregate_stats)
 @merge('run_statistics/*.tsv', r'run_statistics/visualise_run_statistics.html')
 def build_report(infile, outfile):
@@ -693,7 +783,7 @@ def build_report(infile, outfile):
        then converts to html'''
     statement = '''rm run_statistics/visualise_run_statistics* -f &&
                    papermill
-                   %(SCRIPT_DIR)s/visualise_capture-c_stats.ipynb
+                   %(PACKAGE_DIR)s/stats/visualise_capture-c_stats.ipynb
                    run_statistics/visualise_run_statistics.ipynb
                    -p directory $(pwd)/run_statistics/ &&
                    jupyter nbconvert
@@ -704,10 +794,11 @@ def build_report(infile, outfile):
 
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
+
 @follows(generate_trackdb_metadata)
-@transform([make_bigwig, build_report],
-          regex('.*/(.*)$'),
-          ASSEMBLY_DIR + r'/\1')
+@transform(
+    [make_bigwig, build_report], regex('.*/(.*)$'), P.PARAMS['ASSEMBLY_DIR'] + r'/\1'
+)
 def link_files(infile, outfile):
     try:
         infile_fp = os.path.abspath(infile)
@@ -715,14 +806,15 @@ def link_files(infile, outfile):
     except Exception as e:
         print(e)
 
+
 @originate('hub_url.txt')
 def write_hub_path(outfile):
 
     with open(outfile, 'w') as w:
-        w.write(f'{P.PARAMS["hub_url"].rstrip("/")}/{os.path.join(HUB_DIR, "hub.txt").lstrip("/")}\n')
+        w.write(
+            f'{P.PARAMS["hub_url"].rstrip("/")}/{os.path.join(P.PARAMS["HUB_DIR"], "hub.txt").lstrip("/")}\n'
+        )
 
-def run_pipeline():
-    sys.exit(P.main(sys.argv))
 
 if __name__ == "__main__":
-    run_pipeline()
+    main()

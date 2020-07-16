@@ -51,7 +51,8 @@ def concatenate_tsv(dframes):
 
 def main(input_files,
          output_file,
-         index_field):
+         index_field,
+         method='join'):
 
     index_field = format_index_var(index_field)
     dataframes = []
@@ -65,10 +66,10 @@ def main(input_files,
             print(f'Error with {tsv}: {e}')
 
 
-    if args.method == 'join':
+    if method == 'join':
         df = join_tsv(dataframes)
         df.to_csv(output_file, header=True, sep='\t')
-    elif args.method == 'concatenate':
+    elif method == 'concatenate':
         df = concatenate_tsv(dataframes)
         df.to_csv(output_file, header=True, sep='\t')
 

@@ -1,5 +1,2 @@
-.. autoprogram:: capturec.ccanalyser:p
-    :prog: capturec/ccanalyser.py
-
-.. automodule:: capturec.ccanalyser
+.. automodule:: ccanalyser.ccanalysis.ccanalyser
    :members:

@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+'''
+Converts the tsv output of ccanalyser.py to a bedgraph by intersecting
+the reporter slices with a bed file. The pipeline uses the generated restriction
+map of the genome  (ccanalysis/restriction_enzyme_map/genome.digest.bed.gz).
+
+'''
+
 import argparse
 import os
 import sys
@@ -10,12 +19,23 @@ def get_parser(parser=None):
     parser.add_argument('-i','--tsv_input', help='Reporter tsv file')
     parser.add_argument('-b', '--bed', help='''Bed file to intersect with reporters
                                       e.g. RE fragments bed file.''')
-    parser.add_argument('--output', help='Output file name', default='out.bedgraph')
+    parser.add_argument('-o', '--output', help='Output file name', default='out.bedgraph')
     return parser
 
 def main(tsv_input,
          bed,
          output='out.bedgraph'):
+
+    '''
+    Converts reporter tsv to bedgraph
+
+    Args:
+        tsv_input - reporter tsv file name
+        bed - bed file to intersect with reporters
+        output - file name for output file
+
+
+    '''
 
     df_reporters = (pd.read_csv(tsv_input, sep='\t') )
     df_reporters[['reporter_start', 'reporter_end']] = df_reporters[['reporter_start', 'reporter_end']].astype(int)
