@@ -1,0 +1,6 @@
+include README.txt LICENSE MANIFEST.in setup.py
+include tests
+include capturec/test_params/*
+include capturec/data/*
+recursive-include capturec *.py *.ipynb
+exclude .git

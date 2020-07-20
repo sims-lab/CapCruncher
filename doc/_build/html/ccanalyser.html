@@ -1,0 +1,521 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>&lt;no title&gt; &mdash; ccanalyser 0.0.1 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Welcome to capture-c’s documentation!" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> ccanalyser
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"><ul class="simple">
+</ul>
+</div>
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ccanalyser</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>&lt;no title&gt;</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/ccanalyser.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <span class="target" id="module-ccanalyser.ccanalysis.ccanalyser"></span><dl class="class">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter">
+<em class="property">class </em><code class="sig-prename descclassname">ccanalyser.ccanalysis.ccanalyser.</code><code class="sig-name descname">CCSliceFilter</code><span class="sig-paren">(</span><em class="sig-param">slices</em><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class containing methods for filtering slices and reporting
+slice/fragment statistics.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>slices: DataFrame containing aligned reads and annotations.</p>
+</dd>
+</dl>
+<p>Slices DataFrame must have the following columns:</p>
+<ul class="simple">
+<li><p>read_name: Unique aligned read identifier (e.g. XZKG:889:11|flashed|1)</p></li>
+<li><p>parent_read: Identifier shared by slices from same fragment (e.g.XZKG:889:11)</p></li>
+<li><p>pe: Read combined by FLASh or not (i.e. “flashed” or “pe”)</p></li>
+<li><p>mapped: Alignment is mapped (e.g. 0/1)</p></li>
+<li><p>slice: Slice number (e.g. 0)</p></li>
+<li><p>capture: Capture site intersecting slice (e.g. Slc25A37)</p></li>
+<li><p>capture_count: Number of capture probes overlapping slice (e.g. 1)</p></li>
+<li><p>exclusion: Read present in excluded region (e.g. Slc25A37)</p></li>
+<li><p>exclusion_count: Number of excluded regions overlapping slice (e.g. 1)</p></li>
+<li><p>blacklist: Read present in excluded region (e.g. 0)</p></li>
+<li><p>coordinates: Genome coordinates (e.g. chr1|1000|2000)</p></li>
+</ul>
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.captures">
+<em class="property">property </em><code class="sig-name descname">captures</code><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.captures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts capture slices from slices dataframe
+i.e. slices that do not have a null capture name</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Dataframe containg all capture slices</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.fragments">
+<em class="property">property </em><code class="sig-name descname">fragments</code><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Summarises slices at the fragment level.</p>
+<blockquote>
+<div><p>Uses pandas groupby to aggregate slices by their parental read name
+(shared by all slices from the same fragment). Also determines the
+number of reporter slices for each fragment.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Dataframe of slices aggregated by fragment</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.modify_re_frag">
+<em class="property">static </em><code class="sig-name descname">modify_re_frag</code><span class="sig-paren">(</span><em class="sig-param">frag: str</em>, <em class="sig-param">adjust=1</em><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.modify_re_frag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Increases/Decreases the RE frag number.</p>
+<p>e.g. modify_re_frag(DpnII_chr10_5, adjust=1) -&gt; DpnII_chr10_6</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>frag: Name of restriction fragment (str)
+adjust: Adjust fragment identifier number by value</p>
+</dd>
+<dt>Returns:</dt><dd><p>Modified fragment name (str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_duplicate_re_frags">
+<code class="sig-name descname">remove_duplicate_re_frags</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_duplicate_re_frags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prevent the same restriction fragment being counted more than once (Uncommon).
+i.e. –RE_FRAG1——Capture——-RE_FRAG1—-</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>CCSliceFilter</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_duplicate_slices">
+<code class="sig-name descname">remove_duplicate_slices</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_duplicate_slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove all slices if the slice coordinates and slice order are shared
+with another fragment i.e. are PCR duplicates (Common).</p>
+<dl class="simple">
+<dt>e.g</dt><dd><p>coordinates</p>
+</dd>
+</dl>
+<div class="line-block">
+<div class="line">Frag 1:  chr1:1000-1250 chr1:1500-1750</div>
+<div class="line">Frag 2:  chr1:1000-1250 chr1:1500-1750</div>
+<div class="line">Frag 3:  chr1:1050-1275 chr1:1600-1755</div>
+<div class="line">Frag 4:  chr1:1500-1750 chr1:1000-1250</div>
+</div>
+<p>Frag 2 removed. Frag 1,3,4 retained</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>CCSliceFilter</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_duplicate_slices_pe">
+<code class="sig-name descname">remove_duplicate_slices_pe</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_duplicate_slices_pe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes PCR duplicates from non-flashed (PE) fragments (Common).
+Sequence quality is often lower at the 3’ end of reads leading to variance in mapping coordinates.
+PCR duplicates are removed by checking that the fragment start and end are not duplicated in the dataframe.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>CCSliceFilter</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_exluded_and_blacklisted_slices">
+<code class="sig-name descname">remove_exluded_and_blacklisted_slices</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_exluded_and_blacklisted_slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes any slices in the exclusion region (default 1kb) and a blacklist (if supplied) (V. Common)</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>CCSliceFilter</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_multi_capture_fragments">
+<code class="sig-name descname">remove_multi_capture_fragments</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_multi_capture_fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes all slices (i.e. the entire fragment) if more than
+one capture probe is present i.e. double captures (V. Common)</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>CCSliceFilter</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_multicapture_reporters">
+<code class="sig-name descname">remove_multicapture_reporters</code><span class="sig-paren">(</span><em class="sig-param">n_adjacent=1</em><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_multicapture_reporters" title="Permalink to this definition">¶</a></dt>
+<dd><div class="line-block">
+<div class="line">Deals with an odd situation in which a reporter spanning two adjacent capture sites is not removed.</div>
+<div class="line">e.g.</div>
+<div class="line">——Capture 1—-/——Capture 2——</div>
+<div class="line-block">
+<div class="line">—–REP——–</div>
+<div class="line"><br /></div>
+</div>
+<div class="line">In this case the “reporter” slice is not considered either a capture or exclusion.</div>
+</div>
+<div class="line-block">
+<div class="line">These cases are dealt with by explicitly removing reporters on restriction fragments</div>
+<div class="line">adjacent to capture sites.</div>
+</div>
+<div class="line-block">
+<div class="line">The number of adjacent RE fragments can be adjusted with n_adjacent.</div>
+</div>
+<div class="line-block">
+<div class="line">Returns:</div>
+<div class="line-block">
+<div class="line">CCSliceFilter</div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_non_reporter_fragments">
+<code class="sig-name descname">remove_non_reporter_fragments</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_non_reporter_fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes all slices (i.e. the entire fragment) if it has no reporter slices present (Common)</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>CCSliceFilter</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_orphan_slices">
+<code class="sig-name descname">remove_orphan_slices</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_orphan_slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove fragments with only one aligned slice (Common)</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>CCSliceFilter</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_unmapped_slices">
+<code class="sig-name descname">remove_unmapped_slices</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.remove_unmapped_slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes slices marked as unmapped (Uncommon)</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>CCSliceFilter</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.reporters">
+<em class="property">property </em><code class="sig-name descname">reporters</code><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.reporters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts reporter slices from slices dataframe
+i.e. non-capture slices</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Dataframe containg all non-capture slices</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.slice_stats">
+<em class="property">property </em><code class="sig-name descname">slice_stats</code><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.CCSliceFilter.slice_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets statisics at a slice level.</p>
+<p>Aggregates slices to determine the number of:
+-unique slices
+-unique fragments
+-unique capture sites
+-capture slices
+-excluded slices
+-blacklisted slices</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Dataframe containing slice statistics</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="ccanalyser.ccanalysis.ccanalyser.aggregate_by_capture_site">
+<code class="sig-prename descclassname">ccanalyser.ccanalysis.ccanalyser.</code><code class="sig-name descname">aggregate_by_capture_site</code><span class="sig-paren">(</span><em class="sig-param">capture</em>, <em class="sig-param">reporter</em>, <em class="sig-param">stats_output</em><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.aggregate_by_capture_site" title="Permalink to this definition">¶</a></dt>
+<dd><p>Merges capture and reporter slices and aggregates dataframe by capture probe.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>capture: Datframe containing capture slices i.e. CCSliceFilter.captures
+reporter: Dataframe containing reporter slices i.e. CCSliceFilter.reporters</p>
+</dd>
+<dt>Returns:</dt><dd><p>pandas.core.groupby.generic.DataFrameGroupBy object
+containing captures and reporters grouped by capture_probe.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="ccanalyser.ccanalysis.ccanalyser.filter_slices">
+<code class="sig-prename descclassname">ccanalyser.ccanalysis.ccanalyser.</code><code class="sig-name descname">filter_slices</code><span class="sig-paren">(</span><em class="sig-param">df_slices</em>, <em class="sig-param">stats_output</em><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.filter_slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs filtering of slices with the CCSliceFilter class.
+Also outputs statitsics after each major filtering step.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>df_slices: Dataframe. Must contain all of the columns required by</dt><dd><p>CCSliceFilter.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><p>CCSliceFilter instance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="ccanalyser.ccanalysis.ccanalyser.get_timing">
+<code class="sig-prename descclassname">ccanalyser.ccanalysis.ccanalyser.</code><code class="sig-name descname">get_timing</code><span class="sig-paren">(</span><em class="sig-param">task_name=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.get_timing" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator:
+Gets the time taken by the wrapped function</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="ccanalyser.ccanalysis.ccanalyser.merge_annotations">
+<code class="sig-prename descclassname">ccanalyser.ccanalysis.ccanalyser.</code><code class="sig-name descname">merge_annotations</code><span class="sig-paren">(</span><em class="sig-param">df</em>, <em class="sig-param">annotations</em><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.merge_annotations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Combines annotations with the parsed bam file output.</p>
+<p>Uses pandas outer join on the indexes to merge annotations
+e.g. number of capture probe overlaps.</p>
+<p>Annotation tsv must have the index as the first column and this index
+must have intersecting keys with the first dataframe’s index.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>df: pd.Dataframe to merge with annotations
+annotations: Filename of .tsv to read and merge with df</p>
+</dd>
+<dt>Returns:</dt><dd><p>Merged dataframe</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="ccanalyser.ccanalysis.ccanalyser.parse_alignment">
+<code class="sig-prename descclassname">ccanalyser.ccanalysis.ccanalyser.</code><code class="sig-name descname">parse_alignment</code><span class="sig-paren">(</span><em class="sig-param">aln</em><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.parse_alignment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parses reads from a bam file into a list.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>aln: pysam.AlignmentFile</p>
+</dd>
+<dt>Returns:</dt><dd><p>List containing:
+-read name
+-parent reads
+-flashed status
+-slice number
+-mapped status
+-multimapping status
+-chromosome number (e.g. chr10)
+-start (e.g. 1000)
+-end (e.g. 2000)
+-coords e.g. (chr10:1000-2000)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="ccanalyser.ccanalysis.ccanalyser.parse_bam">
+<code class="sig-prename descclassname">ccanalyser.ccanalysis.ccanalyser.</code><code class="sig-name descname">parse_bam</code><span class="sig-paren">(</span><em class="sig-param">bam</em><span class="sig-paren">)</span><a class="headerlink" href="#ccanalyser.ccanalysis.ccanalyser.parse_bam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses parse_alignment function convert bam file to a dataframe.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>bam: File name of bam file to process.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Dataframe with columns:
+-‘read_name’
+-‘parent_read’
+-‘pe’
+-‘slice’
+-‘mapped’
+-‘multimapped’
+-‘chrom’
+-‘start’
+-‘end’
+-‘coordinates’</p>
+</dd>
+</dl>
+</dd></dl>
+
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to capture-c’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, asmith, dsims
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
