@@ -19,86 +19,6 @@ from pysam import FastxFile
 from xopen import xopen
 from .digest_genome import get_re_site
 
-
-def get_parser(parser=None):
-
-    if not parser:
-        parser = argparse.ArgumentParser(prog='digest_fastq')
-
-    subparsers = parser.add_subparsers(
-        help='Run in either flashed or unflashed', dest='subcommand'
-    )
-    parser_flashed = subparsers.add_parser('flashed', help='For flashed reads')
-    parser_flashed.add_argument(
-        '-i', '--input_fastq', help='fastq file to parse', required=True
-    )
-
-    parser_unflashed = subparsers.add_parser('unflashed', help='For unflashed reads')
-    parser_unflashed.add_argument(
-        '-1', '--fq1', help='fastq file containing read 1 to parse', required=True
-    )
-    parser_unflashed.add_argument(
-        '-2', '--fq2', help='fastq file containing read 2 to parse', required=True
-    )
-
-    for subparser in [parser_unflashed, parser_flashed]:
-        add_shared_options(subparser)
-
-    return parser
-
-
-def add_shared_options(parser):
-    parser.add_argument(
-        '-o', '--output_file', help='output file name', default='digested.fastq.gz'
-    )
-
-    enzyme_group = parser.add_mutually_exclusive_group(required=True)
-    enzyme_group.add_argument(
-        '-r', '--restriction_enzyme', help='Name of restriction enzyme', default='DpnII'
-    )
-    enzyme_group.add_argument(
-        '-s', '--cut_sequence', help='Sequence of restriction site'
-    )
-
-    parser.add_argument(
-        '-m',
-        '--minimum_slice_length',
-        help='Shortest length for a slice to be output',
-        default=20,
-        type=int,
-    )
-    parser.add_argument('--stats_file', help='stats_file_prefix', default='stats.log')
-    parser.add_argument(
-        '-c',
-        '--compression_level',
-        help='Level of gzip compression (1-9 with 9 being the most compressed/slowest)',
-        default=6,
-        type=int,
-    )
-    parser.add_argument(
-        '--keep_cutsite',
-        help='Determines if cutsite is stripped from the start of each slice',
-        action='store_true',
-        default=False,
-    )
-    parser.add_argument(
-        '--buffer',
-        help='Number of reads to process before writing output',
-        default=10000,
-        type=int,
-    )
-
-    parser.add_argument(
-        '-p',
-        '--n_digestion_processes',
-        help='Number of digestion processes to spawn',
-        default=1,
-        type=int,
-    )
-
-    return parser
-
-
 class DigestedRead:
     '''Class performs in silico digestion of fastq reads and contains relevant stats.
 
@@ -491,7 +411,3 @@ def main(
     for proc in processes:
         proc.join(10)
         proc.terminate()
-
-
-if __name__ == '__main__':
-    main(**vars(get_parser().parse_args()))

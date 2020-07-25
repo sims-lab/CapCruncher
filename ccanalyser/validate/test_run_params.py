@@ -16,10 +16,6 @@ import glob
 SCRIPT_PATH = os.path.abspath(__file__)
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
 
-def get_parser(parser=None):
-    return parser
-
-
 def load_yaml(yml):
     with open('capturec_pipeline.yml') as r:
         content = r.read().replace('\t', ' ' * 4)
@@ -83,6 +79,3 @@ def main():
     else:
         for err in glob.glob('*.stderr'):
             os.remove(err)
-
-if __name__ == '__main__':
-    main()

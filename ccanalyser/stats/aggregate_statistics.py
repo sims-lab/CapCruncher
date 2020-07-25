@@ -6,21 +6,6 @@ import argparse
 import numpy as np
 import pandas as pd
 
-def get_parser(parser=None):
-
-    if not parser:
-        parser = argparse.ArgumentParser()
-
-    parser.add_argument('--deduplication_stats', nargs='+',
-                   help='Deduplication stats paths' )
-    parser.add_argument('--digestion_stats', nargs='+',
-                   help='Digestion stats paths')
-    parser.add_argument('--ccanalyser_stats', nargs='+')
-    parser.add_argument('--reporter_stats', nargs='+')
-    parser.add_argument('--output_dir')
-
-    return parser
-
 def split_fn(fn_ser):
     '''Extracts the sample and read_type attributes from a given file name.
 
@@ -237,7 +222,3 @@ def main(deduplication_stats,
     combined_stats = combine_read_pair_stats([total_reads, dedup, flashed, digested, slice_stats])
 
     combined_stats.to_csv(f'{out_dir}/combined_stats.tsv', sep='\t')
-
-
-if __name__ == '__main__':
-    main(**get_parser().parse_args())

@@ -13,17 +13,6 @@ import sys
 from xopen import xopen
 from pysam import FastxFile
 
-def get_parser(parser=None):
-    if not parser:
-        parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input_fastq', help='BAM file to parse')
-    parser.add_argument('--chunksize', help='Number of reads per output file', default=1000000, type=int)
-    parser.add_argument('-c', '--compression_level', help='Level of gzip compression (1-9 with 9 being the most compressed/slowest)',
-                        default=6, type=int)
-    parser.add_argument('-n','--output_prefix', help='output prefix')
-
-    return parser
-
 def main(input_fastq,
          output_prefix,
          compression_level=5,
@@ -55,7 +44,3 @@ def main(input_fastq,
             out_handle.write(processed_read)
 
     out_handle.close()
-
-if __name__ == '__main__':
-    args = get_parser().parse_args()
-    main(**vars(args))

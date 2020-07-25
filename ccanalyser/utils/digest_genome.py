@@ -15,25 +15,6 @@ import pysam
 import re
 #import pdb
 
-def get_parser(parser=None):
-
-    if not parser:
-        parser= argparse.ArgumentParser()
-
-    parser.add_argument('-i', '--input_fasta', help='fasta file to parse', required=True)
-    parser.add_argument('-o', '--output_file', help='output file name',
-                   default='digested.bed')
-
-    enzyme_group = parser.add_mutually_exclusive_group(required=True)
-    enzyme_group.add_argument('-r', '--restriction_enzyme', help='Name of restriction enzyme',
-                              default='DpnII')
-    enzyme_group.add_argument('-s', '--cut_sequence', help='Sequence of restriction site',
-                              default='GATC')
-    parser.add_argument('-l', '--logfile', help='filename for logfile',
-                        default='test.log')
-    return parser
-
-
 def get_re_site(cut_sequence=None,
                 restriction_enzyme=None):
 
@@ -102,7 +83,3 @@ def main(input_fasta,
 
             # Print total slices per chr to log file
             log.write(f'{seq_entry.name}: {len(match_positions)}\n')
-
-
-if __name__ == '__main__':
-    main(**vars(get_parser().parse_args()))

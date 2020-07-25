@@ -12,19 +12,118 @@ import os
 import sys
 import pandas as pd
 from pybedtools import BedTool
+import tempfile
 
-def get_parser(parser=None):
-    if not parser:
-        parser = argparse.ArgumentParser()
-    parser.add_argument('-i','--tsv_input', help='Reporter tsv file')
-    parser.add_argument('-b', '--bed', help='''Bed file to intersect with reporters
-                                      e.g. RE fragments bed file.''')
-    parser.add_argument('-o', '--output', help='Output file name', default='out.bedgraph')
-    return parser
+class CCBedgraph(object):
+    def __init__(self, path=None, df=None):
 
-def main(tsv_input,
-         bed,
-         output='out.bedgraph'):
+        self.fn = path
+        self.df = df
+
+        if self.fn:
+            self.df = pd.read_csv(self.fn,
+                                  sep='\t',
+                                  header=None,
+                                  names=['chrom', 'start', 'end', 'score'])
+
+    @property
+    def score(self):
+        return self.df.rename(columns={'score': self.fn})[self.fn]
+
+    @property
+    def coordinates(self):
+        return self.df.loc[:, 'chrom':'end']
+
+    def to_bedtool(self):
+        return self.df.pipe(BedTool.from_dataframe)
+
+    def normalise_by_region(self, region_coords, n_read_scale=1e6):
+
+        region = BedTool('\t'.join(region_coords), from_string=True)
+        intervals_in_region = (self.to_bedtool()
+                                   .intersect(region, wa=True)
+                                   .to_dataframe()
+                              )
+        scale_factor = intervals_in_region.iloc[:, -1].sum() / n_read_scale
+        self.df['score'] = self.df['score'] / scale_factor
+        return self
+
+    def to_file(self, path):
+        self.df.to_csv(path, sep='\t', header=None, index=None)
+
+    def __add__(self, other):
+        if isinstance(other, CCBedgraph):
+            self.df['score'] = self.df['score'] + other.df['score']
+            return self
+
+        elif isinstance(other, [np.ndarray, pd.Series, int]):
+            self.df['score'] = self.df['score'] + other
+            return self
+
+        else:
+            return NotImplementedError()
+
+    def __sub__(self, other):
+        if isinstance(other, CCBedgraph):
+            self.df['score'] = self.df['score'] - other.df['score']
+            return self
+
+        elif isinstance(other, [np.ndarray, pd.Series, int]):
+            self.df['score'] = self.df['score'] - other
+            return self
+
+        else:
+            return NotImplementedError()
+
+class CCBedgraphCollection(object):
+    def __init__(self, bedgraphs):
+        self.bdg_fnames = bedgraphs
+        self.bedgraphs = [CCBedgraph(bg) for bg in self.bdg_fnames]
+
+    def normalise_bedgraphs(self, how='region', **kwargs):
+
+        if how == 'region':
+            self.bedgraphs = [bg.normalise_by_region(**kwargs) for bg in self.bedgraphs]
+        else:
+            raise NotImplementedError('No other methods')
+        return self
+
+    def get_average_bedgraph(self):
+        coords = self.bedgraphs[0].coordinates
+        scores = [bg.score for bg in self.bedgraphs]
+        df_scores = pd.concat(scores, axis=1)
+        df_scores_mean = df_scores.mean(axis=1)
+        bdg = (
+            pd.concat([coords, df_scores_mean], axis=1).pipe(BedTool.from_dataframe).fn
+        )
+        return CCBedgraph(bdg)
+
+
+def make_bedgraph(reporters, bed):
+    df_reporters = pd.read_csv(reporters, sep='\t')
+    df_reporters[['reporter_start', 'reporter_end']] = df_reporters[
+        ['reporter_start', 'reporter_end']
+    ].astype(int)
+    bt_reporters = BedTool.from_dataframe(
+        df_reporters[
+            ['reporter_chrom', 'reporter_start', 'reporter_end', 'reporter_read_name']
+        ]
+    )
+
+    bt_bed = BedTool(bed)
+    bedgraph = bt_bed.intersect(bt_reporters, c=True).sort().cut([0, 1, 2, 4])
+
+    return bedgraph.fn
+
+
+def main(
+    tsv_input,
+    bed,
+    output='out.bedgraph',
+    normalise='region',
+    region=[],
+    n_reads_scale=1e6,
+):
 
     '''
     Converts reporter tsv to bedgraph
@@ -37,20 +136,11 @@ def main(tsv_input,
 
     '''
 
-    df_reporters = (pd.read_csv(tsv_input, sep='\t') )
-    df_reporters[['reporter_start', 'reporter_end']] = df_reporters[['reporter_start', 'reporter_end']].astype(int)
-    bt_reporters = BedTool.from_dataframe(df_reporters[['reporter_chrom',
-                                                        'reporter_start',
-                                                        'reporter_end',
-                                                        'reporter_read_name']])
+    # Generate bedgraph
+    bedgraph = CCBedgraph(make_bedgraph(tsv_input, bed))
 
-    bt_bed = BedTool(bed)
-    bedgraph = (bt_bed.intersect(bt_reporters, c=True)
-                      .sort()
-                      .cut([0,1,2,4])
-                      .saveas(output)
-                )
+    # Run normalisation if required
+    if normalise == 'region':
+        bedgraph = bedgraph.normalise_by_region(region, n_read_scale=n_reads_scale)
 
-if __name__ == '__main__':
-    args = get_parser().parse_args()
-    main(**vars(args))
+    bedgraph.to_file(output)

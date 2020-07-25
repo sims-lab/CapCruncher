@@ -14,20 +14,6 @@ import argparse
 import pandas as pd
 import numpy as np
 
-def get_parser(parser=None):
-    if not parser:
-        parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--index_field', help='shared column name to join on')
-    parser.add_argument('-o', '--output_file', help='output file name',
-               default='joined.tsv')
-    parser.add_argument('-i', '--input_files', nargs = "+", help='at least 2 input files')
-    parser.add_argument('-m',
-                        '--method',
-                        help='join method to use (join/concatenate)',
-                        choices=['join', 'concatenate'],
-                        default='join')
-    return parser
-
 def format_index_var(var):
     try:
         return int(var)
@@ -72,8 +58,3 @@ def main(input_files,
     elif method == 'concatenate':
         df = concatenate_tsv(dataframes)
         df.to_csv(output_file, header=True, sep='\t')
-
-
-if __name__ == '__main__':
-    args = get_parser().parse_args()
-    main(**vars(args))

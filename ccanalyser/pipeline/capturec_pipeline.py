@@ -79,11 +79,12 @@ def main(argv=None):
 
     P.main(argv)
 
+
 @follows(mkdir('ccanalysis/restriction_enzyme_map/'))
 @transform(
     P.PARAMS['genome_fasta'],
     regex(r'.*/(.*).fa.*'),
-    r'ccanalysis/restriction_enzyme_map/\1.digest.bed.gz',
+    r'ccanalysis/restriction_enzyme_map/genome.digest.bed.gz',
 )
 def digest_genome(infile, outfile):
     '''Digest genome using restriction enzyme and output fragments in bed file'''
@@ -166,7 +167,7 @@ def deduplicate_reads(infiles, outfile):
                        echo -e "Read_pairs_removed\\t0" >> $logfile'''
 
     else:
-        # If deduplication turned off gzip input files and count number of reads
+        # If deduplication turned off and not gzipped, count number of reads and gzip fastq
         statement = '''cat %(fq1)s | pigz -p 6 > %(out1)s &
                        cat %(fq2)s | pigz -p 6  > %(out2)s &
                        lc=$(cat %(fq1)s | wc -l);
@@ -274,6 +275,7 @@ def digest_pe_reads(infiles, outfile):
     '''In silico restriction enzyme digest of non-combined (non-flashed) read pairs'''
 
     fq1, fq2 = infiles
+    ## TODO: Fix number of digestion threads (make sure each thread has placed ter before exit write process)
     statement = '''ccanalyser utils digest_fastq
                    unflashed
                    --stats_file %(outfile)s.log
@@ -396,139 +398,68 @@ def build_exclusion_bed(infile, outfile):
 @transform(
     bam_to_bed,
     regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
-    r'ccanalysis/annotations/\1.annotation.capture.count.gz',
-)
-def capture_intersect_count(infile, outfile):
-    '''Report count of overlaps for the capture sites'''
-
-    statement = '''bedtools intersect -c -f 1
-                    -a %(infile)s -b %(ccanalyser_capture)s
-                    | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
-                    | sed '1i read_name\\tcapture_count'
-                    | gzip > %(outfile)s'''
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
-
-
-@follows(build_exclusion_bed)
-@transform(
-    bam_to_bed,
-    regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
-    r'ccanalysis/annotations/\1.annotation.exclude.count.gz',
-)
-def exclusion_intersect_count(infile, outfile):
-    '''Intersect reads with exclusion files.
-    report count of overlaps for each input bed using -c'''
-
-    statement = '''bedtools intersect -c
-                    -a %(infile)s -b ccanalysis/annotations/exclude.bed.gz
-                    | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
-                    | sed '1i read_name\\texclusion_count'
-                    | gzip > %(outfile)s'''
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
-
-
-@transform(
-    bam_to_bed,
-    regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
-    r'ccanalysis/annotations/\1.annotation.capture.gz',
-)
-def capture_intersect(infile, outfile):
-    '''Intersect reads with capture files.
-    Capture slices must be fully contained within the capture restriction_fragment'''
-
-    statement = '''bedtools intersect -loj -f 1
-                    -a %(infile)s -b %(ccanalyser_capture)s
-                    | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
-                    | sed '1i read_name\\tcapture'
-                    | gzip > %(outfile)s'''
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
-
-
-@follows(build_exclusion_bed)
-@transform(
-    bam_to_bed,
-    regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
-    r'ccanalysis/annotations/\1.annotation.exclude.gz',
-)
-def exclusion_intersect(infile, outfile):
-    '''Intersect reads with exclusion files'''
-
-    statement = '''bedtools intersect -loj
-                    -a %(infile)s -b ccanalysis/annotations/exclude.bed.gz
-                    | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
-                    | sed '1i read_name\\texclusion'
-                    | gzip > %(outfile)s'''
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
-
-
-@transform(
-    bam_to_bed,
-    regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
-    add_inputs(digest_genome),
-    r'ccanalysis/annotations/\1.annotation.re.gz',
-)
-def re_intersect(infiles, outfile):
-    '''Intersect reads with restriction fragment map'''
-    bam, genome = infiles
-    statement = '''bedtools intersect -loj
-                    -a %(bam)s -b %(genome)s
-                    | awk 'BEGIN {OFS = "\\t"} {if ($10 != ".") {print $4, $10}}'
-                    | sed '1i read_name\\trestriction_fragment'
-                    | gzip > %(outfile)s'''
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
-
-
-@transform(
-    bam_to_bed,
-    regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
-    r'ccanalysis/annotations/\1.annotation.blacklist.count.gz',
-)
-def blacklist_intersect_count(infile, outfile):
-    '''Intersect reads with blacklisted regions.
-    report count of overlaps for each input bed using -c '''
-
-    if P.PARAMS['ccanalyser_blacklist']:
-        statement = '''bedtools intersect -c
-                        -a %(infile)s -b %(ccanalyser_blacklist)s
-                        | awk 'BEGIN {OFS = "\\t"} {if ($7 != "0") {print $4, $7}}'
-                        | sed '1i read_name\\tblacklist'
-                        | gzip > %(outfile)s'''
-    else:
-        statement = '''touch %(outfile)s'''
-
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
-
-
-@collate(
-    [
-        capture_intersect_count,
-        exclusion_intersect_count,
-        capture_intersect,
-        exclusion_intersect,
-        re_intersect,
-        blacklist_intersect_count,
-    ],
-    regex(r'ccanalysis/annotations/(.*).annotation.*'),
+    add_inputs(
+        [
+            {
+                'name': 'restriction_fragment',
+                'fn': 'ccanalysis/restriction_enzyme_map/genome.digest.bed.gz',
+                'action': 'get',
+                'overlap_fraction': 1,
+            },
+            {
+                'name': 'capture',
+                'fn': P.PARAMS['ccanalyser_capture'],
+                'action': 'get',
+                'overlap_fraction': 1,
+            },
+            {
+                'name': 'exclusion',
+                'fn': 'ccanalysis/annotations/exclude.bed.gz',
+                'action': 'get',
+                'overlap_fraction': 1e-9,
+            },
+            {
+                'name': 'exclusion_count',
+                'fn': 'ccanalysis/annotations/exclude.bed.gz',
+                'action': 'count',
+                'overlap_fraction': 1e-9,
+            },
+            {
+                'name': 'capture_count',
+                'fn': P.PARAMS['ccanalyser_capture'],
+                'action': 'count',
+                'overlap_fraction': 1,
+            },
+            {
+                'name': 'blacklist',
+                'fn': P.PARAMS['ccanalyser_blacklist'],
+                'action': 'count',
+                'overlap_fraction': 1e-9,
+            },
+        ]
+    ),
     r"ccanalysis/annotations/\1.annotations.tsv.gz",
 )
-def merge_annotations(infiles, outfile):
-    '''Merge all intersections into a single file '''
-    inlist = " ".join(infiles)
-    statement = '''ccanalyser utils join_tsv
-                   -f read_name
-                   -o %(outfile)s.tmp
-                   -i %(inlist)s
-                   --method join
-                   &&
-                   ccanalyser validate validate_annotations
-                   -i %(outfile)s.tmp
-                   -o %(outfile)s
-                   '''
+def annotate_slices(infile, outfile):
+
+    a = infile[0]
+    colnames, fnames, actions, fractions = zip(
+        *[(d['name'], d['fn'], d['action'], d['overlap_fraction']) for d in infile[1]]
+    )
+
+    colnames = ' '.join(colnames)
+    fnames = ' '.join([fn if fn else '-' for fn in fnames])
+    actions = ' '.join(actions)
+    fractions = ' '.join([str(frac) for frac in fractions])
+
+    statement = f'''python /t1-data/user/asmith/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/generate_annotations.py
+                    -a {a} -b {fnames} --actions {actions} --colnames {colnames} -f {fractions} -o {outfile}'''
+
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
 
 @follows(
-    merge_annotations,
+    annotate_slices,
     mkdir('ccanalysis/captures_and_reporters'),
     mkdir('ccanalysis/stats'),
 )
