@@ -63,6 +63,14 @@ def add_ccanalyser_args(subcommand):
         '--stats_output', help='stats files output prefix', default='stats'
     )
 
+    parser.add_argument(
+        '-m',
+        '--method',
+        help='Determines the mode to run',
+        default='capture',
+        choices=['capture', 'tri', 'tiled'],
+    )
+
 
 def add_convert_tsv_to_bedgraph_args(subcommand):
 
@@ -76,7 +84,9 @@ def add_convert_tsv_to_bedgraph_args(subcommand):
         help='''Bed file to intersect with reporters
                                       e.g. RE fragments bed file.''',
     )
-    parser.add_argument('-o', '--output', help='Output file name', default='out.bedgraph')
+    parser.add_argument(
+        '-o', '--output', help='Output file name', default='out.bedgraph'
+    )
 
 
 def add_deduplicate_fastq_args(subcommand):
@@ -124,7 +134,7 @@ def add_digest_fastq_args(subcommand):
 
     enzyme_group = parent_parser.add_mutually_exclusive_group(required=True)
     enzyme_group.add_argument(
-        '-r', '--restriction_enzyme', help='Name of restriction enzyme', default='DpnII'
+        '-r', '--restriction_enzyme', help='Name of restriction enzyme'
     )
     enzyme_group.add_argument(
         '-s', '--cut_sequence', help='Sequence of restriction site'
@@ -207,10 +217,10 @@ def add_digest_genome_args(subcommand):
 
     enzyme_group = parser.add_mutually_exclusive_group(required=True)
     enzyme_group.add_argument(
-        '-r', '--restriction_enzyme', help='Name of restriction enzyme', default='DpnII'
+        '-r', '--restriction_enzyme', help='Name of restriction enzyme'
     )
     enzyme_group.add_argument(
-        '-s', '--cut_sequence', help='Sequence of restriction site', default='GATC'
+        '-s', '--cut_sequence', help='Sequence of restriction site'
     )
     parser.add_argument(
         '-l', '--logfile', help='filename for logfile', default='test.log'
@@ -221,7 +231,7 @@ def add_join_tsv_args(subcommand):
     parser = subcommand.add_parser(
         'join_tsv', help='Concatenates or joins multiple tsv files'
     )
-    parser.add_argument('-f', '--index_field', help='shared column name to join on')
+    parser.add_argument('-f', '--index_field', help='shared column name to join on', nargs='?', default=None)
     parser.add_argument(
         '-o', '--output_file', help='output file name', default='joined.tsv'
     )
@@ -319,9 +329,9 @@ def main():
             deduplicate_fastq.main(**vars(args))
 
         elif subcommand == 'digest_fastq':
-            from ccanalyser.utils import digest_fastq
+            from ccanalyser.utils import digest_fastq_dev
 
-            digest_fastq.main(**vars(args))
+            digest_fastq_dev.main(**vars(args))
 
         elif subcommand == 'digest_genome':
             from ccanalyser.utils import digest_genome
@@ -364,6 +374,7 @@ def main():
     elif category == 'stats':
         if subcommand == 'aggregate_stats':
             from ccanalyser.stats import aggregate_statistics
+
             aggregate_statistics.main(**vars(args))
 
 

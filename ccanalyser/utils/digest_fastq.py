@@ -192,16 +192,20 @@ def digest_read_unflashed(inq, outq, statq, **kwargs):
     read_buffer = []
     stat_buffer = []
     reads = inq.get()
+    ter_counter = 0
+
     while not reads == 'TER':  # Checks to see if the queue has been terminated
         for r1, r2 in reads:
             sliced_read_1 = DigestedRead(r1, **kwargs)  # Digest read 1
-            kwargs[
-                'slice_offset'
-            ] = sliced_read_1.slices_valid_counter  # Update slice offset
+            kwargs['slice_offset'] = sliced_read_1.slices_valid_counter + 1  # Update slice offset
+
             sliced_read_2 = DigestedRead(r2, **kwargs)  # Digest read 2
+            
             kwargs['slice_offset'] = 0  # Reset slice offset
 
             s1, s2 = str(sliced_read_1), str(sliced_read_2)
+
+
 
             if s1 and s2:  # Only store of both reads have valid slices
                 read_buffer.append(f'{s1}{s2}')

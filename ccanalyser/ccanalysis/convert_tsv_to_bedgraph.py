@@ -11,6 +11,7 @@ import argparse
 import os
 import sys
 import pandas as pd
+import numpy as np
 from pybedtools import BedTool
 import tempfile
 
@@ -111,16 +112,20 @@ def make_bedgraph(reporters, bed):
     )
 
     bt_bed = BedTool(bed)
-    bedgraph = bt_bed.intersect(bt_reporters, c=True).sort().cut([0, 1, 2, 4])
+    bedgraph = (bt_bed.intersect(bt_reporters, c=True)
+                      .to_dataframe()
+                      .sort_values(['chrom', 'start'])
+                      .iloc[:, [0,1,2,4]]
+                )
 
-    return bedgraph.fn
+    return bedgraph
 
 
 def main(
     tsv_input,
     bed,
     output='out.bedgraph',
-    normalise='region',
+    normalise=None,
     region=[],
     n_reads_scale=1e6,
 ):
@@ -137,7 +142,7 @@ def main(
     '''
 
     # Generate bedgraph
-    bedgraph = CCBedgraph(make_bedgraph(tsv_input, bed))
+    bedgraph = CCBedgraph(df=make_bedgraph(tsv_input, bed))
 
     # Run normalisation if required
     if normalise == 'region':

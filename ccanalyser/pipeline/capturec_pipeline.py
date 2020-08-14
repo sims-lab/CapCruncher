@@ -31,11 +31,11 @@ as input and performs the following steps:
 # import packages
 import sys
 import os
-import gzip
+#import gzip
 import seaborn as sns
 import matplotlib.colors
-import pandas as pd
-from pybedtools import BedTool
+#import pandas as pd
+#from pybedtools import BedTool
 import itertools
 from pysam import FastxFile
 from cgatcore import pipeline as P
@@ -88,9 +88,17 @@ def main(argv=None):
 )
 def digest_genome(infile, outfile):
     '''Digest genome using restriction enzyme and output fragments in bed file'''
+
     tmp = outfile.replace('.gz', '')
+    restriction_enzyme = (
+        f'-r {P.PARAMS["ccanalyser_re"]}' if P.PARAMS["ccanalyser_re"] else ''
+    )
+    restriction_site = (
+        f'-s {P.PARAMS["ccanalyser_re_site"]}' if P.PARAMS["ccanalyser_re_site"] else ''
+    )
+
     statement = '''ccanalyser utils digest_genome
-                   -i %(infile)s -o %(tmp)s -r %(ccanalyser_re)s
+                   -i %(infile)s -o %(tmp)s %(restriction_enzyme)s %(restriction_site)s
                    -l %(tmp)s.log
                    && gzip %(tmp)s'''
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
@@ -146,7 +154,7 @@ def deduplicate_reads(infiles, outfile):
 
     fq1, fq2 = infiles
     out1, out2 = outfile, outfile.replace('_1.fastq.gz', '_2.fastq.gz')
-    stats_file = out1.replace('_1.fastq.gz', '.log')
+    stats_file = out1.replace('_1.fastq.gz', '.stats')
 
     if str(P.PARAMS['deduplication_pre-dedup']).lower() in ON_VALS:
 
@@ -249,19 +257,28 @@ def split_fastq(infile, outfile):
 )
 def digest_flashed_reads(infile, outfile):
     '''In silico restriction enzyme digest of combined (flashed) read pairs'''
+
+    restriction_enzyme = (
+        f'-r {P.PARAMS["ccanalyser_re"]}' if P.PARAMS["ccanalyser_re"] else ''
+    )
+    restriction_site = (
+        f'-s {P.PARAMS["ccanalyser_re_site"]}' if P.PARAMS["ccanalyser_re_site"] else ''
+    )
+
     statement = '''ccanalyser utils digest_fastq
                    flashed
                    -o %(outfile)s
-                   --stats_file %(outfile)s.log
-                   -r %(ccanalyser_re)s
+                   --stats_file %(outfile)s.stats
+                   %(restriction_enzyme)s
+                   %(restriction_site)s
                    -m 18
                    -c %(run_options_compression_level)s
-                   -p 1
+                   -p 4
                    -i %(infile)s'''
     P.run(
         statement,
         job_queue=P.PARAMS['run_options_queue'],
-        job_threads=P.PARAMS['run_options_threads'],
+        job_threads=4,
     )
 
 
@@ -275,15 +292,22 @@ def digest_pe_reads(infiles, outfile):
     '''In silico restriction enzyme digest of non-combined (non-flashed) read pairs'''
 
     fq1, fq2 = infiles
-    ## TODO: Fix number of digestion threads (make sure each thread has placed ter before exit write process)
+    restriction_enzyme = (
+        f'-r {P.PARAMS["ccanalyser_re"]}' if P.PARAMS["ccanalyser_re"] else ''
+    )
+    restriction_site = (
+        f'-s {P.PARAMS["ccanalyser_re_site"]}' if P.PARAMS["ccanalyser_re_site"] else ''
+    )
+
     statement = '''ccanalyser utils digest_fastq
                    unflashed
-                   --stats_file %(outfile)s.log
-                   -r %(ccanalyser_re)s
+                   --stats_file %(outfile)s.stats
+                    %(restriction_enzyme)s
+                    %(restriction_site)s
                    -o %(outfile)s
                    -c %(run_options_compression_level)s
                    -m 18
-                   -p 1
+                   -p 4
                    -1 %(fq1)s
                    -2 %(fq2)s
                    '''
@@ -291,7 +315,7 @@ def digest_pe_reads(infiles, outfile):
     P.run(
         statement,
         job_queue=P.PARAMS['run_options_queue'],
-        job_threads=P.PARAMS['run_options_threads'],
+        job_threads=4,
     )
 
 
@@ -395,6 +419,7 @@ def build_exclusion_bed(infile, outfile):
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
 
+@follows(digest_genome, build_exclusion_bed)
 @transform(
     bam_to_bed,
     regex(r'ccanalysis/annotations/(.*).bam.bed.gz'),
@@ -404,13 +429,13 @@ def build_exclusion_bed(infile, outfile):
                 'name': 'restriction_fragment',
                 'fn': 'ccanalysis/restriction_enzyme_map/genome.digest.bed.gz',
                 'action': 'get',
-                'overlap_fraction': 1,
+                'overlap_fraction': 0.51,
             },
             {
                 'name': 'capture',
                 'fn': P.PARAMS['ccanalyser_capture'],
                 'action': 'get',
-                'overlap_fraction': 1,
+                'overlap_fraction': 0.9,
             },
             {
                 'name': 'exclusion',
@@ -428,7 +453,7 @@ def build_exclusion_bed(infile, outfile):
                 'name': 'capture_count',
                 'fn': P.PARAMS['ccanalyser_capture'],
                 'action': 'count',
-                'overlap_fraction': 1,
+                'overlap_fraction': 0.9,
             },
             {
                 'name': 'blacklist',
@@ -455,7 +480,7 @@ def annotate_slices(infile, outfile):
     statement = f'''python /t1-data/user/asmith/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/generate_annotations.py
                     -a {a} -b {fnames} --actions {actions} --colnames {colnames} -f {fractions} -o {outfile}'''
 
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=6)
 
 
 @follows(
@@ -467,20 +492,26 @@ def annotate_slices(infile, outfile):
     align_reads,
     regex(r'aligned/(.*).bam'),
     add_inputs(r'ccanalysis/annotations/\1.annotations.tsv.gz'),
-    r'ccanalysis/captures_and_reporters/\1.reporter.bed.gz',
+    r'ccanalysis/stats/\1.slice.stats',
 )
 def ccanalyser(infiles, outfile):
     '''Processes bam files and annotations, filteres slices and outputs
        reporter slices for each capture site'''
 
     bam, annotations = infiles
-    output_prefix = outfile.replace('.reporter.bed.gz', '')
-    stats_out = output_prefix.replace('captures_and_reporters', 'stats')
+    output_prefix = (outfile.replace('/stats/', '/captures_and_reporters/')
+                            .replace('.slice.stats', '')
+                    )
+
+    stats_prefix = outfile.replace('.slice.stats', '')
+
+
     statement = '''ccanalyser ccanalysis ccanalyser
                     -i %(bam)s
                     -a %(annotations)s
                     --output_prefix %(output_prefix)s
-                    --stats_out %(stats_out)s'''
+                    --stats_out %(stats_prefix)s
+                    --method %(ccanalyser_method)s'''
     P.run(
         statement,
         job_queue=P.PARAMS['run_options_queue'],
@@ -488,28 +519,51 @@ def ccanalyser(infiles, outfile):
     )
 
 
-@follows(ccanalyser, mkdir('ccanalysis/reporters_aggregated'))
+@follows(ccanalyser, mkdir('ccanalysis/capturec_reporters_aggregated'))
 @collate(
     'ccanalysis/captures_and_reporters/*.tsv.gz',
     regex(r'ccanalysis/captures_and_reporters/(.*)\..*_\d+.(.*).tsv.gz'),
-    r'ccanalysis/reporters_aggregated/\1.\2.tsv.gz',
+    r'ccanalysis/capturec_reporters_aggregated/\1.\2.tsv.gz',
 )
-def collate_ccanalyser_output(infiles, outfile):
-    '''Combines multiple capture site bed files'''
+def collate_ccanalyser_capturec(infiles, outfile):
+    '''Combines multiple capture site tsv files'''
 
     inlist = " ".join(infiles)
+
     statement = '''ccanalyser utils join_tsv
                    -f reporter_read_name
                    -i %(inlist)s
                    -o %(outfile)s
                    --method concatenate'''
+
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+
+
+@active_if(P.PARAMS['ccanalyser_method'] == 'tri')
+@follows(ccanalyser, mkdir('ccanalysis/tric_reporters_aggregated'))
+@collate(
+    'ccanalysis/captures_and_reporters/*.tsv.gz',
+    regex(r'ccanalysis/captures_and_reporters/(.*)\..*_\d+.(.*).tsv.gz'),
+    r'ccanalysis/tric_reporters_aggregated/\1.\2.tsv.gz',
+)
+def collate_ccanalyser_tric(infiles, outfile):
+    '''Combines multiple capture site tsv files'''
+
+    inlist = " ".join(infiles)
+
+    statement = '''ccanalyser utils join_tsv
+                   -f parent_read
+                   -i %(inlist)s
+                   -o %(outfile)s
+                   --method concatenate'''
+
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
 
 @follows(mkdir('ccanalysis/bedgraphs'))
 @transform(
-    collate_ccanalyser_output,
-    regex(r'ccanalysis/reporters_aggregated/(.*).tsv.gz'),
+    collate_ccanalyser_capturec,
+    regex(r'ccanalysis/capturec_reporters_aggregated/(.*).tsv.gz'),
     add_inputs(digest_genome),
     r'ccanalysis/bedgraphs/\1.bedgraph.gz',
 )
@@ -681,8 +735,8 @@ def generate_trackdb_metadata(infiles, outfile):
 @follows(ccanalyser)
 @merge(
     [
-        'fastq_pre-processing/deduplicated/*.log',
-        'fastq_pre-processing/digested/*.log',
+        'fastq_pre-processing/deduplicated/*.stats',
+        'fastq_pre-processing/digested/*.stats',
         'ccanalysis/stats/*.slice.stats',
         'ccanalysis/stats/*.reporter.stats',
     ],

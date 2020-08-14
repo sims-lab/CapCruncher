@@ -14,43 +14,48 @@ import argparse
 import pandas as pd
 import numpy as np
 
+
 def format_index_var(var):
-    try:
-        return int(var)
-    except:
-        return str(var)
+
+    if var:
+        try:
+            return int(var)
+        except:
+            return str(var)
+    else:
+        return None
 
 
 def replace_na(df):
     numeric_cols = df.select_dtypes(include=["number"]).fillna(0).astype(np.int64)
     df[numeric_cols.columns] = numeric_cols
-    string_cols = df.select_dtypes(include=["object"]).fillna("-")
+    string_cols = df.select_dtypes(include=["object"]).fillna(".")
     df[string_cols.columns] = string_cols
     return df
 
+
 def join_tsv(dframes):
     return replace_na(dframes[0].join(dframes[1:], how='outer'))
+
 
 def concatenate_tsv(dframes):
     return replace_na(pd.concat(dframes))
 
 
-def main(input_files,
-         output_file,
-         index_field,
-         method='join'):
+def main(input_files, output_file, index_field, method='join'):
 
     index_field = format_index_var(index_field)
     dataframes = []
+
     for tsv in input_files:
         try:
-            dataframes.append(pd.read_csv(tsv,
-                                          sep='\t',
-                                          header=0,
-                                          index_col=index_field))
+            df = pd.read_csv(tsv, sep='\t', header=0, index_col=index_field)
+
+            if not df.empty:
+                dataframes.append(df)
+
         except Exception as e:
             print(f'Error with {tsv}: {e}')
-
 
     if method == 'join':
         df = join_tsv(dataframes)

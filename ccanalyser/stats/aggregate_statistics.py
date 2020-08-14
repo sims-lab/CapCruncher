@@ -5,220 +5,235 @@ import sys
 import argparse
 import numpy as np
 import pandas as pd
-
-def split_fn(fn_ser):
-    '''Extracts the sample and read_type attributes from a given file name.
-
-       Args:
-        fn_ser: pd.Series containing file names to process
-
-       Returns:
-         DataFrame with columns: sample, read_type.
-    '''
-    return pd.DataFrame({'sample': fn_ser.str.split('.').str[0].str.split('/').str[-1],
-                         'read_type': fn_ser.str.split('.').str[1].str.split('_').str[0]
-                         })
-
-def combine_dedup_stats(fnames):
-    '''Concatenates statistics from initial sequence based read deduplication.
-
-       Args:
-        fnames: List/pd.Series containing deduplication stats file names.
-
-      Returns:
-        Concatenated dataframe
-
-    '''
-    dframes = [pd.read_csv(fn,
-                           sep='\t',
-                           header=None,
-                           index_col=0,
-                           names=['stat', f'{fn.split("/")[-1].split(".")[0]}']
-                           )
-               .transpose()
-               for fn in fnames]
-
-    return pd.concat(dframes)
+import re
 
 
-def get_dedup_read_pair_stats(df):
-    '''Concatenates statistics from initial sequence based read deduplication.
+class DeduplicationStats:
+    def __init__(self, fnames):
+        self.fnames = sorted(fnames)
 
-       Args:
-        fnames: List/pd.Series containing deduplication stats file names.
+    def _get_sample_name(self, fn):
+        sample_name_re = re.compile(r".*\/(.*)\.")
+        matches = sample_name_re.match(fn)
+        return matches.group(1)
 
-       Returns:
-        Concatenated dataframe
-    '''
+    def _read_file(self, fn, sample_name):
+        df = pd.read_csv(fn, sep="\t", header=None, names=["count"], index_col=0)
+        return df.transpose().assign(sample=sample_name).set_index("sample")
 
-    total_reads = (df['Read_pairs_processed']
-                   .reset_index()
-                   .assign(read_type='flashed')
-                   .rename(columns={'index': 'sample',
-                                    'Read_pairs_processed': 'total_reads'})
-                   )
+    @property
+    def processed_dataframe(self):
+        return pd.concat(
+            [self._read_file(fn, self._get_sample_name(fn)) for fn in self.fnames]
+        )
 
-    deduplicated = (df['Read_pairs_unique']
-                    .reset_index()
-                    .assign(read_type='flashed')
-                    .rename(columns={'index': 'sample', 'Read_pairs_unique': 'read_pairs_with_unique_sequence'})
-                    )
+    @property
+    def total_reads(self):
+        return (
+            self.processed_dataframe["Read_pairs_processed"]
+            .to_frame()
+            .assign(read_type="flashed")
+            .rename(columns={"Read_pairs_processed": "total_reads"})
+            .reset_index()
+            .set_index(["sample", "read_type"])
+        )
 
-    return (total_reads, deduplicated)
-
-
-def combine_digestion_stats(fnames):
-
-    dframes = [pd.read_csv(fn).assign(sample=fn.split('/')[-1].split('.')[0])
-               for fn in fnames]
-    df = pd.concat(dframes)
-    return (df.groupby(['bin', 'stat', 'read_type', 'sample'])
-              .sum()
-              .reset_index())
-
-def get_digestion_read_pair_stats(df):
-
-    # Get flashed stats
-    flashed = (df.loc[lambda df: (df['read_type'].isin(['flashed', 'r1'])) &
-                                 (df['stat'] == 'total')]
-                     .groupby(['sample', 'read_type'])
-                     ['frequency']
-                     .sum()
-                     .reset_index()
-                     .assign(read_type=lambda df: df['read_type'].str.replace('r1', 'pe'))
-                     .rename(columns={'frequency': 'Flashed or Unflashed'}))
-
-
-    digested = (df.loc[lambda df: (df['stat'] == 'valid') &
-                                  (df['read_type'] != 'r2') &
-                                  (df['bin'] != 0)
-                      ]
-                  .drop(columns='bin')
-                  .groupby(['sample', 'read_type'])
-                  .sum()
-                  .reset_index()
-                  [['sample', 'read_type', 'frequency']]
-                  .assign(read_type=lambda df: df['read_type'].str.replace('r1', 'pe'))
-                  .rename(columns={'frequency': 'read_pairs_with_restriction_site(s)'}))
-
-    return (flashed, digested)
+    @property
+    def unique_reads(self):
+        return (
+            self.processed_dataframe["Read_pairs_unique"]
+            .reset_index()
+            .assign(read_type="flashed")
+            .rename(
+                columns={
+                    "index": "sample",
+                    "Read_pairs_unique": "read_pairs_with_unique_sequence",
+                }
+            )
+            .reset_index(drop=True)
+            .set_index(["sample", "read_type"])
+        )
 
 
-def combine_ccanalyers_stats(fnames):
+class DigestionStats:
+    def __init__(self, fnames):
+        self.fnames = fnames
 
-    fnames_ser = pd.Series(fnames, name='fnames')
+    def _read_file(self, fn, sample_name):
+        return pd.read_csv(fn).assign(sample=sample_name)
 
-    df_fnames = pd.concat([fnames_ser,
-                           split_fn(fnames_ser)],
-                          axis=1)
+    def _get_sample_name(self, fn):
+        sample_name_re = re.compile(r".*\/(.*).(flashed|pe).*")
+        matches = sample_name_re.match(fn)
+        return matches.group(1)
 
-    grouped_stats_files = {k: v for k, v in df_fnames.groupby(
-        ['sample', 'read_type'])['fnames']}
+    @property
+    def processed_dataframe(self):
+        dframes = [self._read_file(fn, self._get_sample_name(fn)) for fn in self.fnames]
+        df = pd.concat(dframes)
+        return df.groupby(["sample", "stat", "read_type", "bin"]).sum().reset_index()
 
-    dframes = []
-    for key, fnames in grouped_stats_files.items():
-        df = (pd.concat([pd.read_csv(fn, sep='\t', index_col=0) for fn in fnames])
-                .transpose())
+    @property
+    def flashed_reads(self):
+        return (
+            self.processed_dataframe.loc[
+                lambda df: (df["read_type"].isin(["flashed", "r1"]))
+                & (df["stat"] == "total")
+            ]
+            .groupby(["sample", "read_type"])["frequency"]
+            .sum()
+            .reset_index()
+            .assign(read_type=lambda df: df["read_type"].str.replace("r1", "pe"))
+            .rename(columns={"frequency": "flashed or unflashed"})
+            .set_index(["sample", "read_type"])
+        )
 
-        agg_dict = {col: np.sum for col in df.columns.unique()}
-        agg_dict.update({'unique_capture_sites': np.max})
-
-        df = pd.concat([pd.Series(agg_dict[k](v, axis=1), name=k)
-                        for k, v in df.groupby(df.columns, axis=1)],
-                       axis=1)
-
-        df = (df.transpose()
-                .add_prefix('|'.join(key) + '|')
-                .transpose())
-
-        dframes.append(df)
-
-    return pd.concat(dframes)
-
-
-def get_ccanalyser_read_pair_stats(df):
-
-    ccanalyser_stats = (df.reset_index()
-                        ['index']
-                        .str.split('|', expand=True)
-                        .rename(columns={0: 'sample', 1: 'read_type', 2: 'stat_type'}))
-
-    ccanalyser_stats['values'] = (df.reset_index()['unique_fragments'])
-
-    ccanalyser_stats = (ccanalyser_stats.set_index(['sample', 'read_type'])
-                        .pivot(columns='stat_type')
-                        ['values']
-                        [['mapped', 'contains_single_capture',
-                                    'contains_capture_and_reporter', 'duplicate_filtered']]
-                        .reset_index())
-
-    return ccanalyser_stats
-
-
-def combine_read_pair_stats(stats):
-
-    stats = [df.set_index(['sample', 'read_type']) for df in stats]
-    df_stats = stats[0].join(stats[1:], how='outer').fillna(0)
-
-    df_stats_melt = (df_stats.reset_index()
-                     .melt(id_vars=['sample', 'read_type'],
-                           var_name='stat_type',
-                           value_name='read_pairs'))
-
-    df_stats_melt['stat_type'] = (df_stats_melt['stat_type']
-                                  .str.capitalize()
-                                  .str.replace('_', ' '))
-
-    return df_stats_melt
+    @property
+    def digested_reads(self):
+        return (
+            self.processed_dataframe.loc[
+                lambda df: (df["stat"] == "valid")
+                & (df["read_type"] != "r2")
+                & (df["bin"] != 0)
+            ]
+            .drop(columns="bin")
+            .groupby(["sample", "read_type"])
+            .sum()
+            .reset_index()[["sample", "read_type", "frequency"]]
+            .assign(read_type=lambda df: df["read_type"].str.replace("r1", "pe"))
+            .rename(columns={"frequency": "read_pairs_with_restriction_site(s)"})
+            .set_index(["sample", "read_type"])
+        )
 
 
-def combine_reporter_stats(fnames):
+class SliceStats:
+    def __init__(self, fnames):
+        self.fnames = fnames
 
-    df_reporter = pd.concat([pd.read_csv(fn, sep=',', header=0,
-                                         names=['capture_probe', 'cis/trans', 'count'])
-                             .assign(fn=fn.split('/')[-1])
-                             for fn in fnames], sort=True)
+    def _read_file(self, fn, sample_name, read_type):
+        return (
+            pd.read_csv(fn, index_col=0, sep="\t")
+            .transpose()
+            .reset_index()
+            .rename(columns={"index": "filter_stage"})
+            .assign(sample=sample_name, read_type=read_type)
+        )
+
+    def _get_sample_name(self, fn):
+        sample_name_re = re.compile(r".*\/(.*).(flashed|pe).*")
+        matches = sample_name_re.match(fn)
+        return matches.group(1)
+
+    def _get_read_type(self, fn):
+        read_type_re = re.compile(r".*\/(.*).(flashed|pe).*")
+        matches = read_type_re.match(fn)
+        return matches.group(2)
+
+    @property
+    def processed_dataframe(self):
+        dframes = [
+            self._read_file(fn, self._get_sample_name(fn), self._get_read_type(fn))
+            for fn in self.fnames
+        ]
+
+        df = pd.concat(dframes)
+
+        # Need to account for nunique samples (need to max these)
+        agg_columns = ["sample", "filter_stage", "read_type"]
+        agg_dict = {
+            stat: np.sum if not "unique" in stat else np.max for stat in df.columns
+        }
+
+        for col in agg_columns:
+            del agg_dict[col]
+
+        return df.groupby(agg_columns).agg(agg_dict).reset_index()
+
+    @property
+    def filtered_reads(self):
+        return self.processed_dataframe.pivot(
+            index=["sample", "read_type"], columns="filter_stage", values="mapped"
+        )
 
 
+class ReporterStats:
+    def __init__(self, fnames):
+        self.fnames = fnames
 
-    df_reporter['sample']= df_reporter['fn'].str.split('.').str[0]
-    df_reporter['read_type'] = df_reporter['fn'].str.split('.').str[1].str.split('_').str[0]
+    def _read_file(self, fn, sample_name, read_type):
+        return pd.read_csv(
+            fn, sep="\t", names=["capture", "cis_or_trans", "count"], header=0
+        ).assign(sample=sample_name, read_type=read_type)
+
+    def _get_sample_name(self, fn):
+        sample_name_re = re.compile(r".*\/(.*).(flashed|pe).*")
+        matches = sample_name_re.match(fn)
+        return matches.group(1)
+
+    def _get_read_type(self, fn):
+        read_type_re = re.compile(r".*\/(.*).(flashed|pe).*")
+        matches = read_type_re.match(fn)
+        return matches.group(2)
+
+    @property
+    def processed_dataframe(self):
+        dframes = [
+            self._read_file(fn, self._get_sample_name(fn), self._get_read_type(fn))
+            for fn in self.fnames
+        ]
+
+        df = pd.concat(dframes)
+
+        return (
+            df.groupby(["sample", "capture", "read_type", "cis_or_trans"])
+            .sum()
+            .reset_index()
+        )
 
 
-    return (df_reporter.drop(columns='fn')
-                .groupby(['capture_probe', 'cis/trans', 'sample', 'read_type'])
-                .sum()
-                .reset_index())
+def main(
+    deduplication_stats,
+    digestion_stats,
+    ccanalyser_stats,
+    reporter_stats,
+    output_dir=".",
+):
 
-
-
-
-def main(deduplication_stats,
-         digestion_stats,
-         ccanalyser_stats,
-         reporter_stats,
-         output_dir='.'):
-
-
-    df_dedup = combine_dedup_stats(deduplication_stats)
-    df_digestion = combine_digestion_stats(digestion_stats)
-    df_ccanalyser = combine_ccanalyers_stats(ccanalyser_stats)
-    df_reporter = combine_reporter_stats(reporter_stats)
-
-    stats_dict = dict(zip(['deduplication_stats', 'digestion_stats', 'ccanalyser_stats', 'reporter_stats'],
-                          [df_dedup, df_digestion, df_ccanalyser, df_reporter]))
-
+    stats_dict = dict(
+        zip(
+            [
+                "deduplication_stats",
+                "digestion_stats",
+                "ccanalyser_stats",
+                "reporter_stats",
+            ],
+            [
+                DeduplicationStats(deduplication_stats),
+                DigestionStats(digestion_stats),
+                SliceStats(ccanalyser_stats),
+                ReporterStats(reporter_stats),
+            ],
+        )
+    )
 
     # Output individual aggregated stats files
-    out_dir = output_dir.rstrip('/')
-    for name, df in stats_dict.items():
-        df.to_csv(f'{out_dir}/{name}.tsv', sep='\t')
+    out_dir = output_dir.rstrip("/")
+    for name, stats in stats_dict.items():
+        stats.processed_dataframe.to_csv(f"{out_dir}/{name}.tsv", sep="\t")
 
+    # Combined stats
+    readpair_stats = [stats_dict['deduplication_stats'].total_reads,
+                      stats_dict['deduplication_stats'].unique_reads,
+                      stats_dict['digestion_stats'].flashed_reads,
+                      stats_dict['digestion_stats'].digested_reads,
+                      stats_dict['ccanalyser_stats'].filtered_reads,]
+    
+    readpair_stats = (readpair_stats[0]
+                                    .join(readpair_stats[1:], how='outer')
+                                    .fillna(0)
+                                    .reset_index()
+                                    .melt(id_vars=['sample', 'read_type'], var_name='stat_type', value_name='read_pairs')
+                     )
 
-    # Output combined statst
-    total_reads, dedup = get_dedup_read_pair_stats(df_dedup)
-    flashed, digested = get_digestion_read_pair_stats(df_digestion)
-    slice_stats = get_ccanalyser_read_pair_stats(df_ccanalyser)
-    combined_stats = combine_read_pair_stats([total_reads, dedup, flashed, digested, slice_stats])
+    readpair_stats.to_csv(f"{out_dir}/combined_stats.tsv", sep="\t")
 
-    combined_stats.to_csv(f'{out_dir}/combined_stats.tsv', sep='\t')
