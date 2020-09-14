@@ -71,6 +71,9 @@ def add_ccanalyser_args(subcommand):
         choices=['capture', 'tri', 'tiled'],
     )
 
+    #parser.add_argument('--output_intermediate_slices', choices=['False', 'filter', 'stage'], default='False')
+    #parser.add_argument('--output_intermediate_dir', default='.')
+
 
 def add_convert_tsv_to_bedgraph_args(subcommand):
 

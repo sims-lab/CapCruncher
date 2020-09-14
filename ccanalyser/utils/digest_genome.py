@@ -7,14 +7,8 @@ Created on Fri Oct  4 13:47:20 2019
 Script generates a bed file of restriction fragment locations in a given genome.
 
 """
-
-import argparse
-import sys
-import os
-import pysam
 import re
-
-# import pdb
+from pysam import FastxFile
 
 
 def get_re_site(cut_sequence=None, restriction_enzyme=None):
@@ -57,12 +51,17 @@ def main(
     cut_sequence_name=None,
     logfile=None,
     output_file=None,
-    cut_offset=0,
+    remove_cutsite=True,
 ):
 
+    
     cut_sequence = get_re_site(
         restriction_enzyme=restriction_enzyme, cut_sequence=cut_sequence
     )
+    cut_sequence_len = len(cut_sequence)
+    #TODO: Include option to keep or remove the cutsite. For now will just remove to keep inline with the fastq digestion script
+
+
 
     if restriction_enzyme:
         re_fragment_name = restriction_enzyme
@@ -71,7 +70,7 @@ def main(
     else:
         re_fragment_name = "Unknown"
 
-    with open(logfile, "w") as log, open(output_file, "w") as bed_out, pysam.FastxFile(
+    with open(logfile, "w") as log, open(output_file, "w") as bed_out, FastxFile(
         input_fasta
     ) as fasta_file:
 
@@ -86,7 +85,10 @@ def main(
             # iterate through matches and write to bed file
             slice_start = 0
             for match_index, match_pos in enumerate(match_positions):
-                slice_end = match_pos + cut_offset
+                if remove_cutsite:
+                    slice_start += cut_sequence_len
+                
+                slice_end = match_pos
 
                 if slice_start != slice_end:
                     slice_name = f"{re_fragment_name}_{seq_entry.name}_{match_index}"

@@ -51,6 +51,7 @@ def remove_read_duplicates(inq,
     reads = inq.get() # Get list of reads from the input queue
     while reads:
         for read_counter, (r1, r2) in enumerate(reads):
+            #TODO - Change hash to other hashing e.g murmur
             read_pair = hash(r1.sequence + r2.sequence)
 
             if read_pair not in seen:

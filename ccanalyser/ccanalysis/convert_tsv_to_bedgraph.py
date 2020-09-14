@@ -102,9 +102,11 @@ class CCBedgraphCollection(object):
 
 def make_bedgraph(reporters, bed):
     df_reporters = pd.read_csv(reporters, sep='\t')
+    
     df_reporters[['reporter_start', 'reporter_end']] = df_reporters[
         ['reporter_start', 'reporter_end']
     ].astype(int)
+    
     bt_reporters = BedTool.from_dataframe(
         df_reporters[
             ['reporter_chrom', 'reporter_start', 'reporter_end', 'reporter_read_name']

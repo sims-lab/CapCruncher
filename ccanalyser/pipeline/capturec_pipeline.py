@@ -29,12 +29,13 @@ as input and performs the following steps:
 @authors: asmith, dsims
 """
 # import packages
+from ccanalysis.ccanalyser import SliceFilter
 import sys
 import os
 #import gzip
 import seaborn as sns
 import matplotlib.colors
-#import pandas as pd
+import pandas as pd
 #from pybedtools import BedTool
 import itertools
 from pysam import FastxFile
@@ -351,8 +352,15 @@ def merge_bam_files(infiles, outfile):
     statement = '''samtools merge %(outfile)s %(fnames)s'''
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
+@transform(merge_bam_files, regex('(.*)'), r'\1.bai')
+def index_bam(infile, outfile):
+    statement = '''samtools index %(infile)s'''
+    P.run(statement,
+        job_queue=P.PARAMS['run_options_queue'],
+        job_memory='1G')
 
-@follows(mkdir('aligned/mapping_statistics'))
+
+@follows(mkdir('aligned/mapping_statistics'), index_bam)
 @transform(
     merge_bam_files,
     regex(r'aligned/(.*).bam'),
@@ -373,7 +381,6 @@ def mapping_qc(infile, outfile):
     statement = ' '.join(cmd)
 
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
-
 
 @merge(mapping_qc, 'run_statistics/mapping_report.html')
 def mapping_multiqc(infiles, outfile):
@@ -429,7 +436,7 @@ def build_exclusion_bed(infile, outfile):
                 'name': 'restriction_fragment',
                 'fn': 'ccanalysis/restriction_enzyme_map/genome.digest.bed.gz',
                 'action': 'get',
-                'overlap_fraction': 0.51,
+                'overlap_fraction': 0.2,
             },
             {
                 'name': 'capture',
@@ -519,17 +526,22 @@ def ccanalyser(infiles, outfile):
     )
 
 
-@follows(ccanalyser, mkdir('ccanalysis/capturec_reporters_aggregated'))
+
+@active_if(P.PARAMS['ccanalyser_method'] in ['capture', 'tri'])
+@follows(ccanalyser)
 @collate(
     'ccanalysis/captures_and_reporters/*.tsv.gz',
     regex(r'ccanalysis/captures_and_reporters/(.*)\..*_\d+.(.*).tsv.gz'),
-    r'ccanalysis/capturec_reporters_aggregated/\1.\2.tsv.gz',
+    r'ccanalysis/capturec_reporters_aggregated/\1.\2_raw.tsv.gz',
 )
-def collate_ccanalyser_capturec(infiles, outfile):
+def collate_ccanalyser(infiles, outfile):
     '''Combines multiple capture site tsv files'''
 
-    inlist = " ".join(infiles)
+    #TODO: Implement a duplication filter after aggregation
 
+    inlist = " ".join(infiles)
+    mkdir('ccanalysis/capturec_reporters_aggregated')
+    
     statement = '''ccanalyser utils join_tsv
                    -f reporter_read_name
                    -i %(inlist)s
@@ -539,26 +551,41 @@ def collate_ccanalyser_capturec(infiles, outfile):
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
 
-@active_if(P.PARAMS['ccanalyser_method'] == 'tri')
-@follows(ccanalyser, mkdir('ccanalysis/tric_reporters_aggregated'))
-@collate(
-    'ccanalysis/captures_and_reporters/*.tsv.gz',
-    regex(r'ccanalysis/captures_and_reporters/(.*)\..*_\d+.(.*).tsv.gz'),
-    r'ccanalysis/tric_reporters_aggregated/\1.\2.tsv.gz',
-)
-def collate_ccanalyser_tric(infiles, outfile):
-    '''Combines multiple capture site tsv files'''
+@transform(collate_ccanalyser,
+           regex(r'ccanalysis/capturec_reporters_aggregated/(.*)_raw.tsv.gz'),
+           r'ccanalysis/capturec_reporters_aggregated/\1.deduplicated.tsv.gz')
+def deduplicate_aggregated_ccananalyser(infile, outfile):
 
-    inlist = " ".join(infiles)
+    from ..ccanalysis.ccanalyser import CCSliceFilter
 
-    statement = '''ccanalyser utils join_tsv
-                   -f parent_read
-                   -i %(inlist)s
-                   -o %(outfile)s
-                   --method concatenate'''
+    df = pd.read_csv(infile, sep='\t')
+    df_capture = (df.loc[:, df.columns.str.contains('capture|parent')]
+                    .rename(columns=lambda col: col.split('_')[1] if 'capture' in col and len(col.split('_')) > 1 else col))
+                    
+    df_rep = (df.loc[:, df.columns.str.contains('reporter|parent')]
+               .rename(columns=lambda col: col.split('_')[1] if 'reporter' in col else col))
+    
+    df_cat = pd.concat([df_rep, df_capture]).sort_values('parent_read')
+    
+    sf = CCSliceFilter(df_cat)
+    sf.remove_duplicate_slices()
+    sf.remove_duplicate_slices_pe()
+    sf.merged_captures_and_reporters.to_csv(outfile, sep='\t', index=False)
 
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
+
+@active_if(P.PARAMS['ccanalyser_method'] in ['tri', 'tiled'])
+@follows(deduplicate_aggregated_ccananalyser)
+@transform('ccanalysis/captures_and_reporters_aggregated/*.deduplicated.tsv.gz',
+           regex(r'ccanalysis/captures_and_reporters_aggregated/(.*).deduplicated.tsv.gz'),
+           r'ccanalysis/restriction_fragment_interaction_counts/\1.tsv.gz')
+def count_restriction_fragment_interactions(infile, outfile):
+    
+    mkdir('ccanalysis/restriction_fragment_interaction_counts')
+    statement = f'''python /t1-data/user/asmith/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/count_restriction_fragment_combinations.py
+                    -f {infile} -o {outfile}'''
+
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=2)
 
 @follows(mkdir('ccanalysis/bedgraphs'))
 @transform(

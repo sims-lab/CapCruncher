@@ -1,16 +1,13 @@
 import multiprocessing as mp
-import os
 import re
-import sys
 from collections import Counter
-import time
 
 import pandas as pd
 import numpy as np
-import pysam
 from pysam import FastxFile
 from xopen import xopen
 from .digest_genome import get_re_site
+from random import randint
 
 
 class DigestedRead:
@@ -59,8 +56,10 @@ class DigestedRead:
 
         if self.has_slices or self.allow_undigested:
 
+            # Iterate through offset indexes to get correct start and end
             for ii, (slice_start, slice_end) in enumerate(zip(indexes, indexes[1:])):
 
+                # If this is not the first slice 
                 if ii > 0:
                     slice_start += self.recognition_len
 
@@ -77,7 +76,7 @@ class DigestedRead:
     def prepare_slice(self, start, end, slice_no):
         return "\n".join(
             [
-                f"@{self.read.name}{self.read.comment}|{self.read_type}|{slice_no}",
+                f"@{self.read.name}|{self.read_type}|{slice_no}|{randint(0,100)}",
                 self.read.sequence[start:end],
                 "+",
                 self.read.quality[start:end],
