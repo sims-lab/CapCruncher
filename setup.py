@@ -23,7 +23,13 @@ install_requires=['pandas>=0.25.3',
                   'plotly>=4.8.0',
                   'xopen>=0.7.3',
                   'pysam>=0.15.3',
-                  'gevent>=20.6.2',
+                  'gevent',
                   'paramiko>=2.7.1',
-                  'sqlalchemy>=1.3.18']
+                  'sqlalchemy>=1.3.18',
+                  'cgatcore>=0.6.7',
+                  'apsw',
+                  'ruffus',
+                  'drmaa',
+                  'joblib',
+                  'ipykernel']
 )

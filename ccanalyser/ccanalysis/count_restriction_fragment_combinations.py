@@ -13,6 +13,7 @@ def get_rf_sort_key(rf):
 
     try:
         return (int(chrom_no), int(rf_no))
+    
     except ValueError:
         if len(chrom_no) <= 1:
             return (ord(chrom_no.lower()), int(rf_no))
@@ -32,15 +33,16 @@ def count_re_site_combinations(df, column="restriction_fragment"):
 
     return counts
 
-
-
-def main(slices, outfile=None, cis_only=True):
+def main(slices, outfile=None, only_cis=False, remove_exclusions=True):
 
     df_slices = pd.read_csv(slices, sep='\t') 
 
-    if cis_only:
+    if only_cis:
         df_slices = df_slices.query('capture_chrom == reporter_chrom')
 
+    if remove_exclusions:
+        df_slices = df_slices.query('capture != reporter_exclusion')
+    
     df_ligated_rf = df_slices.groupby('parent_read').agg({'reporter_restriction_fragment': '|'.join })
     ligated_rf_counts = count_re_site_combinations(df_ligated_rf, column='reporter_restriction_fragment')
 
@@ -50,10 +52,10 @@ def main(slices, outfile=None, cis_only=True):
             w.write(line.encode())
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--slices')
-    parser.add_argument('-o', '--outfile', default='out.tsv.gz')
-    args = parser.parse_args()
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('-f', '--slices')
+#     parser.add_argument('-o', '--outfile', default='out.tsv.gz')
+#     args = parser.parse_args()
 
-    main(**vars(args))   
+#     main(**vars(args))   

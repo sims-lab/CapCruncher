@@ -124,7 +124,7 @@ def parse_bam(bam):
             "coordinates",
         ],
     )
-    df_bam.set_index("read_name", inplace=True)
+    df_bam.set_index(["read_name",'chrom', 'start'], inplace=True)
     return df_bam
 
 
@@ -146,7 +146,10 @@ def merge_annotations(df, annotations):
         Merged dataframe
 
        """
-    df_ann = pd.read_csv(annotations, sep="\t", header=0, index_col=0)
+    
+    # Update, now using chrom and start to stop issues with multimapping
+    df_ann = pd.read_csv(annotations, sep="\t", header=0, index_col=['read_name', 'chrom', 'start'])
+    df_ann = df_ann.drop(columns='end', errors='ignore')
 
     return (
         df.join(df_ann, how="inner")
@@ -245,6 +248,8 @@ class SliceFilter:
            Returns:
             CCSliceFilter
         """
+        #TODO: Modify this function to speed it up (remove groupby and replace with ['parent_read].duplicated())
+
         fragments = self.fragments
         fragments_multislice = fragments.query("unique_slices > 1")
         self.slices = self.slices[

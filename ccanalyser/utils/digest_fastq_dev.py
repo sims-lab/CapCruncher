@@ -35,6 +35,7 @@ class DigestedRead:
         self.slices_total_counter = len(self.slice_indexes) - 1
         self.slices_valid_counter = 0
         self.has_slices = self.slices_total_counter > 1
+        self.slices = self.get_slices()
 
     def get_recognition_site_indexes(self):
         indexes = [
@@ -47,11 +48,10 @@ class DigestedRead:
 
         return indexes
 
-    @property
-    def slices(self):
+    def get_slices(self):
 
         indexes = self.slice_indexes
-        slice_no = 0 + self.slice_number_offset
+        slice_no = self.slice_number_offset
         slices_list = []
 
         if self.has_slices or self.allow_undigested:
@@ -84,12 +84,11 @@ class DigestedRead:
         )
 
     def is_valid_slice(self, start, end):
-        if end - start >= self.min_slice_length:
+        if (end - start) >= self.min_slice_length:
             return True
 
     def __str__(self):
-        slices = self.slices
-        return ("\n".join(slices) + "\n") if slices else ""
+        return ("\n".join(self.slices) + "\n") if self.slices else ""
 
 def read_fastq(fq, outq, n_workers=1, buffer=10000):
 
@@ -161,15 +160,13 @@ def digest_read_unflashed(inq, outq, statq, **kwargs):
     while not reads == "TER":  # Checks to see if the queue has been terminated
         for r1, r2 in reads:
             sliced_read_1 = DigestedRead(r1, **kwargs)  # Digest read 1
-            kwargs["slice_number_offset"] = sliced_read_1.slices_valid_counter  # Update slice offset
-
-            sliced_read_2 = DigestedRead(r2, **kwargs)  # Digest read 2
-
-            kwargs["slice_number_offset"] = 0  # Reset slice offset
+            sliced_read_2 = DigestedRead(r2,
+                                         slice_number_offset=sliced_read_1.slices_valid_counter,
+                                         **kwargs)  # Digest read 2
 
             s1, s2 = str(sliced_read_1), str(sliced_read_2)
 
-            if s1 and s2:  # Only store of both reads have valid slices
+            if s1 and s2:  # Only store if both reads have valid slices
                 read_buffer.append(f"{s1}{s2}")
 
             stat_buffer.append(
@@ -376,7 +373,6 @@ def main(
                 kwargs={
                     "cutsite": cut_site,
                     "min_slice_length": minimum_slice_length,
-                    "slice_number_offset": 0,
                     'allow_undigested': True,
                     'read_type': subcommand
                 },

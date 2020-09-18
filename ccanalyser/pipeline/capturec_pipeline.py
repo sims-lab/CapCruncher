@@ -29,7 +29,6 @@ as input and performs the following steps:
 @authors: asmith, dsims
 """
 # import packages
-from ccanalysis.ccanalyser import SliceFilter
 import sys
 import os
 #import gzip
@@ -38,7 +37,7 @@ import matplotlib.colors
 import pandas as pd
 #from pybedtools import BedTool
 import itertools
-from pysam import FastxFile
+#from pysam import FastxFile
 from cgatcore import pipeline as P
 from ruffus import (
     mkdir,
@@ -78,6 +77,7 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
 
+    #breakpoint()
     P.main(argv)
 
 
@@ -99,8 +99,11 @@ def digest_genome(infile, outfile):
     )
 
     statement = '''ccanalyser utils digest_genome
-                   -i %(infile)s -o %(tmp)s %(restriction_enzyme)s %(restriction_site)s
+                   -i %(infile)s
                    -l %(tmp)s.log
+                   -o %(tmp)s
+                   %(restriction_enzyme)s
+                   %(restriction_site)s
                    && gzip %(tmp)s'''
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
@@ -333,9 +336,9 @@ def align_reads(infile, outfile):
     options = P.PARAMS['align_options'] if P.PARAMS['align_options'] else ''
 
     statement = '''%(aligner)s %(options)s %(index_flag)s %(align_index)s %(infile)s
-                    | samtools view -bS > %(outfile)s
+                    | samtools view z-b -S > %(outfile)s
                     && samtools sort %(outfile)s -o %(outfile)s.sorted.bam -m 2G -@ %(run_options_threads)s
-                    && mv %(outfile)s.sorted.bam %(outfile)s'''
+                    && mv -f %(outfile)s.sorted.bam %(outfile)s'''
     P.run(
         statement,
         job_queue=P.PARAMS['run_options_queue'],
@@ -352,7 +355,7 @@ def merge_bam_files(infiles, outfile):
     statement = '''samtools merge %(outfile)s %(fnames)s'''
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
-@transform(merge_bam_files, regex('(.*)'), r'\1.bai')
+@transform(merge_bam_files, regex('(.*).bam'), r'\1.bam.bai')
 def index_bam(infile, outfile):
     statement = '''samtools index %(infile)s'''
     P.run(statement,
@@ -372,6 +375,7 @@ def mapping_qc(infile, outfile):
     cmd = [
         'picard',
         'CollectAlignmentSummaryMetrics',
+        'VALIDATION_STRINGENCY=LENIENT',
         'R=%(genome_fasta)s',
         'I=%(infile)s',
         'O=%(outfile)s',
@@ -484,7 +488,7 @@ def annotate_slices(infile, outfile):
     actions = ' '.join(actions)
     fractions = ' '.join([str(frac) for frac in fractions])
 
-    statement = f'''python /t1-data/user/asmith/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/generate_annotations.py
+    statement = f'''ccanalyser ccanalysis annotate_slices
                     -a {a} -b {fnames} --actions {actions} --colnames {colnames} -f {fractions} -o {outfile}'''
 
     P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=6)
@@ -518,7 +522,8 @@ def ccanalyser(infiles, outfile):
                     -a %(annotations)s
                     --output_prefix %(output_prefix)s
                     --stats_out %(stats_prefix)s
-                    --method %(ccanalyser_method)s'''
+                    --method %(ccanalyser_method)s
+                    > %(output_prefix)s.log 2>&1'''
     P.run(
         statement,
         job_queue=P.PARAMS['run_options_queue'],
@@ -532,7 +537,7 @@ def ccanalyser(infiles, outfile):
 @collate(
     'ccanalysis/captures_and_reporters/*.tsv.gz',
     regex(r'ccanalysis/captures_and_reporters/(.*)\..*_\d+.(.*).tsv.gz'),
-    r'ccanalysis/capturec_reporters_aggregated/\1.\2_raw.tsv.gz',
+    r'ccanalysis/capturec_reporters_aggregated/\1.\2.tsv.gz',
 )
 def collate_ccanalyser(infiles, outfile):
     '''Combines multiple capture site tsv files'''
@@ -551,45 +556,47 @@ def collate_ccanalyser(infiles, outfile):
     P.run(statement, job_queue=P.PARAMS['run_options_queue'])
 
 
-@transform(collate_ccanalyser,
-           regex(r'ccanalysis/capturec_reporters_aggregated/(.*)_raw.tsv.gz'),
-           r'ccanalysis/capturec_reporters_aggregated/\1.deduplicated.tsv.gz')
-def deduplicate_aggregated_ccananalyser(infile, outfile):
+# @transform(collate_ccanalyser,
+#            regex(r'ccanalysis/capturec_reporters_aggregated/(.*)_raw.tsv.gz'),
+#            r'ccanalysis/capturec_reporters_aggregated/\1.deduplicated.tsv.gz')
+# def deduplicate_aggregated_ccananalyser(infile, outfile):
 
-    from ..ccanalysis.ccanalyser import CCSliceFilter
+#     from ccanalyser.ccanalysis.ccanalyser import CCSliceFilter
 
-    df = pd.read_csv(infile, sep='\t')
-    df_capture = (df.loc[:, df.columns.str.contains('capture|parent')]
-                    .rename(columns=lambda col: col.split('_')[1] if 'capture' in col and len(col.split('_')) > 1 else col))
+#     df = pd.read_csv(infile, sep='\t')
+#     df_capture = (df.loc[:, df.columns.str.contains('capture|parent')]
+#                     .rename(columns=lambda col: col.split('_')[1] if 'capture' in col and len(col.split('_')) > 1 else col))
                     
-    df_rep = (df.loc[:, df.columns.str.contains('reporter|parent')]
-               .rename(columns=lambda col: col.split('_')[1] if 'reporter' in col else col))
+#     df_rep = (df.loc[:, df.columns.str.contains('reporter|parent')]
+#                .rename(columns=lambda col: col.split('_')[1] if 'reporter' in col else col))
     
-    df_cat = pd.concat([df_rep, df_capture]).sort_values('parent_read')
+#     df_cat = pd.concat([df_rep, df_capture]).sort_values('parent_read')
     
-    sf = CCSliceFilter(df_cat)
-    sf.remove_duplicate_slices()
-    sf.remove_duplicate_slices_pe()
-    sf.merged_captures_and_reporters.to_csv(outfile, sep='\t', index=False)
+#     sf = CCSliceFilter(df_cat)
+#     sf.remove_duplicate_slices()
+#     sf.remove_duplicate_slices_pe()
+#     sf.merged_captures_and_reporters.to_csv(outfile, sep='\t', index=False)
 
 
 
 @active_if(P.PARAMS['ccanalyser_method'] in ['tri', 'tiled'])
-@follows(deduplicate_aggregated_ccananalyser)
-@transform('ccanalysis/captures_and_reporters_aggregated/*.deduplicated.tsv.gz',
-           regex(r'ccanalysis/captures_and_reporters_aggregated/(.*).deduplicated.tsv.gz'),
+@transform(collate_ccanalyser,
+           regex(r'ccanalysis/capturec_reporters_aggregated/(.*).tsv.gz'),
            r'ccanalysis/restriction_fragment_interaction_counts/\1.tsv.gz')
 def count_restriction_fragment_interactions(infile, outfile):
     
     mkdir('ccanalysis/restriction_fragment_interaction_counts')
-    statement = f'''python /t1-data/user/asmith/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/count_restriction_fragment_combinations.py
-                    -f {infile} -o {outfile}'''
+    statement = f'''ccanalyser ccanalysis count_rf_combs
+                    -f {infile}
+                    -o {outfile}
+                    --only_cis'''
 
     P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=2)
 
+
 @follows(mkdir('ccanalysis/bedgraphs'))
 @transform(
-    collate_ccanalyser_capturec,
+    collate_ccanalyser,
     regex(r'ccanalysis/capturec_reporters_aggregated/(.*).tsv.gz'),
     add_inputs(digest_genome),
     r'ccanalysis/bedgraphs/\1.bedgraph.gz',
@@ -800,6 +807,7 @@ def build_report(infile, outfile):
                    -p directory $(pwd)/run_statistics/ &&
                    jupyter nbconvert
                    --no-input
+                   --to html
                    run_statistics/visualise_run_statistics.ipynb
                    run_statistics/visualise_run_statistics.html
                    '''

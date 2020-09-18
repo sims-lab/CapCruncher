@@ -4,8 +4,6 @@
 Created on Fri Oct  4 13:47:20 2019
 @author: asmith
 """
-import os
-import argparse
 import sys
 import multiprocessing as mp
 from pysam import FastxFile
