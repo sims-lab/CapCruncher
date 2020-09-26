@@ -336,7 +336,7 @@ def align_reads(infile, outfile):
     options = P.PARAMS['align_options'] if P.PARAMS['align_options'] else ''
 
     statement = '''%(aligner)s %(options)s %(index_flag)s %(align_index)s %(infile)s
-                    | samtools view z-b -S > %(outfile)s
+                    | samtools view -b -S > %(outfile)s
                     && samtools sort %(outfile)s -o %(outfile)s.sorted.bam -m 2G -@ %(run_options_threads)s
                     && mv -f %(outfile)s.sorted.bam %(outfile)s'''
     P.run(
@@ -579,17 +579,34 @@ def collate_ccanalyser(infiles, outfile):
 
 
 
-@active_if(P.PARAMS['ccanalyser_method'] in ['tri', 'tiled'])
+@active_if(P.PARAMS['ccanalyser_method'] in ['tri'])
 @transform(collate_ccanalyser,
            regex(r'ccanalysis/capturec_reporters_aggregated/(.*).tsv.gz'),
            r'ccanalysis/restriction_fragment_interaction_counts/\1.tsv.gz')
-def count_restriction_fragment_interactions(infile, outfile):
+def count_rf_interactions_agg(infile, outfile):
     
     mkdir('ccanalysis/restriction_fragment_interaction_counts')
     statement = f'''ccanalyser ccanalysis count_rf_combs
                     -f {infile}
                     -o {outfile}
-                    --only_cis'''
+                    --only_cis
+                    > {outfile}.log'''
+
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=2)
+
+
+@active_if(P.PARAMS['ccanalyser_method'] in ['tiled'])
+@follows(ccanalyser)
+@transform('ccanalysis/captures_and_reporters/*.tsv.gz',
+           regex(r'ccanalysis/captures_and_reporters/(.*).tsv.gz'),
+           r'ccanalysis/restriction_fragment_interaction_counts/\1.tsv.gz')
+def count_rf_interactions_sf(infile, outfile):
+    
+    mkdir('ccanalysis/restriction_fragment_interaction_counts')
+    statement = f'''ccanalyser ccanalysis count_rf_combs
+                    -f {infile}
+                    -o {outfile}
+                    > {outfile}.log'''
 
     P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=2)
 

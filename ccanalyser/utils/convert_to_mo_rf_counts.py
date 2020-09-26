@@ -4,25 +4,40 @@ import argparse
 
 def main(rf_counts, rf_map, outfile=None):
 
-
-    df_rf = pd.read_csv(rf_counts, header=None, names=['rf1', 'rf2', 'count'])
-    df_rf = pd.read_csv(rf_map,
+    
+    # Load rf counts
+    df_rf_count = pd.read_csv(rf_counts,
+                        header=None,
+                        names=['rf1', 'rf2', 'count'],
+                        )
+    print('Loaded restriction fragment counts')
+    
+    # Load rf map
+    df_rf_map = pd.read_csv(rf_map,
                     sep='\t',
                     header=None,
                     names=['chrom', 'start', 'end', 'name'])
     
-    df_rf['mo_coord'] = (df_rf['chrom'].str.replace('chr', '') +
-                     ':' +
-                     df_rf['start'].astype(str) +
-                     '-' +
-                     df_rf['end'].astype(str))
+    print('Loaded restriction fragment map')
     
-    rf_name_to_coord_name = df_rf.set_index('name')['mo_coord'].to_dict()
+    # Concatenate chrom start end for MO names
+    df_rf_map['mo_coord'] = (df_rf_map['chrom'].str.replace('chr', '') +
+                     ':' +
+                     df_rf_map['start'].astype(str) +
+                     '-' +
+                     df_rf_map['end'].astype(str))
+    
+    # Generate a mapping
+    rf_name_to_coord_name = df_rf_map.set_index('name')['mo_coord'].to_dict()
+    print('Created mapping')
 
-    df_rf['rf1_coord'] = df_rf['rf1'].map(rf_name_to_coord_name)
-    df_rf['rf2_coord'] = df_rf['rf2'].map(rf_name_to_coord_name)
+    # Map new name to counts
+    df_rf_count['rf1_coord'] = df_rf_count['rf1'].map(rf_name_to_coord_name)
+    df_rf_count['rf2_coord'] = df_rf_count['rf2'].map(rf_name_to_coord_name)
 
-    df_rf[['rf1_coord', 'rf2_coord', 'count']].to_csv(outfile, sep='\t', header=False, index=False)
+    # Output csv
+    print('Outputting converted csv')
+    df_rf_count[['rf1_coord', 'rf2_coord', 'count']].to_csv(outfile, sep='\t', header=False, index=False)
 
 if __name__ == '__main__':
 

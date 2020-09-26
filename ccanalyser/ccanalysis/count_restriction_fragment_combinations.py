@@ -20,14 +20,18 @@ def get_rf_sort_key(rf):
         else:
             return (sum(ord(l) for l in chrom_no), int(rf_no))
 
-def count_re_site_combinations(df, column="restriction_fragment"):
+def count_re_site_combinations(fragments, column="restriction_fragment"):
 
     counts = defaultdict(int)  # Store counts in a default dict
 
+    #breakpoint()
     # For each set of ligated fragments
-    for rf_collection in df[column].values:
-        
-        for rf1, rf2 in combinations(rf_collection.split('|'), 2): # Split the fragments by the separator and get pairwise combs
+    for ii, (group_name, frag) in enumerate(fragments):
+
+        if ii % 10000 == 0:
+            print(f'Processed {ii} fragments')
+
+        for rf1, rf2 in combinations(frag[column], 2): # Get fragment combinations
             rf1, rf2 = sorted([rf1, rf2], key=get_rf_sort_key)     # Sort them to ensure consistency        
             counts[rf1, rf2] += 1
 
@@ -39,12 +43,17 @@ def main(slices, outfile=None, only_cis=False, remove_exclusions=True):
 
     if only_cis:
         df_slices = df_slices.query('capture_chrom == reporter_chrom')
+        print('Removed all non-cis interactions')
 
     if remove_exclusions:
         df_slices = df_slices.query('capture != reporter_exclusion')
+        print('Removed all excluded regions')
     
-    df_ligated_rf = df_slices.groupby('parent_read').agg({'reporter_restriction_fragment': '|'.join })
-    ligated_rf_counts = count_re_site_combinations(df_ligated_rf, column='reporter_restriction_fragment')
+    print('Grouping at the fragment level')
+    fragments = df_slices.groupby('parent_read')
+
+    print('Started counting')
+    ligated_rf_counts = count_re_site_combinations(fragments, column='reporter_restriction_fragment')
 
     with xopen.xopen(outfile, mode='wb', threads=4) as w:
         for (rf1, rf2), count in ligated_rf_counts.items():

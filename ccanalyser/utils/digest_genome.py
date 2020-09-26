@@ -85,7 +85,7 @@ def main(
             # iterate through matches and write to bed file
             slice_start = 0
             for match_index, match_pos in enumerate(match_positions):
-                if remove_cutsite:
+                if remove_cutsite and not slice_start == 0:
                     slice_start += cut_sequence_len
                 
                 slice_end = match_pos

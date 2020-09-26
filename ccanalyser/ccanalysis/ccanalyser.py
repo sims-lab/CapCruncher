@@ -818,5 +818,12 @@ def main(input_bam, annotations, output_prefix, stats_output, method="capture"):
                     )
         tiled_region_name = reporters['capture'].values[0] # Assumes just one capture region per assay
         reporters.to_csv(f'{output_prefix}.{tiled_region_name}.tsv.gz', sep='\t')
+        
+        # Output dummy reporter stats
+        df_reporter_stats = pd.DataFrame({'capture': [tiled_region_name,],
+                                          'cis/trans': ['cis',],
+                                          'count': [slice_filter.filter_stats.loc['number_of_capture_slices', 'has_reporter'], ]})
+        
+        df_reporter_stats.to_csv(f"{stats_output}.reporter.stats", sep="\t", index=False)
        
 
