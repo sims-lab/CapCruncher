@@ -774,7 +774,7 @@ def main(input_bam, annotations, output_prefix, stats_output, method="capture"):
             "capture"
         ):
             df_rep.to_csv(
-                f"{ output_prefix}.{capture_site}.tsv.gz", sep="\t",
+                f"{ output_prefix}.{capture_site}.tsv.gz", sep="\t", index=False
             )
 
     elif method == "tri":
@@ -797,7 +797,7 @@ def main(input_bam, annotations, output_prefix, stats_output, method="capture"):
         for capture_site, df_rep in slice_filter.merged_captures_and_reporters.groupby(
             "capture"
         ):
-            df_rep.to_csv(f"{ output_prefix}.{capture_site}.tsv.gz", sep="\t")
+            df_rep.to_csv(f"{ output_prefix}.{capture_site}.tsv.gz", sep="\t", index=False)
 
     elif method == "tiled":
 
@@ -817,7 +817,7 @@ def main(input_bam, annotations, output_prefix, stats_output, method="capture"):
                                                   'reporter_capture': 'capture'})
                     )
         tiled_region_name = reporters['capture'].values[0] # Assumes just one capture region per assay
-        reporters.to_csv(f'{output_prefix}.{tiled_region_name}.tsv.gz', sep='\t')
+        reporters.to_csv(f'{output_prefix}.{tiled_region_name}.tsv.gz', sep='\t', index=False)
         
         # Output dummy reporter stats
         df_reporter_stats = pd.DataFrame({'capture': [tiled_region_name,],

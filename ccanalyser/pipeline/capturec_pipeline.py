@@ -532,7 +532,7 @@ def ccanalyser(infiles, outfile):
 
 
 
-@active_if(P.PARAMS['ccanalyser_method'] in ['capture', 'tri'])
+#@active_if(P.PARAMS['ccanalyser_method'] in ['capture', 'tri'])
 @follows(ccanalyser)
 @collate(
     'ccanalysis/captures_and_reporters/*.tsv.gz',
@@ -547,68 +547,44 @@ def collate_ccanalyser(infiles, outfile):
     inlist = " ".join(infiles)
     mkdir('ccanalysis/capturec_reporters_aggregated')
     
-    statement = '''ccanalyser utils join_tsv
-                   -f reporter_read_name
+    statement = '''python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/aggregate_and_remove_duplicates.py
                    -i %(inlist)s
-                   -o %(outfile)s
-                   --method concatenate'''
+                   -o %(outfile)s'''
 
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement,
+          job_queue=P.PARAMS['run_options_queue'],
+          job_threads=P.PARAMS['run_options_threads'])
 
-
+# @active_if(P.PARAMS['ccanalyser_method'] in ['tri'])
 # @transform(collate_ccanalyser,
-#            regex(r'ccanalysis/capturec_reporters_aggregated/(.*)_raw.tsv.gz'),
-#            r'ccanalysis/capturec_reporters_aggregated/\1.deduplicated.tsv.gz')
-# def deduplicate_aggregated_ccananalyser(infile, outfile):
-
-#     from ccanalyser.ccanalysis.ccanalyser import CCSliceFilter
-
-#     df = pd.read_csv(infile, sep='\t')
-#     df_capture = (df.loc[:, df.columns.str.contains('capture|parent')]
-#                     .rename(columns=lambda col: col.split('_')[1] if 'capture' in col and len(col.split('_')) > 1 else col))
-                    
-#     df_rep = (df.loc[:, df.columns.str.contains('reporter|parent')]
-#                .rename(columns=lambda col: col.split('_')[1] if 'reporter' in col else col))
+#            regex(r'ccanalysis/capturec_reporters_aggregated/(.*).tsv.gz'),
+#            r'ccanalysis/restriction_fragment_interaction_counts/\1.tsv.gz')
+# def count_rf_interactions_agg(infile, outfile):
     
-#     df_cat = pd.concat([df_rep, df_capture]).sort_values('parent_read')
+#     mkdir('ccanalysis/restriction_fragment_interaction_counts')
+#     statement = f'''ccanalyser ccanalysis count_rf_combs
+#                     -f {infile}
+#                     -o {outfile}
+#                     --only_cis
+#                     > {outfile}.log'''
+
+#     P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=2)
+
+
+# @active_if(P.PARAMS['ccanalyser_method'] in ['tiled'])
+# @follows(ccanalyser)
+# @transform('ccanalysis/captures_and_reporters/*.tsv.gz',
+#            regex(r'ccanalysis/captures_and_reporters/(.*).tsv.gz'),
+#            r'ccanalysis/restriction_fragment_interaction_counts/\1.tsv.gz')
+# def count_rf_interactions_sf(infile, outfile):
     
-#     sf = CCSliceFilter(df_cat)
-#     sf.remove_duplicate_slices()
-#     sf.remove_duplicate_slices_pe()
-#     sf.merged_captures_and_reporters.to_csv(outfile, sep='\t', index=False)
+#     mkdir('ccanalysis/restriction_fragment_interaction_counts')
+#     statement = f'''ccanalyser ccanalysis count_rf_combs
+#                     -f {infile}
+#                     -o {outfile}
+#                     > {outfile}.log'''
 
-
-
-@active_if(P.PARAMS['ccanalyser_method'] in ['tri'])
-@transform(collate_ccanalyser,
-           regex(r'ccanalysis/capturec_reporters_aggregated/(.*).tsv.gz'),
-           r'ccanalysis/restriction_fragment_interaction_counts/\1.tsv.gz')
-def count_rf_interactions_agg(infile, outfile):
-    
-    mkdir('ccanalysis/restriction_fragment_interaction_counts')
-    statement = f'''ccanalyser ccanalysis count_rf_combs
-                    -f {infile}
-                    -o {outfile}
-                    --only_cis
-                    > {outfile}.log'''
-
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=2)
-
-
-@active_if(P.PARAMS['ccanalyser_method'] in ['tiled'])
-@follows(ccanalyser)
-@transform('ccanalysis/captures_and_reporters/*.tsv.gz',
-           regex(r'ccanalysis/captures_and_reporters/(.*).tsv.gz'),
-           r'ccanalysis/restriction_fragment_interaction_counts/\1.tsv.gz')
-def count_rf_interactions_sf(infile, outfile):
-    
-    mkdir('ccanalysis/restriction_fragment_interaction_counts')
-    statement = f'''ccanalyser ccanalysis count_rf_combs
-                    -f {infile}
-                    -o {outfile}
-                    > {outfile}.log'''
-
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=2)
+#     P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=2)
 
 
 @follows(mkdir('ccanalysis/bedgraphs'))
