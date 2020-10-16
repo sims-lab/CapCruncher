@@ -666,6 +666,50 @@ def collate_rf_counts(infiles, outfile):
           job_condaenv=P.PARAMS['conda_env'])
 
 
+@transform(collate_rf_counts,
+           regex(r'ccanalysis/rf_counts_aggregated/(.*).tsv.gz'),
+           add_inputs(digest_genome),
+           r'ccanalysis/rf_counts_aggregated/\1.hdf5')
+def store_rf_counts(infile, outfile):
+
+
+    rf_counts, rf_map = infile
+    statement = '''python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/store_rf_counts.py
+                   -c %(rf_counts)s
+                   -m %(rf_map)s
+                   -o %(outfile)s
+                   --only_cis'''
+    
+    P.run(statement,
+          job_queue=P.PARAMS['run_options_queue'],
+          job_threads=P.PARAMS['run_options_threads'],
+          job_condaenv=P.PARAMS['conda_env'])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @follows(mkdir('ccanalysis/bedgraphs'))
 @transform(
     collate_ccanalyser,
