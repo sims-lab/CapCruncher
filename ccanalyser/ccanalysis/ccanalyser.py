@@ -532,7 +532,9 @@ class CCSliceFilter(SliceFilter):
         reporters = self.reporters.set_index("parent_read").add_prefix("reporter_")
 
         # Join reporters to captures using the parent read name
-        captures_and_reporters = captures.join(reporters).dropna(axis=0, how="any")
+        captures_and_reporters = (captures.join(reporters)
+                                          .dropna(axis=0, how="any")
+                                          .reset_index())
 
         return captures_and_reporters
 
@@ -754,9 +756,11 @@ def main(input_bam, annotations, output_prefix, stats_output, method="capture"):
     df_alignment = parse_bam(input_bam)
     df_alignment = merge_annotations(df_alignment, annotations)
 
-    if method == "capture":
-        # Initialise CCSliceFilter with default args
-        slice_filter = CCSliceFilter(df_alignment)
+    slice_filters_dict = {'capture': CCSliceFilter, 'tri': TriCSliceFilter}
+
+    if method == "capture" or method == 'tri':
+        # Initialise SliceFilter with default args
+        slice_filter = slice_filters_dict[method](slices=df_alignment)
 
         # Filter slices using the slice_filter
         slice_filter.filter_slices()
@@ -769,6 +773,10 @@ def main(input_bam, annotations, output_prefix, stats_output, method="capture"):
             f"{stats_output}.reporter.stats", sep="\t"
         )
 
+        # Output fragments
+        slice_filter.fragments.to_csv(f'{output_prefix}.fragments.tsv.gz', sep='\t', index=False)
+
+
         # Output the reporter DataFrame for each capture site
         for capture_site, df_rep in slice_filter.merged_captures_and_reporters.groupby(
             "capture"
@@ -777,28 +785,6 @@ def main(input_bam, annotations, output_prefix, stats_output, method="capture"):
                 f"{ output_prefix}.{capture_site}.tsv.gz", sep="\t", index=False
             )
 
-    elif method == "tri":
-
-        # Initialise TriCSliceFilter class
-        slice_filter = TriCSliceFilter(df_alignment)
-
-        # Filter slices TriC-style
-        slice_filter.filter_slices()
-
-        # Save filtering statisics
-        slice_filter.filter_stats.to_csv(f"{stats_output}.slice.stats", sep="\t")
-
-        # Save reporter stats
-        slice_filter.cis_or_trans_stats.to_csv(
-            f"{stats_output}.reporter.stats", sep="\t"
-        )
-
-        # Output the reporter DataFrame for each capture site
-        for capture_site, df_rep in slice_filter.merged_captures_and_reporters.groupby(
-            "capture"
-        ):
-            df_rep.to_csv(f"{ output_prefix}.{capture_site}.tsv.gz", sep="\t", index=False)
-
     elif method == "tiled":
 
         # Initialise TiledCSliceFilter class
@@ -806,6 +792,9 @@ def main(input_bam, annotations, output_prefix, stats_output, method="capture"):
 
         # Filter slices TiledC-style
         slice_filter.filter_slices()
+
+        # Output fragments
+        slice_filter.fragments.to_csv(f'{output_prefix}.fragments.tsv.gz', index=None, sep='\t')
 
         # Save filtering statisics
         slice_filter.filter_stats.to_csv(f"{stats_output}.slice.stats", sep="\t")

@@ -115,6 +115,9 @@ def add_count_rf_combs_args(subcommand):
     parser.add_argument("-f", "--slices")
     parser.add_argument("-o", "--outfile", default="out.tsv.gz")
     parser.add_argument('--only_cis', default=False, action='store_true', help='Only count cis interactions')
+    parser.add_argument('--remove_exclusions', default=False, action='store_true', help='Remove proximity exclusions')
+    parser.add_argument('--subsample', default=0, type=int, help='Subsample fragments')
+
 
 
 def add_deduplicate_fastq_args(subcommand):

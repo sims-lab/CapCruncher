@@ -24,11 +24,10 @@ def count_re_site_combinations(fragments, column="restriction_fragment"):
 
     counts = defaultdict(int)  # Store counts in a default dict
 
-    #breakpoint()
     # For each set of ligated fragments
     for ii, (group_name, frag) in enumerate(fragments):
 
-        if ii % 10000 == 0:
+        if (ii % 10000 == 0) and (ii > 0):
             print(f'Processed {ii} fragments')
 
         for rf1, rf2 in combinations(frag[column], 2): # Get fragment combinations
@@ -37,7 +36,7 @@ def count_re_site_combinations(fragments, column="restriction_fragment"):
 
     return counts
 
-def main(slices, outfile=None, only_cis=False, remove_exclusions=True):
+def main(slices, outfile=None, only_cis=False, remove_exclusions=False, subsample=False):
 
     df_slices = pd.read_csv(slices, sep='\t') 
 
@@ -49,13 +48,23 @@ def main(slices, outfile=None, only_cis=False, remove_exclusions=True):
         df_slices = df_slices.query('capture != reporter_exclusion')
         print('Removed all excluded regions')
     
+    if subsample:
+        df_slices = df_slices[df_slices['parent_read'].isin(df_slices['parent_read'].sample(n=subsample))]
+        print('Subsampled fragments')
+    
+    
     print('Grouping at the fragment level')
     fragments = df_slices.groupby('parent_read')
+
 
     print('Started counting')
     ligated_rf_counts = count_re_site_combinations(fragments, column='reporter_restriction_fragment')
 
     with xopen.xopen(outfile, mode='wb', threads=4) as w:
+        
+        header = '\t'.join(['rf1', 'rf2', 'count']) + '\n'
+        w.write(header.encode())
+
         for (rf1, rf2), count in ligated_rf_counts.items():
             line = '\t'.join([rf1, rf2, str(count)]) + '\n'
             w.write(line.encode())

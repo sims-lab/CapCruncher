@@ -71,6 +71,8 @@ P.PARAMS['SCRIPT_DIR'] = SCRIPT_DIR
 P.PARAMS['PACKAGE_DIR'] = PACKAGE_DIR
 P.PARAMS['HUB_DIR'] = os.path.join(P.PARAMS["hub_publoc"], P.PARAMS['hub_name'])
 P.PARAMS['ASSEMBLY_DIR'] = os.path.join(P.PARAMS['HUB_DIR'], P.PARAMS['genome_name'])
+P.PARAMS['conda_env'] = P.PARAMS.get('conda_env', os.path.basename(os.environ["CONDA_PREFIX"]))
+
 
 
 def main(argv=None):
@@ -105,7 +107,9 @@ def digest_genome(infile, outfile):
                    %(restriction_enzyme)s
                    %(restriction_site)s
                    && gzip %(tmp)s'''
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement,
+          job_queue=P.PARAMS['run_options_queue'],
+          job_condaenv=P.PARAMS['conda_env'])
 
 
 @follows(mkdir('fastq_pre-processing'), mkdir('fastq_pre-processing/fastqc'))
@@ -124,6 +128,7 @@ def qc_reads(infile, outfile):
         statement,
         job_queue=P.PARAMS['run_options_queue'],
         job_threads=P.PARAMS['run_options_threads'],
+        job_condaenv=P.PARAMS['conda_env']
     )
 
 
@@ -142,7 +147,10 @@ def multiqc_reads(infile, outfile):
                    fastq_pre-processing/fastqc/
                    -o %(dn)s
                    -n %(bn)s'''
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_memory='2G')
+    P.run(statement,
+          job_queue=P.PARAMS['run_options_queue'],
+          job_memory='2G',
+          job_condaenv=P.PARAMS['conda_env'])
 
 
 @follows(mkdir('fastq_pre-processing/deduplicated'))
@@ -188,7 +196,10 @@ def deduplicate_reads(infiles, outfile):
                        echo -e "Read_pairs_unique\\t$(($lc / 4))" >> $logfile;
                        echo -e "Read_pairs_removed\\t0" >> $logfile'''
 
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_memory='8G')
+    P.run(statement,
+          job_queue=P.PARAMS['run_options_queue'],
+          job_memory='8G',
+          job_condaenv=P.PARAMS['conda_env'])
 
 
 @follows(mkdir('fastq_pre-processing/trimmed'), deduplicate_reads)
@@ -208,6 +219,7 @@ def trim_reads(infiles, outfile):
         statement,
         job_queue=P.PARAMS['run_options_queue'],
         job_threads=P.PARAMS['run_options_threads'],
+        job_condaenv=P.PARAMS['conda_env']
     )
 
 
@@ -231,6 +243,7 @@ def combine_reads(infiles, outfile):
         statement,
         job_queue=P.PARAMS['run_options_queue'],
         job_threads=P.PARAMS['run_options_threads'],
+        job_condaenv=P.PARAMS['conda_env']
     )
 
 
@@ -250,7 +263,7 @@ def split_fastq(infile, outfile):
                   -n %(output_prefix)s
                   --chunksize %(split_n_reads)s
                   -c %(run_options_compression_level)s '''
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_condaenv=P.PARAMS['conda_env'])
 
 
 @follows(mkdir('fastq_pre-processing/digested'), split_fastq)
@@ -283,6 +296,7 @@ def digest_flashed_reads(infile, outfile):
         statement,
         job_queue=P.PARAMS['run_options_queue'],
         job_threads=4,
+        job_condaenv=P.PARAMS['conda_env']
     )
 
 
@@ -320,6 +334,7 @@ def digest_pe_reads(infiles, outfile):
         statement,
         job_queue=P.PARAMS['run_options_queue'],
         job_threads=4,
+        job_condaenv=P.PARAMS['conda_env']
     )
 
 
@@ -344,6 +359,7 @@ def align_reads(infile, outfile):
         job_queue=P.PARAMS['run_options_queue'],
         job_threads=P.PARAMS['run_options_threads'],
         job_memory='4G',
+        job_condaenv=P.PARAMS['conda_env']
     )
 
 
@@ -360,7 +376,8 @@ def index_bam(infile, outfile):
     statement = '''samtools index %(infile)s'''
     P.run(statement,
         job_queue=P.PARAMS['run_options_queue'],
-        job_memory='1G')
+        job_memory='1G',
+        job_condaenv=P.PARAMS['conda_env'])
 
 
 @follows(mkdir('aligned/mapping_statistics'), index_bam)
@@ -384,7 +401,7 @@ def mapping_qc(infile, outfile):
 
     statement = ' '.join(cmd)
 
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_condaenv=P.PARAMS['conda_env'])
 
 @merge(mapping_qc, 'run_statistics/mapping_report.html')
 def mapping_multiqc(infiles, outfile):
@@ -400,7 +417,7 @@ def mapping_multiqc(infiles, outfile):
                    %(indir)s
                    -o %(out_dn)s
                    -n %(out_fn)s'''
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_memory='8G')
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_memory='8G', job_condaenv=P.PARAMS['conda_env'])
 
 
 @follows(mkdir('ccanalysis/annotations'))
@@ -412,7 +429,7 @@ def bam_to_bed(infile, outfile):
     tmp = outfile.replace('.gz', '')
     statement = '''bedtools bamtobed
                     -i %(infile)s | gzip > %(outfile)s'''
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_condaenv=P.PARAMS['conda_env'])
 
 
 @transform(
@@ -427,7 +444,7 @@ def build_exclusion_bed(infile, outfile):
                     -i %(infile)s -g %(genome_fai)s -b %(ccanalyser_exclude_window)s
                     | bedtools subtract -a - -b %(ccanalyser_capture)s
                     | gzip > %(outfile)s'''
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_condaenv=P.PARAMS['conda_env'])
 
 
 @follows(digest_genome, build_exclusion_bed)
@@ -491,7 +508,7 @@ def annotate_slices(infile, outfile):
     statement = f'''ccanalyser ccanalysis annotate_slices
                     -a {a} -b {fnames} --actions {actions} --colnames {colnames} -f {fractions} -o {outfile}'''
 
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=6)
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=6, job_condaenv=P.PARAMS['conda_env'])
 
 
 @follows(
@@ -528,63 +545,125 @@ def ccanalyser(infiles, outfile):
         statement,
         job_queue=P.PARAMS['run_options_queue'],
         job_memory=P.PARAMS['run_options_memory'],
+        job_condaenv=P.PARAMS['conda_env']
+    )
+
+@follows(ccanalyser, mkdir('ccanalysis/deduplicated'))
+@collate('ccanalysis/captures_and_reporters/*.tsv.gz',
+         regex(r'ccanalysis/captures_and_reporters/(.*)\.[flashed|pe].*fragments.tsv.gz'),
+         r'ccanalysis/deduplicated/\1.zarr/.zgroup')
+def deduplicate_fragments(infiles, outfile):
+
+    infiles = ' '.join(infiles)
+    outfile = outfile.replace('/.zgroup', '') # Slight hack as zarr files look like a directory
+
+    statement = '''python ~/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/remove_duplicates.py
+                   fragments
+                   -i %(infiles)s
+                   -f %(outfile)s
+                   --shuffle'''
+    
+    P.run(
+        statement,
+        job_queue=P.PARAMS['run_options_queue'],
+        job_memory=P.PARAMS['run_options_memory'],
+        job_condaenv=P.PARAMS['conda_env']
     )
 
 
+@follows(deduplicate_fragments)
+@transform('ccanalysis/captures_and_reporters/*.tsv.gz',
+           regex(r'ccanalysis/captures_and_reporters/(?!.*\.fragments\.)(.*)\.(.*)\.(.*)\.tsv.gz'),
+           add_inputs(r'ccanalysis/deduplicated/\1.zarr'),
+           r'ccanalysis/deduplicated/\1.\2.\3.tsv.gz')
+def deduplicate_slices(infile, outfile):
 
-#@active_if(P.PARAMS['ccanalyser_method'] in ['capture', 'tri'])
-@follows(ccanalyser)
+    tsv, dedup_frag_ids = infile
+    statement = '''python ~/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/remove_duplicates.py
+                   slices
+                   -i %(tsv)s
+                   -f %(dedup_frag_ids)s
+                   -o %(outfile)s'''
+    
+    P.run(
+        statement,
+        job_queue=P.PARAMS['run_options_queue'],
+        job_memory=P.PARAMS['run_options_memory'],
+        job_condaenv=P.PARAMS['conda_env']
+    )
+
+@active_if(P.PARAMS['ccanalyser_method'] in ['capture', 'tri'])
 @collate(
-    'ccanalysis/captures_and_reporters/*.tsv.gz',
-    regex(r'ccanalysis/captures_and_reporters/(.*)\..*_\d+.(.*).tsv.gz'),
+    deduplicate_slices,
+    regex(r'ccanalysis/deduplicated/(.*)\..*_\d+.(.*).tsv.gz'),
     r'ccanalysis/capturec_reporters_aggregated/\1.\2.tsv.gz',
 )
 def collate_ccanalyser(infiles, outfile):
     '''Combines multiple capture site tsv files'''
 
-    #TODO: Implement a duplication filter after aggregation
-
     inlist = " ".join(infiles)
     mkdir('ccanalysis/capturec_reporters_aggregated')
     
-    statement = '''python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/aggregate_and_remove_duplicates.py
+    statement = '''python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/utils/aggregate_tsv_dev.py
+                   concatenate
                    -i %(inlist)s
                    -o %(outfile)s'''
 
     P.run(statement,
           job_queue=P.PARAMS['run_options_queue'],
-          job_threads=P.PARAMS['run_options_threads'])
+          job_threads=P.PARAMS['run_options_threads'],
+          job_condaenv=P.PARAMS['conda_env'])
 
-# @active_if(P.PARAMS['ccanalyser_method'] in ['tri'])
-# @transform(collate_ccanalyser,
-#            regex(r'ccanalysis/capturec_reporters_aggregated/(.*).tsv.gz'),
-#            r'ccanalysis/restriction_fragment_interaction_counts/\1.tsv.gz')
-# def count_rf_interactions_agg(infile, outfile):
+@active_if(P.PARAMS['ccanalyser_method'] in ['tri', 'tiled'])
+@follows(ccanalyser)
+@transform(deduplicate_slices,
+           regex(r'ccanalysis/deduplicated/(.*).tsv.gz'),
+           r'ccanalysis/restriction_fragment_interaction_counts/\1.tsv.gz')
+def count_rf_interactions(infile, outfile):
     
-#     mkdir('ccanalysis/restriction_fragment_interaction_counts')
-#     statement = f'''ccanalyser ccanalysis count_rf_combs
-#                     -f {infile}
-#                     -o {outfile}
-#                     --only_cis
-#                     > {outfile}.log'''
+    mkdir('ccanalysis/restriction_fragment_interaction_counts')
+    statement = f'''ccanalyser ccanalysis count_rf_combs
+                    -f {infile}
+                    -o {outfile}
+                    --only_cis
+                    --remove_exclusions
+                    > {outfile}.log'''
 
-#     P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=2)
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=2, job_condaenv=P.PARAMS['conda_env'])
 
+@collate(
+    count_rf_interactions,
+    regex(r'ccanalysis/restriction_fragment_interaction_counts/(.*)\..*_\d+.(.*).tsv.gz'),
+    r'ccanalysis/rf_counts_aggregated/\1.\2.tsv.gz',
+)
+def collate_rf_counts(infiles, outfile):
+    '''Combines multiple capture site tsv files'''
 
-# @active_if(P.PARAMS['ccanalyser_method'] in ['tiled'])
-# @follows(ccanalyser)
-# @transform('ccanalysis/captures_and_reporters/*.tsv.gz',
-#            regex(r'ccanalysis/captures_and_reporters/(.*).tsv.gz'),
-#            r'ccanalysis/restriction_fragment_interaction_counts/\1.tsv.gz')
-# def count_rf_interactions_sf(infile, outfile):
+    inlist = " ".join(infiles)
+    mkdir('ccanalysis/rf_counts_aggregated')
     
-#     mkdir('ccanalysis/restriction_fragment_interaction_counts')
-#     statement = f'''ccanalyser ccanalysis count_rf_combs
-#                     -f {infile}
-#                     -o {outfile}
-#                     > {outfile}.log'''
+    statement = '''python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/utils/aggregate_tsv_dev.py
+                   concatenate
+                   -i %(inlist)s
+                   --header
+                   -o %(outfile)s.tmp.tsv
+                   &&
+                   python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/utils/aggregate_tsv_dev.py
+                   aggregate
+                   -i %(outfile)s.tmp.tsv
+                   --header
+                   --groupby_columns rf1 rf2
+                   --aggregate_columns count
+                   --aggregate_method sum
+                   -o %(outfile)s 
+                   &&
+                   rm %(outfile)s.tmp.tsv
+                   '''
 
-#     P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=2)
+    P.run(statement,
+          job_queue=P.PARAMS['run_options_queue'],
+          job_threads=P.PARAMS['run_options_threads'],
+          job_condaenv=P.PARAMS['conda_env'])
 
 
 @follows(mkdir('ccanalysis/bedgraphs'))
@@ -603,7 +682,7 @@ def make_bedgraph(infiles, outfile):
                    -b %(re_map)s
                    -o %(outfile)s'''
 
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_condaenv=P.PARAMS['conda_env'])
 
 
 @follows(mkdir('ccanalysis/bigwigs'))
@@ -620,7 +699,7 @@ def make_bigwig(infile, outfile):
                    && bedGraphToBigWig %(tmp)s %(genome_chrom_sizes)s %(outfile)s
                    && rm %(tmp)s'''
 
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_condaenv=P.PARAMS['conda_env'])
 
 
 def write_dict_to_file(fn, dictionary):
@@ -785,7 +864,7 @@ def aggregate_stats(infiles, outfile):
                     --output_dir %(outdir)s
                 '''
 
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_condaenv=P.PARAMS['conda_env'])
 
 
 @follows(aggregate_stats)
@@ -805,7 +884,7 @@ def build_report(infile, outfile):
                    run_statistics/visualise_run_statistics.html
                    '''
 
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'])
+    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_condaenv=P.PARAMS['conda_env'])
 
 
 @follows(generate_trackdb_metadata)
