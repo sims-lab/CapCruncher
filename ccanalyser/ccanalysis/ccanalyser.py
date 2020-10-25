@@ -215,8 +215,6 @@ class SliceFilter:
                 self.slices.to_csv(os.path.join(output_location, f'{stage}.tsv.gz'))
             
             self.filter_stats[stage] = self.slice_stats  # Store the stats for each stage
- 
-
 
     def modify_re_frag(self, frag: str, adjust=1):
         """Increases/Decreases the RE frag number.

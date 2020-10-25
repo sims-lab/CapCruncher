@@ -622,14 +622,20 @@ def collate_ccanalyser(infiles, outfile):
 def count_rf_interactions(infile, outfile):
     
     mkdir('ccanalysis/restriction_fragment_interaction_counts')
-    statement = f'''ccanalyser ccanalysis count_rf_combs
-                    -f {infile}
-                    -o {outfile}
-                    --only_cis
-                    --remove_exclusions
-                    > {outfile}.log'''
+    statement = ['ccanalyser ccanalysis count_rf_combs',
+                 f'-f {infile}',
+                 f'-o {outfile}',
+                 '--only_cis' if P.PARAMS['ccanalyser_method'] == 'tri' else '',
+                 '--remove_exclusions',
+                 f'> {outfile}.log',
+                 ]
+    
+    statement = ' '.join(statement)
 
-    P.run(statement, job_queue=P.PARAMS['run_options_queue'], job_threads=2, job_condaenv=P.PARAMS['conda_env'])
+    P.run(statement,
+          job_queue=P.PARAMS['run_options_queue'],
+          job_threads=2,
+          job_condaenv=P.PARAMS['conda_env'])
 
 @collate(
     count_rf_interactions,
@@ -682,32 +688,34 @@ def store_rf_counts(infile, outfile):
     
     P.run(statement,
           job_queue=P.PARAMS['run_options_queue'],
-          job_threads=P.PARAMS['run_options_threads'],
+          #job_threads=P.PARAMS['run_options_threads'],
+          job_condaenv=P.PARAMS['conda_env'])
+
+@transform(store_rf_counts,
+           regex(r'ccanalysis/rf_counts_aggregated/(.*).hdf5'),
+           r'ccanalysis/rf_counts_aggregated/\1.log')
+def plot_rf_counts(infile, outfile):
+
+    rf_counts = infile
+    plot_coordinates = P.PARAMS.get('plotting_coordinates')
+
+    if plot_coordinates:
+    
+        statement = '''python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/plot_rf_counts.py
+                    -i %(rf_counts)s
+                    -c %(plot_coordinates)s
+                    --method %(ccanalyser_method)s
+                    -b %(plotting_bin_size)s'''
+        
+        P.run(statement,
+          job_queue=P.PARAMS['run_options_queue'],
+          #job_threads=P.PARAMS['run_options_threads'],
           job_condaenv=P.PARAMS['conda_env'])
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    else:
+        print('Not plotting as no coordinates provided')
 
 
 @follows(mkdir('ccanalysis/bedgraphs'))

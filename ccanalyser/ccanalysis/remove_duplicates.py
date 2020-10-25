@@ -21,7 +21,9 @@ def save_deduplicate_fragment_ids(
     print("Reading fragments and deduplicating")
     deduplicated_ids = (
         dd.read_csv(fragments, sep="\t", **read_csv_options)
-        .drop_duplicates(subset="coordinates")["parent_read"]
+        .drop_duplicates(subset="coordinates")
+        ["parent_read"]
+        .unique()
         .persist()
     )
 
@@ -40,7 +42,8 @@ def read_deduplicated_fragment_ids(fn, key):
 
 def deduplicate_slices(tsv, dedup_ids):
     df = pd.read_csv(tsv, sep="\t", index_col="parent_read")
-    return df.loc[df.index.intersection(dedup_ids)]
+    dedup_intersection = df.index.intersection(dedup_ids)
+    return df.loc[df.index.isin(dedup_intersection)]
 
 
 def main(
