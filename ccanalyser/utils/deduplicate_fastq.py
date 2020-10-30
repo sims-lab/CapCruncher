@@ -8,6 +8,10 @@ import sys
 import multiprocessing as mp
 from pysam import FastxFile
 from xopen import xopen
+from sklearn.utils import murmurhash3_32
+
+
+
 
 def open_logfile(fn):
     if not isinstance(fn, type(sys.stdout)):
@@ -49,8 +53,7 @@ def remove_read_duplicates(inq,
     reads = inq.get() # Get list of reads from the input queue
     while reads:
         for read_counter, (r1, r2) in enumerate(reads):
-            #TODO - Change hash to other hashing e.g murmur
-            read_pair = hash(r1.sequence + r2.sequence)
+            read_pair = murmurhash3_32(''.join((r1.sequence, r2.sequence)))
 
             if read_pair not in seen:
                 seen.add(read_pair)
@@ -91,7 +94,7 @@ def main(fq1,
          out1='out_1.fastq.gz',
          out2='out_2.fastq.gz',
          stats_file='stats_out.log',
-         read_buffer=10000,
+         read_buffer=100000,
          compression_level=5):
 
     # Set up multiprocessing variables

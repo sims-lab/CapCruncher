@@ -1,7 +1,6 @@
 import os
 import sys
 import argparse
-import imp
 
 # Make sure the script can find capturec scripts
 SCRIPT_PATH = os.path.abspath(__file__)
@@ -13,7 +12,7 @@ sys.path.append(PACKAGE_DIR)
 def prepare_parser():
     description = "Collection of scripts to analyse NG-Capture-C data."
     parser = argparse.ArgumentParser(
-        prog="capturec",
+        prog="ccanalyser",
         description=description,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -163,13 +162,7 @@ def add_digest_fastq_args(subcommand):
         "-o", "--output_file", help="output file name", default="digested.fastq.gz",
     )
 
-    enzyme_group = parent_parser.add_mutually_exclusive_group(required=True)
-    enzyme_group.add_argument(
-        "-r", "--restriction_enzyme", help="Name of restriction enzyme"
-    )
-    enzyme_group.add_argument(
-        "-s", "--cut_sequence", help="Sequence of restriction site"
-    )
+    parent_parser.add_argument('-r', '--restriction_enzyme', help='Name or sequence of restriction enzyme')
 
     parent_parser.add_argument(
         "-m",
@@ -246,13 +239,7 @@ def add_digest_genome_args(subcommand):
         "-o", "--output_file", help="output file name", default="digested.bed"
     )
 
-    enzyme_group = parser.add_mutually_exclusive_group(required=True)
-    enzyme_group.add_argument(
-        "-r", "--restriction_enzyme", help="Name of restriction enzyme"
-    )
-    enzyme_group.add_argument(
-        "-s", "--cut_sequence", help="Sequence of restriction site"
-    )
+    parser.add_argument('-r', '--recognition_site', help='Name of restriction enzyme or its sequence')
     parser.add_argument(
         "-l", "--logfile", help="filename for logfile", default="test.log"
     )
@@ -371,9 +358,9 @@ def main():
             deduplicate_fastq.main(**vars(args))
 
         elif subcommand == "digest_fastq":
-            from ccanalyser.utils import digest_fastq_dev
+            from ccanalyser.utils import digest_fastq
 
-            digest_fastq_dev.main(**vars(args))
+            digest_fastq.main(**vars(args))
 
         elif subcommand == "digest_genome":
             from ccanalyser.utils import digest_genome

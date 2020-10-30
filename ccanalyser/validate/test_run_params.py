@@ -74,7 +74,7 @@ def main():
     test_out_dir = os.path.join(SCRIPT_DIR, 'test_params')
 
     tasks = [test_trim, test_align]
-    if not all([task(params, data_dir=test_files_dir, test_dir=test_dir) for task in tasks]): # check if all tasks succeed
+    if not all([task(params, data_dir=test_files_dir, test_dir=test_out_dir) for task in tasks]): # check if all tasks succeed
         raise ValueError('Parameters are not correct, see error messages')
     else:
         for err in glob.glob('*.stderr'):

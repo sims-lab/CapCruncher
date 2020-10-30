@@ -47,7 +47,7 @@ def main():
         from ccanalyser.pipeline import get_yaml
     elif subcommand == 'pipeline':
         cmd = ['python',
-               os.path.join(SCRIPT_DIR, 'pipeline', 'capturec_pipeline.py'),
+               os.path.join(SCRIPT_DIR, 'pipeline', 'pipeline.py'),
                *raw_args]
         sub.run(cmd)
 

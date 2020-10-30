@@ -11,7 +11,7 @@ import re
 from pysam import FastxFile
 
 
-def get_re_site(cut_sequence=None, restriction_enzyme=None):
+def get_re_site(recognition_site=None):
 
     """
     Obtains the recogniton sequence for a supplied restriction enzyme or correctly
@@ -36,39 +36,35 @@ def get_re_site(cut_sequence=None, restriction_enzyme=None):
         "ecori": "GAATTC",
         "nlaiii": "CATG",
     }
-    if cut_sequence:
-        return cut_sequence.upper()
-    elif restriction_enzyme.lower() in known_enzymes:
-        return known_enzymes.get(restriction_enzyme.lower())
+
+    if re.match(r'[GgAaTtCc]+', recognition_site):
+        # This matches a DNA sequence so just convert to upper case and return
+        return recognition_site.upper()
+    elif recognition_site.lower() in known_enzymes:
+        return known_enzymes.get(recognition_site.lower())
     else:
         raise ValueError("No restriction site or recognised enzyme provided")
 
 
 def main(
     input_fasta,
-    restriction_enzyme=None,
-    cut_sequence=None,
-    cut_sequence_name=None,
+    recognition_site=None,
     logfile=None,
     output_file=None,
     remove_cutsite=True,
 ):
 
     
-    cut_sequence = get_re_site(
-        restriction_enzyme=restriction_enzyme, cut_sequence=cut_sequence
-    )
+    cut_sequence = get_re_site(recognition_site=recognition_site)
     cut_sequence_len = len(cut_sequence)
     #TODO: Include option to keep or remove the cutsite. For now will just remove to keep inline with the fastq digestion script
 
 
 
-    if restriction_enzyme:
-        re_fragment_name = restriction_enzyme
-    elif cut_sequence_name:
-        re_fragment_name = cut_sequence_name
+    if not re.match(r'[GgAaTtCc]+', recognition_site):
+        re_fragment_name = recognition_site
     else:
-        re_fragment_name = "Unknown"
+        re_fragment_name = "U"
 
     with open(logfile, "w") as log, open(output_file, "w") as bed_out, FastxFile(
         input_fasta
@@ -100,7 +96,7 @@ def main(
             # handle last slice
             if slice_start != seq_length:
                 slice_end = seq_length
-                slice_name = f"{restriction_enzyme}_{seq_entry.name}_{match_index}"
+                slice_name = f"{re_fragment_name}_{seq_entry.name}_{match_index}"
                 bed_out.write(
                     f"{seq_entry.name}\t{slice_start}\t{slice_end}\t{slice_name}\n"
                 )
