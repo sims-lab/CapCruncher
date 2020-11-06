@@ -53,6 +53,8 @@ from pybedtools.helpers import get_chromsizes_from_ucsc
 
 
 # Global vars
+# TODO: Issue with selecting queue manager -- defaults to sun grid (cgat-core issue)
+## kwargs.get("cluster_queue_manager") is the offending option
 
 
 # Script location
@@ -67,16 +69,18 @@ P.get_parameters(params)
 # Sort pipeline global params
 P.PARAMS["SCRIPT_DIR"] = SCRIPT_DIR
 P.PARAMS["PACKAGE_DIR"] = PACKAGE_DIR
-# P.PARAMS['HUB_DIR'] = os.path.join(P.PARAMS["hub_publoc"], P.PARAMS['hub_name'])
-# P.PARAMS['ASSEMBLY_DIR'] = os.path.join(P.PARAMS['HUB_DIR'], P.PARAMS['genome_name'])
+P.PARAMS["cluster_queue_manager"] = P.PARAMS["pipeline_cluster_queue_manager"]
 P.PARAMS["conda_env"] = P.PARAMS.get(
     "conda_env", os.path.basename(os.environ["CONDA_PREFIX"])
 )
+# P.PARAMS['HUB_DIR'] = os.path.join(P.PARAMS["hub_publoc"], P.PARAMS['hub_name'])
+# P.PARAMS['ASSEMBLY_DIR'] = os.path.join(P.PARAMS['HUB_DIR'], P.PARAMS['genome_name'])
+
 
 # Check if chromsizes are provided, if not download them
-if P.PARAMS['genome_chrom_sizes'] in ['', 'None', 'none']:
+if P.PARAMS["genome_chrom_sizes"] in ["", "None", "none"]:
     get_chromsizes_from_ucsc(P.PARAMS["genome_name"], "chrom_sizes.txt.tmp")
-    P.PARAMS['genome_chrom_sizes'] = 'chrom_sizes.txt.tmp'
+    P.PARAMS["genome_chrom_sizes"] = "chrom_sizes.txt.tmp"
 
 
 def main(argv=None):
@@ -87,8 +91,13 @@ def main(argv=None):
 
 
 def is_on(param):
-    ON_VALS = ["true", "t", "on", "yes", "y", "1"]
-    if str(P.PARAMS[param]).lower() in ON_VALS:
+    values = ["true", "t", "on", "yes", "y", "1"]
+    if str(P.PARAMS[param]).lower() in values:
+        return True
+
+def is_off(param):
+    values = ['', 'None', 'none', 'F', 'f']
+    if str(P.PARAMS[param]).lower() in values:
         return True
 
 
@@ -110,6 +119,7 @@ def digest_genome(infile, outfile):
                    -o %(tmp)s
                    -r %(restriction_enzyme)s
                    && gzip %(tmp)s"""
+
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -520,7 +530,7 @@ def annotate_slices(infile, outfile):
     )
 
     colnames = " ".join(colnames)
-    fnames = " ".join([fn if fn else "-" for fn in fnames])
+    fnames = " ".join([fn if not is_off(fn) else "-" for fn in fnames])
     actions = " ".join(actions)
     fractions = " ".join([str(frac) for frac in fractions])
 
@@ -630,7 +640,7 @@ def deduplicate_slices(infile, outfile):
     )
 
 
-@active_if(P.PARAMS["analysis_method"] in ["capture", "tri"])
+#@active_if(P.PARAMS["analysis_method"] in ["capture"])
 @collate(
     deduplicate_slices,
     regex(r"ccanalysis/deduplicated/(.*)\..*_\d+.(.*).tsv.gz"),
@@ -642,7 +652,7 @@ def collate_ccanalyser(infiles, outfile):
     inlist = " ".join(infiles)
     mkdir("ccanalysis/capturec_reporters_aggregated")
 
-    statement = """python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/utils/aggregate_tsv_dev.py
+    statement = """python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/utils/aggregate_tsv.py
                    concatenate
                    -i %(inlist)s
                    -o %(outfile)s"""
@@ -697,13 +707,14 @@ def collate_rf_counts(infiles, outfile):
     inlist = " ".join(infiles)
     mkdir("ccanalysis/rf_counts_aggregated")
 
-    statement = """python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/utils/aggregate_tsv_dev.py
+    # breakpoint()
+    statement = """python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/utils/aggregate_tsv.py
                    concatenate
                    -i %(inlist)s
                    --header
                    -o %(outfile)s.tmp.tsv
                    &&
-                   python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/utils/aggregate_tsv_dev.py
+                   python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/utils/aggregate_tsv.py
                    aggregate
                    -i %(outfile)s.tmp.tsv
                    --header
@@ -735,6 +746,7 @@ def store_rf_counts(infile, outfile):
     statement = """python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/store_rf_counts.py
                    -c %(rf_counts)s
                    -m %(rf_map)s
+                   -g %(genome_name)s
                    -o %(outfile)s
                    --only_cis"""
 
@@ -748,7 +760,8 @@ def store_rf_counts(infile, outfile):
 
 @transform(
     store_rf_counts,
-    regex(r"ccanalysis/rf_counts_aggregated/(.*).hdf5"),
+    regex(r"ccanalysis/rf_counts_aggregated/(.*)_.*_binned.hdf5"),
+    add_inputs(r'ccanalysis/rf_counts_aggregated/\1_rf.hdf5'),
     r"ccanalysis/rf_counts_aggregated/\1.log",
 )
 def plot_rf_counts(infile, outfile):
@@ -774,7 +787,7 @@ def plot_rf_counts(infile, outfile):
     else:
         print("Not plotting as no coordinates provided")
 
-
+@active_if(P.PARAMS["analysis_method"] in ["capture"])
 @follows(mkdir("ccanalysis/bedgraphs"))
 @transform(
     collate_ccanalyser,

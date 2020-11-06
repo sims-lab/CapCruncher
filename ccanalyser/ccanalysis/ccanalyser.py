@@ -653,7 +653,8 @@ class TiledCSliceFilter(SliceFilter):
             filter_stages = {
                 "mapped": ["remove_unmapped_slices", "remove_orphan_slices"],
                 "not_blacklisted": ["remove_blacklisted_slices"],
-                "within_capture_region": ["remove_slices_outside_capture"],
+                #"within_capture_region": ["remove_slices_outside_capture"],
+                "contains_capture": ['remove_non_capture_fragments'],
                 "duplicate_filtered": [
                     "remove_slices_without_re_frag_assigned",
                     "remove_duplicate_re_frags",
@@ -744,6 +745,13 @@ class TiledCSliceFilter(SliceFilter):
 
     def remove_slices_outside_capture(self):
         self.slices = self.slices.query('capture != "."')
+
+    def remove_non_capture_fragments(self):
+        fragments_with_capture = self.fragments.query('capture_count > 0')
+        self.slices[self.slices['parent_read'].isin(fragments_with_capture['parent_read'])]
+
+
+
     
 @get_timing(task_name="analysis of bam file")
 def main(input_bam, annotations, output_prefix, stats_output, method="capture"):
