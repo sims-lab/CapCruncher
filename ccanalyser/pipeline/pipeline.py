@@ -50,6 +50,7 @@ from ruffus import (
 )
 import pybedtools
 from pybedtools.helpers import get_chromsizes_from_ucsc
+import re
 
 
 # Global vars
@@ -58,17 +59,17 @@ from pybedtools.helpers import get_chromsizes_from_ucsc
 
 
 # Script location
-SCRIPT_PATH = os.path.abspath(__file__)
-SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
-PACKAGE_DIR = os.path.dirname(SCRIPT_DIR)
+# SCRIPT_PATH = os.path.abspath(__file__)
+# SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
+# PACKAGE_DIR = os.path.dirname(SCRIPT_DIR)
+# P.PARAMS["SCRIPT_DIR"] = SCRIPT_DIR
+# P.PARAMS["PACKAGE_DIR"] = PACKAGE_DIR
 
 # Read in parameter file
 params = "config.yml"
 P.get_parameters(params)
 
 # Sort pipeline global params
-P.PARAMS["SCRIPT_DIR"] = SCRIPT_DIR
-P.PARAMS["PACKAGE_DIR"] = PACKAGE_DIR
 P.PARAMS["cluster_queue_manager"] = P.PARAMS["pipeline_cluster_queue_manager"]
 P.PARAMS["conda_env"] = P.PARAMS.get(
     "conda_env", os.path.basename(os.environ["CONDA_PREFIX"])
@@ -89,15 +90,14 @@ def main(argv=None):
 
     P.main(argv)
 
-
 def is_on(param):
     values = ["true", "t", "on", "yes", "y", "1"]
-    if str(P.PARAMS[param]).lower() in values:
+    if str(param).lower() in values:
         return True
 
 def is_off(param):
     values = ['', 'None', 'none', 'F', 'f']
-    if str(P.PARAMS[param]).lower() in values:
+    if str(param).lower() in values:
         return True
 
 
@@ -559,18 +559,18 @@ def annotate_slices(infile, outfile):
     align_reads,
     regex(r"aligned/(.*).bam"),
     add_inputs(r"ccanalysis/annotations/\1.annotations.tsv.gz"),
-    r"ccanalysis/stats/\1.slice.stats",
+    r"ccanalysis/captures_and_reporters/\1.fragments.tsv.gz",
 )
 def ccanalyser(infiles, outfile):
     """Processes bam files and annotations, filteres slices and outputs
     reporter slices for each capture site"""
 
     bam, annotations = infiles
-    output_prefix = outfile.replace("/stats/", "/captures_and_reporters/").replace(
-        ".slice.stats", ""
-    )
+    output_prefix = outfile.replace(".fragments.tsv.gz", "")
+    stats_prefix = (outfile.replace("/captures_and_reporters/", "/stats/")
+                           .replace(".fragments.tsv.gz", ".slice.stats"))
 
-    stats_prefix = outfile.replace(".slice.stats", "")
+
 
     statement = """ccanalyser ccanalysis ccanalyser
                     -i %(bam)s
@@ -591,25 +591,23 @@ def ccanalyser(infiles, outfile):
 @collate(
     "ccanalysis/captures_and_reporters/*.tsv.gz",
     regex(r"ccanalysis/captures_and_reporters/(.*)\.[flashed|pe].*fragments.tsv.gz"),
-    r"ccanalysis/deduplicated/\1.zarr/.zgroup",
+    r"ccanalysis/deduplicated/\1.hdf5",
 )
 def deduplicate_fragments(infiles, outfile):
 
     infiles = " ".join(infiles)
-    outfile = outfile.replace(
-        "/.zgroup", ""
-    )  # Slight hack as zarr files look like a directory
-
-    statement = """python ~/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/remove_duplicates.py
+    statement = """python ~/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/remove_duplicates_dev.py
                    fragments
                    -i %(infiles)s
                    -f %(outfile)s
-                   --shuffle"""
+                   --shuffle
+                   -p %(pipeline_n_cores)s"""
 
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_memory=P.PARAMS["pipeline_advanced_memory"],
+        job_threads=P.PARAMS["pipeline_n_cores"],
+        job_memory='32G',
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -618,23 +616,25 @@ def deduplicate_fragments(infiles, outfile):
 @transform(
     "ccanalysis/captures_and_reporters/*.tsv.gz",
     regex(
-        r"ccanalysis/captures_and_reporters/(?!.*\.fragments\.)(.*)\.(.*)\.(.*)\.tsv.gz"
+        r"ccanalysis/captures_and_reporters/(?!.*\.fragments\.)(.*)\.(.*[0-9]+)\.(.*)\.tsv.gz"
     ),
-    add_inputs(r"ccanalysis/deduplicated/\1.zarr"),
+    add_inputs(r"ccanalysis/deduplicated/\1.hdf5"),
     r"ccanalysis/deduplicated/\1.\2.\3.tsv.gz",
 )
 def deduplicate_slices(infile, outfile):
 
     tsv, dedup_frag_ids = infile
-    statement = """python ~/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/remove_duplicates.py
+    statement = """python ~/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/remove_duplicates_dev.py
                    slices
                    -i %(tsv)s
                    -f %(dedup_frag_ids)s
-                   -o %(outfile)s"""
+                   -o %(outfile)s
+                   -p %(pipeline_n_cores)s"""
 
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=P.PARAMS["pipeline_n_cores"],
         job_memory=P.PARAMS["pipeline_advanced_memory"],
         job_condaenv=P.PARAMS["conda_env"],
     )
@@ -738,44 +738,48 @@ def collate_rf_counts(infiles, outfile):
     collate_rf_counts,
     regex(r"ccanalysis/rf_counts_aggregated/(.*).tsv.gz"),
     add_inputs(digest_genome),
-    r"ccanalysis/rf_counts_aggregated/\1.hdf5",
+    r"ccanalysis/rf_counts_aggregated/\1_restriction_fragment.hdf5",
 )
 def store_rf_counts(infile, outfile):
 
     rf_counts, rf_map = infile
-    statement = """python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/store_rf_counts.py
+    outfile_prefix = outfile.replace('_restriction_fragment.hdf5', '.hdf5')
+    bin_sizes = ' '.join(re.split(r'[,;]\s*|\s+', str(P.PARAMS['plot_bin_size'])))
+    bin_method = P.PARAMS.get('plot_bin_method', 'overlap')
+
+    statement = """python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/store_interactions.py
                    -c %(rf_counts)s
                    -m %(rf_map)s
                    -g %(genome_name)s
-                   -o %(outfile)s
-                   --only_cis"""
+                   -o %(outfile_prefix)s
+                   -b %(bin_sizes)s
+                   --bin_method %(bin_method)s"""
 
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        # job_threads=P.PARAMS['pipeline_n_cores'],
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-
 @transform(
     store_rf_counts,
-    regex(r"ccanalysis/rf_counts_aggregated/(.*)_.*_binned.hdf5"),
-    add_inputs(r'ccanalysis/rf_counts_aggregated/\1_rf.hdf5'),
+    regex(r"ccanalysis/rf_counts_aggregated/(.*)_rf.hdf5"),
     r"ccanalysis/rf_counts_aggregated/\1.log",
 )
 def plot_rf_counts(infile, outfile):
 
-    rf_counts = infile
-    plot_coordinates = P.PARAMS.get("plotting_coordinates")
+    output_prefix = os.path.dirname(outfile)
+    
+    if not is_off(P.PARAMS['plot_coordinates']):
 
-    if plot_coordinates:
-
-        statement = """python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/plot_rf_counts.py
-                    -i %(rf_counts)s
-                    -c %(plot_coordinates)s
-                    --method %(analysis_method)s
-                    -b %(plotting_bin_size)s"""
+        statement = """python /home/nuffmed/asmith/Data/Projects/ccanalyser/capture-c/ccanalyser/ccanalysis/plot_rf_counts_dev.py
+                       %(analysis_method)s
+                       %(infile)s
+                       %(plot_coordinates)s
+                       -b %(plot_bin_size)s
+                       --maximum_resolution %(plot_maximum_resolution)s
+                       -o %(output_prefix)s
+                       -f %(plot_format)s"""
 
         P.run(
             statement,

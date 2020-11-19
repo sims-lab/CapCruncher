@@ -64,10 +64,9 @@ def concat_tsvs(fnames, delayed=False, header=None):
     else:
         df = dd.read_csv(fnames, sep='\t', header=header)
     
-    if not delayed:
-        return df.compute()
-    else:
-        return df
+    return df
+    
+
   
 def main(input_files,
          output,
@@ -88,7 +87,7 @@ def main(input_files,
 
     elif method == 'concatenate':
         df = concat_tsvs(input_files, header=header, delayed=False)
-        df.to_csv(output, sep='\t', index=False)
+        df.to_csv(output, sep='\t', index=False, single_file=True)
     
     elif method == 'aggregate':
         

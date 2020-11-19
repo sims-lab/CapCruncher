@@ -32,7 +32,7 @@ def save_deduplicate_fragment_ids(
 
     print("Storing ids as zarr array")
     deduplicated_ids = deduplicated_ids.astype(f"S{max_chars}").values
-    deduplicated_ids.compute_chunk_sizes()
+    deduplicated_ids.rechunk()
     deduplicated_ids.to_zarr(output, key, overwrite=True)
 
 

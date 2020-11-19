@@ -8,7 +8,7 @@ import sys
 import multiprocessing as mp
 from pysam import FastxFile
 from xopen import xopen
-from sklearn.utils import murmurhash3_32
+import mmh3
 
 
 
@@ -53,7 +53,7 @@ def remove_read_duplicates(inq,
     reads = inq.get() # Get list of reads from the input queue
     while reads:
         for read_counter, (r1, r2) in enumerate(reads):
-            read_pair = murmurhash3_32(''.join((r1.sequence, r2.sequence)))
+            read_pair = mmh3.hash64(''.join((r1.sequence, r2.sequence)), seed=42)[0]
 
             if read_pair not in seen:
                 seen.add(read_pair)
