@@ -87,7 +87,11 @@ def main(input_files,
 
     elif method == 'concatenate':
         df = concat_tsvs(input_files, header=header, delayed=False)
-        df.to_csv(output, sep='\t', index=False, single_file=True)
+        df.to_csv(output,
+                  sep='\t',
+                  index=False,
+                  single_file=True,
+                  compression='gzip' if output.endswith('.gz') else None)
     
     elif method == 'aggregate':
         
@@ -107,35 +111,35 @@ def main(input_files,
 
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    subparser = parser.add_subparsers(dest="method")
+#if __name__ == '__main__':
+    # parser = argparse.ArgumentParser()
+    # subparser = parser.add_subparsers(dest="method")
 
-    parser_join = subparser.add_parser("join")
-    parser_join.add_argument("-i", "--input_files", nargs="+", required=True)
-    parser_join.add_argument("--index", default='parent_read', required=True)
-    parser_join.add_argument("--header", default=False, action='store_true')
-    parser_join.add_argument('-o',"--output", default='joined.tsv.gz')
-    parser_join.add_argument('-p',"--n_processes", default=8, type=int)
+    # parser_join = subparser.add_parser("join")
+    # parser_join.add_argument("-i", "--input_files", nargs="+", required=True)
+    # parser_join.add_argument("--index", default='parent_read', required=True)
+    # parser_join.add_argument("--header", default=False, action='store_true')
+    # parser_join.add_argument('-o',"--output", default='joined.tsv.gz')
+    # parser_join.add_argument('-p',"--n_processes", default=8, type=int)
 
-    parser_concatenate = subparser.add_parser("concatenate")
-    parser_concatenate.add_argument("-i", "--input_files", nargs="+", required=True)
-    #parser_concatenate.add_argument("--index", default=None)
-    parser_concatenate.add_argument("--header", default=False, action='store_true')
-    parser_concatenate.add_argument('-o',"--output", default='concatenated.tsv.gz')
+    # parser_concatenate = subparser.add_parser("concatenate")
+    # parser_concatenate.add_argument("-i", "--input_files", nargs="+", required=True)
+    # #parser_concatenate.add_argument("--index", default=None)
+    # parser_concatenate.add_argument("--header", default=False, action='store_true')
+    # parser_concatenate.add_argument('-o',"--output", default='concatenated.tsv.gz')
 
-    parser_aggregate = subparser.add_parser("aggregate")
-    parser_aggregate.add_argument("-i", "--input_files", required=True)
-    parser_aggregate.add_argument("--index", default=None)
-    parser_aggregate.add_argument("--header", default=False, action='store_true')
-    parser_aggregate.add_argument('-o',"--output", default='aggregated.tsv.gz')
-    parser_aggregate.add_argument('-g',"--groupby_columns", nargs='+')
-    parser_aggregate.add_argument('--aggregate_method', nargs='+')
-    parser_aggregate.add_argument('--aggregate_columns', nargs='+')
+    # parser_aggregate = subparser.add_parser("aggregate")
+    # parser_aggregate.add_argument("-i", "--input_files", required=True)
+    # parser_aggregate.add_argument("--index", default=None)
+    # parser_aggregate.add_argument("--header", default=False, action='store_true')
+    # parser_aggregate.add_argument('-o',"--output", default='aggregated.tsv.gz')
+    # parser_aggregate.add_argument('-g',"--groupby_columns", nargs='+')
+    # parser_aggregate.add_argument('--aggregate_method', nargs='+')
+    # parser_aggregate.add_argument('--aggregate_columns', nargs='+')
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
-    main(**vars(args))
+    # main(**vars(args))
 
 
 

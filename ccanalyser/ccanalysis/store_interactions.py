@@ -1,46 +1,32 @@
-import os
 import argparse
-import sys
-import pandas as pd
-from pandas.core.frame import DataFrame
-from pybedtools import BedTool
-import cooler
+import os
 import re
+import sys
 from typing import Union
 
-
-def get_human_readable_number_of_bp(bp: int) -> pd.DataFrame:
-
-    if bp < 1000:
-        bp = f"{bp}bp"
-    elif (bp / 1e3) < 1000:
-        bp = f"{bp / 1e3}kb"
-    elif (bp / 1e6) < 1000:
-        bp = f"{bp / 1e6}mb"
-
-    return bp
+import cooler
+import pandas as pd
+from ccanalyser.utils.helpers import get_human_readable_number_of_bp
+from pandas.core.frame import DataFrame
+from pybedtools import BedTool
+from natsort import natsort_key
+import numpy as np
 
 
 def get_bins(genome="mm9", bin_size=1000) -> pd.DataFrame:
 
     bt = BedTool()
 
-    try:
+    if os.path.isfile(genome):
+        windows = bt.makewindows(w=bin_size, g=genome, i="srcwinnum")
+    else:
         windows = bt.makewindows(w=bin_size, genome=genome, i="srcwinnum")
-    except ValueError:
-        print("Genome not in UCSC database")
 
-        try:
-            windows = bt.makewindows(w=bin_size, g=genome, i="srcwinnum")
-        except FileNotFoundError:
-            raise ValueError(
-                "Genome name or chromosome sizes (custom genome allowed) not provided"
-            )
-
-    return (windows.to_dataframe()
-                   .reset_index()
-                   .rename(columns={"index": "bin"})
-                   [['chrom', 'start', 'end', 'bin']])
+    return (
+        windows.to_dataframe()
+        .reset_index()
+        .rename(columns={"index": "bin"})[["chrom", "start", "end", "bin"]]
+    )
 
 
 def format_restriction_fragment(
@@ -54,7 +40,7 @@ def format_restriction_fragment(
         raise ValueError(
             'Incorrect bin method provided. Use either "midpoints" or "overlap'
         )
-    
+
     return restriction_fragment
 
 
@@ -83,7 +69,7 @@ def bin_restriction_fragment(
 
     # Intersect bins with restriction fragments
     return (
-        bins.intersect(restriction_fragment_map, loj=True, f=overlap_fraction)
+        bins.intersect(restriction_fragment_map, loj=True, F=overlap_fraction)
         .to_dataframe()[["name", "thickEnd"]]
         .rename(columns={"name": "bin", "thickEnd": "restriction_fragment"})
     )
@@ -92,6 +78,8 @@ def bin_restriction_fragment(
 def aggregate_binned_counts(
     counts: pd.DataFrame, binned_restriction_fragments: pd.DataFrame
 ) -> pd.DataFrame:
+
+     #TODO: Look further at bug bin1_id > bin2_id. For now just swaping the bins over as they are equivalent
     return (
         counts.merge(
             binned_restriction_fragments,
@@ -104,6 +92,11 @@ def aggregate_binned_counts(
             right_on="restriction_fragment",
         )
         .rename(columns={"bin_x": "bin1_id", "bin_y": "bin2_id"})
+        .assign(bin1_id_corrected=lambda df: np.where(df['bin1_id'] > df['bin2_id'], df['bin2_id'], df['bin1_id']),
+                bin2_id_corrected=lambda df: np.where(df['bin1_id'] == df['bin1_id_corrected'], df['bin2_id'], df['bin1_id'])
+        )
+        .drop(columns=['bin1_id', 'bin2_id'])
+        .rename(columns=lambda col: col.replace('_corrected', ''))
         .sort_values(["bin1_id", "bin2_id"])
         .groupby(["bin1_id", "bin2_id"])["count"]
         .sum()
@@ -125,20 +118,26 @@ def store_counts_restriction_fragment(
     }
 
     # Generate "pixels" dataframe. Effectively coordinate based sparse matrix
-    pixels = counts.assign(
-        bin1_id=counts["rf1"]
-        .map(restriction_fragment_mapping)
-        .astype(int),
-        bin2_id=counts["rf2"]
-        .map(restriction_fragment_mapping)
-        .astype(int),
-    ).sort_values(["bin1_id", "bin2_id"])[["bin1_id", "bin2_id", "count"]]
+
+    #TODO: Look further at bug bin1_id > bin2_id. For now just swaping the bins over as they are equivalent
+
+    pixels = (counts.assign(
+        bin1_id=counts["rf1"].map(restriction_fragment_mapping).astype(int),
+        bin2_id=counts["rf2"].map(restriction_fragment_mapping).astype(int),
+        bin1_id_corrected=lambda df: np.where(df['bin1_id'] > df['bin2_id'], df['bin2_id'], df['bin1_id']),
+        bin2_id_corrected=lambda df: np.where(df['bin1_id'] == df['bin1_id_corrected'], df['bin2_id'], df['bin1_id'])
+        )
+        .drop(columns=['bin1_id', 'bin2_id'])
+        .rename(columns=lambda col: col.replace('_corrected', ''))
+        .sort_values(["bin1_id", "bin2_id"])
+        [["bin1_id", "bin2_id", "count"]])
+
 
     cooler.create_cooler(
         outfile,
         bins=df_restriction_fragment_map.drop(columns="name"),
         pixels=pixels[["bin1_id", "bin2_id", "count"]],
-        ordered=True,
+        ordered=False,
     )
 
     return outfile
@@ -152,11 +151,16 @@ def main(
     output_prefix="",
     bin_method="overlap",
     overlap_fraction=0.5,
-    store_restriction_fragment_counts=True
+    store_restriction_fragment_counts=True,
 ):
-
+    
+    # Format output prefix
+    output_prefix = output_prefix.replace(".hdf5", "")
+    
     # Load counts
-    df_restriction_fragment_counts = pd.read_csv(restriction_fragment_counts, sep="\t")
+    df_restriction_fragment_counts = pd.read_csv(
+        restriction_fragment_counts, sep="\t"
+    ).sort_values(["rf1", "rf2"], key=natsort_key)
 
     # Load restriction_fragment map
     df_restriction_fragment_map = pd.read_csv(
@@ -165,15 +169,14 @@ def main(
         header=None,
         names=["chrom", "start", "end", "name"],
     )
-
+    
     # Store interactions at the restriction_fragment level
-
     if store_restriction_fragment_counts:
         store_counts_restriction_fragment(
-        counts=df_restriction_fragment_counts,
-        restriction_fragment_map=df_restriction_fragment_map,
-        outfile=f"{output_prefix}_restriction_fragments.hdf5",
-    )
+            counts=df_restriction_fragment_counts,
+            restriction_fragment_map=df_restriction_fragment_map,
+            outfile=f"{output_prefix}_restriction_fragments.hdf5",
+        )
 
     # Bin counts and store
     for bin_size in binsizes:
@@ -198,19 +201,21 @@ def main(
             f"{output_prefix}_{get_human_readable_number_of_bp(bin_size)}_binned.hdf5",
             bins=bins[["chrom", "start", "end"]],
             pixels=binned_counts[["bin1_id", "bin2_id", "count"]],
+            ordered=True,
         )
 
 
 if __name__ == "__main__":
+    pass
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--restriction_fragment_counts", required=True)
-    parser.add_argument("-m", "--restriction_fragment_map", required=True)
-    parser.add_argument("-g", "--genome", default="mm9", required=True, type=str)
-    parser.add_argument("-b", "--binsizes", default=1000, nargs='+', type=int)
-    parser.add_argument("--bin_method", default='overlap')
-    parser.add_argument("-f", '--overlap_fraction', default=0.5, type=float)
-    parser.add_argument("-o", "--output_prefix", default="counts.hdf5")
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("-c", "--restriction_fragment_counts", required=True)
+    # parser.add_argument("-m", "--restriction_fragment_map", required=True)
+    # parser.add_argument("-g", "--genome", default="mm9", required=True, type=str)
+    # parser.add_argument("-b", "--binsizes", default=1000, nargs='+', type=int)
+    # parser.add_argument("--bin_method", default='overlap')
+    # parser.add_argument("-f", '--overlap_fraction', default=0.5, type=float)
+    # parser.add_argument("-o", "--output_prefix", default="counts.hdf5")
+    # args = parser.parse_args()
 
-    main(**vars(args))
+    # main(**vars(args))

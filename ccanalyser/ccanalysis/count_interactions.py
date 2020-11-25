@@ -6,19 +6,7 @@ import numpy as np
 from collections import defaultdict
 from itertools import combinations
 import xopen
-
-def get_rf_sort_key(rf):
-    chrom_no = rf.split('_')[1].replace('chr', '')
-    rf_no = rf.split('_')[-1]
-
-    try:
-        return (int(chrom_no), int(rf_no))
-    
-    except ValueError:
-        if len(chrom_no) <= 1:
-            return (ord(chrom_no.lower()), int(rf_no))
-        else:
-            return (sum(ord(l) for l in chrom_no), int(rf_no))
+from natsort import natsort_key
 
 def count_re_site_combinations(fragments, column="restriction_fragment"):
 
@@ -31,7 +19,7 @@ def count_re_site_combinations(fragments, column="restriction_fragment"):
             print(f'Processed {ii} fragments')
 
         for rf1, rf2 in combinations(frag[column], 2): # Get fragment combinations
-            rf1, rf2 = sorted([rf1, rf2], key=get_rf_sort_key)     # Sort them to ensure consistency        
+            rf1, rf2 = sorted([rf1, rf2], key=natsort_key)     # Sort them to ensure consistency        
             counts[rf1, rf2] += 1
 
     return counts
@@ -45,7 +33,7 @@ def main(slices, outfile=None, only_cis=False, remove_exclusions=False, subsampl
         print('Removed all non-cis interactions')
 
     if remove_exclusions:
-        df_slices = df_slices.query('capture != reporter_exclusion')
+        df_slices = df_slices.query('(reporter_exclusion == ".") or (capture != reporter_exclusion)')
         print('Removed all excluded regions')
     
     if subsample:

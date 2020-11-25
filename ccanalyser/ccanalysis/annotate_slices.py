@@ -10,31 +10,7 @@ import itertools
 from multiprocessing import Pool
 import numpy as np
 
-
-def is_valid_bed(bed):
-    try:
-        bed = BedTool(bed)
-        if bed.field_count(n=1) >= 3:
-            return True
-    except FileNotFoundError:
-        return False
-
-
-def bed_has_name(bed):
-    if isinstance(bed, str):
-        bed = BedTool(bed)
-
-    if bed.field_count(n=1) >= 4:
-        return True
-
-
-def bed_has_duplicate_names(bed):
-    if isinstance(bed, str):
-        bed = BedTool(bed)
-
-    df = bed.to_dataframe()
-    if not df["name"].duplicated().shape[0] > 1:
-        return True
+from ccanalyser.utils.helpers import is_valid_bed, bed_has_name, bed_has_duplicate_names
 
 
 def find_intersections(
@@ -146,16 +122,6 @@ def main(
         )
     )
 
-    # dframes = find_intersections(
-    #     a=bed1,
-    #     b=bed2[1],
-    #     frac=overlap_fractions[1],
-    #     column_name=colnames[1],
-    #     method=actions[1],
-    # )
-    # dframes = [
-    #     dframes,
-    # ]
 
     # Merge dataframe with annotations
     df_annotations = (

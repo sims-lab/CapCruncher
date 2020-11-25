@@ -10,7 +10,7 @@ sys.path.append(PACKAGE_DIR)
 
 
 def prepare_parser():
-    description = "Collection of scripts to analyse NG-Capture-C data."
+    description = "Collection of scripts to analyse Capture-C, Tri-C and Tiled-C data."
     parser = argparse.ArgumentParser(
         prog="ccanalyser",
         description=description,
@@ -28,7 +28,7 @@ def add_category_args(subcommand):
 
 def add_agg_stats_args(subcommand):
 
-    parser = subcommand.add_parser("aggregate_stats", help="Combine run statistics")
+    parser = subcommand.add_parser("agg_stats", help="Combine run statistics")
 
     parser.add_argument(
         "--deduplication_stats",
@@ -42,6 +42,32 @@ def add_agg_stats_args(subcommand):
     parser.add_argument("--ccanalyser_stats", nargs="+", required=True)
     parser.add_argument("--reporter_stats", nargs="+", required=True)
     parser.add_argument("--output_dir", default="run_stats")
+
+
+def add_aggregate_tsv_args(subcommand):
+    parser = subcommand.add_parser("agg_tsv", help="Combine run statistics")
+    subparser = parser.add_subparsers(dest="method")
+
+    parser_join = subparser.add_parser("join")
+    parser_join.add_argument("-i", "--input_files", nargs="+", required=True)
+    parser_join.add_argument("--index", default="parent_read", required=True)
+    parser_join.add_argument("--header", default=False, action="store_true")
+    parser_join.add_argument("-o", "--output", default="joined.tsv.gz")
+    parser_join.add_argument("-p", "--n_processes", default=8, type=int)
+
+    parser_concatenate = subparser.add_parser("concatenate")
+    parser_concatenate.add_argument("-i", "--input_files", nargs="+", required=True)
+    parser_concatenate.add_argument("--header", default=False, action="store_true")
+    parser_concatenate.add_argument("-o", "--output", default="concatenated.tsv.gz")
+
+    parser_aggregate = subparser.add_parser("aggregate")
+    parser_aggregate.add_argument("-i", "--input_files", required=True)
+    parser_aggregate.add_argument("--index", default=None)
+    parser_aggregate.add_argument("--header", default=False, action="store_true")
+    parser_aggregate.add_argument("-o", "--output", default="aggregated.tsv.gz")
+    parser_aggregate.add_argument("-g", "--groupby_columns", nargs="+")
+    parser_aggregate.add_argument("--aggregate_method", nargs="+")
+    parser_aggregate.add_argument("--aggregate_columns", nargs="+")
 
 
 def add_annotate_slices_args(subcommand):
@@ -59,13 +85,13 @@ def add_annotate_slices_args(subcommand):
     )
     parser.add_argument("-o", "--outfile", default="out.tsv.gz")
 
-    #TODO: Sort out duplicate options
-    parser.add_argument('--duplicates', default='remove', choices=['remove',])
+    # TODO: Sort out duplicate options
+    parser.add_argument("--duplicates", default="remove", choices=["remove",])
 
 
 def add_ccanalyser_args(subcommand):
     parser = subcommand.add_parser(
-        "ccanalyser", help="Analysis of Capture-C processed BAM file"
+        "ccanalysis", help="Analysis of Capture-C processed BAM file"
     )
     parser.add_argument("-i", "--input_bam", help="BAM file to parse", required=True)
     parser.add_argument(
@@ -90,10 +116,10 @@ def add_ccanalyser_args(subcommand):
     )
 
 
-def add_convert_tsv_to_bedgraph_args(subcommand):
+def add_slices_to_bedgraph_args(subcommand):
 
     parser = subcommand.add_parser(
-        "ccanalyser_to_bedgraph", help="Converts ccanalyser output to bedgraph"
+        "slices_to_bdg", help="Converts ccanalyser output to bedgraph"
     )
     parser.add_argument("-i", "--tsv_input", help="Reporter tsv file")
     parser.add_argument(
@@ -107,16 +133,25 @@ def add_convert_tsv_to_bedgraph_args(subcommand):
     )
 
 
-def add_count_rf_combs_args(subcommand):
+def add_count_interactions_args(subcommand):
     parser = subcommand.add_parser(
-        "count_rf_combs", help="Counts restriction fragment combinations"
+        "count_interactions", help="Counts restriction fragment combinations"
     )
     parser.add_argument("-f", "--slices")
     parser.add_argument("-o", "--outfile", default="out.tsv.gz")
-    parser.add_argument('--only_cis', default=False, action='store_true', help='Only count cis interactions')
-    parser.add_argument('--remove_exclusions', default=False, action='store_true', help='Remove proximity exclusions')
-    parser.add_argument('--subsample', default=0, type=int, help='Subsample fragments')
-
+    parser.add_argument(
+        "--only_cis",
+        default=False,
+        action="store_true",
+        help="Only count cis interactions",
+    )
+    parser.add_argument(
+        "--remove_exclusions",
+        default=False,
+        action="store_true",
+        help="Remove proximity exclusions",
+    )
+    parser.add_argument("--subsample", default=0, type=int, help="Subsample fragments")
 
 
 def add_deduplicate_fastq_args(subcommand):
@@ -162,7 +197,9 @@ def add_digest_fastq_args(subcommand):
         "-o", "--output_file", help="output file name", default="digested.fastq.gz",
     )
 
-    parent_parser.add_argument('-r', '--restriction_enzyme', help='Name or sequence of restriction enzyme')
+    parent_parser.add_argument(
+        "-r", "--restriction_enzyme", help="Name or sequence of restriction enzyme"
+    )
 
     parent_parser.add_argument(
         "-m",
@@ -239,34 +276,65 @@ def add_digest_genome_args(subcommand):
         "-o", "--output_file", help="output file name", default="digested.bed"
     )
 
-    parser.add_argument('-r', '--recognition_site', help='Name of restriction enzyme or its sequence')
+    parser.add_argument(
+        "-r", "--recognition_site", help="Name of restriction enzyme or its sequence"
+    )
     parser.add_argument(
         "-l", "--logfile", help="filename for logfile", default="test.log"
     )
 
 
-def add_join_tsv_args(subcommand):
-    parser = subcommand.add_parser(
-        "join_tsv", help="Concatenates or joins multiple tsv files"
+def add_plot_matrix_args(subcommand):
+    parser = subcommand.add_parser("plot_interactions", help="Plots interaction matrix")
+    parser.add_argument(
+        "cooler_restriction_fragments",
+        help="HDF5 file in Cooler format containing counts of restriction fragment combination counts",
     )
     parser.add_argument(
-        "-f",
-        "--index_field",
-        help="shared column name to join on",
-        nargs="?",
+        "cooler_binned",
+        help="HDF5 file in Cooler format containing binned counts of restriction fragment combination counts",
+    )
+    parser.add_argument("-c", "--coordinates", required=True, type=str)
+    parser.add_argument("-m", "--method", choices=["tri", "tiled"])
+    parser.add_argument(
+        "-n",
+        "--normalisation",
         default=None,
+        choices=["infer", "raw", "ice", "scaling_factor"],
     )
+    parser.add_argument("--scaling_factor", default=1e5, type=int)
+    parser.add_argument("--binning_method", default="overlap")
+    parser.add_argument("--overlap_fraction", default=0.5, type=float)
+    parser.add_argument("--filter_low_counts", default=0.02, type=float)
+    parser.add_argument("--filter_high_counts", default=0, type=float)
+    parser.add_argument("-o", "--output_prefix", default="")
     parser.add_argument(
-        "-o", "--output_file", help="output file name", default="joined.tsv"
+        "-f", "--output_format", default="png", choices=["png", "svg", "jpeg"]
     )
-    parser.add_argument("-i", "--input_files", nargs="+", help="at least 2 input files")
-    parser.add_argument(
-        "-m",
-        "--method",
-        help="join method to use (join/concatenate)",
-        choices=["join", "concatenate"],
-        default="join",
+    parser.add_argument("--cmap", help="Colour map to use", default="viridis")
+
+
+def add_remove_duplicate_slices_args(subcommand):
+    parser = subcommand.add_parser("rmdup_slices", help="Removes duplicate slices")
+    subparser = parser.add_subparsers(dest="mode")
+
+    parser_fragments = subparser.add_parser("fragments")
+    parser_fragments.add_argument("-i", "--input_files", nargs="+", required=True)
+    parser_fragments.add_argument("-f", "--deduplicated_fragments", required=True)
+    parser_fragments.add_argument(
+        "--shuffle",
+        help="shuffles the input files to randomise the deduplication",
+        action="store_true",
     )
+    parser_fragments.add_argument("-p", "--n_cores", default=8, type=int)
+    parser_fragments.add_argument("-m", "--max_memory", default="64GB", type=str)
+
+    parser_slices = subparser.add_parser("slices")
+    parser_slices.add_argument("-i", "--input_files", required=True)
+    parser_slices.add_argument("-f", "--deduplicated_fragments", required=True)
+    parser_slices.add_argument("-o", "--output", default="deduplicated.tsv.gz")
+    parser_slices.add_argument("-p", "--n_cores", default=8, type=int)
+    parser_slices.add_argument("-m", "--max_memory", default="64GB", type=str)
 
 
 def add_split_fastq_args(subcommand):
@@ -286,6 +354,20 @@ def add_split_fastq_args(subcommand):
         type=int,
     )
     parser.add_argument("-n", "--output_prefix", help="output prefix", default="split")
+
+
+def add_store_interactions_args(subcommand):
+    parser = subcommand.add_parser(
+        "store_interactions",
+        help="Stores restriction fragment interactions as .cool files",
+    )
+    parser.add_argument("-c", "--restriction_fragment_counts", required=True)
+    parser.add_argument("-m", "--restriction_fragment_map", required=True)
+    parser.add_argument("-g", "--genome", default="mm9", required=True, type=str)
+    parser.add_argument("-b", "--binsizes", default=1000, nargs="+", type=int)
+    parser.add_argument("--bin_method", default="overlap")
+    parser.add_argument("-f", "--overlap_fraction", default=0.51, type=float)
+    parser.add_argument("-o", "--output_prefix", default="counts.hdf5")
 
 
 def add_validation_args(subcommand):
@@ -322,14 +404,17 @@ def main():
             add_deduplicate_fastq_args,
             add_digest_genome_args,
             add_digest_fastq_args,
-            add_join_tsv_args,
             add_split_fastq_args,
+            add_aggregate_tsv_args,
         ],
         "ccanalysis": [
             add_ccanalyser_args,
-            add_convert_tsv_to_bedgraph_args,
+            add_slices_to_bedgraph_args,
             add_annotate_slices_args,
-            add_count_rf_combs_args,
+            add_count_interactions_args,
+            add_store_interactions_args,
+            add_remove_duplicate_slices_args,
+            add_plot_matrix_args
         ],
         "validate": [add_validation_args, add_test_parameters_args,],
         "stats": [add_agg_stats_args,],
@@ -367,10 +452,10 @@ def main():
 
             digest_genome.main(**vars(args))
 
-        elif subcommand == "join_tsv":
-            from ccanalyser.utils import join_tsv
+        elif subcommand == "agg_tsv":
+            from ccanalyser.utils import aggregate_tsv
 
-            join_tsv.main(**vars(args))
+            aggregate_tsv.main(**vars(args))
 
         elif subcommand == "split_fastq":
             from ccanalyser.utils import split_fastq
@@ -379,25 +464,41 @@ def main():
 
     elif category == "ccanalysis":
 
-        if subcommand == "ccanalyser":
-            from ccanalyser.ccanalysis import ccanalyser
+        if subcommand == "ccanalysis":
+            from ccanalyser.ccanalysis import ccanalysis
 
-            ccanalyser.main(**vars(args))
+            ccanalysis.main(**vars(args))
 
-        elif subcommand == "ccanalyser_to_bedgraph":
-            from ccanalyser.ccanalysis import convert_tsv_to_bedgraph
+        elif subcommand == "slices_to_bdg":
+            from ccanalyser.ccanalysis import slices_to_bedgraph
 
-            convert_tsv_to_bedgraph.main(**vars(args))
+            slices_to_bedgraph.main(**vars(args))
 
         elif subcommand == "annotate_slices":
             from ccanalyser.ccanalysis import annotate_slices
 
             annotate_slices.main(**vars(args))
 
-        elif subcommand == "count_rf_combs":
-            from ccanalyser.ccanalysis import count_restriction_fragment_combinations
+        elif subcommand == "count_interactions":
+            from ccanalyser.ccanalysis import count_interactions
 
-            count_restriction_fragment_combinations.main(**vars(args))
+            count_interactions.main(**vars(args))
+
+        elif subcommand == "store_interactions":
+            from ccanalyser.ccanalysis import store_interactions
+
+            store_interactions.main(**vars(args))
+        
+        elif subcommand == 'rmdup_slices':
+            from ccanalyser.ccanalysis import remove_duplicate_slices
+
+            remove_duplicate_slices.main(**vars(args))
+        
+        elif subcommand == 'plot_interactions':
+            from ccanalyser.ccanalysis import plot_interactions
+
+            plot_interactions.main(**vars(args))
+
 
     elif category == "validate":
         if subcommand == "test_parameters":
@@ -411,7 +512,7 @@ def main():
             validate_annotations.main(**vars(args))
 
     elif category == "stats":
-        if subcommand == "aggregate_stats":
+        if subcommand == "agg_stats":
             from ccanalyser.stats import aggregate_statistics
 
             aggregate_statistics.main(**vars(args))
