@@ -3,75 +3,82 @@ import os
 import sys
 import pandas as pd
 import dask
+from dask.distributed import Client, LocalCluster
 import dask.array as da
 import dask.dataframe as dd
 import random
+import mmh3
 
 
-def save_deduplicate_fragment_ids(
-    fragments, output="deduplicated.zarr", key="parent_read"
-):
+def mmh3_column(col, hash_type=64):
 
-    read_csv_options = dict()
-
-    if any(".gz" in fn for fn in fragments):
-        read_csv_options["compression"] = "gzip"
-        read_csv_options["blocksize"] = None
-
-    print("Reading fragments and deduplicating")
-    deduplicated_ids = (
-        dd.read_csv(fragments, sep="\t", **read_csv_options)
-        .drop_duplicates(subset="coordinates")
-        ["parent_read"]
-        .unique()
-        .persist()
-    )
-
-    print("Calculating maximum id character length")
-    max_chars = deduplicated_ids.str.len().max().compute()
-
-    print("Storing ids as zarr array")
-    deduplicated_ids = deduplicated_ids.astype(f"S{max_chars}").values
-    deduplicated_ids.rechunk()
-    deduplicated_ids.to_zarr(output, key, overwrite=True)
-
-
-def read_deduplicated_fragment_ids(fn, key):
-    return da.from_zarr(fn, key).astype(str).compute()
-
-
-def deduplicate_slices(tsv, dedup_ids):
-    df = pd.read_csv(tsv, sep="\t", index_col="parent_read")
-    dedup_intersection = df.index.intersection(dedup_ids)
-    return df.loc[df.index.isin(dedup_intersection)]
+    if hash_type == 32:
+        return [mmh3.hash(x, seed=42) for x in col]
+    elif hash_type == 64:
+        return [mmh3.hash64(x, seed=42)[0] for x in col]
+    elif hash_type == 128:
+        return [mmh3.hash128(x, seed=42)[0] for x in col]
 
 
 def main(
     input_files,
-    deduplicated_fragments="deduplicated.zarr",
+    deduplicated_fragments="deduplicated.hdf5",
     mode="fragments",
     output=None,
     shuffle=False,
+    n_cores=8,
+    max_memory='64GB',
 ):
+
+    client = Client(n_workers=n_cores, 
+                    threads_per_worker=1,
+                    memory_limit=max_memory)
+    
+    
 
     if mode == "fragments":
 
         if shuffle:
             random.shuffle(input_files)
 
-        save_deduplicate_fragment_ids(
-            input_files, deduplicated_fragments, key="parent_read"
-        )
+        read_csv_options = dict()
+
+        if any(".gz" in fn for fn in input_files):
+            read_csv_options["compression"] = "gzip"
+            read_csv_options["blocksize"] = None
+
+        deduplicated_ids = (
+            dd.read_csv(
+                input_files,
+                sep="\t",
+                usecols=["parent_read", "coordinates"],
+                **read_csv_options
+            )
+            .map_partitions(lambda df: df.apply(mmh3_column)) # Hash to reduce memory
+            .drop_duplicates(subset='coordinates')
+            .assign(duplicated=0)
+            [['parent_read','duplicated']]
+            .set_index('parent_read')
+            .to_hdf(deduplicated_fragments, key='deduplicated', mode='w'))
 
     elif mode == "slices":
-        deduplicated_read_ids = read_deduplicated_fragment_ids(
-            deduplicated_fragments, key="parent_read"
-        )
-        deduplicated_slices = deduplicate_slices(input_files, deduplicated_read_ids)
-        deduplicated_slices.to_csv(output, sep="\t")
+        df_slices = (pd.read_csv(input_files, sep='\t')
+                       .assign(parent_read_hashed=lambda df: mmh3_column(df['parent_read']))
+                       .set_index('parent_read_hashed'))
+        dd_fragments_deduplicated = dd.read_hdf(deduplicated_fragments, key='deduplicated', mode='r')
+        df_deduplicated = dd_fragments_deduplicated.join(df_slices, how='inner').compute()
+        df_deduplicated.to_csv(output, sep='\t')
+    
+
+    client.close()
 
 
 if __name__ == "__main__":
+
+    # cluster = LocalCluster(n_workers=8, threads_per_worker=1)
+    # client = Client(cluster)
+
+
     parser = argparse.ArgumentParser()
     subparser = parser.add_subparsers(dest="mode")
 
@@ -83,12 +90,17 @@ if __name__ == "__main__":
         help="shuffles the input files to randomise the deduplication",
         action="store_true",
     )
+    parser_fragments.add_argument('-p', '--n_cores', default=8, type=int)
+    parser_fragments.add_argument('-m', '--max_memory', default='64GB', type=str)
 
     parser_slices = subparser.add_parser("slices")
     parser_slices.add_argument("-i", "--input_files", required=True)
     parser_slices.add_argument("-f", "--deduplicated_fragments", required=True)
     parser_slices.add_argument("-o", "--output", default="deduplicated.tsv.gz")
+    parser_slices.add_argument('-p', '--n_cores', default=8, type=int)
+    parser_slices.add_argument('-m', '--max_memory', default='64GB', type=str)
 
     args = parser.parse_args()
 
     main(**vars(args))
+

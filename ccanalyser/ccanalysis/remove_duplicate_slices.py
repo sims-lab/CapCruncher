@@ -30,9 +30,9 @@ def main(
     max_memory='64GB',
 ):
 
-    client = Client(n_workers=n_cores, 
-                    threads_per_worker=1,
-                    memory_limit=max_memory)
+    # client = Client(n_workers=n_cores, 
+    #                 threads_per_worker=1,
+    #                 memory_limit=max_memory)
     
     
 
@@ -67,10 +67,10 @@ def main(
                        .set_index('parent_read_hashed'))
         dd_fragments_deduplicated = dd.read_hdf(deduplicated_fragments, key='deduplicated', mode='r')
         df_deduplicated = dd_fragments_deduplicated.join(df_slices, how='inner').compute()
-        df_deduplicated.to_csv(output, sep='\t')
+        df_deduplicated.reset_index(drop=True).to_csv(output, sep='\t', index=False)
     
 
-    client.close()
+    #client.close()
 
 
 if __name__ == "__main__":
