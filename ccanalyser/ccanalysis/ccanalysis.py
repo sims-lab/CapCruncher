@@ -340,7 +340,7 @@ class SliceFilter:
             ]  # Slices not in duplicated
 
     def remove_excluded_slices(self):
-        """Removes any slices in the exclusion region (default 1kb) and a blacklist (if supplied) (V. Common)
+        """Removes any slices in the exclusion region (default 1kb) (V. Common)
 
         Returns:
          CCSliceFilter"""
@@ -817,7 +817,7 @@ def main(input_bam, annotations, output_prefix, stats_output, method="capture"):
             "capture"
         ):
             df_rep.to_csv(
-                f"{ output_prefix}.{capture_site}.tsv.gz", sep="\t", index=False
+                f"{ output_prefix}.{capture_site.strip()}.tsv.gz", sep="\t", index=False
             )
 
     elif method == "tiled":
@@ -845,7 +845,7 @@ def main(input_bam, annotations, output_prefix, stats_output, method="capture"):
         )
 
         # Assumes only one region tiled per assay
-        tiled_region_name = reporters.query('capture != "."')['capture'].unique()[0]
+        tiled_region_name = reporters.query('capture != "."')['capture'].str.strip().unique()[0]
         reporters.to_csv(
             f"{ output_prefix}.{tiled_region_name}.tsv.gz", sep="\t", index=False
         )

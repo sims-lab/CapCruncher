@@ -7,40 +7,29 @@ Created on Wed Jan  8 15:45:09 2020
 
 Script splits a fastq into specified chunks
 """
-import argparse
-import os
-import sys
-from xopen import xopen
-from pysam import FastxFile
 
-def main(input_fastq,
-         output_prefix,
-         compression_level=5,
-         chunksize=1000000):
+from multiprocessing import SimpleQueue
+from ccanalyser.utils.io import FastqReaderProcess, FastqWriterSplitterProcess
 
-    split_counter = 0
-    for read_counter, read in enumerate(FastxFile(input_fastq)):
+def main(input_files, output_prefix, compression_level=5, n_reads=1000000):
 
-        processed_read = f'{read}\n'.encode()
+    queue = SimpleQueue()
+    paired = True if len(input_files) > 1 else False
 
-        if read_counter == 0:
-            out_name = f'{output_prefix}_{split_counter}.fastq.gz'
-            out_handle = xopen(out_name,
-                               'wb',
-                               compresslevel=compression_level,
-                               threads=8)
-            out_handle.write(processed_read)
+    reader = FastqReaderProcess(
+        input_files=input_files, outq=queue, read_buffer=n_reads
+    )
 
-        elif read_counter % chunksize == 0:
-            split_counter += 1
-            out_handle.close()
-            out_name = f'{output_prefix}_{split_counter}.fastq.gz'
-            out_handle =  xopen(out_name,
-                               'wb',
-                               compresslevel=compression_level,
-                               threads=8)
-            out_handle.write(processed_read)
-        else:
-            out_handle.write(processed_read)
+    writer = FastqWriterSplitterProcess(
+        inq=queue, output_prefix=output_prefix, paired_output=paired,
+    )
 
-    out_handle.close()
+    
+    processes = [reader, writer]
+
+    for proc in processes:
+        proc.start()
+    
+    for proc in processes:
+        proc.join()
+        proc.terminate()

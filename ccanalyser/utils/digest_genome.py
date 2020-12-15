@@ -9,41 +9,7 @@ Script generates a bed file of restriction fragment locations in a given genome.
 """
 import re
 from pysam import FastxFile
-
-
-def get_re_site(recognition_site=None):
-
-    """
-    Obtains the recogniton sequence for a supplied restriction enzyme or correctly
-    formats a supplied recognition sequence.
-
-    Args:
-        cut_sequence - DNA sequence to use for fasta digestion e.g. "GATC"
-        restriction_enzyme - Name of restriction enzyme e.g. DpnII  (case insensitive)
-
-    Returns:
-        recognition sequence e.g. "GATC"
-
-    Raises:
-        ValueError if restriction_enzyme is not in known enzymes
-
-    """
-
-    known_enzymes = {
-        "dpnii": "GATC",
-        "mboi": "GATC",
-        "hindiii": "AAGCTT",
-        "ecori": "GAATTC",
-        "nlaiii": "CATG",
-    }
-
-    if re.match(r'[GgAaTtCc]+', recognition_site):
-        # This matches a DNA sequence so just convert to upper case and return
-        return recognition_site.upper()
-    elif recognition_site.lower() in known_enzymes:
-        return known_enzymes.get(recognition_site.lower())
-    else:
-        raise ValueError("No restriction site or recognised enzyme provided")
+from ccanalyser.utils.helpers import get_re_site
 
 
 def main(

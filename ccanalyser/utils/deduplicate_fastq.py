@@ -4,138 +4,249 @@
 Created on Fri Oct  4 13:47:20 2019
 @author: asmith
 """
+import pickle
 import sys
-import multiprocessing as mp
-from pysam import FastxFile
-from xopen import xopen
+from multiprocessing import Process, Queue, SimpleQueue
+from typing import Union
+import pandas as pd
+from collections import Counter
 import mmh3
-
-
-
+from ccanalyser.utils.io import FastqReaderProcess, FastqWriterProcess
 
 def open_logfile(fn):
     if not isinstance(fn, type(sys.stdout)):
-        return open(fn, 'w')
+        return open(fn, "w")
     else:
         return fn
 
-def read_paired_fastq(fq1,
-                      fq2,
-                      read_counter,
-                      outq,
-                      n_reads_buffer=10000):
-    '''Reads R1 and R2 fastq files and places paired reads into a queue'''
 
-    counter = 0
-    buffer = []
-    for r1, r2 in zip(fq1, fq2):
-        counter += 1
-        buffer.append((r1, r2))
-
-        if counter % n_reads_buffer == 0:
-            print(f'Processed {counter} reads')
-            outq.put(buffer)
-            buffer = []
-
-    outq.put(buffer) # Add any reads that do not fit the batch size
-    outq.put(None) # Used to terminate the queue
-    read_counter.value = counter # Stores the number of processed reads.
-
-def remove_read_duplicates(inq,
-                           outq,
-                           reads_removed,
-                           n_reads_buffer=10000):
-    '''Hashes the combined read1/read2 sequence and discards duplicates'''
-    seen = set()
-    removed_counter = 0
-    buffer = []
-
-    reads = inq.get() # Get list of reads from the input queue
-    while reads:
-        for read_counter, (r1, r2) in enumerate(reads):
-            read_pair = mmh3.hash64(''.join((r1.sequence, r2.sequence)), seed=42)[0]
-
-            if read_pair not in seen:
-                seen.add(read_pair)
-                buffer.append( [str(r1), str(r2)] )
-            else:
-                removed_counter += 1
-
-            if read_counter % n_reads_buffer == 0:
-                outq.put(buffer)
-                buffer = []
+def merge_dictionaries(dicts: list):
+    dict_merged = dict()
+    for d in dicts:
+        dict_merged.update(d)
+    return dict_merged
 
 
-        reads = inq.get()
-
-    outq.put(buffer) # Add any reads that do not fit the batch size
-    outq.put(None) # Terminate the queue
-    reads_removed.value = removed_counter # Store the number of removed reads
+def invert_dictionary(d):
+    return {v: k for k, v in d.items()}
 
 
-def write_to_fastq(inq,
-                   out1,
-                   out2,
-                   compression_level=5):
-    '''Writes all deduplicated read1/read2 to the appropriate file'''
-    with xopen(filename=out1, mode='wb', compresslevel=compression_level) as f1,\
-         xopen(filename=out2, mode='wb', compresslevel=compression_level) as f2:
+class DeduplicationStatistics():
+    def __init__(self,
+                 sample,
+                 read_type: str = 'pe',
+                 reads_total=0,
+                 reads_unique=0):
 
-        reads_paired = inq.get()
-        while reads_paired:
-            r1, r2 = zip(*reads_paired)
-            f1.write(('\n'.join(r1) + '\n').encode())
-            f2.write(('\n'.join(r2) + '\n').encode())
-            reads_paired = inq.get()
+        self.samples = sample
+        self.read_type = read_type
+        self.reads_total = reads_total
+        self.reads_unique = reads_unique
+        self.reads_removed = reads_total - reads_unique
+    
+    @property
+    def df(self):
+        df = pd.DataFrame()
+        df['sample'] = self.sample
+        df['read_type'] = self.read_type
+        df['read_number'] = 1
+        df['stat_type'] = ['reads_total', 'reads_unique', 'reads_removed']
+        df['stat'] = [self.reads_total, self.reads_unique, self.reads_removed]
+        return df
 
 
-def main(fq1,
-         fq2,
-         out1='out_1.fastq.gz',
-         out2='out_2.fastq.gz',
-         stats_file='stats_out.log',
-         read_buffer=100000,
-         compression_level=5):
+
+
+
+class ReadDeduplicationProcess(Process):
+    def __init__(
+        self,
+        inq: Queue,
+        outq: Queue,
+        hash_seed: int = 42,
+        save_hashed_dict_path: str = "",
+    ):
+
+        self.inq = inq
+        self.outq = outq
+        self.hash_seed = hash_seed
+        self.save_hashed_dict_path = save_hashed_dict_path
+
+        super(ReadDeduplicationProcess, self).__init__()
+
+    def _save_dict(self, d):
+        if self.save_hashed_dict_path:
+            with open(self.save_hashed_dict_path, "wb") as w:
+                pickle.dump(d, w)
+
+    def run(self):
+        hash_seed = self.hash_seed
+        deduplicated_dict = dict()
+
+        reads = self.inq.get()
+        while not reads == "END":
+
+            for read_glob in reads:
+                hash_sequence = mmh3.hash64(
+                    "".join([r.sequence for r in read_glob]), seed=hash_seed
+                )[0]
+                hash_id = mmh3.hash64(
+                    "".join([r.name for r in read_glob]), seed=hash_seed
+                )[0]
+
+                if not hash_sequence in deduplicated_dict:
+                    deduplicated_dict[hash_sequence] = hash_id
+
+            reads = self.inq.get()
+
+        self._save_dict(deduplicated_dict)
+        self.outq.put("END")
+
+
+class ReadDuplicateRemovalProcess(Process):
+    def __init__(
+        self,
+        inq: Queue,
+        outq: Queue,
+        deduplicated_ids: set,
+        statq: Queue = None,
+        hash_seed: int = 42,
+    ):
+
+        self.inq = inq
+        self.outq = outq
+        self.hash_seed = hash_seed
+        self.deduplicated_ids = deduplicated_ids
+        self.statq = statq
+        self.reads_total = 0
+        self.reads_unique = 0
+
+        super(ReadDuplicateRemovalProcess, self).__init__()
+
+    def run(self):
+
+        hash_seed = self.hash_seed
+        deduplicated_ids = self.deduplicated_ids
+        reads_unique = list()
+
+        reads = self.inq.get()
+        while not reads == "END":
+            for read_glob in reads:
+                hash_id = mmh3.hash64(
+                    "".join([r.name for r in read_glob]), seed=hash_seed
+                )[0]
+
+                if hash_id in deduplicated_ids:
+                    reads_unique.append(read_glob)
+
+            self.outq.put(reads_unique)
+
+            self.reads_total += len(reads)
+            self.reads_unique += len(reads_unique)
+            reads_unique = list()
+            reads = self.inq.get()
+
+        self.outq.put("END")
+    
+        if self.statq:
+            self.statq.put({'reads_total': self.reads_total, 'reads_unique': self.reads_unique})
+
+
+def main(
+    mode: str,
+    input_files: list,
+    output_files: list = None,
+    deduplicated_ids: Union[str, list] = None,
+    stats_file_prefix="stats_out",
+    read_buffer=10000,
+    compression_level=5,
+    paired_output: bool = False,
+    n_cores=1,
+):
 
     # Set up multiprocessing variables
-    inputq = mp.SimpleQueue() # reads are placed into this queue for deduplication
-    writeq = mp.SimpleQueue() # deduplicated reads are placed into the queue for writing
-    manager = mp.Manager()
-    r_counter = manager.Value('i', 0) # counts the number of readpairs
-    d_counter = manager.Value('i', 0) # counts the number of duplicated readpairs
+    inputq = SimpleQueue()  # Reads are placed into this queue for deduplication
+    writeq = SimpleQueue()  # Deduplicated reads are placed into the queue for writing
+    statq = SimpleQueue()   # Statistics are sent on this queue for processing
 
-    # Fastq files
-    fq1 = FastxFile(fq1)
-    fq2 = FastxFile(fq2)
+    if mode == "find_duplicates":
+        reader = FastqReaderProcess(
+            input_files=input_files,
+            outq=inputq,
+            n_subprocesses=n_cores,
+            read_buffer=read_buffer,
+        )
 
-    # Writer process
-    writer = mp.Process(target=write_to_fastq,
-                        args=(writeq, out1, out2),
-                        kwargs={'compression_level': compression_level})
-    writer.start()
+        deduplicator = ReadDeduplicationProcess(
+            inq=inputq, outq=writeq, save_hashed_dict_path=deduplicated_ids
+        )
 
-    # Define processes
-    processes = [mp.Process(target=read_paired_fastq,
-                            args=(fq1, fq2, r_counter, inputq),
-                            kwargs={'n_reads_buffer': read_buffer}),
-                 mp.Process(target=remove_read_duplicates,
-                            args=(inputq, writeq, d_counter),
-                            kwargs={'n_reads_buffer': read_buffer}),
-                ]
+        processes = [reader, deduplicator]
+        
+        for proc in processes:
+            proc.start()
 
-    # Start processes
-    for proc in processes:
-        proc.start()
+        for proc in processes:
+            proc.join()
+            proc.terminate()
+    
+    elif mode == 'merge_ids':
 
-    # Join processes (wait for processes to finish before the main process)
-    writer.join()
+        dicts = []
+        for dd_id in input_files:
+            with open(dd_id, "rb") as r:
+                dicts.append(pickle.load(r))
 
-    # Terminate all processes
-    for proc in processes:
-        proc.terminate()
+        dedup_dict = merge_dictionaries(dicts)  # {SEQUENCE_HASH: READ_NAME_HASH}
 
-    # Write to log file
-    with open_logfile(stats_file) as logfile:
-            logfile.write(f'Read_pairs_processed\t{r_counter.value}\n')
-            logfile.write(f'Read_pairs_unique\t{r_counter.value - d_counter.value}\n')
-            logfile.write(f'Read_pairs_removed\t{d_counter.value}\n')
+        with open(output_files, 'wb') as w:
+            pickle.dump(dedup_dict, w)
+        
+
+    elif mode == "remove_duplicates":
+
+        dicts = []
+        for dd_id in deduplicated_ids:
+            with open(dd_id, "rb") as r:
+                dicts.append(pickle.load(r))
+
+        dedup_dict = merge_dictionaries(dicts)  # {SEQUENCE_HASH: READ_NAME_HASH}
+        deduplicated_ids_set = set(
+            dedup_dict.values()
+        )  # {READ_NAME_HASH_1, READ_NAME_HASH_2}
+
+        reader = FastqReaderProcess(
+            input_files=input_files,
+            outq=inputq,
+            read_buffer=read_buffer,
+            n_subprocesses=n_cores,
+        )
+
+        deduplicator = [
+            ReadDuplicateRemovalProcess(
+                inq=inputq, outq=writeq, deduplicated_ids=deduplicated_ids_set
+            )
+            for _ in range(n_cores)
+        ]
+
+        writer = FastqWriterProcess(
+            inq=writeq,
+            output=output_files,
+            compression_level=compression_level,
+        )
+
+        processes = [reader, *deduplicator, writer]
+        
+        for proc in processes:
+            proc.start()
+
+        for proc in processes:
+            proc.join()
+            proc.terminate()
+        
+        # Handle statistics
+        stats_aggregator = Counter()
+        stats = [stats_aggregator.update(statq.get()) for i in range(n_cores)]
+        
+        deduplication_stats = DeduplicationStatistics(sample=stats_file_prefix, **stats)
+        deduplication_stats.to_csv(f'{stats_file_prefix}.tsv')

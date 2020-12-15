@@ -29,33 +29,20 @@ as input and performs the following steps:
 @authors: asmith, dsims
 """
 
+import itertools
 import os
 import re
 import sys
 
 import matplotlib.colors
-import pybedtools
 import seaborn as sns
-import itertools
+import trackhub
 from ccanalyser.ccanalyser_cli import PACKAGE_DIR
-from ccanalyser.utils.helpers import is_on, is_off, is_none
-
+from ccanalyser.utils.helpers import is_none, is_off, is_on
 from cgatcore import pipeline as P
 from pybedtools.helpers import get_chromsizes_from_ucsc
-import trackhub
-from ruffus import (
-    active_if,
-    add_inputs,
-    collate,
-    follows,
-    merge,
-    mkdir,
-    originate,
-    regex,
-    split,
-    suffix,
-    transform,
-)
+from ruffus import (active_if, add_inputs, collate, follows, merge, mkdir,
+                    originate, regex, split, suffix, transform)
 
 # Global vars
 # TODO: Issue with selecting queue manager -- defaults to sun grid (cgat-core issue)
@@ -146,46 +133,100 @@ def digest_genome(infile, outfile):
     )
 
 
-@follows(mkdir("fastq/deduplicated"))
+@follows(mkdir("fastq/split"))
 @collate(
-    "*.fastq*", regex(r"(.*)_R*[12].fastq.*"), r"fastq/deduplicated/\1_1.fastq.gz",
+    "*.fastq.gz", regex(r"(.*)_R*[12].fastq.*"), r"fastq/split/\1_part0_1.fastq.gz",
 )
-def deduplicate_reads(infiles, outfile):
+def split_fastq(infiles, outfile):
+    """Splits the combined (flashed) fastq files into chunks for parallel processing"""
+    
+    infiles = ' '.join(infiles)
+    output_prefix = outfile.replace("_part0_1.fastq.gz", "")
+
+    statement = """ccanalyser utils split_fastq
+                  %(infiles)s
+                  -o %(output_prefix)s
+                  -n %(split_n_reads)s
+                  -c %(pipeline_advanced_compression)s """
+
+    P.run(
+        statement,
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
+    )
+
+
+@active_if(is_on(P.PARAMS["deduplication_pre-dedup"]))
+@follows(mkdir("fastq/deduplicated"), mkdir("fastq/deduplicated/deduplicated_ids"), split_fastq)
+@collate(
+    'fastq/split/*.fastq.gz',
+    regex(r"fastq/split/(.*)_part(\d+)_[12].fastq.gz"),
+    r"fastq/deduplicated/deduplicated_ids/\1_\2.pkl",
+)
+def find_duplicate_reads(infiles, outfile):
 
     """Checks for duplicate read1/read2 pairs in a pair of fastq files
     any duplicates are discarded"""
 
-    fq1, fq2 = infiles
+    fq1, fq2 = [os.path.abspath(fn) for fn in infiles]
+
+    statement = """ccanalyser utils deduplicate_fastq find_duplicates
+                            %(fq1)s %(fq2)s
+                            -d %(outfile)s
+                            -c %(pipeline_advanced_compression)s
+                            """
+
+    P.run(
+        statement,
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_memory="8G",
+        job_condaenv=P.PARAMS["conda_env"],
+    )
+
+@collate(find_duplicate_reads,
+         regex(r'fastq/deduplicated/deduplicated_ids/(.*)_\d*.pkl'),
+         r'fastq/deduplicated/deduplicated_ids/\1.pkl')
+def merge_read_ids(infiles, outfile):
+    infiles = ' '.join(infiles)
+    statement = """ccanalyser utils deduplicate_fastq merge_ids
+                            %(infiles)s
+                            -o %(outfile)s
+                            """
+
+    P.run(
+        statement,
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_memory="8G",
+        job_condaenv=P.PARAMS["conda_env"],
+    )
+
+@follows(find_duplicate_reads, merge_read_ids)
+@collate(
+    'fastq/split/*.fastq.gz',
+    regex(r"fastq/split/(.*\d)_[12].fastq.gz"),
+    add_inputs(merge_read_ids),
+    r"fastq/deduplicated/\1_1.fastq.gz",
+    )
+def remove_duplicate_reads(infiles, outfile):
+
+    """Checks for duplicate read1/read2 pairs in a pair of fastq files
+    any duplicates are discarded"""
+
+    fq_files, dd_ids = zip(*infiles)
+    fq1, fq2 = fq_files
+
+    # Issue adding the correct merged id file so will select the correct one here
+    fq_original_prefix = outfile.split('/')[-1].split('_part')[0]
+    dd_ids = [ids for ids in dd_ids if f'{fq_original_prefix}.pkl' in ids][0]
     out1, out2 = outfile, outfile.replace("_1.fastq.gz", "_2.fastq.gz")
-    stats_file = out1.replace("_1.fastq.gz", ".stats")
 
-    if is_on(P.PARAMS["deduplication_pre-dedup"]):
 
-        statement = """ccanalyser utils deduplicate_fastq
-                               -1 %(fq1)s -2 %(fq2)s
-                               --out1 %(out1)s --out2 %(out2)s
-                               --stats_file %(stats_file)s
-                               -c %(pipeline_advanced_compression)s
-                              """
-    elif ".fastq.gz" in fq1:
-        # If deduplication turned off sylink input files and count number of reads
-        statement = """ln -s $(pwd)/%(fq1)s %(out1)s &&
-                       ln -s $(pwd)/%(fq2)s %(out2)s &&
-                       lc=$(zcat %(fq1)s | wc -l);
-                       logfile=%(stats_file)s;
-                       echo -e "Read_pairs_processed\\t$(($lc / 4))" > $logfile;
-                       echo -e "Read_pairs_unique\\t$(($lc / 4))" >> $logfile;
-                       echo -e "Read_pairs_removed\\t0" >> $logfile"""
-
-    else:
-        # If deduplication turned off and not gzipped, count number of reads and gzip fastq
-        statement = """cat %(fq1)s | pigz -p 6 > %(out1)s &
-                       cat %(fq2)s | pigz -p 6  > %(out2)s &
-                       lc=$(cat %(fq1)s | wc -l);
-                       logfile=%(stats_file)s;
-                       echo -e "Read_pairs_processed\\t$(($lc / 4))" > $logfile;
-                       echo -e "Read_pairs_unique\\t$(($lc / 4))" >> $logfile;
-                       echo -e "Read_pairs_removed\\t0" >> $logfile"""
+    statement = """ccanalyser utils deduplicate_fastq remove_duplicates
+                            %(fq1)s %(fq2)s
+                            -d %(dd_ids)s
+                            -o %(out1)s %(out2)s
+                            -c %(pipeline_advanced_compression)s
+                            """
 
     P.run(
         statement,
@@ -195,7 +236,7 @@ def deduplicate_reads(infiles, outfile):
     )
 
 
-@follows(mkdir("fastq/trimmed"), deduplicate_reads)
+@follows(mkdir("fastq/trimmed"), remove_duplicate_reads)
 @collate(
     r"fastq/deduplicated/*.fastq.gz",
     regex(r"fastq/deduplicated/(.*)_[12].fastq.gz"),
@@ -244,34 +285,11 @@ def combine_reads(infiles, outfile):
     )
 
 
-@follows(mkdir("fastq/split"), combine_reads)
+@follows(mkdir("fastq/digested"), combine_reads)
 @transform(
-    "fastq/flashed/*.fastq.gz",
-    regex(r"fastq/flashed/(.*).fastq.gz"),
-    r"fastq/split/\1_0.fastq.gz",
-)
-def split_fastq(infile, outfile):
-    """Splits the combined (flashed) fastq files into chunks for parallel processing"""
-
-    # Small error in function as only processes chunksize - 1 reads
-    output_prefix = outfile.replace("_0.fastq.gz", "")
-    statement = """ccanalyser utils split_fastq
-                  -i %(infile)s
-                  -n %(output_prefix)s
-                  --chunksize %(split_n_reads)s
-                  -c %(pipeline_advanced_compression)s """
-    P.run(
-        statement,
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
-
-
-@follows(mkdir("fastq/digested"), split_fastq)
-@transform(
-    "fastq/split/*.fastq.gz",
-    regex(r"fastq/split/(.*).extendedFrags_(\d+).fastq.gz"),
-    r"fastq/digested/\1.flashed_\2.fastq.gz",
+    'fastq/flashed/*.fastq.gz',
+    regex(r"fastq/flashed/(.*).extendedFrags.fastq.gz"),
+    r"fastq/digested/\1.flashed.fastq.gz",
 )
 def digest_flashed_reads(infile, outfile):
     """In silico restriction enzyme digest of combined (flashed) read pairs"""
@@ -293,11 +311,11 @@ def digest_flashed_reads(infile, outfile):
     )
 
 
-@follows(split_fastq)
+@follows(combine_reads)
 @collate(
-    "fastq/split/*.fastq.gz",
-    regex(r"fastq/split/(.*).notCombined_[12]_(\d+).fastq.gz"),
-    r"fastq/digested/\1.pe_\2.fastq.gz",
+    'fastq/flashed/*.fastq.gz',
+    regex(r"fastq/flashed/(.*).notCombined_[12].fastq.gz"),
+    r"fastq/digested/\1.pe.fastq.gz",
 )
 def digest_pe_reads(infiles, outfile):
     """In silico restriction enzyme digest of non-combined (non-flashed) read pairs"""
@@ -322,6 +340,12 @@ def digest_pe_reads(infiles, outfile):
         job_threads=4,
         job_condaenv=P.PARAMS["conda_env"],
     )
+
+@follows(multiqc_reads,
+         digest_flashed_reads,
+         digest_pe_reads)
+def fastq_preprocessing():
+    pass
 
 
 @follows(mkdir("aligned"))
@@ -355,7 +379,7 @@ def align_reads(infile, outfile):
     )
 
 
-@collate(align_reads, regex(r"aligned/(.*)_(\d+).bam"), r"aligned/\1.bam")
+@collate(align_reads, regex(r"aligned/(.*)_part\d+.*.bam"), r"aligned/\1.bam")
 def merge_bam_files(infiles, outfile):
     """Combines bam files (by flashed/non-flashed status and sample)"""
     fnames = " ".join(infiles)
@@ -539,9 +563,7 @@ def annotate_slices(infile, outfile):
 
 
 @follows(
-    annotate_slices,
-    mkdir("ccanalysis/reporters"),
-    mkdir("ccanalysis/stats"),
+    annotate_slices, mkdir("ccanalysis/reporters"), mkdir("ccanalysis/stats"),
 )
 @transform(
     align_reads,
@@ -577,7 +599,7 @@ def ccanalyser(infiles, outfile):
 @follows(ccanalyser, mkdir("ccanalysis/reporters_deduplicated"))
 @collate(
     "ccanalysis/reporters/*.tsv.gz",
-    regex(r"ccanalysis/reporters/(.*)\.[flashed|pe].*fragments.tsv.gz"),
+    regex(r"ccanalysis/reporters/(.*)_part\d+.(?:flashed|pe).fragments.tsv.gz"),
     r"ccanalysis/reporters_deduplicated/\1.hdf5",
 )
 def deduplicate_fragments(infiles, outfile):
@@ -602,9 +624,9 @@ def deduplicate_fragments(infiles, outfile):
 @follows(deduplicate_fragments)
 @transform(
     "ccanalysis/reporters/*.tsv.gz",
-    regex(r"ccanalysis/reporters/(?!.*\.fragments\.)(.*)\.(.*[0-9]+)\.(.*)\.tsv.gz"),
+    regex(r"ccanalysis/reporters/(.*)_(part\d+).(flashed|pe).(?!fragments)(.*).tsv.gz"),
     add_inputs(r"ccanalysis/reporters_deduplicated/\1.hdf5"),
-    r"ccanalysis/reporters_deduplicated/\1.\2.\3.tsv.gz",
+    r"ccanalysis/reporters_deduplicated/\1.\2.\3.\4.tsv.gz",
 )
 def deduplicate_slices(infile, outfile):
 
@@ -628,7 +650,7 @@ def deduplicate_slices(infile, outfile):
 @follows(mkdir("ccanalysis/reporters_combined"))
 @collate(
     deduplicate_slices,
-    regex(r"ccanalysis/reporters_deduplicated/(.*)\..*_\d+.(.*).tsv.gz"),
+    regex(r"ccanalysis/reporters_deduplicated/(.*)_part\d+.(.*).tsv.gz"),
     r"ccanalysis/reporters_combined/\1.\2.tsv.gz",
 )
 def collate_ccanalyser(infiles, outfile):
@@ -679,7 +701,7 @@ def count_rf_interactions(infile, outfile):
 
 @collate(
     count_rf_interactions,
-    regex(r"ccanalysis/interaction_counts/(.*)\..*_\d+.(.*).tsv.gz"),
+    regex(r"ccanalysis/interaction_counts/(.*).part\d+.(?:flashed|pe).(.*).tsv.gz"),
     r"ccanalysis/interaction_counts_combined/\1.\2.tsv.gz",
 )
 def collate_rf_counts(infiles, outfile):
@@ -837,149 +859,149 @@ def make_bigwig(infile, outfile):
         os.remove("chrom_sizes.txt.tmp")
 
 
-@follows(ccanalyser)
-@merge(
-    [
-        "fastq/deduplicated/*.stats",
-        "fastq/digested/*.stats",
-        "ccanalysis/stats/*.slice.stats",
-        "ccanalysis/stats/*.reporter.stats",
-    ],
-    "run_statistics/combined_stats.tsv",
-)
-def aggregate_stats(infiles, outfile):
+# @follows(ccanalyser)
+# @merge(
+#     [
+#         "fastq/deduplicated/*.stats",
+#         "fastq/digested/*.stats",
+#         "ccanalysis/stats/*.slice.stats",
+#         "ccanalysis/stats/*.reporter.stats",
+#     ],
+#     "run_statistics/combined_stats.tsv",
+# )
+# def aggregate_stats(infiles, outfile):
 
-    dedup = " ".join([fn for fn in infiles if "deduplicated/" in fn])
-    digestion = " ".join([fn for fn in infiles if "digested/" in fn])
-    slices = " ".join([fn for fn in infiles if ".slice.stats" in fn])
-    reporters = " ".join([fn for fn in infiles if ".reporter.stats" in fn])
-    outdir = os.path.dirname(outfile)
+#     dedup = " ".join([fn for fn in infiles if "deduplicated/" in fn])
+#     digestion = " ".join([fn for fn in infiles if "digested/" in fn])
+#     slices = " ".join([fn for fn in infiles if ".slice.stats" in fn])
+#     reporters = " ".join([fn for fn in infiles if ".reporter.stats" in fn])
+#     outdir = os.path.dirname(outfile)
 
-    statement = """ccanalyser stats agg_stats
-                    --deduplication_stats %(dedup)s
-                    --digestion_stats %(digestion)s
-                    --ccanalyser_stats %(slices)s
-                    --reporter_stats %(reporters)s
-                    --output_dir %(outdir)s
-                """
+#     statement = """ccanalyser stats agg_stats
+#                     --deduplication_stats %(dedup)s
+#                     --digestion_stats %(digestion)s
+#                     --ccanalyser_stats %(slices)s
+#                     --reporter_stats %(reporters)s
+#                     --output_dir %(outdir)s
+#                 """
 
-    P.run(
-        statement,
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
-
-
-@follows(aggregate_stats)
-@merge("run_statistics/*.tsv", r"run_statistics/visualise_run_statistics.html")
-def build_report(infile, outfile):
-    """Run jupyter notebook for reporting and plotting. First moves the notebook
-    then converts to html"""
-
-    statement = """rm run_statistics/visualise_run_statistics* -f &&
-                   papermill
-                   %(PACKAGE_DIR)s/stats/visualise_capture-c_stats.ipynb
-                   run_statistics/visualise_run_statistics.ipynb
-                   -p directory $(pwd)/run_statistics/ &&
-                   jupyter nbconvert
-                   --no-input
-                   --to html
-                   run_statistics/visualise_run_statistics.ipynb
-                   run_statistics/visualise_run_statistics.html
-                   """
-
-    P.run(
-        statement,
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
+#     P.run(
+#         statement,
+#         job_queue=P.PARAMS["pipeline_cluster_queue"],
+#         job_condaenv=P.PARAMS["conda_env"],
+#     )
 
 
-@active_if(is_on(P.PARAMS["hub_create"]))
-@merge([make_bigwig, build_report], os.path.join(P.PARAMS["hub_dir"], "hub.txt"))
-def create_trackhub(infiles, outfile):
-    def get_ucsc_color(color):
-        return ",".join([f"{i * 255}" for i in color])
+# @follows(aggregate_stats)
+# @merge("run_statistics/*.tsv", r"run_statistics/visualise_run_statistics.html")
+# def build_report(infile, outfile):
+#     """Run jupyter notebook for reporting and plotting. First moves the notebook
+#     then converts to html"""
 
-    def get_colors(items, colors=None):
+#     statement = """rm run_statistics/visualise_run_statistics* -f &&
+#                    papermill
+#                    %(PACKAGE_DIR)s/stats/visualise_capture-c_stats.ipynb
+#                    run_statistics/visualise_run_statistics.ipynb
+#                    -p directory $(pwd)/run_statistics/ &&
+#                    jupyter nbconvert
+#                    --no-input
+#                    --to html
+#                    run_statistics/visualise_run_statistics.ipynb
+#                    run_statistics/visualise_run_statistics.html
+#                    """
 
-        if not colors:
-            colors = sns.color_palette("rainbow", len(items))
-            return [get_ucsc_color(color) for color in colors]
-        else:
-            colors = [
-                matplotlib.colors.to_rgb(color) for color in re.split(r"\s|,|;", colors)
-            ]
-            return [color for i, color in zip(items, itertools.cycle(colors))]
+#     P.run(
+#         statement,
+#         job_queue=P.PARAMS["pipeline_cluster_queue"],
+#         job_condaenv=P.PARAMS["conda_env"],
+#     )
 
-    bigwigs, statistics = infiles
-    sample_key = lambda d: d["track"].split(".")[0]
 
-    # Need to make an assembly hub if this is a custom genome
-    if not P.PARAMS["genome_custom"]:
-        hub, genomes_file, genome, trackdb = trackhub.default_hub(
-            hub_name=P.PARAMS["hub_name"],
-            short_label=P.PARAMS["hub_short"]
-            if not is_none(P.PARAMS["hub_short"])
-            else P.PARAMS["hub_name"],
-            long_label=P.PARAMS["hub_long"]
-            if not is_none(P.PARAMS["hub_long"])
-            else P.PARAMS["hub_name"],
-            email=P.PARAMS["hub_email"],
-            genome=P.PARAMS["genome_name"],
-        )
+# @active_if(is_on(P.PARAMS["hub_create"]))
+# @merge([make_bigwig, build_report], os.path.join(P.PARAMS["hub_dir"], "hub.txt"))
+# def create_trackhub(infiles, outfile):
+#     def get_ucsc_color(color):
+#         return ",".join([f"{i * 255}" for i in color])
 
-        for sample, bigwigs_grouped in itertools.groupby(
-            sorted(bigwigs, key=sample_key), key=sample_key
-        ):
+#     def get_colors(items, colors=None):
 
-            bigwigs_grouped = list(bigwigs_grouped)
+#         if not colors:
+#             colors = sns.color_palette("rainbow", len(items))
+#             return [get_ucsc_color(color) for color in colors]
+#         else:
+#             colors = [
+#                 matplotlib.colors.to_rgb(color) for color in re.split(r"\s|,|;", colors)
+#             ]
+#             return [color for i, color in zip(items, itertools.cycle(colors))]
 
-            # Create an overlay track
-            overlay = trackhub.AggregateTrack(
-                aggregate="transparentOverlay",
-                visibility="full",
-                tracktype="bigWig",
-                viewLimits="-2:2",
-                maxHeightPixels="8:80:128",
-                showSubtrackColorOnUi="on",
-                name=f"{sample}",
-            )
+#     bigwigs, statistics = infiles
+#     sample_key = lambda d: d["track"].split(".")[0]
 
-            for bigwig, color in zip(bigwigs_grouped, get_colors(bigwigs)):
-                name = trackhub.helpers.sanitize(os.path.basename(bigwig))
-                track = trackhub.Track(
-                    name=name,  # track names can't have any spaces or special chars.
-                    source=os.path.join(
-                        trackhub.helpers.data_dir(), os.path.basename(bigwig)
-                    ),  # filename to build this track from
-                    visibility="full",  # shows the full signal
-                    color=color,
-                    autoScale="on",  # allow the track to autoscale
-                    tracktype="bigWig",  # required when making a track
-                )
+#     # Need to make an assembly hub if this is a custom genome
+#     if not P.PARAMS["genome_custom"]:
+#         hub, genomes_file, genome, trackdb = trackhub.default_hub(
+#             hub_name=P.PARAMS["hub_name"],
+#             short_label=P.PARAMS["hub_short"]
+#             if not is_none(P.PARAMS["hub_short"])
+#             else P.PARAMS["hub_name"],
+#             long_label=P.PARAMS["hub_long"]
+#             if not is_none(P.PARAMS["hub_long"])
+#             else P.PARAMS["hub_name"],
+#             email=P.PARAMS["hub_email"],
+#             genome=P.PARAMS["genome_name"],
+#         )
 
-                track_sub = trackhub.Track(
-                    name=f"{name}_subtrack",  # track names can't have any spaces or special chars.
-                    source=os.path.join(
-                        trackhub.helpers.data_dir(), os.path.basename(bigwig)
-                    ),  # filename to build this track from
-                    visibility="full",  # shows the full signal
-                    color=color,
-                    autoScale="on",  # allow the track to autoscale
-                    tracktype="bigWig",  # required when making a track
-                )
+#         for sample, bigwigs_grouped in itertools.groupby(
+#             sorted(bigwigs, key=sample_key), key=sample_key
+#         ):
 
-                trackdb.add_tracks(track)
-                overlay.add_subtrack(track_sub)
+#             bigwigs_grouped = list(bigwigs_grouped)
 
-        # Finalise trackhub
-        trackhub.upload.upload_hub(
-            hub=hub, host=P.PARAMS["hub_url"], remote_dir=P.PARAMS["hub_dir"]
-        )
+#             # Create an overlay track
+#             overlay = trackhub.AggregateTrack(
+#                 aggregate="transparentOverlay",
+#                 visibility="full",
+#                 tracktype="bigWig",
+#                 viewLimits="-2:2",
+#                 maxHeightPixels="8:80:128",
+#                 showSubtrackColorOnUi="on",
+#                 name=f"{sample}",
+#             )
 
-    else:
-        raise NotImplementedError("Custom genome not yet supported")
+#             for bigwig, color in zip(bigwigs_grouped, get_colors(bigwigs)):
+#                 name = trackhub.helpers.sanitize(os.path.basename(bigwig))
+#                 track = trackhub.Track(
+#                     name=name,  # track names can't have any spaces or special chars.
+#                     source=os.path.join(
+#                         trackhub.helpers.data_dir(), os.path.basename(bigwig)
+#                     ),  # filename to build this track from
+#                     visibility="full",  # shows the full signal
+#                     color=color,
+#                     autoScale="on",  # allow the track to autoscale
+#                     tracktype="bigWig",  # required when making a track
+#                 )
+
+#                 track_sub = trackhub.Track(
+#                     name=f"{name}_subtrack",  # track names can't have any spaces or special chars.
+#                     source=os.path.join(
+#                         trackhub.helpers.data_dir(), os.path.basename(bigwig)
+#                     ),  # filename to build this track from
+#                     visibility="full",  # shows the full signal
+#                     color=color,
+#                     autoScale="on",  # allow the track to autoscale
+#                     tracktype="bigWig",  # required when making a track
+#                 )
+
+#                 trackdb.add_tracks(track)
+#                 overlay.add_subtrack(track_sub)
+
+#         # Finalise trackhub
+#         trackhub.upload.upload_hub(
+#             hub=hub, host=P.PARAMS["hub_url"], remote_dir=P.PARAMS["hub_dir"]
+#         )
+
+#     else:
+#         raise NotImplementedError("Custom genome not yet supported")
 
     # hub = trackhub.Hub(P.PARAMS["hub_name"],
     #                    short_label=P.PARAMS["hub_short"] if not is_none(P.PARAMS["hub_short"]) else P.PARAMS["hub_name"],

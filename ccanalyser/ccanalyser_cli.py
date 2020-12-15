@@ -160,34 +160,48 @@ def add_deduplicate_fastq_args(subcommand):
         "deduplicate_fastq", help="Removes PCR duplicates from fastq file"
     )
 
-    parser.add_argument(
-        "-1", "--fq1", help="fastq file to parse containing read 1", required=True
-    )
-    parser.add_argument(
-        "-2", "--fq2", help="fastq file to parse containing read 2", required=True
-    )
-    parser.add_argument(
-        "--out1", help="fastq file to parse containing read 1", default="out1.fq.gz"
-    )
-    parser.add_argument(
-        "--out2", help="fastq file to parse containing read 2", default="out2.fq.gz"
-    )
-    parser.add_argument(
-        "--stats_file", help="name of deduplication statistics file", default=sys.stdout
-    )
-    parser.add_argument(
+    subparser = parser.add_subparsers(dest="mode")
+    parser_fd = subparser.add_parser("find_duplicates")
+    parser_fd.add_argument('input_files', nargs='+')
+    parser_fd.add_argument('-d', '--deduplicated_ids', required=True)
+    parser_fd.add_argument(
         "-c",
         "--compression_level",
         help="Level of compression (1-9 with 9 being the highest)",
         type=int,
         default=5,
     )
-    parser.add_argument(
+    parser_fd.add_argument(
         "--read_buffer",
         help="defines the number of reads processed before writing to file",
-        default=10000,
+        default=100000,
         type=int,
     )
+
+    parser_md = subparser.add_parser("merge_ids")
+    parser_md.add_argument('input_files', nargs='+')
+    parser_md.add_argument('-o', '--output_files', default='merged.pkl')
+
+
+    parser_rd = subparser.add_parser("remove_duplicates")
+    parser_rd.add_argument('input_files', nargs='+')
+    parser_rd.add_argument('-d', '--deduplicated_ids', required=True, nargs='+')
+    parser_rd.add_argument('-o', '--output_files', required=True, nargs='+')
+    parser_rd.add_argument(
+        "-c",
+        "--compression_level",
+        help="Level of compression (1-9 with 9 being the highest)",
+        type=int,
+        default=5,
+    )
+    parser_rd.add_argument(
+        "--read_buffer",
+        help="defines the number of reads processed before writing to file",
+        default=100000,
+        type=int,
+    )
+
+
 
 
 def add_digest_fastq_args(subcommand):
@@ -342,10 +356,13 @@ def add_split_fastq_args(subcommand):
     parser = subcommand.add_parser(
         "split_fastq", help="Splits fastq file into smaller chunks"
     )
-    parser.add_argument("-i", "--input_fastq", help="BAM file to parse", required=True)
+    
+    parser.add_argument("input_files", help="Fasq file(s) to parse", nargs='+')
+
     parser.add_argument(
-        "--chunksize", help="Number of reads per output file", default=1000000, type=int
+        "-n", '--n_reads', help="Number of reads per output file", default=1000000, type=int
     )
+
     parser.add_argument(
         "-c",
         "--compression_level",
@@ -353,7 +370,7 @@ def add_split_fastq_args(subcommand):
         default=6,
         type=int,
     )
-    parser.add_argument("-n", "--output_prefix", help="output prefix", default="split")
+    parser.add_argument("-o", "--output_prefix", help="output prefix", default="split")
 
 
 def add_store_interactions_args(subcommand):
