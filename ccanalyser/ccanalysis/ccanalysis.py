@@ -161,7 +161,11 @@ def merge_annotations(df, annotations):
 
 
 class SliceFilter:
-    def __init__(self, slices, filter_stages=None):
+    def __init__(self,
+                 slices: pd.DataFrame,
+                 filter_stages: dict = None,
+                 sample_name: str = '',
+                 read_type: str = ''):
 
         self.slices = slices.copy()
 
@@ -172,6 +176,8 @@ class SliceFilter:
 
         self.filtered = False
         self.filter_stats = pd.DataFrame()
+        self.sample_name = sample_name
+        self.read_type = read_type
 
     @property
     def slice_stats(self):
@@ -498,6 +504,8 @@ class CCSliceFilter(SliceFilter):
                 "blacklist": "number_of_slices_in_blacklisted_region",
             }
         )
+
+        stats_df
 
         return stats_df
 

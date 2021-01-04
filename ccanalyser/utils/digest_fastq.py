@@ -11,8 +11,9 @@ from xopen import xopen
 
 from ccanalyser.utils.helpers import get_re_site
 from ccanalyser.utils.io import FastqReaderProcess, FastqWriterProcess
-from ccanalyser.utils.tools import DigestedRead
 from multiprocessing import SimpleQueue, Process
+import re
+from numpy.random import randint
 
 class DigestionStatCollector():
     def __init__(self, statq: Queue, n_subprocess: int = 1) -> None:
@@ -55,16 +56,16 @@ class DigestionStatCollector():
         
         while self.n_subprocesses_terminated < self.n_subprocesses:
             
-            
+           
             if stats == 'END':
                 self.n_subprocesses_terminated += 1
                 continue
         
             else:
                 for fragment_stats in stats:
-                    stats_dict = self._append_statistics(fragment_stats, stat_dict)
-          
-        
+                    stat_dict = self._append_statistics(fragment_stats, stat_dict)
+            
+            stats = self.statq.get()
 
         return self._format_stats_dict(stat_dict)
   
@@ -81,69 +82,152 @@ class DigestionStatistics():
         self.read_number = read_number
         self.slices_total = slices_total
         self.slices_valid = slices_valid
-    
-    @property
-    def n_total_slices(self):
+
+
+        self.n_total_slices = self._get_n_total_slices()
+        self.n_total_reads = self._get_n_total_reads()
+        self.n_valid_slices = self._get_n_valid_slices()
+        self.n_valid_reads = self._get_n_valid_reads()
+        self.filtered_histogram = self._get_filtered_histogram()
+        self.unfiltered_histogram = self._get_unfiltered_histogram()
+        self.slice_summary = self._get_slice_summary_df()
+        self.read_summary = self._get_read_summary_df()
+   
+
+    def _get_n_total_slices(self):
         return sum(n_slices * count for n_slices, count in self.slices_total.items())
     
-    @property
-    def n_total_reads(self):
+    def _get_n_total_reads(self):
         return sum(self.slices_total.values())
     
-    @property
-    def n_valid_slices(self):
+    def _get_n_valid_slices(self):
         return sum(n_slices * count for n_slices, count in self.slices_valid.items())
-    
-    @property
-    def n_valid_reads(self):
+
+    def _get_n_valid_reads(self):
         return sum(self.slices_valid.values())
     
-    @property
-    def unfiltered_histogram(self):
+    def _get_unfiltered_histogram(self):
         df = pd.DataFrame()
-        df['sample'] = self.sample
-        df['read_type'] = self.read_type
-        df['read_number'] = self.read_number
         df['number_of_slices'] = self.slices_total.keys()
         df['count'] = self.slices_total.values()
-        return df
-    
-    @property
-    def filtered_histogram(self):
-        df = pd.DataFrame()
         df['sample'] = self.sample
         df['read_type'] = self.read_type
         df['read_number'] = self.read_number
+        return df[['sample', 'read_type', 'read_number', 'number_of_slices', 'count']]
+    
+    def _get_filtered_histogram(self):
+        df = pd.DataFrame()
         df['number_of_slices'] = self.slices_valid.keys()
         df['count'] = self.slices_valid.values()
-        return df
-    
-    @property
-    def slice_summary_df(self):
-        df = pd.DataFrame()
         df['sample'] = self.sample
         df['read_type'] = self.read_type
         df['read_number'] = self.read_number
+        return df[['sample', 'read_type', 'read_number', 'number_of_slices', 'count']]
+    
+    def _get_slice_summary_df(self):
+        df = pd.DataFrame()
         df['stat_type'] = ['total', 'valid']
         df['stat'] = [self.n_total_slices, self.n_valid_slices]
-        return df
-    
-    @property
-    def read_summary_df(self):
-        df = pd.DataFrame()
         df['sample'] = self.sample
         df['read_type'] = self.read_type
         df['read_number'] = self.read_number
+        return df[['sample', 'read_type', 'read_number', 'stat_type', 'stat']]
+    
+    def _get_read_summary_df(self):
+        df = pd.DataFrame()
         df['stat_type'] = ['total', 'valid']
         df['stat'] = [self.n_total_reads, self.n_valid_reads]
-        return df
+        df['sample'] = self.sample
+        df['read_type'] = self.read_type
+        df['read_number'] = self.read_number
+        return df[['sample', 'read_type', 'read_number', 'stat_type', 'stat']]
     
-    def __add__(self, other):
-        self.slices_total.update(other.slices_total)
-        self.slices_valid.update(other.slices_valid)
-
+    def __add__(self, other):       
+        self.unfiltered_histogram = pd.concat([self.unfiltered_histogram, other.unfiltered_histogram]).reset_index(drop=True)
+        self.filtered_histogram = pd.concat([self.filtered_histogram, other.filtered_histogram]).reset_index(drop=True)
+        self.slice_summary = pd.concat([self.slice_summary, other.slice_summary]).reset_index(drop=True)
+        self.read_summary = pd.concat([self.read_summary, other.read_summary]).reset_index(drop=True)
         return self
 
+class DigestedRead:
+    def __init__(
+        self,
+        read,
+        cutsite,
+        min_slice_length=18,
+        slice_number_offset=0,
+        allow_undigested=False,
+        read_type="flashed",
+    ):
+
+        self.read = read
+        self.min_slice_length = min_slice_length
+        self.slice_number_offset = slice_number_offset
+        self.allow_undigested = allow_undigested
+        self.read_type = read_type
+
+        self.recognition_seq = cutsite.upper()
+        self.recognition_len = len(cutsite)
+        self.recognition_re = re.compile(self.recognition_seq)
+
+        self.slice_indexes = self.get_recognition_site_indexes()
+        self.slices_total = len(self.slice_indexes) - 1
+        self.slices_valid = 0
+        self.has_slices = self.slices_total > 1
+        self.slices = self._get_slices()
+
+    def get_recognition_site_indexes(self):
+        indexes = [
+            re_site.start()
+            for re_site in self.recognition_re.finditer(self.read.sequence.upper())
+        ]
+
+        indexes.insert(0, 0)
+        indexes.append(len(self.read.sequence))
+
+        return indexes
+
+    def _get_slices(self):
+
+        indexes = self.slice_indexes
+        slice_no = self.slice_number_offset
+        slices_list = []
+
+        if self.has_slices or self.allow_undigested:
+
+            # Iterate through offset indexes to get correct start and end
+            for ii, (slice_start, slice_end) in enumerate(zip(indexes, indexes[1:])):
+
+                # If this is not the first slice
+                if ii > 0:
+                    slice_start += self.recognition_len
+
+                if self.is_valid_slice(slice_start, slice_end):
+                    slices_list.append(
+                        self.prepare_slice(slice_start, slice_end, slice_no)
+                    )
+
+                    self.slices_valid += 1
+                    slice_no += 1
+
+        return slices_list
+
+    def prepare_slice(self, start, end, slice_no):
+        return "\n".join(
+            [
+                f"@{self.read.name}|{self.read_type}|{slice_no}|{randint(0,100)}",
+                self.read.sequence[start:end],
+                "+",
+                self.read.quality[start:end],
+            ]
+        )
+
+    def is_valid_slice(self, start, end):
+        if (end - start) >= self.min_slice_length:
+            return True
+
+    def __str__(self):
+        return ("\n".join(self.slices) + "\n") if self.slices else ""
 
 class ReadDigestionProcess(Process):
     def __init__(
@@ -170,7 +254,7 @@ class ReadDigestionProcess(Process):
             else:
                 digestion_kwargs["slice_number_offset"] = digested[
                     i - 1
-                ].slices_valid_counter
+                ].slices_valid
                 digested.append(DigestedRead(read, **digestion_kwargs))
 
         return digested
@@ -191,7 +275,7 @@ class ReadDigestionProcess(Process):
                     buffer_reads.append("".join(digested_str))
 
                 
-                digestion_stats = {read_number + 1: {'total': d.slices_total_counter, 'valid': d.slices_valid}
+                digestion_stats = {read_number + 1: {'total': d.slices_total, 'valid': d.slices_valid}
                                    for read_number, d in enumerate(digested)}
                 
                 buffer_stats.append(digestion_stats)
@@ -210,24 +294,13 @@ class ReadDigestionProcess(Process):
         if self.statq:
             self.statq.put('END')
 
-
-
-
-
-
-
-
-
 def main(
     subcommand,
     input_fastq=None,
-    fq1=None,
-    fq2=None,
     restriction_enzyme=None,
     keep_cutsite=False,
     output_file="out.fastq.gz",
     minimum_slice_length=18,
-    stats_file=None,
     compression_level=5,
     n_digestion_processes=1,
     buffer=10000,
@@ -244,6 +317,24 @@ def main(
     if subcommand == "flashed":  # Checks the subsubcommand to see in which mode to run
 
         fq_reader = FastqReaderProcess(
+            input_files=input_fastq, outq=inputq, n_subprocesses=n_digestion_processes, read_buffer=buffer,
+        )
+
+        digestion_processes = [
+            ReadDigestionProcess(
+                inq=inputq,
+                outq=writeq,
+                cutsite=cut_site,
+                min_slice_length=minimum_slice_length,
+                read_type=subcommand,
+                statq=statq,
+            )
+            for _ in range(n_digestion_processes)
+        ]
+
+    elif subcommand == "pe":
+
+        fq_reader = FastqReaderProcess(
             input_files=input_fastq, outq=inputq, n_subprocesses=n_digestion_processes
         )
 
@@ -254,31 +345,15 @@ def main(
                 cutsite=cut_site,
                 min_slice_length=minimum_slice_length,
                 read_type=subcommand,
-            )
-            for _ in range(n_digestion_processes)
-        ]
-
-    elif subcommand == "unflashed":
-
-        fq_reader = FastqReaderProcess(
-            input_files=[fq1, fq2], outq=inputq, n_subprocesses=n_digestion_processes
-        )
-
-        digestion_processes = [
-            ReadDigestionProcess(
-                inq=inputq,
-                outq=writeq,
-                cutsite=cut_site,
-                min_slice_length=minimum_slice_length,
-                read_type=subcommand,
                 allow_undigested=True,
+                statq=statq,
             )
             for _ in range(n_digestion_processes)
         ]
 
     # Writer process is common to both
     fq_writer = FastqWriterProcess(
-        inq=writeq, output=output_file, n_subprocesses=n_digestion_processes
+        inq=writeq, output=output_file, n_subprocesses=n_digestion_processes, compression_level=compression_level
     )
 
     # Start all processes
@@ -287,29 +362,36 @@ def main(
     for proc in processes:
         proc.start()
 
-    # Join processes (wait for processes to finish before the main process)
-    fq_writer.join()
-
     for proc in processes:
         proc.join()
         proc.terminate()
     
     # Collate stats
     collated_stats = DigestionStatCollector(statq, n_digestion_processes).get_collated_stats()
+    sample_name = input_fastq[0].split('.fastq')[0].rstrip('_12')
 
-    for read_number, stats in collated_stats.items():
-        digestion_stats = DigestionStatistics(output_file,
+
+    
+    stats = [DigestionStatistics(sample=sample_name,
                                              read_type=subcommand,
                                              read_number=read_number,
                                              slices_total=stats['total'],
                                              slices_valid=stats['valid'])
+                        for read_number, stats in collated_stats.items()
+                        ]
+    
+    if len(stats) > 1: # Need to collate stats from digestion of 2+ files
+        for stat in stats[1:]:
+            digestion_stats = stats[0] + stat
+    else:
+        digestion_stats = stats[0]
 
 
-        
-        digestion_stats.unfiltered_histogram.to_csv(f'{stats_file}.unfiltered.histogram.tsv')
-        digestion_stats.filtered_histogram.to_csv(f'{stats_file}.filtered.histogram.tsv')
-        digestion_stats.slice_summary_df.to_csv(f'{stats_file}.slice.summary.tsv')
-        digestion_stats.read_summary_df.to_csv(f'{stats_file}.read.summary.tsv')
+    digestion_stats.unfiltered_histogram.to_csv(f'{sample_name}.unfiltered.histogram.csv')
+    digestion_stats.filtered_histogram.to_csv(f'{sample_name}.filtered.histogram.csv')
+    digestion_stats.slice_summary.to_csv(f'{sample_name}.slice.summary.csv')
+    digestion_stats.read_summary.to_csv(f'{sample_name}.read.summary.csv')
+    
 
         
 

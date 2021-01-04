@@ -38,7 +38,7 @@ class DeduplicationStatistics():
                  reads_total=0,
                  reads_unique=0):
 
-        self.samples = sample
+        self.sample = sample
         self.read_type = read_type
         self.reads_total = reads_total
         self.reads_unique = reads_unique
@@ -47,16 +47,12 @@ class DeduplicationStatistics():
     @property
     def df(self):
         df = pd.DataFrame()
-        df['sample'] = self.sample
+        df['stat'] = [self.reads_total, self.reads_unique, self.reads_removed]
+        df['stat_type'] = ['reads_total', 'reads_unique', 'reads_removed']
         df['read_type'] = self.read_type
         df['read_number'] = 1
-        df['stat_type'] = ['reads_total', 'reads_unique', 'reads_removed']
-        df['stat'] = [self.reads_total, self.reads_unique, self.reads_removed]
+        df['sample'] = self.sample
         return df
-
-
-
-
 
 class ReadDeduplicationProcess(Process):
     def __init__(
@@ -137,6 +133,7 @@ class ReadDuplicateRemovalProcess(Process):
                 )[0]
 
                 if hash_id in deduplicated_ids:
+                    print(hash_id)
                     reads_unique.append(read_glob)
 
             self.outq.put(reads_unique)
@@ -150,6 +147,7 @@ class ReadDuplicateRemovalProcess(Process):
     
         if self.statq:
             self.statq.put({'reads_total': self.reads_total, 'reads_unique': self.reads_unique})
+            self.statq.put('END')
 
 
 def main(
@@ -157,10 +155,8 @@ def main(
     input_files: list,
     output_files: list = None,
     deduplicated_ids: Union[str, list] = None,
-    stats_file_prefix="stats_out",
     read_buffer=10000,
     compression_level=5,
-    paired_output: bool = False,
     n_cores=1,
 ):
 
@@ -224,7 +220,7 @@ def main(
 
         deduplicator = [
             ReadDuplicateRemovalProcess(
-                inq=inputq, outq=writeq, deduplicated_ids=deduplicated_ids_set
+                inq=inputq, outq=writeq, deduplicated_ids=deduplicated_ids_set, statq=statq
             )
             for _ in range(n_cores)
         ]
@@ -246,7 +242,10 @@ def main(
         
         # Handle statistics
         stats_aggregator = Counter()
-        stats = [stats_aggregator.update(statq.get()) for i in range(n_cores)]
+        for i in range(n_cores):
+            stats_aggregator.update(statq.get())
         
-        deduplication_stats = DeduplicationStatistics(sample=stats_file_prefix, **stats)
-        deduplication_stats.to_csv(f'{stats_file_prefix}.tsv')
+        stats_file_prefix = input_files[0].split('.fastq')[0].rstrip('_12')
+        deduplication_stats = DeduplicationStatistics(sample=stats_file_prefix, **stats_aggregator)
+        print(deduplication_stats.df)
+        deduplication_stats.df.to_csv(f'{stats_file_prefix}.csv')

@@ -212,7 +212,7 @@ def add_digest_fastq_args(subcommand):
     )
 
     parent_parser.add_argument(
-        "-r", "--restriction_enzyme", help="Name or sequence of restriction enzyme"
+        "-r", "--restriction_enzyme", help="Name or sequence of restriction enzyme", required=True,
     )
 
     parent_parser.add_argument(
@@ -221,9 +221,6 @@ def add_digest_fastq_args(subcommand):
         help="Shortest length for a slice to be output",
         default=20,
         type=int,
-    )
-    parent_parser.add_argument(
-        "--stats_file", help="stats_file_prefix", default="stats.log"
     )
     parent_parser.add_argument(
         "-c",
@@ -264,17 +261,14 @@ def add_digest_fastq_args(subcommand):
         "flashed", help="For flashed reads", parents=[parent_parser,]
     )
     parser_flashed.add_argument(
-        "-i", "--input_fastq", help="fastq file to parse", required=True
+        "input_fastq", help="fastq file to parse", nargs='+',
     )
 
     parser_unflashed = subparsers.add_parser(
-        "unflashed", help="For unflashed reads", parents=[parent_parser,]
+        "pe", help="For unflashed reads", parents=[parent_parser,]
     )
     parser_unflashed.add_argument(
-        "-1", "--fq1", help="fastq file containing read 1 to parse", required=True
-    )
-    parser_unflashed.add_argument(
-        "-2", "--fq2", help="fastq file containing read 2 to parse", required=True
+        "input_fastq", help="fastq file to parse", nargs='+',
     )
 
 

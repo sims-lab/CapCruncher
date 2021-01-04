@@ -4,7 +4,6 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from ccanalyser.utils.tools import DigestedRead
 from pysam import FastxFile
 from xopen import xopen
 
@@ -61,7 +60,7 @@ class FastqReaderProcess(Process):
                 print(f'Read {read_counter} reads')
         
         self.outq.put(buffer)
-        print(f'Final read count: {read_counter}')
+        print(f'Number of reads processed: {read_counter + 1}')
 
         for i in range(self.n_subprocesses):
             self.outq.put('END')
