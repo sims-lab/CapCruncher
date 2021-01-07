@@ -204,8 +204,7 @@ def merge_read_ids(infiles, outfile):
 @follows(find_duplicate_reads, merge_read_ids, mkdir('run_statistics/deduplication'))
 @collate(
     'fastq/split/*.fastq.gz',
-    regex(r"fastq/split/(.*\d)_[12].fastq.gz"),
-    add_inputs(merge_read_ids),
+    regex(r".*/(.*_part\d+)_[12].fastq.gz"),
     r"fastq/deduplicated/\1_1.fastq.gz",
     )
 def remove_duplicate_reads(infiles, outfile):
@@ -213,15 +212,10 @@ def remove_duplicate_reads(infiles, outfile):
     """Checks for duplicate read1/read2 pairs in a pair of fastq files
     any duplicates are discarded"""
 
-    fq_files, dd_ids = zip(*infiles)
-    fq1, fq2 = fq_files
+    fq1, fq2 = infiles
+    dd_ids = 'fastq/deduplicated/deduplicated_ids/' + re.match(r'.*/(.*)(_part\d+)_[12].fastq.gz', fq1).group(1) + '.json.gz'
     fn = os.path.basename(fq1).replace('_1.fastq.gz', '')
-
-    # Issue adding the correct merged id file so will select the correct one here
-    fq_original_prefix = outfile.split('/')[-1].split('_part')[0]
-    dd_ids = [ids for ids in dd_ids if f'{fq_original_prefix}.json.gz' in ids][0]
     out1, out2 = outfile, outfile.replace("_1.fastq.gz", "_2.fastq.gz")
-
 
     statement = """ccanalyser utils deduplicate_fastq remove_duplicates
                             %(fq1)s %(fq2)s
@@ -248,17 +242,19 @@ def remove_duplicate_reads(infiles, outfile):
 def trim_reads(infiles, outfile):
     """Trim adaptor sequences using Trim-galore"""
 
-    fastq1, fastq2 = infiles
+    fq1, fq2 = infiles
+    fq1_basename, fq2_basename = os.path.basename(fq1), os.path.basename(fq2)
+
     outdir = os.path.dirname(outfile)
     trim_options = P.PARAMS['trim_options'] if not is_none(P.PARAMS['trim_options']) else ''
     statement = """trim_galore
                    --cores %(pipeline_n_cores)s
                    --paired %(trim_options)s
                    -o %(outdir)s
-                   %(fastq1)s
-                   %(fastq2)s
-                   && mv %(fastq1)s__trimming_report.txt run_statistics/trimming
-                   && mv %(fastq2)s__trimming_report.txt run_statistics/trimming"""
+                   %(fq1)s
+                   %(fq2)s
+                   && mv fastq/trimmed/%(fq1_basename)s_trimming_report.txt run_statistics/trimming
+                   && mv fastq/trimmed/%(fq2_basename)s_trimming_report.txt run_statistics/trimming"""
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -569,7 +565,7 @@ def annotate_slices(infile, outfile):
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=6,
+        job_threads=4,
         job_condaenv=P.PARAMS["conda_env"],
     )
 

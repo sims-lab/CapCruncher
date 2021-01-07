@@ -266,4 +266,4 @@ def main(
         #partiton_name = f'{file_name.group(1)}{file_name.group(2)}'
         deduplication_stats = DeduplicationStatistics(sample=sample_name, **stats_aggregator)
         print(deduplication_stats.df)
-        deduplication_stats.df.to_csv(os.path.join(stats_prefix, f'.deduplication.csv'))
+        deduplication_stats.df.to_csv(f'{stats_prefix}.deduplication.csv')

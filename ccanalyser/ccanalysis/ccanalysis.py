@@ -207,9 +207,12 @@ class SliceFilter:
             if output_slices == "stage":
                 self.slices.to_csv(os.path.join(output_location, f"{stage}.tsv.gz"))
 
-            self.filter_stats[
-                stage
-            ] = self.slice_stats  # Store the stats for each stage
+            try:
+                self.filter_stats[stage] = self.slice_stats  # Store the stats for each stage
+            except Exception as e:
+                print(e)
+            else:
+                self.filter_stats[stage] = 0
 
     def modify_re_frag(self, frag: str, adjust=1):
         """Increases/Decreases the RE frag number.
@@ -460,7 +463,14 @@ class CCSliceFilter(SliceFilter):
         Returns:
          Dataframe containing slice statistics
         """
-        stats_df = self.slices.agg(
+
+        slices = self.slices.copy()
+        if slices.empty: # Deal with empty dataframe i.e. no valid slices
+            for col in slices:
+                slices[col] = np.zeros((10, ))
+            
+       
+        stats_df = slices.agg(
             {
                 "read_name": "nunique",
                 "parent_read": "nunique",
@@ -485,7 +495,6 @@ class CCSliceFilter(SliceFilter):
             }
         )
 
-        stats_df
 
         return stats_df
 
@@ -562,12 +571,18 @@ class CCSliceFilter(SliceFilter):
             "trans",
         )
 
-        # Aggregate by capture site for reporting
-        interactions_by_capture = pd.DataFrame(
-            cap_and_rep.groupby("capture")["cis/trans"].value_counts()
-        )
+        try:
+            # Aggregate by capture site for reporting
+            interactions_by_capture = pd.DataFrame(
+                cap_and_rep.groupby("capture")["cis/trans"].value_counts()
+            )
+        except Exception as e:
+            print(e)
+            interactions_by_capture = pd.DataFrame()
 
         return interactions_by_capture
+
+        
 
     def remove_non_reporter_fragments(self):
         """Removes all slices (i.e. the entire fragment) if it has no reporter slices present (Common)

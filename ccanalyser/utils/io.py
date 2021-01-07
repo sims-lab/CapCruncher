@@ -148,7 +148,7 @@ class FastqWriterSplitterProcess(Process):
             fnames = [f'{self.output_prefix}_part{self.n_files_written}_{i+1}.fastq.gz'
                       for i in range(2)]
 
-        return [xopen(fn, 'w', compresslevel=self.compression_level, threads=2) 
+        return [xopen(fn, 'w', compresslevel=self.compression_level, threads=4) 
                 for fn in fnames]
     
     def run(self):
