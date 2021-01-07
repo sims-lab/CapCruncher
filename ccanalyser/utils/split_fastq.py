@@ -15,8 +15,6 @@ def main(input_files, output_prefix, compression_level=5, n_reads=1000000, n_sub
 
     readq = SimpleQueue()
     writeq = SimpleQueue()
-    #ep_parent, ep_child = Pipe()
-
 
     paired = True if len(input_files) > 1 else False
 

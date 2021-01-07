@@ -185,23 +185,7 @@ class SliceFilter:
 
     @property
     def fragments(self):
-        df = (
-            self.slices.sort_values(["parent_read", "chrom", "start"])
-            .groupby("parent_read", as_index=False)
-            .agg(
-                {
-                    "slice": "nunique",
-                    "pe": "first",
-                    "mapped": "sum",
-                    "multimapped": "sum",
-                    "exclusion": "nunique",
-                    "exclusion_count": "sum",
-                    "restriction_fragment": "nunique",
-                    "blacklist": "sum",
-                    "coordinates": "|".join,
-                }
-            )
-        )
+        raise NotImplementedError("Override this property")
 
     @property
     def reporters(self):
@@ -215,6 +199,7 @@ class SliceFilter:
                 print(f"Filtering: {filt}")
                 getattr(self, filt)()  # Gets and calls the selected method
                 print(f"Number of slices: {self.slices.shape[0]}")
+                print(f'Number of reads: {self.slices["parent_read"].nunique()}')
 
                 if output_slices == "filter":
                     self.slices.to_csv(os.path.join(output_location, f"{filt}.tsv.gz"))
@@ -256,17 +241,12 @@ class SliceFilter:
         Returns:
          CCSliceFilter
         """
-        # TODO: Modify this function to speed it up (remove groupby and replace with ['parent_read].duplicated())
 
         fragments = self.fragments
         fragments_multislice = fragments.query("unique_slices > 1")
         self.slices = self.slices[
             self.slices["parent_read"].isin(fragments_multislice["parent_read"])
         ]
-
-        # TODO: Fix this
-        #self.slices = self.slices.loc[self.slices['parent_read'].duplicated()]
-
 
     def remove_duplicate_re_frags(self):
         """Prevent the same restriction fragment being counted more than once (Uncommon).

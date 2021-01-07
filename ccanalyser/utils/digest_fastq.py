@@ -133,7 +133,7 @@ class DigestionStatistics():
         df['read_type'] = self.read_type
         df['read_number'] = self.read_number
         df['stage'] = 'digestion'
-        return df[['sample', 'read_type', 'read_number', 'stat_type', 'stat']]
+        return df[['sample','stage', 'read_type', 'read_number', 'stat_type', 'stat']]
     
     def _get_read_summary_df(self):
         df = pd.DataFrame()
@@ -143,7 +143,7 @@ class DigestionStatistics():
         df['read_type'] = self.read_type
         df['read_number'] = self.read_number
         df['stage'] = 'digestion'
-        return df[['sample', 'read_type', 'read_number', 'stat_type', 'stat']]
+        return df[['sample', 'stage','read_type', 'read_number', 'stat_type', 'stat']]
     
     def __add__(self, other):       
         self.unfiltered_histogram = pd.concat([self.unfiltered_histogram, other.unfiltered_histogram]).reset_index(drop=True)
@@ -317,7 +317,7 @@ def main(
 
     if subcommand == "flashed":  # Checks the subsubcommand to see in which mode to run
 
-        fq_reader = FastqReaderProcess(
+        reader = FastqReaderProcess(
             input_files=input_fastq, outq=inputq, n_subprocesses=n_digestion_processes, read_buffer=buffer,
         )
 
@@ -336,7 +336,7 @@ def main(
 
     elif subcommand == "pe":
 
-        fq_reader = FastqReaderProcess(
+        reader = FastqReaderProcess(
             input_files=input_fastq, outq=inputq, n_subprocesses=n_digestion_processes, read_buffer=buffer
         )
 
@@ -354,17 +354,19 @@ def main(
         ]
 
     # Writer process is common to both
-    fq_writer = FastqWriterProcess(
+    writer = FastqWriterProcess(
         inq=writeq, output=output_file, n_subprocesses=n_digestion_processes, compression_level=compression_level
     )
 
     # Start all processes
-    processes = [fq_writer, fq_reader, *digestion_processes]
+    processes = [writer, reader, *digestion_processes]
 
     for proc in processes:
         proc.start()
 
-    fq_writer.join()
+
+    reader.join()
+    writer.join()
     
     # Collate stats
     print('')
@@ -387,10 +389,10 @@ def main(
         digestion_stats = stats[0]
 
 
-    digestion_stats.unfiltered_histogram.to_csv(f'{stats_prefix}.unfiltered.histogram.csv')
-    digestion_stats.filtered_histogram.to_csv(f'{stats_prefix}.filtered.histogram.csv')
-    digestion_stats.slice_summary.to_csv(f'{stats_prefix}.slice.summary.csv')
-    digestion_stats.read_summary.to_csv(f'{stats_prefix}.read.summary.csv')
+    digestion_stats.unfiltered_histogram.to_csv(f'{stats_prefix}.digestion.unfiltered.histogram.csv')
+    digestion_stats.filtered_histogram.to_csv(f'{stats_prefix}.digestion.filtered.histogram.csv')
+    digestion_stats.slice_summary.to_csv(f'{stats_prefix}.digestion.slice.summary.csv')
+    digestion_stats.read_summary.to_csv(f'{stats_prefix}.digestion.read.summary.csv')
 
     print(digestion_stats.read_summary)
 

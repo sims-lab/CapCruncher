@@ -80,10 +80,6 @@ class FastqReaderProcess(Process):
             print(traceback.format_exc())
             self.outq.put('END')
 
-            
-
-
-
 
 class FastqReadFormatterProcess(Process):
     def __init__(self,

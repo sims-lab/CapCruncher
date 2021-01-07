@@ -162,7 +162,7 @@ def split_fastq(infiles, outfile):
 @collate(
     'fastq/split/*.fastq.gz',
     regex(r"fastq/split/(.*)_part(\d+)_[12].fastq.gz"),
-    r"fastq/deduplicated/deduplicated_ids/\1_\2.pkl",
+    r"fastq/deduplicated/deduplicated_ids/\1_\2.json.gz",
 )
 def find_duplicate_reads(infiles, outfile):
 
@@ -185,8 +185,8 @@ def find_duplicate_reads(infiles, outfile):
     )
 
 @collate(find_duplicate_reads,
-         regex(r'fastq/deduplicated/deduplicated_ids/(.*)_\d*.pkl'),
-         r'fastq/deduplicated/deduplicated_ids/\1.pkl')
+         regex(r'fastq/deduplicated/deduplicated_ids/(.*)_\d*.json.gz'),
+         r'fastq/deduplicated/deduplicated_ids/\1.json.gz')
 def merge_read_ids(infiles, outfile):
     infiles = ' '.join(infiles)
     statement = """ccanalyser utils deduplicate_fastq merge_ids
@@ -201,7 +201,7 @@ def merge_read_ids(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-@follows(find_duplicate_reads, merge_read_ids)
+@follows(find_duplicate_reads, merge_read_ids, mkdir('run_statistics/deduplication'))
 @collate(
     'fastq/split/*.fastq.gz',
     regex(r"fastq/split/(.*\d)_[12].fastq.gz"),
@@ -215,12 +215,12 @@ def remove_duplicate_reads(infiles, outfile):
 
     fq_files, dd_ids = zip(*infiles)
     fq1, fq2 = fq_files
+    fn = os.path.basename(fq1).replace('_1.fastq.gz', '')
 
     # Issue adding the correct merged id file so will select the correct one here
     fq_original_prefix = outfile.split('/')[-1].split('_part')[0]
-    dd_ids = [ids for ids in dd_ids if f'{fq_original_prefix}.pkl' in ids][0]
+    dd_ids = [ids for ids in dd_ids if f'{fq_original_prefix}.json.gz' in ids][0]
     out1, out2 = outfile, outfile.replace("_1.fastq.gz", "_2.fastq.gz")
-    stats_prefix = outfile.replace('_1.fastq.gz', '')
 
 
     statement = """ccanalyser utils deduplicate_fastq remove_duplicates
@@ -228,7 +228,7 @@ def remove_duplicate_reads(infiles, outfile):
                             -d %(dd_ids)s
                             -o %(out1)s %(out2)s
                             -c %(pipeline_advanced_compression)s
-                            --stats_prefix %(stats_prefix)s
+                            --stats_prefix run_statistics/deduplication/%(fn)s
                             """
 
     P.run(
@@ -239,7 +239,7 @@ def remove_duplicate_reads(infiles, outfile):
     )
 
 
-@follows(mkdir("fastq/trimmed"), remove_duplicate_reads)
+@follows(mkdir("fastq/trimmed"), remove_duplicate_reads, mkdir('run_statistics/trimming/'))
 @collate(
     r"fastq/deduplicated/*.fastq.gz",
     regex(r"fastq/deduplicated/(.*)_[12].fastq.gz"),
@@ -256,7 +256,9 @@ def trim_reads(infiles, outfile):
                    --paired %(trim_options)s
                    -o %(outdir)s
                    %(fastq1)s
-                   %(fastq2)s"""
+                   %(fastq2)s
+                   && mv %(fastq1)s__trimming_report.txt run_statistics/trimming
+                   && mv %(fastq2)s__trimming_report.txt run_statistics/trimming"""
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -289,7 +291,7 @@ def combine_reads(infiles, outfile):
     )
 
 
-@follows(mkdir("fastq/digested"), combine_reads)
+@follows(mkdir("fastq/digested"), combine_reads, mkdir('run_statistics/digestion'))
 @transform(
     'fastq/flashed/*.fastq.gz',
     regex(r"fastq/flashed/(.*).extendedFrags.fastq.gz"),
@@ -297,6 +299,8 @@ def combine_reads(infiles, outfile):
 )
 def digest_flashed_reads(infile, outfile):
     """In silico restriction enzyme digest of combined (flashed) read pairs"""
+
+    fn = os.path.basename(infile).replace('.extendedFrags.fastq.gz', '')
 
     statement = """ccanalyser utils digest_fastq
                    flashed
@@ -306,7 +310,9 @@ def digest_flashed_reads(infile, outfile):
                    -m 18
                    -c %(pipeline_advanced_compression)s
                    -p 1
-                    %(infile)s"""
+                   --stats_prefix run_statistics/digestion/%(fn)s
+                    %(infile)s
+                    """
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -315,7 +321,7 @@ def digest_flashed_reads(infile, outfile):
     )
 
 
-@follows(combine_reads)
+@follows(combine_reads, mkdir('run_statistics/digestion'))
 @collate(
     'fastq/flashed/*.fastq.gz',
     regex(r"fastq/flashed/(.*).notCombined_[12].fastq.gz"),
@@ -325,6 +331,7 @@ def digest_pe_reads(infiles, outfile):
     """In silico restriction enzyme digest of non-combined (non-flashed) read pairs"""
 
     fq1, fq2 = infiles
+    fn = os.path.basename(fq1).replace('.notCombined_1.fastq.gz', '')
 
     statement = """ccanalyser utils digest_fastq
                    pe
@@ -336,6 +343,7 @@ def digest_pe_reads(infiles, outfile):
                    -p 1
                    %(fq1)s
                    %(fq2)s
+                   --stats_prefix run_statistics/digestion/
                    """
 
     P.run(
@@ -407,11 +415,11 @@ def index_bam(infile, outfile):
     )
 
 
-@follows(mkdir("aligned/mapping_statistics"), index_bam)
+@follows(mkdir("run_statistics/mapping_statistics"), index_bam)
 @transform(
     merge_bam_files,
     regex(r"aligned/(.*).bam"),
-    r"aligned/mapping_statistics/\1.picard.metrics",
+    r"run_statistics/mapping_statistics/\1.picard.metrics",
 )
 def mapping_qc(infile, outfile):
     """Uses picard CollectAlignmentSummaryMetrics to get mapping information."""

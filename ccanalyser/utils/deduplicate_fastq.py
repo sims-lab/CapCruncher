@@ -4,7 +4,7 @@
 Created on Fri Oct  4 13:47:20 2019
 @author: asmith
 """
-import pickle
+import ujson
 import sys
 from multiprocessing import Process, Queue, SimpleQueue
 from typing import Union
@@ -13,10 +13,12 @@ from collections import Counter
 import mmh3
 import re
 from ccanalyser.utils.io import FastqReaderProcess, FastqWriterProcess
+from xopen import xopen
+import os
 
 def open_logfile(fn):
     if not isinstance(fn, type(sys.stdout)):
-        return open(fn, "w")
+        return xopen(fn, "w")
     else:
         return fn
 
@@ -74,8 +76,8 @@ class ReadDeduplicationFinderProcess(Process):
 
     def _save_dict(self, d):
         if self.save_hashed_dict_path:
-            with open(self.save_hashed_dict_path, "wb") as w:
-                pickle.dump(d, w)
+            with xopen(self.save_hashed_dict_path, "w") as w:
+                ujson.dump(d, w)
 
     def run(self):
         hash_seed = self.hash_seed
@@ -191,28 +193,18 @@ def main(
 
         dicts = []
         for dd_id in input_files:
-            with open(dd_id, "rb") as r:
-                dicts.append(pickle.load(r))
+            with xopen(dd_id, "r") as r:
+                dicts.append(ujson.load(r))
 
         dedup_dict = merge_dictionaries(dicts)  # {SEQUENCE_HASH: READ_NAME_HASH}
 
-        with open(output_files, 'wb') as w:
-            pickle.dump(dedup_dict, w)
+        with xopen(output_files, 'w') as w:
+            ujson.dump(dedup_dict, w)
         
 
     elif mode == "remove_duplicates":
-
-        dicts = []
-        for dd_id in deduplicated_ids:
-            with open(dd_id, "rb") as r:
-                dicts.append(pickle.load(r))
-
-        dedup_dict = merge_dictionaries(dicts)  # {SEQUENCE_HASH: READ_NAME_HASH}
-        deduplicated_ids_set = set(
-            dedup_dict.values()
-        )  # {READ_NAME_HASH_1, READ_NAME_HASH_2}
-
-
+        
+        
         reader = FastqReaderProcess(
             input_files=input_files,
             outq=inputq,
@@ -220,29 +212,42 @@ def main(
             n_subprocesses=n_cores,
         )
 
+        writer = FastqWriterProcess(
+            inq=writeq,
+            output=output_files,
+            compression_level=compression_level,
+        )
+        
+        reader.start()
+        writer.start()
+
+        
+        dicts = []
+        for dd_id in deduplicated_ids:
+            with xopen(dd_id, "r") as r:
+                dicts.append(ujson.load(r))
+
+        dedup_dict = merge_dictionaries(dicts)  # {SEQUENCE_HASH: READ_NAME_HASH}
+        del dicts
+        
+        deduplicated_ids_set = set(
+            dedup_dict.values()
+        )  # {READ_NAME_HASH_1, READ_NAME_HASH_2}
+        del dedup_dict
+
+        
         deduplicator = [
             ReadDuplicateRemovalProcess(
                 inq=inputq, outq=writeq, deduplicated_ids=deduplicated_ids_set, statq=statq
             )
             for _ in range(n_cores)
         ]
-
-        writer = FastqWriterProcess(
-            inq=writeq,
-            output=output_files,
-            compression_level=compression_level,
-        )
-
-        processes = [reader, *deduplicator, writer]
-
-        # Remove unwanted variables to save memory
-        del dicts
-        del dedup_dict
         del deduplicated_ids_set
-        
-        # Run deduplication
-        for proc in processes:
-            proc.start()
+
+        for dedup in deduplicator:
+            dedup.start()
+
+        processes = [writer, reader, *deduplicator]
 
         for proc in processes:
             proc.join()
@@ -256,7 +261,9 @@ def main(
             stats_aggregator.update(stats)
             stats = statq.get() 
         
-        sample_name = re.match(r'.*/(.*)(_part\d+_)[12]?.fastq.gz', input_files[0]).group(1)
+        file_name = re.match(r'.*/(.*)(_part\d+_)[12]?.fastq.gz', input_files[0])
+        sample_name = file_name.group(1)
+        #partiton_name = f'{file_name.group(1)}{file_name.group(2)}'
         deduplication_stats = DeduplicationStatistics(sample=sample_name, **stats_aggregator)
         print(deduplication_stats.df)
-        deduplication_stats.df.to_csv(f'{stats_prefix}.csv')
+        deduplication_stats.df.to_csv(os.path.join(stats_prefix, f'.deduplication.csv'))
