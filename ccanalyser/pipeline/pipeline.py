@@ -33,6 +33,7 @@ import itertools
 import os
 import re
 import sys
+from cgatcore.pipeline.parameters import PARAMS
 
 import matplotlib.colors
 import seaborn as sns
@@ -53,7 +54,7 @@ params = "config.yml"
 P.get_parameters(params)
 
 # Sort pipeline global params
-P.PARAMS["cluster_queue_manager"] = P.PARAMS["pipeline_cluster_queue_manager"]
+P.PARAMS["cluster_queue_manager"] = P.PARAMS.get("pipeline_cluster_queue_manager")
 P.PARAMS["conda_env"] = P.PARAMS.get(
     "conda_env", os.path.basename(os.environ["CONDA_PREFIX"])
 )
@@ -219,6 +220,7 @@ def remove_duplicate_reads(infiles, outfile):
     fq_original_prefix = outfile.split('/')[-1].split('_part')[0]
     dd_ids = [ids for ids in dd_ids if f'{fq_original_prefix}.pkl' in ids][0]
     out1, out2 = outfile, outfile.replace("_1.fastq.gz", "_2.fastq.gz")
+    stats_prefix = outfile.replace('_1.fastq.gz', '')
 
 
     statement = """ccanalyser utils deduplicate_fastq remove_duplicates
@@ -226,6 +228,7 @@ def remove_duplicate_reads(infiles, outfile):
                             -d %(dd_ids)s
                             -o %(out1)s %(out2)s
                             -c %(pipeline_advanced_compression)s
+                            --stats_prefix %(stats_prefix)s
                             """
 
     P.run(
@@ -247,6 +250,7 @@ def trim_reads(infiles, outfile):
 
     fastq1, fastq2 = infiles
     outdir = os.path.dirname(outfile)
+    trim_options = P.PARAMS['trim_options'] if not is_none(P.PARAMS['trim_options']) else ''
     statement = """trim_galore
                    --cores %(pipeline_n_cores)s
                    --paired %(trim_options)s
@@ -297,12 +301,12 @@ def digest_flashed_reads(infile, outfile):
     statement = """ccanalyser utils digest_fastq
                    flashed
                    -o %(outfile)s
-                   --stats_file %(outfile)s.stats
+                   --stats_prefix %(outfile)s.stats
                    -r %(analysis_restriction_enzyme)s
                    -m 18
                    -c %(pipeline_advanced_compression)s
                    -p 1
-                   -i %(infile)s"""
+                    %(infile)s"""
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -323,15 +327,15 @@ def digest_pe_reads(infiles, outfile):
     fq1, fq2 = infiles
 
     statement = """ccanalyser utils digest_fastq
-                   unflashed
-                   --stats_file %(outfile)s.stats
+                   pe
+                   --stats_prefix %(outfile)s.stats
                    -r %(analysis_restriction_enzyme)s
                    -o %(outfile)s
                    -c %(pipeline_advanced_compression)s
                    -m 18
                    -p 1
-                   -1 %(fq1)s
-                   -2 %(fq2)s
+                   %(fq1)s
+                   %(fq2)s
                    """
 
     P.run(
@@ -526,7 +530,7 @@ def build_exclusion_bed(infile, outfile):
             },
             {
                 "name": "blacklist",
-                "fn": P.PARAMS["analysis_blacklist"],
+                "fn": P.PARAMS.get("analysis_blacklist"),
                 "action": "count",
                 "overlap_fraction": 1e-9,
             },

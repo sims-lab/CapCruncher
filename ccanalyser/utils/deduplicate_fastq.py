@@ -11,6 +11,7 @@ from typing import Union
 import pandas as pd
 from collections import Counter
 import mmh3
+import re
 from ccanalyser.utils.io import FastqReaderProcess, FastqWriterProcess
 
 def open_logfile(fn):
@@ -51,10 +52,11 @@ class DeduplicationStatistics():
         df['stat_type'] = ['reads_total', 'reads_unique', 'reads_removed']
         df['read_type'] = self.read_type
         df['read_number'] = 1
+        df['stage'] = 'deduplication'
         df['sample'] = self.sample
         return df
 
-class ReadDeduplicationProcess(Process):
+class ReadDeduplicationFinderProcess(Process):
     def __init__(
         self,
         inq: Queue,
@@ -68,7 +70,7 @@ class ReadDeduplicationProcess(Process):
         self.hash_seed = hash_seed
         self.save_hashed_dict_path = save_hashed_dict_path
 
-        super(ReadDeduplicationProcess, self).__init__()
+        super(ReadDeduplicationFinderProcess, self).__init__()
 
     def _save_dict(self, d):
         if self.save_hashed_dict_path:
@@ -129,11 +131,9 @@ class ReadDuplicateRemovalProcess(Process):
         while not reads == "END":
             for read_glob in reads:
                 hash_id = mmh3.hash64(
-                    "".join([r.name for r in read_glob]), seed=hash_seed
-                )[0]
+                    "".join([r.name for r in read_glob]), seed=hash_seed)[0]
 
                 if hash_id in deduplicated_ids:
-                    print(hash_id)
                     reads_unique.append(read_glob)
 
             self.outq.put(reads_unique)
@@ -155,9 +155,10 @@ def main(
     input_files: list,
     output_files: list = None,
     deduplicated_ids: Union[str, list] = None,
-    read_buffer=10000,
+    read_buffer=100000,
     compression_level=5,
     n_cores=1,
+    stats_prefix: str = None,
 ):
 
     # Set up multiprocessing variables
@@ -173,7 +174,7 @@ def main(
             read_buffer=read_buffer,
         )
 
-        deduplicator = ReadDeduplicationProcess(
+        deduplicator = ReadDeduplicationFinderProcess(
             inq=inputq, outq=writeq, save_hashed_dict_path=deduplicated_ids
         )
 
@@ -211,6 +212,7 @@ def main(
             dedup_dict.values()
         )  # {READ_NAME_HASH_1, READ_NAME_HASH_2}
 
+
         reader = FastqReaderProcess(
             input_files=input_files,
             outq=inputq,
@@ -232,7 +234,13 @@ def main(
         )
 
         processes = [reader, *deduplicator, writer]
+
+        # Remove unwanted variables to save memory
+        del dicts
+        del dedup_dict
+        del deduplicated_ids_set
         
+        # Run deduplication
         for proc in processes:
             proc.start()
 
@@ -242,10 +250,13 @@ def main(
         
         # Handle statistics
         stats_aggregator = Counter()
-        for i in range(n_cores):
-            stats_aggregator.update(statq.get())
+        stats = statq.get()
+
+        while not stats == 'END':
+            stats_aggregator.update(stats)
+            stats = statq.get() 
         
-        stats_file_prefix = input_files[0].split('.fastq')[0].rstrip('_12')
-        deduplication_stats = DeduplicationStatistics(sample=stats_file_prefix, **stats_aggregator)
+        sample_name = re.match(r'.*/(.*)(_part\d+_)[12]?.fastq.gz', input_files[0]).group(1)
+        deduplication_stats = DeduplicationStatistics(sample=sample_name, **stats_aggregator)
         print(deduplication_stats.df)
-        deduplication_stats.df.to_csv(f'{stats_file_prefix}.csv')
+        deduplication_stats.df.to_csv(f'{stats_prefix}.csv')

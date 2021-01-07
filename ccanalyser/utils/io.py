@@ -1,12 +1,15 @@
+from multiprocessing.queues import SimpleQueue
 import pathlib
-from multiprocessing import Manager, Process, Queue
+from multiprocessing import Manager, Process, Queue, Pipe
 from typing import Union
+import traceback
 
 import numpy as np
 import pandas as pd
 from pysam import FastxFile
 from xopen import xopen
 
+#TODO: Implement error queues/pipes for handling exceptions
 
 class FastqReaderProcess(Process):
     def __init__(self,
@@ -31,7 +34,8 @@ class FastqReaderProcess(Process):
         self.outq = outq
         self.statq = statq
         self.n_subprocesses = n_subprocesses
-        
+
+       
         # Reader variables
         self.read_buffer = read_buffer
         self.read_counter = read_counter
@@ -49,27 +53,134 @@ class FastqReaderProcess(Process):
 
     def run(self):
 
-        buffer = []
-        for read_counter, read in enumerate(zip(*self.input_files_pysam)):
+        try:
+            buffer = []
+            for read_counter, read in enumerate(zip(*self.input_files_pysam)):
 
-            buffer.append(read)
+                buffer.append(read)
 
-            if read_counter % self.read_buffer == 0 and not read_counter == 0:
-                self.outq.put(buffer)
-                buffer = []
-                print(f'Read {read_counter} reads')
+                if read_counter % self.read_buffer == 0 and not read_counter == 0:
+                    self.outq.put(buffer)
+                    buffer = []
+                    print(f'Read {read_counter} reads')
+            
+            self.outq.put(buffer)
+            print(f'Number of reads processed: {read_counter + 1}')
+
+            for i in range(self.n_subprocesses):
+                self.outq.put('END')
+
+            # Deal with number of reads that have been read
+            if self.read_counter:
+                self.read_counter.value = read_counter
+            elif self.statq:
+                self.statq.put({'reads_total': read_counter})
         
-        self.outq.put(buffer)
-        print(f'Number of reads processed: {read_counter + 1}')
-
-        for i in range(self.n_subprocesses):
+        except Exception as e:
+            print(traceback.format_exc())
             self.outq.put('END')
 
-        # Deal with number of reads that have been read
-        if self.read_counter:
-            self.read_counter.value = read_counter
-        elif self.statq:
-            self.statq.put({'reads_total': read_counter})
+            
+
+
+
+
+class FastqReadFormatterProcess(Process):
+    def __init__(self,
+                 inq: SimpleQueue,
+                 outq: SimpleQueue,
+                 formatting: list = None) -> None:
+        
+        self.inq = inq
+        self.outq = outq
+        self.formatting = [self._format_as_str, ] if not formatting else formatting
+
+        super(FastqReadFormatterProcess, self).__init__()
+
+    def _format_as_str(self, reads):
+
+        # [(r1, r2), (r1, r2)] -> [r1 combined string, r2 combined string]
+        return ['\n'.join([str(rn) for rn in r]) for r in zip(*reads)]
+
+    
+    def run(self):
+
+        reads = self.inq.get()
+        
+        while not reads == "END":
+            for formatting_to_apply in self.formatting:
+                reads = formatting_to_apply(reads)
+
+            self.outq.put(reads)
+            reads = self.inq.get()
+        
+        
+        self.outq.put('END')
+
+
+class FastqWriterSplitterProcess(Process):
+    def __init__(self,
+                 inq: Queue,
+                 output_prefix: Union[str, list],
+                 paired_output: bool = False,
+                 compression_level: int = 3,
+                 compression_threads: int = 8,
+                 n_subprocesses: int = 1,
+                 n_workers_terminated: int = 0,
+                 n_files_written: int = 0,
+                 ):
+        
+
+        self.inq = inq
+        self.output_prefix = output_prefix
+        self.paired_output = paired_output
+
+        self.compression_level = compression_level
+        self.compression_threads = compression_threads
+
+        self.n_subprocesses = n_subprocesses
+        self.n_workers_terminated = n_workers_terminated
+        self.n_files_written = n_files_written
+        
+        super(FastqWriterSplitterProcess, self).__init__()
+    
+    def _get_file_handles(self):
+
+        if not self.paired_output:
+            fnames = [f'{self.output_prefix}_part{self.n_files_written}.fastq.gz', ]
+        else:
+            fnames = [f'{self.output_prefix}_part{self.n_files_written}_{i+1}.fastq.gz'
+                      for i in range(2)]
+
+        return [xopen(fn, 'w', compresslevel=self.compression_level, threads=2) 
+                for fn in fnames]
+    
+    def run(self):
+
+
+        reads = self.inq.get()
+        is_string_input = True if isinstance(reads[0], str) else False
+
+        while self.n_workers_terminated < self.n_subprocesses:
+
+            if reads == 'END':
+                self.n_workers_terminated += 1
+                continue
+            
+            elif is_string_input:
+                for fh, read in zip(self._get_file_handles(), reads):
+                    fh.write(read)
+                    fh.close()
+            
+            else:
+                reads_str = ['\n'.join([str(r) for r in read_glob]) for read_glob in zip(*reads)]
+                
+                for fh, read_set in zip(self._get_file_handles(), reads_str):
+                    fh.write((read_set + '\n'))
+                    fh.close()
+            
+            reads = self.inq.get()
+            self.n_files_written += 1
 
 class FastqWriterProcess(Process):
     def __init__(self,
@@ -106,117 +217,38 @@ class FastqWriterProcess(Process):
         reads = self.inq.get()
         is_string_input = True if isinstance(reads, str) else False
 
+        counter = 0
         while self.n_workers_terminated < self.n_subprocesses:
-            
 
             if reads == 'END':
                 self.n_workers_terminated += 1
                 continue
             
             elif is_string_input:
-                self.file_handles[0].write(reads)
+                for fh in self.file_handles:
+                    fh.write(reads)
             
             else:
                 reads_str = ['\n'.join([str(r) for r in read_glob]) for read_glob in zip(*reads)]
                 
                 for fh, read_set in zip(self.file_handles, reads_str):
                     fh.write((read_set + '\n'))
-            
+
             reads = self.inq.get()
+
         
         for fh in self.file_handles:
             fh.close()
-                
-
-
-
-
-class FastqWriterSplitterProcess(Process):
-    def __init__(self,
-                 inq: Queue,
-                 output_prefix: Union[str, list],
-                 compression_level: int = 3,
-                 compression_threads: int = 8,
-                 n_subprocesses: int = 1,
-                 paired_output=False,
-                 ):
-        
-
-        self.inq = inq
-        self.output_prefix = output_prefix
-        self.paired_output = paired_output
-
-        self.compression_level = compression_level
-        self.compression_threads = compression_threads
-
-        self.n_subprocesses = n_subprocesses
-        self.n_workers_terminated = 0
-        
-        super(FastqWriterSplitterProcess, self).__init__()
-
-    def run(self):
-
-        n_chunk = 0
-        while self.n_workers_terminated < self.n_subprocesses:
            
-            reads = self.inq.get()
+
+
+
+             
+
+
+
+
            
-            if reads == 'END':
-                self.n_workers_terminated += 1
-                continue
-            else:
-                if self.paired_output:
-                    r1, r2 = zip(*((str(r1), str(r2)) for r1, r2 in reads))
-                    fn1 = f'{self.output_prefix}_part{n_chunk}_1.fastq.gz'
-                    fn2 = f'{self.output_prefix}_part{n_chunk}_2.fastq.gz'
-
-                    with xopen(fn1, 'w', compresslevel=self.compression_level, threads=self.compression_threads // 2) as w1:
-                        with xopen(fn2, 'w', compresslevel=self.compression_level, threads=self.compression_threads // 2) as w2:
-                            w1.write(('\n'.join(r1) + '\n'))
-                            w2.write(('\n'.join(r2) + '\n'))
-                    
-                else:
-                    r = [str(r) for r in reads]
-                    fn = f'{self.output_prefix}_part{n_chunk}.fastq.gz'
-                    with xopen(fn, 'w', compresslevel=self.compression_level, threads=1) as w:
-                        w.write(('\n'.join(r) + '\n'))
-        
-            n_chunk += 1
-            
-
-
-
-
-
-
-
-# class CollateDigestionStatsProcess(Process):
-#     def __init__(self,
-#                  inq: Queue,
-#                  n_subprocesses: int = 1,
-#                  digestion_mode=None) -> None:
-        
-#         super(ReadDigestionProcess, self).__init__(self)
-
-#         self.inq = inq
-#         self.n_workers_terminated = 0
-#         self.n_subprocesses = n_subprocesses
-#         self.digestion_mode = digestion_mode
-
-#     def run(self):
-
-#         stats = []
-#         counts = self.inq.get()
-
-
-
-#         while self.n_workers_terminated < self.n_subprocesses:
-
-     
-#             if counts == "END":
-#                 self.n_workers_terminated += 1
-#                 continue
-            
                 
             
         

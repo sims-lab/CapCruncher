@@ -8,24 +8,31 @@ Created on Wed Jan  8 15:45:09 2020
 Script splits a fastq into specified chunks
 """
 
-from multiprocessing import SimpleQueue
-from ccanalyser.utils.io import FastqReaderProcess, FastqWriterSplitterProcess
+from multiprocessing import Manager, SimpleQueue, Pipe
+from ccanalyser.utils.io import FastqReaderProcess, FastqWriterSplitterProcess, FastqReadFormatterProcess
 
-def main(input_files, output_prefix, compression_level=5, n_reads=1000000):
+def main(input_files, output_prefix, compression_level=5, n_reads=1000000, n_subprocesses=1):
 
-    queue = SimpleQueue()
+    readq = SimpleQueue()
+    writeq = SimpleQueue()
+    #ep_parent, ep_child = Pipe()
+
+
     paired = True if len(input_files) > 1 else False
 
     reader = FastqReaderProcess(
-        input_files=input_files, outq=queue, read_buffer=n_reads
+        input_files=input_files, outq=readq, read_buffer=n_reads, n_subprocesses=n_subprocesses,
     )
 
+    formatter = [FastqReadFormatterProcess(inq=readq, outq=writeq) 
+                 for _ in range(n_subprocesses)]
+    
+    
     writer = FastqWriterSplitterProcess(
-        inq=queue, output_prefix=output_prefix, paired_output=paired,
-    )
+        inq=writeq, output_prefix=output_prefix, paired_output=paired, n_subprocesses=n_subprocesses)
 
     
-    processes = [reader, writer]
+    processes = [writer, reader, *formatter ]
 
     for proc in processes:
         proc.start()

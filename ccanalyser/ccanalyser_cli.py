@@ -200,9 +200,11 @@ def add_deduplicate_fastq_args(subcommand):
         default=100000,
         type=int,
     )
-
-
-
+    parser_rd.add_argument(
+        "--stats_prefix",
+        help="prefix path for stats",
+        default='',
+        )
 
 def add_digest_fastq_args(subcommand):
 
@@ -238,7 +240,7 @@ def add_digest_fastq_args(subcommand):
     parent_parser.add_argument(
         "--buffer",
         help="Number of reads to process before writing output",
-        default=10000,
+        default=100000,
         type=int,
     )
 
@@ -249,6 +251,14 @@ def add_digest_fastq_args(subcommand):
         default=1,
         type=int,
     )
+
+    parent_parser.add_argument(
+        "--stats_prefix",
+        help="Prefix for stats file",
+        default='',
+        type=str,
+    )
+
 
     parser = subcommand.add_parser(
         "digest_fastq", help="Performs in silico digestion of fastq files",
