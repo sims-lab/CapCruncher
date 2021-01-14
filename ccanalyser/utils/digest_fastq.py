@@ -74,20 +74,20 @@ class DigestionStatistics():
                  sample: str,
                  read_type='pe',
                  read_number=1,  
-                 slices_total: Counter = None,
-                 slices_valid: Counter = None):
+                 slices_unfiltered: Counter = None,
+                 slices_filtered: Counter = None):
 
         self.sample = sample
         self.read_type = read_type
         self.read_number = read_number
-        self.slices_total = slices_total
-        self.slices_valid = slices_valid
+        self.slices_unfiltered = slices_unfiltered
+        self.slices_filtered = slices_filtered
 
 
-        self.n_total_slices = self._get_n_total_slices()
-        self.n_total_reads = self._get_n_total_reads()
-        self.n_valid_slices = self._get_n_valid_slices()
-        self.n_valid_reads = self._get_n_valid_reads()
+        self.n_unfiltered_slices = self._get_n_unfiltered_slices()
+        self.n_unfiltered_reads = self._get_n_unfiltered_reads()
+        self.n_filtered_slices = self._get_n_filtered_slices()
+        self.n_filtered_reads = self._get_n_filtered_reads()
         self.filtered_histogram = self._get_filtered_histogram()
         self.unfiltered_histogram = self._get_unfiltered_histogram()
         self.slice_summary = self._get_slice_summary_df()
@@ -95,22 +95,22 @@ class DigestionStatistics():
 
   
 
-    def _get_n_total_slices(self):
-        return sum(n_slices * count for n_slices, count in self.slices_total.items())
+    def _get_n_unfiltered_slices(self):
+        return sum(n_slices * count for n_slices, count in self.slices_unfiltered.items())
     
-    def _get_n_total_reads(self):
-        return sum(self.slices_total.values())
+    def _get_n_unfiltered_reads(self):
+        return sum(self.slices_unfiltered.values())
     
-    def _get_n_valid_slices(self):
-        return sum(n_slices * count for n_slices, count in self.slices_valid.items())
+    def _get_n_filtered_slices(self):
+        return sum(n_slices * count for n_slices, count in self.slices_filtered.items())
 
-    def _get_n_valid_reads(self):
-        return sum(v for k, v in self.slices_valid.items() if not k == 0)
+    def _get_n_filtered_reads(self):
+        return sum(v for k, v in self.slices_filtered.items() if not k == 0)
     
     def _get_unfiltered_histogram(self):
         df = pd.DataFrame()
-        df['number_of_slices'] = self.slices_total.keys()
-        df['count'] = self.slices_total.values()
+        df['number_of_slices'] = self.slices_unfiltered.keys()
+        df['count'] = self.slices_unfiltered.values()
         df['sample'] = self.sample
         df['read_type'] = self.read_type
         df['read_number'] = self.read_number
@@ -118,8 +118,8 @@ class DigestionStatistics():
     
     def _get_filtered_histogram(self):
         df = pd.DataFrame()
-        df['number_of_slices'] = self.slices_valid.keys()
-        df['count'] = self.slices_valid.values()
+        df['number_of_slices'] = self.slices_filtered.keys()
+        df['count'] = self.slices_filtered.values()
         df['sample'] = self.sample
         df['read_type'] = self.read_type
         df['read_number'] = self.read_number
@@ -127,8 +127,8 @@ class DigestionStatistics():
     
     def _get_slice_summary_df(self):
         df = pd.DataFrame()
-        df['stat_type'] = ['total', 'valid']
-        df['stat'] = [self.n_total_slices, self.n_valid_slices]
+        df['stat_type'] = ['unfiltered', 'filtered']
+        df['stat'] = [self.n_unfiltered_slices, self.n_filtered_slices]
         df['sample'] = self.sample
         df['read_type'] = self.read_type
         df['read_number'] = self.read_number
@@ -137,8 +137,8 @@ class DigestionStatistics():
     
     def _get_read_summary_df(self):
         df = pd.DataFrame()
-        df['stat_type'] = ['total', 'valid']
-        df['stat'] = [self.n_total_reads, self.n_valid_reads]
+        df['stat_type'] = ['unfiltered', 'filtered']
+        df['stat'] = [self.n_unfiltered_reads, self.n_filtered_reads]
         df['sample'] = self.sample
         df['read_type'] = self.read_type
         df['read_number'] = self.read_number
@@ -174,9 +174,9 @@ class DigestedRead:
         self.recognition_re = re.compile(self.recognition_seq)
 
         self.slice_indexes = self.get_recognition_site_indexes()
-        self.slices_total = len(self.slice_indexes) - 1
-        self.slices_valid = 0
-        self.has_slices = self.slices_total > 1 
+        self.slices_unfiltered = len(self.slice_indexes) - 1
+        self.slices_filtered = 0
+        self.has_slices = self.slices_unfiltered > 1 
         self.slices = self._get_slices()
 
     def get_recognition_site_indexes(self):
@@ -205,12 +205,12 @@ class DigestedRead:
                 if ii > 0:
                     slice_start += self.recognition_len
 
-                if self.is_valid_slice(slice_start, slice_end):
+                if self.is_filtered_slice(slice_start, slice_end):
                     slices_list.append(
                         self.prepare_slice(slice_start, slice_end, slice_no)
                     )
 
-                    self.slices_valid += 1
+                    self.slices_filtered += 1
                     slice_no += 1
 
         return slices_list
@@ -225,7 +225,7 @@ class DigestedRead:
             ]
         )
 
-    def is_valid_slice(self, start, end):
+    def is_filtered_slice(self, start, end):
         if (end - start) >= self.min_slice_length:
             return True
     
@@ -257,7 +257,7 @@ class ReadDigestionProcess(Process):
             else:
                 digestion_kwargs["slice_number_offset"] = digested[
                     i - 1
-                ].slices_valid
+                ].slices_filtered
                 digested.append(DigestedRead(read, **digestion_kwargs))
 
         return digested
@@ -273,11 +273,11 @@ class ReadDigestionProcess(Process):
             for read in reads:
                 digested = self._digest_reads(read, **self.digestion_kwargs)
                 digested_str = [str(dr) for dr in digested]
-                digestion_stats = {read_number + 1: {'total': d.slices_total, 'valid': d.slices_valid}
+                digestion_stats = {read_number + 1: {'unfiltered': d.slices_unfiltered, 'filtered': d.slices_filtered}
                                    for read_number, d in enumerate(digested)}
                 buffer_stats.append(digestion_stats)
 
-                if all(digested_str):  # Make sure that all reads have valid slices
+                if all(digested_str):  # Make sure that all reads have filtered slices
                     buffer_reads.append("".join(digested_str))
 
             self.outq.put("".join(buffer_reads))
@@ -377,8 +377,8 @@ def main(
     stats = [DigestionStatistics(sample=sample_name,
                                  read_type=subcommand,
                                  read_number=read_number,
-                                 slices_total=stats['total'],
-                                 slices_valid=stats['valid'])
+                                 slices_unfiltered=stats['unfiltered'],
+                                 slices_filtered=stats['filtered'])
                         for read_number, stats in collated_stats.items()
                         ]
     

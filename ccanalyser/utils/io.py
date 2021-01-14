@@ -77,7 +77,7 @@ class FastqReaderProcess(Process):
                 self.statq.put({'reads_total': read_counter})
         
         except Exception as e:
-            print(traceback.format_exc())
+            traceback.format_exc()
             self.outq.put('END')
 
 
@@ -101,17 +101,24 @@ class FastqReadFormatterProcess(Process):
     
     def run(self):
 
-        reads = self.inq.get()
-        
-        while not reads == "END":
-            for formatting_to_apply in self.formatting:
-                reads = formatting_to_apply(reads)
+        try:
 
-            self.outq.put(reads)
             reads = self.inq.get()
+            
+            while not reads == "END":
+                for formatting_to_apply in self.formatting:
+                    reads = formatting_to_apply(reads)
+
+                self.outq.put(reads)
+                reads = self.inq.get()
+            
+            
+            self.outq.put('END')
         
-        
-        self.outq.put('END')
+        except Exception as e:
+            traceback.format_exc()
+            self.outq.put('END')
+
 
 
 class FastqWriterSplitterProcess(Process):
@@ -153,30 +160,36 @@ class FastqWriterSplitterProcess(Process):
     
     def run(self):
 
+        try:
 
-        reads = self.inq.get()
-        is_string_input = True if isinstance(reads[0], str) else False
 
-        while self.n_workers_terminated < self.n_subprocesses:
-
-            if reads == 'END':
-                self.n_workers_terminated += 1
-                continue
-            
-            elif is_string_input:
-                for fh, read in zip(self._get_file_handles(), reads):
-                    fh.write(read)
-                    fh.close()
-            
-            else:
-                reads_str = ['\n'.join([str(r) for r in read_glob]) for read_glob in zip(*reads)]
-                
-                for fh, read_set in zip(self._get_file_handles(), reads_str):
-                    fh.write((read_set + '\n'))
-                    fh.close()
-            
             reads = self.inq.get()
-            self.n_files_written += 1
+            is_string_input = True if isinstance(reads[0], str) else False
+
+            while self.n_workers_terminated < self.n_subprocesses:
+
+                if reads == 'END':
+                    self.n_workers_terminated += 1
+                    continue
+                
+                elif is_string_input:
+                    for fh, read in zip(self._get_file_handles(), reads):
+                        fh.write(read)
+                        fh.close()
+                
+                else:
+                    reads_str = ['\n'.join([str(r) for r in read_glob]) for read_glob in zip(*reads)]
+                    
+                    for fh, read_set in zip(self._get_file_handles(), reads_str):
+                        fh.write((read_set + '\n'))
+                        fh.close()
+                
+                reads = self.inq.get()
+                self.n_files_written += 1
+        
+        except Exception as e:
+            traceback.format_exc()
+
 
 class FastqWriterProcess(Process):
     def __init__(self,
@@ -209,32 +222,38 @@ class FastqWriterProcess(Process):
 
     def run(self):
 
-
-        reads = self.inq.get()
-        is_string_input = True if isinstance(reads, str) else False
-
-        counter = 0
-        while self.n_workers_terminated < self.n_subprocesses:
-
-            if reads == 'END':
-                self.n_workers_terminated += 1
-                continue
-            
-            elif is_string_input:
-                for fh in self.file_handles:
-                    fh.write(reads)
-            
-            else:
-                reads_str = ['\n'.join([str(r) for r in read_glob]) for read_glob in zip(*reads)]
-                
-                for fh, read_set in zip(self.file_handles, reads_str):
-                    fh.write((read_set + '\n'))
+        try:
 
             reads = self.inq.get()
+            is_string_input = True if isinstance(reads, str) else False
 
-        
-        for fh in self.file_handles:
-            fh.close()
+            counter = 0
+            while self.n_workers_terminated < self.n_subprocesses:
+
+                if reads == 'END':
+                    self.n_workers_terminated += 1
+                    continue
+                
+                elif is_string_input:
+                    for fh in self.file_handles:
+                        fh.write(reads)
+                
+                else:
+                    reads_str = ['\n'.join([str(r) for r in read_glob]) for read_glob in zip(*reads)]
+                    
+                    for fh, read_set in zip(self.file_handles, reads_str):
+                        fh.write((read_set + '\n'))
+
+                reads = self.inq.get()
+
+            
+            for fh in self.file_handles:
+                fh.close()
+            
+        except Exception as e:
+            traceback.format_exc()
+            self.outq.put('END')
+
            
 
 

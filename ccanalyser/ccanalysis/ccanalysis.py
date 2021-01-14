@@ -48,8 +48,8 @@ def parse_alignment(aln):
       -coords e.g. (chr10:1000-2000)
     """
 
-    read_name = aln.query_name
-    parent_read, pe, slice_number, uid = read_name.split("|")
+    slice_name = aln.query_name
+    parent_read, pe, slice_number, uid = slice_name.split("|")
     ref_name = aln.reference_name
     ref_start = aln.reference_start
     ref_end = aln.reference_end
@@ -70,7 +70,7 @@ def parse_alignment(aln):
         else:
             multimapped = 0
     return [
-        read_name,
+        slice_name,
         parent_read,
         pe,
         slice_number,
@@ -93,7 +93,7 @@ def parse_bam(bam):
 
     Returns:
      Dataframe with columns:
-     -'read_name'
+     -'slice_name'
      -'parent_read'
      -'pe'
      -'slice'
@@ -111,7 +111,7 @@ def parse_bam(bam):
             for aln in pysam.AlignmentFile(bam, "rb").fetch(until_eof=True)
         ],
         columns=[
-            "read_name",
+            "slice_name",
             "parent_read",
             "pe",
             "slice",
@@ -124,7 +124,7 @@ def parse_bam(bam):
             "coordinates",
         ],
     )
-    df_bam.set_index(["read_name", "chrom", "start"], inplace=True)
+    df_bam.set_index(["slice_name", "chrom", "start"], inplace=True)
     return df_bam
 
 
@@ -149,23 +149,25 @@ def merge_annotations(df, annotations):
 
     # Update, now using chrom and start to stop issues with multimapping
     df_ann = pd.read_csv(
-        annotations, sep="\t", header=0, index_col=["read_name", "chrom", "start"]
+        annotations, sep="\t", header=0, index_col=["slice_name", "chrom", "start"]
     )
     df_ann = df_ann.drop(columns="end", errors="ignore")
 
     return (
         df.join(df_ann, how="inner")
-        .drop(columns=["read_name.1"], errors="ignore")
+        .drop(columns=["slice_name.1"], errors="ignore")
         .reset_index()
     )
 
 
 class SliceFilter:
-    def __init__(self,
-                 slices: pd.DataFrame,
-                 filter_stages: dict = None,
-                 sample_name: str = '',
-                 read_type: str = ''):
+    def __init__(
+        self,
+        slices: pd.DataFrame,
+        filter_stages: dict = None,
+        sample_name: str = "",
+        read_type: str = "",
+    ):
 
         self.slices = slices.copy()
 
@@ -175,13 +177,35 @@ class SliceFilter:
             raise ValueError("Filter stages not provided")
 
         self.filtered = False
-        self.filter_stats = pd.DataFrame()
+        self._filter_stats = pd.DataFrame()
         self.sample_name = sample_name
         self.read_type = read_type
 
     @property
     def slice_stats(self):
         raise NotImplementedError("Override this method")
+
+    @property
+    def filter_stats(self):
+        return self._filter_stats.transpose()
+
+    @property
+    def read_stats(self):
+        return (
+            self.filter_stats.reset_index()
+            .rename(
+                columns={
+                    "index": "stat_type",
+                    "unique_fragments": "stat",
+                }
+            )[["stat_type", "stat"]]
+            .assign(
+                stage="ccanalysis",
+                read_type=self.read_type,
+                sample=self.sample_name,
+                read_number=0,
+            )
+        )
 
     @property
     def fragments(self):
@@ -207,12 +231,7 @@ class SliceFilter:
             if output_slices == "stage":
                 self.slices.to_csv(os.path.join(output_location, f"{stage}.tsv.gz"))
 
-            try:
-                self.filter_stats[stage] = self.slice_stats  # Store the stats for each stage
-            except Exception as e:
-                print(e)
-            else:
-                self.filter_stats[stage] = 0
+            self._filter_stats[stage] = self.slice_stats
 
     def modify_re_frag(self, frag: str, adjust=1):
         """Increases/Decreases the RE frag number.
@@ -229,6 +248,9 @@ class SliceFilter:
         if frag != ".":
             enzyme, chrom, index = frag.split("_")
             return "_".join([enzyme, chrom, str(int(index) + adjust)])
+
+    def get_raw_slices(self):
+        self.slices = self.slices
 
     def remove_unmapped_slices(self):
         """Removes slices marked as unmapped (Uncommon)
@@ -350,7 +372,7 @@ class CCSliceFilter(SliceFilter):
 
     Slices DataFrame must have the following columns:
 
-    - read_name: Unique aligned read identifier (e.g. XZKG:889:11|flashed|1)
+    - slice_name: Unique aligned read identifier (e.g. XZKG:889:11|flashed|1)
     - parent_read: Identifier shared by slices from same fragment (e.g.XZKG:889:11)
     - pe: Read combined by FLASh or not (i.e. "flashed" or "pe")
     - mapped: Alignment is mapped (e.g. 0/1)
@@ -364,10 +386,13 @@ class CCSliceFilter(SliceFilter):
 
     """
 
-    def __init__(self, slices, filter_stages=None):
+    def __init__(self, slices, filter_stages=None, **sample_kwargs):
 
         if not filter_stages:
             filter_stages = {
+                "pre-filtering": [
+                    "get_raw_slices",
+                ],
                 "mapped": [
                     "remove_unmapped_slices",
                 ],
@@ -390,7 +415,7 @@ class CCSliceFilter(SliceFilter):
                 ],
             }
 
-        super(CCSliceFilter, self).__init__(slices, filter_stages)
+        super(CCSliceFilter, self).__init__(slices, filter_stages, **sample_kwargs)
 
     @property
     def fragments(self):
@@ -465,14 +490,13 @@ class CCSliceFilter(SliceFilter):
         """
 
         slices = self.slices.copy()
-        if slices.empty: # Deal with empty dataframe i.e. no valid slices
+        if slices.empty:  # Deal with empty dataframe i.e. no valid slices
             for col in slices:
-                slices[col] = np.zeros((10, ))
-            
-       
+                slices[col] = np.zeros((10,))
+
         stats_df = slices.agg(
             {
-                "read_name": "nunique",
+                "slice_name": "nunique",
                 "parent_read": "nunique",
                 "mapped": "sum",
                 "multimapped": "sum",
@@ -485,7 +509,7 @@ class CCSliceFilter(SliceFilter):
 
         stats_df = stats_df.rename(
             {
-                "read_name": "unique_slices",
+                "slice_name": "unique_slices",
                 "parent_read": "unique_fragments",
                 "multimapped": "multimapping_slices",
                 "capture": "unique_capture_sites",
@@ -494,7 +518,6 @@ class CCSliceFilter(SliceFilter):
                 "blacklist": "number_of_slices_in_blacklisted_region",
             }
         )
-
 
         return stats_df
 
@@ -574,15 +597,17 @@ class CCSliceFilter(SliceFilter):
         try:
             # Aggregate by capture site for reporting
             interactions_by_capture = pd.DataFrame(
-                cap_and_rep.groupby("capture")["cis/trans"].value_counts()
+                cap_and_rep.groupby("capture")["cis/trans"]
+                .value_counts()
+                .to_frame()
+                .rename(columns={"cis/trans": "count"})
+                .reset_index()
             )
         except Exception as e:
             print(e)
             interactions_by_capture = pd.DataFrame()
 
         return interactions_by_capture
-
-        
 
     def remove_non_reporter_fragments(self):
         """Removes all slices (i.e. the entire fragment) if it has no reporter slices present (Common)
@@ -642,12 +667,15 @@ class CCSliceFilter(SliceFilter):
 
 
 class TriCSliceFilter(CCSliceFilter):
-    def __init__(self, slices, filter_stages=None):
+    def __init__(self, slices, filter_stages=None, **sample_kwargs):
 
         if filter_stages:
             self.filter_stages = filter_stages
         else:
             filter_stages = {
+                "pre-filtering": [
+                    "get_raw_slices",
+                ],
                 "mapped": [
                     "remove_unmapped_slices",
                     "remove_slices_without_re_frag_assigned",
@@ -669,7 +697,7 @@ class TriCSliceFilter(CCSliceFilter):
                 "tric_reporter": ["remove_slices_with_one_reporter"],
             }
 
-        super(TriCSliceFilter, self).__init__(slices, filter_stages)
+        super(TriCSliceFilter, self).__init__(slices, filter_stages, **sample_kwargs)
 
     def remove_slices_with_one_reporter(self):
         fragments_triplets = self.fragments.query("reporter_count > 1")
@@ -679,13 +707,19 @@ class TriCSliceFilter(CCSliceFilter):
 
 
 class TiledCSliceFilter(SliceFilter):
-    def __init__(self, slices, filter_stages=None):
+    def __init__(self, slices, filter_stages=None, **sample_kwargs):
 
         if not filter_stages:
             filter_stages = {
+                "pre-filtering": [
+                    "get_raw_slices",
+                ],
                 "mapped": ["remove_unmapped_slices", "remove_orphan_slices"],
                 "not_blacklisted": ["remove_blacklisted_slices"],
-                "contains_capture": ["remove_non_capture_fragments"],
+                "contains_capture": [
+                    "remove_non_capture_fragments",
+                    "remove_dual_capture_fragments",
+                ],
                 "duplicate_filtered": [
                     "remove_slices_without_re_frag_assigned",
                     "remove_duplicate_re_frags",
@@ -695,7 +729,7 @@ class TiledCSliceFilter(SliceFilter):
                 "has_reporter": ["remove_orphan_slices"],
             }
 
-        super(TiledCSliceFilter, self).__init__(slices, filter_stages)
+        super(TiledCSliceFilter, self).__init__(slices, filter_stages, **sample_kwargs)
 
     @property
     def fragments(self):
@@ -753,7 +787,7 @@ class TiledCSliceFilter(SliceFilter):
         """
         stats_df = self.slices.agg(
             {
-                "read_name": "nunique",
+                "slice_name": "nunique",
                 "parent_read": "nunique",
                 "mapped": "sum",
                 "multimapped": "sum",
@@ -764,7 +798,7 @@ class TiledCSliceFilter(SliceFilter):
 
         stats_df = stats_df.rename(
             {
-                "read_name": "unique_slices",
+                "slice_name": "unique_slices",
                 "parent_read": "unique_fragments",
                 "multimapped": "multimapping_slices",
                 "capture_count": "number_of_capture_slices",
@@ -773,6 +807,47 @@ class TiledCSliceFilter(SliceFilter):
         )
 
         return stats_df
+
+    @property
+    def cis_or_trans_stats(self):
+        interactions_by_capture = dict()
+
+        for capture_site, df_cap in self.slices.query('capture != "."').groupby(
+            "capture"
+        ):
+
+            capture_chrom = df_cap.iloc[0]["chrom"]
+            df_primary_capture = df_cap.groupby(
+                "parent_read"
+            ).first()  # Artifact required as need to call one slice the "capture"
+            df_not_primary_capture = df_cap.loc[
+                ~(df_cap["slice_name"].isin(df_primary_capture["slice_name"]))
+            ]
+            df_outside_capture = self.slices.query('capture == "."').loc[
+                lambda df_rep: df_rep["parent_read"].isin(df_cap["parent_read"])
+            ]
+
+            df_pseudo_reporters = pd.concat(
+                [df_not_primary_capture, df_outside_capture]
+            )
+            n_cis_interactions = df_pseudo_reporters.query(
+                f'chrom == "{capture_chrom}"'
+            ).shape[0]
+            n_trans_interactions = df_pseudo_reporters.shape[0] - n_cis_interactions
+
+            interactions_by_capture[capture_site] = {
+                "cis": n_cis_interactions,
+                "trans": n_trans_interactions,
+            }
+
+        return (
+            pd.DataFrame(interactions_by_capture)
+            .transpose()
+            .reset_index()
+            .rename(columns={"index": "capture"})
+            .melt(id_vars="capture", var_name="cis/trans", value_name="count")
+            .sort_values("capture")
+        )
 
     def remove_slices_outside_capture(self):
         self.slices = self.slices.query('capture != "."')
@@ -783,93 +858,73 @@ class TiledCSliceFilter(SliceFilter):
             self.slices["parent_read"].isin(fragments_with_capture["parent_read"])
         ]
 
+    def remove_dual_capture_fragments(self):
+        multicapture_fragments = (
+            self.slices.query('capture != "."')
+            .groupby("parent_read")["capture"]
+            .nunique()
+            > 1
+        )
+        self.slices = (
+            self.slices.set_index("parent_read")
+            .loc[~multicapture_fragments]
+            .reset_index()
+        )
+
 
 @get_timing(task_name="analysis of bam file")
-def main(input_bam, annotations, output_prefix, stats_output, method="capture"):
-
-    # TODO: Make sure that the dataframe is correct before processing check all the required columns are present. Check that '.' is the default na value for strings
+def main(
+    input_bam,
+    annotations,
+    output_prefix,
+    stats_output,
+    method="capture",
+    sample_name="",
+    read_type="",
+):
 
     # Read bam file and merege annotations
     df_alignment = parse_bam(input_bam)
     df_alignment = merge_annotations(df_alignment, annotations)
 
-    slice_filters_dict = {"capture": CCSliceFilter, "tri": TriCSliceFilter}
+    slice_filters_dict = {
+        "capture": CCSliceFilter,
+        "tri": TriCSliceFilter,
+        "tiled": TiledCSliceFilter,
+    }
 
-    if method == "capture" or method == "tri":
-        # Initialise SliceFilter with default args
-        slice_filter = slice_filters_dict[method](slices=df_alignment)
+    # Initialise SliceFilter with default args
+    print(f"Filtering slices with method: {method}")
+    slice_filter = slice_filters_dict[method](
+        slices=df_alignment, sample_name=sample_name, read_type=read_type
+    )
 
-        # Filter slices using the slice_filter
-        slice_filter.filter_slices()
+    # Filter slices using the slice_filter
+    slice_filter.filter_slices()
 
-        # Save filtering statisics
-        slice_filter.filter_stats.to_csv(f"{stats_output}.slice.stats", sep="\t")
+    # Save filtering statisics
+    slice_filter.filter_stats.to_csv(f"{stats_output}.slice.stats.csv")
+    slice_filter.read_stats.to_csv(f"{stats_output}.read.stats.csv")
 
-        # Save reporter stats
-        slice_filter.cis_or_trans_stats.to_csv(
-            f"{stats_output}.reporter.stats", sep="\t"
-        )
+    # Save reporter stats
+    slice_filter.cis_or_trans_stats.to_csv(f"{stats_output}.reporter.stats.csv")
 
-        # Output fragments
-        slice_filter.fragments.to_csv(
-            f"{output_prefix}.fragments.tsv.gz", sep="\t", index=False
-        )
+    # Output fragments
+    slice_filter.fragments.to_csv(
+        f"{output_prefix}.fragments.tsv.gz", sep="\t", index=False
+    )
 
-        # Output the reporter DataFrame for each capture site
-        for capture_site, df_rep in slice_filter.merged_captures_and_reporters.groupby(
-            "capture"
-        ):
-            df_rep.to_csv(
-                f"{ output_prefix}.{capture_site.strip()}.tsv.gz", sep="\t", index=False
+    # Output slices filtered by capture site
+    for capture_site, df_cap in slice_filter.slices.query('capture != "."').groupby(
+        "capture"
+    ):
+
+        # Extract only fragments that appear in the capture dataframe
+        slices_to_output = slice_filter.slices.loc[
+            lambda df: df["parent_read"].isin(df_cap["parent_read"])
+        ]
+        (
+            slices_to_output.sort_values("slice_name").to_csv(
+                f"{output_prefix}.{capture_site.strip()}.tsv.gz", sep="\t", index=False
             )
-
-    elif method == "tiled":
-
-        # Initialise TiledCSliceFilter class
-        slice_filter = TiledCSliceFilter(df_alignment)
-
-        # Filter slices TiledC-style
-        slice_filter.filter_slices()
-
-        # Output fragments
-        slice_filter.fragments.to_csv(
-            f"{output_prefix}.fragments.tsv.gz", index=None, sep="\t"
-        )
-
-        # Save filtering statisics
-        slice_filter.filter_stats.to_csv(f"{stats_output}.slice.stats", sep="\t")
-
-        # Output filtered slices
-        reporters = slice_filter.slices.add_prefix("reporter_").rename(
-            columns={
-                "reporter_parent_read": "parent_read",
-                "reporter_capture": "capture",
-            }
-        )
-
-        # Assumes only one region tiled per assay
-        tiled_region_name = reporters.query('capture != "."')['capture'].str.strip().unique()[0]
-        reporters.to_csv(
-            f"{ output_prefix}.{tiled_region_name}.tsv.gz", sep="\t", index=False
-        )
-
-        # Output dummy reporter stats
-        df_reporter_stats = pd.DataFrame(
-            {
-                "capture": [
-                    tiled_region_name,
-                ],
-                "cis/trans": [
-                    "cis",
-                ],
-                "count": [
-                    slice_filter.filter_stats.loc[
-                        "number_of_capture_slices", "has_reporter"
-                    ],
-                ],
-            }
-        )
-
-        df_reporter_stats.to_csv(
-            f"{stats_output}.reporter.stats", sep="\t", index=False
         )

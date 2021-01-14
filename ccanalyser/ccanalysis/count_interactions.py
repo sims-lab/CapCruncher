@@ -24,20 +24,35 @@ def count_re_site_combinations(fragments, column="restriction_fragment"):
 
     return counts
 
-def main(slices, outfile=None, only_cis=False, remove_exclusions=False, subsample=False):
+def main(slices, outfile=None, remove_exclusions=False, remove_capture=False, subsample=None):
 
     df_slices = pd.read_csv(slices, sep='\t') 
 
-    if only_cis:
-        df_slices = df_slices.query('capture_chrom == reporter_chrom')
-        print('Removed all non-cis interactions')
-
     if remove_exclusions:
-        df_slices = df_slices.query('(reporter_exclusion == ".") or (capture != reporter_exclusion)')
-        print('Removed all excluded regions')
-    
+        # Must only remove exclusions if they are relevant for the capture being examined
+        print('Removing all excluded regions')
+        df_capture = df_slices.query('capture != "."')
+        df_reporters_exclusions = df_slices.query('(capture == ".") and (exclusion_count > 0)')
+
+        df_slices_to_remove = (df_capture.drop_duplicates(['parent_read', 'capture'])
+                                             [['parent_read', 'capture']]
+                                            .merge(df_reporters_exclusions[['parent_read', 'exclusion', 'slice_name']], on='parent_read')
+                                            .query('capture == exclusion'))
+        
+        df_slices = df_slices.loc[~(df_slices['slice_name'].isin(df_slices_to_remove['slice_name']))]
+        
+   
+    if remove_capture:
+        df_slices = df_slices.query('capture != "."')
+
     if subsample:
-        df_slices = df_slices[df_slices['parent_read'].isin(df_slices['parent_read'].sample(n=subsample))]
+
+        if isinstance(subsample, float):
+            subsample_options = {'frac': subsample}
+        elif isinstance(subsample, int):
+            subsample_options = {'n': subsample}
+
+        df_slices = df_slices[df_slices['parent_read'].isin(df_slices['parent_read'].sample(**subsample_options))]
         print('Subsampled fragments')
     
     
@@ -46,7 +61,7 @@ def main(slices, outfile=None, only_cis=False, remove_exclusions=False, subsampl
 
 
     print('Started counting')
-    ligated_rf_counts = count_re_site_combinations(fragments, column='reporter_restriction_fragment')
+    ligated_rf_counts = count_re_site_combinations(fragments, column='restriction_fragment')
 
     with xopen.xopen(outfile, mode='wb', threads=4) as w:
         

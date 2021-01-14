@@ -28,6 +28,8 @@ def main(
     shuffle=False,
     n_cores=8,
     max_memory='64GB',
+    sample_name='',
+    read_type='',
 ):
 
     # client = Client(n_workers=n_cores, 
@@ -62,12 +64,29 @@ def main(
             .to_hdf(deduplicated_fragments, key='deduplicated', mode='w'))
 
     elif mode == "slices":
+
+      
+
         df_slices = (pd.read_csv(input_files, sep='\t')
                        .assign(parent_read_hashed=lambda df: mmh3_column(df['parent_read']))
                        .set_index('parent_read_hashed'))
+        
+        n_fragments_total = df_slices['parent_read'].nunique()
+
         dd_fragments_deduplicated = dd.read_hdf(deduplicated_fragments, key='deduplicated', mode='r')
         df_deduplicated = dd_fragments_deduplicated.join(df_slices, how='inner').compute()
         df_deduplicated.reset_index(drop=True).to_csv(output, sep='\t', index=False)
+
+        n_fragments_unique = df_deduplicated['parent_read'].nunique()
+
+        df_stats = pd.DataFrame()
+        df_stats['stat_type'] = ['not-deduplicated', 'deduplicated']
+        df_stats['stat'] = [n_fragments_total, n_fragments_unique]
+        df_stats['sample'] = sample_name
+        df_stats['read_type'] = read_type
+        df_stats['stage'] = 'deduplicate_slices'
+        
+
     
 
     #client.close()

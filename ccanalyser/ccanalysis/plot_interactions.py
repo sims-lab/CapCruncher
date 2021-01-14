@@ -219,6 +219,7 @@ def main(
     filter_low_counts=0.02,
     filter_high_counts=0.02,
     cmap="viridis",
+    thresh=0,
 ):
 
     # Count data
@@ -246,7 +247,7 @@ def main(
             **normalisation_kwargs
         )
 
-        fig = plot_matrix(matrix=matrix_normalised, cmap=cmap)
+        fig = plot_matrix(matrix=matrix_normalised, cmap=cmap, thresh=thresh)
         fig.savefig(figure_path)
 
 
@@ -279,6 +280,7 @@ if __name__ == "__main__":
         "-f", "--output_format", default="png", choices=["png", "svg", "jpeg"]
     )
     parser.add_argument("--cmap", help="Colour map to use", default="viridis")
+    parser.add_argument('--thresh', type=int, default=0)
     args = parser.parse_args()
 
     main(**vars(args))

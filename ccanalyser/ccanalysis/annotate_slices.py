@@ -128,7 +128,7 @@ def main(
         df_bed.set_index(['name', 'chrom', 'start'])
         .join(dframes, how="left")
         .reset_index()
-        .rename(columns={"name": "read_name"})
+        .rename(columns={"name": "slice_name"})
         .drop(columns=['score', 'strand'], errors='ignore')
     )
 

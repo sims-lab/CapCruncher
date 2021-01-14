@@ -115,6 +115,18 @@ def add_ccanalyser_args(subcommand):
         choices=["capture", "tri", "tiled"],
     )
 
+    parser.add_argument(
+        "-n",
+        "--sample_name",
+        help="Name of sample (for statistics)",
+    )
+
+    parser.add_argument(
+        "--read_type",
+        help="Read type",
+        choices=['flashed', 'pe']
+    )
+
 
 def add_slices_to_bedgraph_args(subcommand):
 
@@ -140,18 +152,18 @@ def add_count_interactions_args(subcommand):
     parser.add_argument("-f", "--slices")
     parser.add_argument("-o", "--outfile", default="out.tsv.gz")
     parser.add_argument(
-        "--only_cis",
-        default=False,
-        action="store_true",
-        help="Only count cis interactions",
-    )
-    parser.add_argument(
         "--remove_exclusions",
         default=False,
         action="store_true",
-        help="Remove proximity exclusions",
+        help="Excludes regions marked as proximity exclusions before count",
     )
-    parser.add_argument("--subsample", default=0, type=int, help="Subsample fragments")
+    parser.add_argument(
+        "--remove_capture",
+        default=False,
+        action="store_true",
+        help="Excludes capture slices before count (Required for Tri-C)",
+    )
+    parser.add_argument("--subsample", default=0, help="Subsamples fragments before count")
 
 
 def add_deduplicate_fastq_args(subcommand):
@@ -161,48 +173,54 @@ def add_deduplicate_fastq_args(subcommand):
     )
 
     subparser = parser.add_subparsers(dest="mode")
-    parser_fd = subparser.add_parser("find_duplicates")
-    parser_fd.add_argument('input_files', nargs='+')
-    parser_fd.add_argument('-d', '--deduplicated_ids', required=True)
-    parser_fd.add_argument(
+    parser_p = subparser.add_parser("parse")
+    parser_p.add_argument('input_files', nargs='+')
+    parser_p.add_argument('-r', '--read_ids', required=True)
+    parser_p.add_argument(
         "-c",
         "--compression_level",
         help="Level of compression (1-9 with 9 being the highest)",
         type=int,
         default=5,
     )
-    parser_fd.add_argument(
+    parser_p.add_argument(
         "--read_buffer",
         help="defines the number of reads processed before writing to file",
         default=100000,
         type=int,
     )
 
-    parser_md = subparser.add_parser("merge_ids")
-    parser_md.add_argument('input_files', nargs='+')
-    parser_md.add_argument('-o', '--output_files', default='merged.pkl')
+    parser_i = subparser.add_parser("identify")
+    parser_i.add_argument('input_files', nargs='+')
+    parser_i.add_argument('-o', '--output_files', default='merged.json.gz')
 
 
-    parser_rd = subparser.add_parser("remove_duplicates")
-    parser_rd.add_argument('input_files', nargs='+')
-    parser_rd.add_argument('-d', '--deduplicated_ids', required=True, nargs='+')
-    parser_rd.add_argument('-o', '--output_files', required=True, nargs='+')
-    parser_rd.add_argument(
+    parser_r = subparser.add_parser("remove")
+    parser_r.add_argument('input_files', nargs='+')
+    parser_r.add_argument('-r', '--read_ids', required=True)
+    parser_r.add_argument('-o', '--output_files', required=True, nargs='+')
+    parser_r.add_argument(
         "-c",
         "--compression_level",
         help="Level of compression (1-9 with 9 being the highest)",
         type=int,
         default=5,
     )
-    parser_rd.add_argument(
+    parser_r.add_argument(
         "--read_buffer",
         help="defines the number of reads processed before writing to file",
         default=100000,
         type=int,
     )
-    parser_rd.add_argument(
+    parser_r.add_argument(
         "--stats_prefix",
         help="prefix path for stats",
+        default='',
+        )
+    
+    parser_r.add_argument('-n',
+        "--sample_name",
+        help="Name of sample for use in collating stats",
         default='',
         )
 
@@ -330,6 +348,7 @@ def add_plot_matrix_args(subcommand):
         "-f", "--output_format", default="png", choices=["png", "svg", "jpeg"]
     )
     parser.add_argument("--cmap", help="Colour map to use", default="viridis")
+    parser.add_argument('--thresh', type=int, default=0)
 
 
 def add_remove_duplicate_slices_args(subcommand):
