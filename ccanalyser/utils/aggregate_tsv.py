@@ -79,14 +79,23 @@ def main(input_files,
          aggregate_columns=None
          ):
 
-    header = 0 if header else None
+
+    read_csv_args = dict()
+    if (header == 0) or (bool(header) == True):
+        read_csv_args['header'] = 0
+    elif isinstance(header, list):
+        read_csv_args['names'] = header
+        read_csv_args['header'] = None
+    else:
+        read_csv_args['header'] = None
+
 
     if method == 'join':
         df = join_tsvs(input_files, index_col=index, n_processes=n_processes)
         df.to_csv(output, sep='\t')
 
     elif method == 'concatenate':
-        df = concat_tsvs(input_files, header=header, delayed=False)
+        df = concat_tsvs(input_files, **read_csv_args,  delayed=False)
         df.to_csv(output,
                   sep='\t',
                   index=False,
@@ -95,7 +104,7 @@ def main(input_files,
     
     elif method == 'aggregate':
         
-        df = load_tsv(input_files, index=index, header=header)
+        df = load_tsv(input_files, index=index, **read_csv_args)
 
         if groupby_columns:
 

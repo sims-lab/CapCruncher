@@ -267,4 +267,4 @@ def main(
 
         deduplication_stats = DeduplicationStatistics(sample=sample_name, **stats_aggregator)
         print(deduplication_stats.df)
-        deduplication_stats.df.to_csv(f'{stats_prefix}.deduplication.csv')
+        deduplication_stats.df.to_csv(f'{stats_prefix}.deduplication.csv', index=False)

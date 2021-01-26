@@ -1,9 +1,13 @@
 import os
-import pandas as pd
-from typing import Union
-import pybedtools
-from pybedtools import BedTool
 import re
+from typing import Union
+
+import pandas as pd
+import pybedtools
+import xxhash
+from pybedtools import BedTool
+from itertools import combinations
+import glob
 
 
 def is_on(param):
@@ -11,15 +15,18 @@ def is_on(param):
     if str(param).lower() in values:
         return True
 
+
 def is_off(param):
-    values = ['', 'None', 'none', 'F', 'f']
+    values = ["", "None", "none", "F", "f"]
     if str(param).lower() in values:
         return True
+
 
 def is_none(param):
     values = ["", "none"]
     if str(param).lower() in values:
         return True
+
 
 def get_human_readable_number_of_bp(bp: int) -> pd.DataFrame:
 
@@ -58,6 +65,7 @@ def bed_has_duplicate_names(bed):
     if not df["name"].duplicated().shape[0] > 1:
         return True
 
+
 def get_re_site(recognition_site=None):
 
     """
@@ -84,11 +92,84 @@ def get_re_site(recognition_site=None):
         "nlaiii": "CATG",
     }
 
-    if re.match(r'[GgAaTtCc]+', recognition_site):
+    if re.match(r"[GgAaTtCc]+", recognition_site):
         # This matches a DNA sequence so just convert to upper case and return
         return recognition_site.upper()
     elif recognition_site.lower() in known_enzymes:
         return known_enzymes.get(recognition_site.lower())
     else:
         raise ValueError("No restriction site or recognised enzyme provided")
+
+
+def collate_histogram_data(fnames):
+    return (
+        pd.concat([pd.read_csv(fn) for fn in fnames])
+        .groupby(["sample", "read_type", "read_number", "number_of_slices"])["count"]
+        .sum()
+        .reset_index()
+        .sort_values(["sample", "read_type", "number_of_slices"])
+    )
+
+
+def collate_read_data(fnames):
+    return (
+        pd.concat([pd.read_csv(fn) for fn in fnames])
+        .groupby(["sample", "stage", "read_type", "read_number", "stat_type"])["stat"]
+        .sum()
+        .reset_index()
+        .sort_values(["sample", "stat"], ascending=[True, False])
+    )
+
+def collate_slice_data(fnames):
+
+    df = pd.concat([pd.read_csv(fn) for fn in fnames])
+    aggregations = {col: 'sum' if not 'unique' in col else 'max' for col in df.columns
+                    if not col in ['sample', 'stage', 'read_type']}
+
+    return (df.groupby(["sample", "stage", "read_type"])
+              .agg(aggregations)
+              .reset_index()
+              .sort_values(["sample", "unique_slices"], ascending=[True, False])
+        )
+
+def collate_cis_trans_data(fnames):
+
+    return (pd.concat([pd.read_csv(fn) for fn in fnames])
+              .groupby(['sample', 'capture', 'read_type', 'cis/trans'])
+              .sum()
+              .reset_index()
+              .sort_values(["sample", "read_type", 'count'], ascending=[True, True, False]))
+
+
+def hash_column(col, hash_type=64):
+
+    hash_dict = {
+        32: xxhash.xxh32_intdigest,
+        64: xxhash.xxh64_intdigest,
+        128: xxhash.xxh128_intdigest,
+    }
+
+    hash_func = hash_dict.get(hash_type)
+
+    return [hash_func(v) for v in col]
+
+
+
+def check_files_exist(*args):
+
+    *infiles, outfiles = args
+
+
+    if isinstance(outfiles, str):
+        file_exists = os.path.exists(outfiles)
+
+    elif isinstance(outfiles, (tuple, list)):
+        file_exists =  all(os.path.exists(fn) for fn in outfiles)
+    
+    elif outfiles == None:
+        files_exist = False
+    
+
+    return (False, 'Output files exists') if file_exists else (True, 'Output files do not exist')
+
 

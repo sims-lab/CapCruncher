@@ -389,10 +389,10 @@ def main(
         digestion_stats = stats[0]
 
 
-    digestion_stats.unfiltered_histogram.to_csv(f'{stats_prefix}.digestion.unfiltered.histogram.csv')
-    digestion_stats.filtered_histogram.to_csv(f'{stats_prefix}.digestion.filtered.histogram.csv')
-    digestion_stats.slice_summary.to_csv(f'{stats_prefix}.digestion.slice.summary.csv')
-    digestion_stats.read_summary.to_csv(f'{stats_prefix}.digestion.read.summary.csv')
+    digestion_stats.unfiltered_histogram.to_csv(f'{stats_prefix}.digestion.unfiltered.histogram.csv', index=False)
+    digestion_stats.filtered_histogram.to_csv(f'{stats_prefix}.digestion.filtered.histogram.csv', index=False)
+    digestion_stats.slice_summary.to_csv(f'{stats_prefix}.digestion.slice.summary.csv', index=False)
+    digestion_stats.read_summary.to_csv(f'{stats_prefix}.digestion.read.summary.csv', index=False)
 
     print(digestion_stats.read_summary)
 

@@ -187,24 +187,25 @@ class SliceFilter:
 
     @property
     def filter_stats(self):
-        return self._filter_stats.transpose()
+        return (
+            self._filter_stats.transpose()
+            .reset_index()
+            .rename(columns={"index": "stage"})
+            .assign(sample=self.sample_name, read_type=self.read_type)
+        )
 
     @property
     def read_stats(self):
-        return (
-            self.filter_stats.reset_index()
-            .rename(
-                columns={
-                    "index": "stat_type",
-                    "unique_fragments": "stat",
-                }
-            )[["stat_type", "stat"]]
-            .assign(
-                stage="ccanalysis",
-                read_type=self.read_type,
-                sample=self.sample_name,
-                read_number=0,
-            )
+        return self.filter_stats.rename(
+            columns={
+                "stage": "stat_type",
+                "unique_fragments": "stat",
+            }
+        )[["stat_type", "stat"]].assign(
+            stage="ccanalysis",
+            read_type=self.read_type,
+            sample=self.sample_name,
+            read_number=0,
         )
 
     @property
@@ -602,6 +603,7 @@ class CCSliceFilter(SliceFilter):
                 .to_frame()
                 .rename(columns={"cis/trans": "count"})
                 .reset_index()
+                .assign(sample=self.sample_name, read_type=self.read_type)
             )
         except Exception as e:
             print(e)
@@ -847,6 +849,7 @@ class TiledCSliceFilter(SliceFilter):
             .rename(columns={"index": "capture"})
             .melt(id_vars="capture", var_name="cis/trans", value_name="count")
             .sort_values("capture")
+            .assign(sample=self.sample_name, read_type=self.read_type)
         )
 
     def remove_slices_outside_capture(self):
@@ -903,11 +906,13 @@ def main(
     slice_filter.filter_slices()
 
     # Save filtering statisics
-    slice_filter.filter_stats.to_csv(f"{stats_output}.slice.stats.csv")
-    slice_filter.read_stats.to_csv(f"{stats_output}.read.stats.csv")
+    slice_filter.filter_stats.to_csv(f"{stats_output}.slice.stats.csv", index=False)
+    slice_filter.read_stats.to_csv(f"{stats_output}.read.stats.csv", index=False)
 
     # Save reporter stats
-    slice_filter.cis_or_trans_stats.to_csv(f"{stats_output}.reporter.stats.csv")
+    slice_filter.cis_or_trans_stats.to_csv(
+        f"{stats_output}.reporter.stats.csv", index=False
+    )
 
     # Output fragments
     slice_filter.fragments.to_csv(

@@ -26,51 +26,54 @@ def count_re_site_combinations(fragments, column="restriction_fragment"):
 
 def main(slices, outfile=None, remove_exclusions=False, remove_capture=False, subsample=None):
 
-    df_slices = pd.read_csv(slices, sep='\t') 
-
-    if remove_exclusions:
-        # Must only remove exclusions if they are relevant for the capture being examined
-        print('Removing all excluded regions')
-        df_capture = df_slices.query('capture != "."')
-        df_reporters_exclusions = df_slices.query('(capture == ".") and (exclusion_count > 0)')
-
-        df_slices_to_remove = (df_capture.drop_duplicates(['parent_read', 'capture'])
-                                             [['parent_read', 'capture']]
-                                            .merge(df_reporters_exclusions[['parent_read', 'exclusion', 'slice_name']], on='parent_read')
-                                            .query('capture == exclusion'))
-        
-        df_slices = df_slices.loc[~(df_slices['slice_name'].isin(df_slices_to_remove['slice_name']))]
-        
-   
-    if remove_capture:
-        df_slices = df_slices.query('capture != "."')
-
-    if subsample:
-
-        if isinstance(subsample, float):
-            subsample_options = {'frac': subsample}
-        elif isinstance(subsample, int):
-            subsample_options = {'n': subsample}
-
-        df_slices = df_slices[df_slices['parent_read'].isin(df_slices['parent_read'].sample(**subsample_options))]
-        print('Subsampled fragments')
-    
-    
-    print('Grouping at the fragment level')
-    fragments = df_slices.groupby('parent_read')
-
-
-    print('Started counting')
-    ligated_rf_counts = count_re_site_combinations(fragments, column='restriction_fragment')
-
-    with xopen.xopen(outfile, mode='wb', threads=4) as w:
-        
+    with xopen.xopen(outfile, mode='wb', threads=4) as writer:
+            
         header = '\t'.join(['rf1', 'rf2', 'count']) + '\n'
-        w.write(header.encode())
+        writer.write(header.encode())
 
-        for (rf1, rf2), count in ligated_rf_counts.items():
-            line = '\t'.join([rf1, rf2, str(count)]) + '\n'
-            w.write(line.encode())
+        df_slices_iterator = pd.read_csv(slices, sep='\t', chunksize=2e6) 
+
+        for ii, df_slices in enumerate(df_slices_iterator):
+
+            if remove_exclusions:
+                # Must only remove exclusions if they are relevant for the capture being examined
+                print('Removing all excluded regions')
+                df_capture = df_slices.query('capture != "."')
+                df_reporters_exclusions = df_slices.query('(capture == ".") and (exclusion_count > 0)')
+
+                df_slices_to_remove = (df_capture.drop_duplicates(['parent_read', 'capture'])
+                                                    [['parent_read', 'capture']]
+                                                    .merge(df_reporters_exclusions[['parent_read', 'exclusion', 'slice_name']], on='parent_read')
+                                                    .query('capture == exclusion'))
+                
+                df_slices = df_slices.loc[~(df_slices['slice_name'].isin(df_slices_to_remove['slice_name']))]
+                
+        
+            if remove_capture:
+                df_slices = df_slices.query('capture != "."')
+
+            if subsample:
+
+                if isinstance(subsample, float):
+                    subsample_options = {'frac': subsample}
+                elif isinstance(subsample, int):
+                    subsample_options = {'n': subsample}
+
+                df_slices = df_slices[df_slices['parent_read'].isin(df_slices['parent_read'].sample(**subsample_options))]
+                print('Subsampled fragments')
+            
+            
+            print('Grouping at the fragment level')
+            fragments = df_slices.groupby('parent_read')
+
+
+            print('Started counting')
+            ligated_rf_counts = count_re_site_combinations(fragments, column='restriction_fragment')
+
+
+            for (rf1, rf2), count in ligated_rf_counts.items():
+                line = '\t'.join([rf1, rf2, str(count)]) + '\n'
+                writer.write(line.encode())
 
 
 # if __name__ == '__main__':

@@ -2,6 +2,8 @@ import os
 import sys
 import argparse
 
+from numpy.testing._private.utils import integer_repr
+
 # Make sure the script can find capturec scripts
 SCRIPT_PATH = os.path.abspath(__file__)
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
@@ -51,19 +53,19 @@ def add_aggregate_tsv_args(subcommand):
     parser_join = subparser.add_parser("join")
     parser_join.add_argument("-i", "--input_files", nargs="+", required=True)
     parser_join.add_argument("--index", default="parent_read", required=True)
-    parser_join.add_argument("--header", default=False, action="store_true")
+    parser_join.add_argument("--header", nargs='+', default=None)
     parser_join.add_argument("-o", "--output", default="joined.tsv.gz")
     parser_join.add_argument("-p", "--n_processes", default=8, type=int)
 
     parser_concatenate = subparser.add_parser("concatenate")
     parser_concatenate.add_argument("-i", "--input_files", nargs="+", required=True)
-    parser_concatenate.add_argument("--header", default=False, action="store_true")
+    parser_concatenate.add_argument("--header", nargs='+', default=None)
     parser_concatenate.add_argument("-o", "--output", default="concatenated.tsv.gz")
 
     parser_aggregate = subparser.add_parser("aggregate")
     parser_aggregate.add_argument("-i", "--input_files", required=True)
     parser_aggregate.add_argument("--index", default=None)
-    parser_aggregate.add_argument("--header", default=False, action="store_true")
+    parser_aggregate.add_argument("--header", nargs='+', default=None)
     parser_aggregate.add_argument("-o", "--output", default="aggregated.tsv.gz")
     parser_aggregate.add_argument("-g", "--groupby_columns", nargs="+")
     parser_aggregate.add_argument("--aggregate_method", nargs="+")
@@ -133,7 +135,7 @@ def add_slices_to_bedgraph_args(subcommand):
     parser = subcommand.add_parser(
         "slices_to_bdg", help="Converts ccanalyser output to bedgraph"
     )
-    parser.add_argument("-i", "--tsv_input", help="Reporter tsv file")
+    parser.add_argument("-i", "--slices", help="Reporter tsv file")
     parser.add_argument(
         "-b",
         "--bed",
@@ -142,6 +144,20 @@ def add_slices_to_bedgraph_args(subcommand):
     )
     parser.add_argument(
         "-o", "--output", help="Output file name", default="out.bedgraph"
+    )
+
+    parser.add_argument(
+        "--normalise", help="Determines if normalisation should be performed", default=None,
+        choices=['n_cis', None],
+    )
+    parser.add_argument(
+        "--normalise_reporter_distance", help="Determines distance from capture to use for normalisation", default=1e5,
+        type=int,
+    )
+
+    parser.add_argument(
+        "--normalise_scale", help="Scale factor for normalisation", default=1e5,
+        type=int,
     )
 
 
@@ -372,6 +388,9 @@ def add_remove_duplicate_slices_args(subcommand):
     parser_slices.add_argument("-o", "--output", default="deduplicated.tsv.gz")
     parser_slices.add_argument("-p", "--n_cores", default=8, type=int)
     parser_slices.add_argument("-m", "--max_memory", default="64GB", type=str)
+    parser_slices.add_argument('--stats_prefix', help='prefix for stats')
+    parser_slices.add_argument('-n', '--sample_name', help='sample name for stats')
+    parser_slices.add_argument('--read_type', help='read type for stats', default='pe')
 
 
 def add_split_fastq_args(subcommand):
