@@ -53,16 +53,23 @@ class CCBedgraph(object):
 
     def normalise_by_n_cis(self, reporter_distance=1e5, n_read_scale=1e6):
 
-        n_reporters = (
-            self.df.loc[lambda df: (df["chrom"] == self.capture_chrom)]
-            .loc[lambda df: df["start"] >= (self.capture_start - reporter_distance)]
-            .loc[lambda df: df["end"] <= (self.capture_end + reporter_distance)][
-                "score"
-            ]
-            .sum()
-        )
+        if reporter_distance:
+            n_reporters = (
+                self.df.loc[lambda df: (df["chrom"] == self.capture_chrom)]
+                .loc[lambda df: df["start"] >= (self.capture_start - reporter_distance)]
+                .loc[lambda df: df["end"] <= (self.capture_end + reporter_distance)][
+                    "score"
+                ]
+                .sum()
+            )
+        else:
+            n_reporters = (
+                self.df.loc[lambda df: (df["chrom"] == self.capture_chrom)]
+                ["score"]
+                .sum()
+            )
 
-        return (self / (n_reporters / n_read_scale))
+        return ((self / n_read_scale) * n_reporters)
 
     def to_file(self, path):
         self.df.to_csv(path, sep="\t", header=None, index=None)
@@ -166,7 +173,7 @@ def main(
     bed,
     output="out.bedgraph",
     normalise=None,
-    normalise_reporter_distance=1e5,
+    normalise_reporter_distance=0,
     normalise_scale=1e6,
 ):
 
@@ -235,12 +242,16 @@ def main(
         else:
             bedgraph = bedgraph + ccbdg
 
+
+    
+        print("Outputting to file")
+        bedgraph.to_file(output)
+
     # Run normalisation if required
     if normalise == "n_cis":
-        bedgraph = bedgraph.normalise_by_n_cis(
+        bedgraph_normalised = bedgraph.normalise_by_n_cis(
             reporter_distance=normalise_reporter_distance, n_read_scale=normalise_scale
         )
+        bedgraph_normalised.to_file(outfile.replace('.raw.bedgraph.gz', '.norm.bedgraph.gz'))
 
-    print("Outputting to file")
-    bedgraph.to_file(output)
 

@@ -153,23 +153,30 @@ def hash_column(col, hash_type=64):
 
     return [hash_func(v) for v in col]
 
-
-
-def check_files_exist(*args):
-
-    *infiles, outfiles = args
-
-
-    if isinstance(outfiles, str):
-        file_exists = os.path.exists(outfiles)
-
-    elif isinstance(outfiles, (tuple, list)):
-        file_exists =  all(os.path.exists(fn) for fn in outfiles)
+def extract_trimming_stats(fn):
+    stat_regexes = {
+                'reads_total': re.compile(r'^Total reads processed:\s+([0-9,]+)$'),
+                'adapters_removed': re.compile(r'Reads with adapters:\s+([0-9,]+).*'),
+                'reads_after_filtering': re.compile(r'Reads written \(passing filters\):\s+([0-9,]+).*'),}
     
-    elif outfiles == None:
-        files_exist = False
+    sample_re_match = re.match(r'.*/(.*)_part\d+_(1|2).*', fn)
     
-
-    return (False, 'Output files exists') if file_exists else (True, 'Output files do not exist')
-
+    stats = {}
+    stats['sample'] = sample_re_match.group(1)
+    stats['read_number'] = sample_re_match.group(2)
+    stats['read_type'] = 'pe'
+    
+    
+    with open(fn) as r:
+        for line in r:
+            for stat_name, pattern in stat_regexes.items():
+                regex_match = pattern.match(line)
+                if regex_match:
+                    stats[stat_name] = int(regex_match.group(1).replace(',', ''))
+    
+    stats['reads_filtered'] = stats['reads_total'] - stats['reads_after_filtering']
+    
+    return stats
+        
+    
 

@@ -365,6 +365,7 @@ def main(
         proc.start()
 
 
+
     reader.join()
     writer.join()
     
@@ -387,7 +388,6 @@ def main(
             digestion_stats = stats[0] + stat
     else:
         digestion_stats = stats[0]
-
 
     digestion_stats.unfiltered_histogram.to_csv(f'{stats_prefix}.digestion.unfiltered.histogram.csv', index=False)
     digestion_stats.filtered_histogram.to_csv(f'{stats_prefix}.digestion.filtered.histogram.csv', index=False)

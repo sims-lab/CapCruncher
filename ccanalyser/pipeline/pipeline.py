@@ -50,7 +50,7 @@ from ccanalyser.utils.helpers import (
     is_on,
     collate_read_data,
     collate_histogram_data,
-    check_files_exist
+    extract_trimming_stats,
 )
 
 from cgatcore import pipeline as P
@@ -100,26 +100,6 @@ try:
             P.PARAMS["genome_chrom_sizes"] = "chrom_sizes.txt.tmp"
         else: 
             P.PARAMS["genome_chrom_sizes"] = "chrom_sizes.txt.tmp"
-
-        
-    
-    # # Load design dataframe if it exists
-    # if not is_none(P.PARAMS.get('analysis_design')):
-
-    #     ''''Expecting a .tsv file with the following headings:
-            
-    #          =======================|
-    #          | sample | group | rep |
-    #          =======================|
-    #          | SAMPLE_1 | con | 1   |
-    #          | SAMPLE_2 | con | 2   |
-    #          | SAMPLE_3 | test| 1   |
-    #          =======================|
-    #          '''
-
-    #     DESIGN = pd.read_csv(P.PARAMS['analysis_design'], sep=r'\s+').set_index()
-    # else:
-    #     DESIGN = pd.DataFrame()
 
 except Exception as e:
     print(e)
@@ -365,6 +345,26 @@ def trim_reads(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
+@follows(trim_reads)
+@merge('statistics/trimming/data/*.txt',
+         r'statistics/trimming/trimming.summary.csv')
+def collate_trimming_statistics(infiles, outfile):
+
+
+    trimming_stats = []
+    for fn in infiles:    
+        stats = extract_trimming_stats(fn)
+        trimming_stats.append(stats)
+    
+    df_trimming_stats = (pd.DataFrame(trimming_stats)
+                       .groupby(['sample', 'read_number', 'read_type'])
+                       .sum()
+                       .reset_index()
+                       .melt(id_vars=['sample', 'read_number', 'read_type'], var_name='stat_type', value_name='stat'))
+    
+    df_trimming_stats.to_csv('statistics/trimming/trimming.summary.csv', index=False)
+
+
 
 @follows(trim_reads, mkdir("pre_ccanalysis/flashed"))
 @collate(
@@ -402,7 +402,6 @@ def digest_flashed_reads(infile, outfile):
     """In silico restriction enzyme digest of combined (flashed) read pairs"""
 
     fn = os.path.basename(infile).replace(".extendedFrags.fastq.gz", "")
-
     statement = """ccanalyser utils digest_fastq
                    flashed
                    -o %(outfile)s
@@ -411,7 +410,7 @@ def digest_flashed_reads(infile, outfile):
                    -m 18
                    -c %(pipeline_advanced_compression)s
                    -p 1
-                   --stats_prefix statistics/digestion/data/%(fn)s
+                   --stats_prefix statistics/digestion/data/%(fn)s.flashed
                     %(infile)s
                     """
     P.run(
@@ -444,7 +443,7 @@ def digest_pe_reads(infiles, outfile):
                    -p 1
                    %(fq1)s
                    %(fq2)s
-                   --stats_prefix statistics/digestion/
+                   --stats_prefix statistics/digestion/data/%(fn)s.pe
                    """
 
     P.run(
@@ -861,6 +860,7 @@ def post_ccanalysis():
          r'ccanalysis/reporters_combined/\1.\2.tsv.gz')
 def merge_ccanalyser(infiles, outfile):
    
+   # Need to concat tsv files but remove headers, the sed command performs the removal
     statement = f"zcat {' '.join(infiles)} | sed -e '1n' -e '/^duplicated/d' | pigz -p 4 > {outfile}"
 
     P.run(
@@ -875,7 +875,7 @@ def merge_ccanalyser(infiles, outfile):
 @transform(merge_ccanalyser,
     regex(r"ccanalysis/.*/(.*).tsv.gz"),
     add_inputs(digest_genome),
-    r"ccanalysis/bedgraphs/\1.bedgraph.gz",
+    r"ccanalysis/bedgraphs/\1.raw.bedgraph.gz",
 )
 def make_bedgraph(infiles, outfile):
     """Intersect reporters with genome restriction fragments to create bedgraph"""
@@ -897,6 +897,58 @@ def make_bedgraph(infiles, outfile):
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
     )
+
+
+
+@follows(mkdir('ccanalysis/bedgraph_compare'), make_bedgraph)
+@collate('ccanalysis/bedgraphs/*.norm.bedgraph.gz',
+         regex(r'.*/(?P<sample>.*)_(?:\d+)\.(?P<capture>.*)\.norm.bedgraph.gz'),
+         r'ccanalysis/bedgraph_compare/\1.\2.mean.bedgraph.gz')
+def average_replicate_bedgraphs(infiles, outfile):
+
+    dframes = [pd.read_csv(fn, sep='\t', header=None, chunksize=2e6, names=['chrom', 'start', 'end', 'score']) for fn in infiles]
+
+    dframes_aggregated = []
+    for frames in zip(*dframes):
+        df_agg = (pd.concat([d['score'] for d in frames], axis=1)
+                .assign(mean=lambda df: df.mean(axis=1),
+                        std=lambda df: df.std(axis=1))
+                .fillna(0)
+            )
+        df_agg = frames[0].loc[:, ['chrom', 'start', 'end']].join(df_agg)
+        dframes_aggregated.append(df_agg)
+
+    df = pd.concat(dframes_aggregated)
+    # Only save the positive bins to save space
+    df_bdg_summary = df.query('mean > 0')[['mean', 'std']].to_csv(outfile.replace('.mean.bedgraph.gz', '.tsv.gz'))
+
+    #Output mean and union
+    df_bdg_mean = df[['chrom', 'start', 'end', 'mean']].to_csv(outfile, sep='\t', index=None, header=None)
+    df_bdg_union = df.loc[:, ~df.columns.isin(['mean', 'std'])].to_csv(outfile.replace('.mean.bedgraph.gz', '.union.bedgraph.gz'))
+
+
+@collate(average_replicate_bedgraphs, 
+              regex(r'.*/(?:.*)\.(?P<capture>.*)\.mean\.bedgraph.gz'),
+              r'ccanalysis/bedgraph_compare/\1.log')
+def compare_average_bedgraphs(infiles, outfile):
+
+
+    fn_regex = re.compile(r'.*/(?P<sample>.*)\.(?P<capture>.*)\.mean\.bedgraph.gz')
+    
+    if len(infiles) > 1:
+
+        for fn1, fn2 in itertools.combinations(infiles, 2):
+            bdg1, bdg2 = CCBedgraph(path=fn1), CCBedgraph(path=fn2)
+            bdg_sub = bdg1 - bdg2
+
+            sample1 = fn_regex.match(fn1)
+            sample2 = fn_regex.match(fn2)
+
+            out = f'{sample1.group("sample")}_vs_{sample2.group("sample")}.{sample1.group("capture")}.bedgraph.gz'
+            out_path = outfile.replace(sample1.group('capture') + '.log', out)
+            bdg_sub.to_file(out_path)
+
+
 
 @follows(mkdir("visualise/bigwigs"))
 @transform(
@@ -921,55 +973,6 @@ def make_bigwig(infile, outfile):
 
     if os.path.exists("chrom_sizes.txt.tmp"):
         os.remove("chrom_sizes.txt.tmp")
-
-
-@follows(mkdir('ccanalysis/bedgraph_compare'), make_bedgraph)
-@collate(make_bedgraph,
-         regex(r'.*/(?P<sample>.*)_(?:\d+)\.(?P<capture>.*)\.bedgraph.gz'),
-         r'ccanalysis/bedgraph_compare/\1.\2.mean.bedgraph.gz')
-def average_replicate_bedgraphs(infiles, outfile):
-
-    dframes = [pd.read_csv(fn, sep='\t', header=None, chunksize=2e6, names=['chrom', 'start', 'end', 'score']) for fn in infiles]
-
-    dframes_aggregated = []
-    for frames in zip(*dframes):
-        df_agg = (pd.concat([d['score'] for d in frames], axis=1)
-                .assign(mean=lambda df: df.mean(axis=1),
-                        std=lambda df: df.std(axis=1))
-                .fillna(0)
-                [['mean', 'std']]
-            )
-        df_agg = frames[0].loc[:, ['chrom', 'start', 'end']].join(df_agg)
-        dframes_aggregated.append(df_agg)
-
-    # Only save the positive bins to save space
-    df = pd.concat(dframes_aggregated)
-    df.query('mean > 0').to_csv(outfile.replace('.mean.bedgraph.gz', '.tsv.gz'))
-    df[['chrom', 'start', 'end', 'mean']].to_csv(outfile, sep='\t', index=None, header=None)
-
-
-
-@collate(average_replicate_bedgraphs, 
-              regex(r'.*/(?:.*)\.(?P<capture>.*)\.mean\.bedgraph.gz'),
-              r'ccanalysis/bedgraph_compare/\1.log')
-def compare_average_bedgraphs(infiles, outfile):
-
-
-    fn_regex = re.compile(r'.*/(?P<sample>.*)\.(?P<capture>.*)\.mean\.bedgraph.gz')
-    
-    if len(infiles) > 1:
-
-        for fn1, fn2 in itertools.combinations(infiles, 2):
-            bdg1, bdg2 = CCBedgraph(path=fn1), CCBedgraph(path=fn2)
-            bdg_sub = bdg1 - bdg2
-
-            sample1 = fn_regex.match(fn1)
-            sample2 = fn_regex.match(fn2)
-
-            out = f'{sample1.group("sample")}_vs_{sample2.group("sample")}.{sample1.group("capture")}.bedgraph.gz'
-            out_path = outfile.replace(sample1.group('capture') + '.log', out)
-            bdg_sub.to_file(out_path)
-
 
 @follows(mkdir("ccanalysis/interaction_counts"))
 @transform(
@@ -996,39 +999,6 @@ def count_interactions(infile, outfile):
         job_threads=2,
         job_condaenv=P.PARAMS["conda_env"],
     )
-
-
-# @collate(
-#     count_interactions,
-#     regex(r"ccanalysis/interaction_counts/(.*)_part\d+.(?:flashed|pe).(.*).tsv.gz"),
-#     r"ccanalysis/interaction_counts_combined/\1.\2.tsv.gz",
-# )
-# def collate_interactions(infiles, outfile):
-#     """Combines multiple capture site tsv files"""
-
-#     inlist = " ".join(infiles)
-#     mkdir("ccanalysis/interactions_aggregated")
-
-#     statement = """"cat %(inlist)s | sed -e '1n' -e '/^rf/d' | pigz -p 4  > %(outfile)s.tmp.tsv  
-#                     &&
-#                     ccanalyser utils agg_tsv
-#                     aggregate
-#                     -i %(outfile)s.tmp.tsv
-#                     --header True
-#                     --groupby_columns rf1 rf2
-#                     --aggregate_columns count
-#                     --aggregate_method sum
-#                     -o %(outfile)s 
-#                     &&
-#                     rm %(outfile)s.tmp.tsv
-#                     """
-
-#     P.run(
-#         statement,
-#         job_queue=P.PARAMS["pipeline_cluster_queue"],
-#         job_threads=P.PARAMS["pipeline_n_cores"],
-#         job_condaenv=P.PARAMS["conda_env"],
-#     )
 
 
 @transform(

@@ -142,8 +142,6 @@ class ReadDuplicateRemovalProcess(Process):
 
                 if not str(hash_id) in duplicated_ids:
                     reads_unique.append(read_glob)
-                else:
-                    print(f'{hash_id} matches ')
 
             self.outq.put(reads_unique)
 

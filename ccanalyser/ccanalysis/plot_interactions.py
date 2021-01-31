@@ -104,7 +104,11 @@ def normalise_region_ice(
     **normalisation_kwargs,
 ):
 
-    matrix = cooler_binned.matrix(balance=False).fetch(region).astype(float)
+    if normalisation_kwargs['scale_counts']:
+        matrix = cooler_binned.matrix(balance=False, field='count_scaled').fetch(region).astype(float)
+    else:
+        matrix = cooler_binned.matrix(balance=False).fetch(region).astype(float)
+
 
     if filter_low_counts:
         matrix = iced.filter.filter_low_counts(matrix, percentage=filter_low_counts)
@@ -115,6 +119,7 @@ def normalise_region_ice(
     # Need to remove unwanted keyword args
     del normalisation_kwargs["binning_method"]
     del normalisation_kwargs["overlap_fraction"]
+    del normalisation_kwargs['scale_counts']
 
     matrix_normalised = iced.normalization.ICE_normalization(matrix, **normalisation_kwargs)
 
@@ -210,6 +215,7 @@ def main(
     coordinates: str,
     cooler_binned: str,
     cooler_restriction_fragments: str,
+    scale_counts: bool = True,
     normalisation=None,
     output_prefix: str = None,
     output_format: str = "png",
@@ -220,6 +226,7 @@ def main(
     filter_high_counts=0.02,
     cmap="viridis",
     thresh=0,
+    output_matrix=None,
 ):
 
     # Count data
@@ -227,12 +234,15 @@ def main(
     cooler_restriction_fragments = cooler.Cooler(cooler_restriction_fragments)
     resolution = get_human_readable_number_of_bp(cooler_binned.binsize)
 
+
+
     # Get normalisation function to use
     normalisation_func = get_normalisation(normalisation=normalisation, method=method)
     normalisation_kwargs = {'filter_low_counts': filter_low_counts,
                             'filter_high_counts': filter_high_counts,
                             'binning_method': binning_method,
-                            'overlap_fraction': overlap_fraction,}
+                            'overlap_fraction': overlap_fraction,
+                            'scale_counts': scale_counts}
 
 
     for interval in format_coordinates(coordinates):
@@ -247,8 +257,12 @@ def main(
             **normalisation_kwargs
         )
 
+
         fig = plot_matrix(matrix=matrix_normalised, cmap=cmap, thresh=thresh)
         fig.savefig(figure_path)
+
+        if output_matrix:
+            np.savetxt(output_matrix)
 
 
 if __name__ == "__main__":

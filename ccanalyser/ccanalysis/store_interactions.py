@@ -29,6 +29,17 @@ def get_bins(genome="mm9", bin_size=1000) -> pd.DataFrame:
     )
 
 
+def get_midpoints(bed: Union[BedTool, pd.DataFrame]) -> pd.DataFrame:
+
+    if isinstance(bed, BedTool):
+        bed = bed.to_dataframe()
+
+    return bed.assign(
+        midpoint_start=lambda df: df["start"] + ((df["end"] - df["start"]) // 2),
+        midpoint_end=lambda df: df["midpoint_start"] + 1,
+    )[["chrom", "midpoint_start", "midpoint_end", "name"]]
+
+
 def format_restriction_fragment(
     restriction_fragment_map: Union[pd.DataFrame, BedTool], bin_method="overlap"
 ) -> pd.DataFrame:
@@ -43,16 +54,6 @@ def format_restriction_fragment(
 
     return restriction_fragment
 
-
-def get_midpoints(bed: Union[BedTool, pd.DataFrame]) -> pd.DataFrame:
-
-    if isinstance(bed, BedTool):
-        bed = bed.to_dataframe()
-
-    return bed.assign(
-        midpoint_start=lambda df: df["start"] + ((df["end"] - df["start"]) // 2),
-        midpoint_end=lambda df: df["midpoint_start"] + 1,
-    )[["chrom", "midpoint_start", "midpoint_end", "name"]]
 
 
 def bin_restriction_fragment(
@@ -79,7 +80,6 @@ def aggregate_binned_counts(
     counts: pd.DataFrame, binned_restriction_fragments: pd.DataFrame
 ) -> pd.DataFrame:
 
-     #TODO: Look further at bug bin1_id > bin2_id. For now just swaping the bins over as they are equivalent
     return (
         counts.merge(
             binned_restriction_fragments,
@@ -142,6 +142,18 @@ def store_counts_restriction_fragment(
 
     return outfile
 
+def scale_binned_counts(counts: pd.DataFrame,
+                        scale_factor: int = 1e6, 
+                        cis_only=False):
+
+    counts = counts.copy()
+    if cis_only:
+        raise NotImplementedError('Need to identify which bins belong to each chrom')
+    
+    counts['count_scaled'] = (counts['counts'] / scale_factor) * counts['counts'].sum()
+
+    return counts
+
 
 def main(
     restriction_fragment_counts,
@@ -152,6 +164,7 @@ def main(
     bin_method="overlap",
     overlap_fraction=0.5,
     store_restriction_fragment_counts=True,
+
 ):
     
     # Format output prefix
@@ -196,13 +209,19 @@ def main(
             binned_restriction_fragments=restriction_fragment_binned,
         )
 
+        # Scale binned counts
+        binned_counts = scale_binned_counts(binned_counts)
+
         # Store binned counts
         cooler.create_cooler(
             f"{output_prefix}_{get_human_readable_number_of_bp(bin_size)}_binned.hdf5",
             bins=bins[["chrom", "start", "end"]],
-            pixels=binned_counts[["bin1_id", "bin2_id", "count"]],
+            pixels=binned_counts[["bin1_id", "bin2_id", "count", "count_scaled"]],
+            columns=['count_scaled'],
+            dtypes=[np.float32],
             ordered=True,
         )
+
 
 
 if __name__ == "__main__":
