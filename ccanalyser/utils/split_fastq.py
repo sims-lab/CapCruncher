@@ -7,55 +7,34 @@ Created on Wed Jan  8 15:45:09 2020
 
 Script splits a fastq into specified chunks
 """
-import argparse
-import os
-import sys
-from xopen import xopen
-from pysam import FastxFile
 
-def get_parser(parser=None):
-    if not parser:
-        parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input_fastq', help='BAM file to parse')
-    parser.add_argument('--chunksize', help='Number of reads per output file', default=1000000, type=int)
-    parser.add_argument('-c', '--compression_level', help='Level of gzip compression (1-9 with 9 being the most compressed/slowest)',
-                        default=6, type=int)
-    parser.add_argument('-n','--output_prefix', help='output prefix')
+from multiprocessing import Manager, SimpleQueue, Pipe
+from ccanalyser.utils.io import FastqReaderProcess, FastqWriterSplitterProcess, FastqReadFormatterProcess
 
-    return parser
+def main(input_files, output_prefix, compression_level=5, n_reads=1000000, n_subprocesses=1):
 
-def main(input_fastq,
-         output_prefix,
-         compression_level=5,
-         chunksize=1000000):
+    readq = SimpleQueue()
+    writeq = SimpleQueue()
 
-    split_counter = 0
-    for read_counter, read in enumerate(FastxFile(input_fastq)):
+    paired = True if len(input_files) > 1 else False
 
-        processed_read = f'{read}\n'.encode()
+    reader = FastqReaderProcess(
+        input_files=input_files, outq=readq, read_buffer=n_reads, n_subprocesses=n_subprocesses,
+    )
 
-        if read_counter == 0:
-            out_name = f'{output_prefix}_{split_counter}.fastq.gz'
-            out_handle = xopen(out_name,
-                               'wb',
-                               compresslevel=compression_level,
-                               threads=8)
-            out_handle.write(processed_read)
+    formatter = [FastqReadFormatterProcess(inq=readq, outq=writeq) 
+                 for _ in range(n_subprocesses)]
+    
+    
+    writer = FastqWriterSplitterProcess(
+        inq=writeq, output_prefix=output_prefix, paired_output=paired, n_subprocesses=n_subprocesses)
 
-        elif read_counter % chunksize == 0:
-            split_counter += 1
-            out_handle.close()
-            out_name = f'{output_prefix}_{split_counter}.fastq.gz'
-            out_handle =  xopen(out_name,
-                               'wb',
-                               compresslevel=compression_level,
-                               threads=8)
-            out_handle.write(processed_read)
-        else:
-            out_handle.write(processed_read)
+    
+    processes = [writer, reader, *formatter ]
 
-    out_handle.close()
-
-if __name__ == '__main__':
-    args = get_parser().parse_args()
-    main(**vars(args))
+    for proc in processes:
+        proc.start()
+    
+    for proc in processes:
+        proc.join()
+        proc.terminate()

@@ -16,10 +16,6 @@ import glob
 SCRIPT_PATH = os.path.abspath(__file__)
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
 
-def get_parser(parser=None):
-    return parser
-
-
 def load_yaml(yml):
     with open('capturec_pipeline.yml') as r:
         content = r.read().replace('\t', ' ' * 4)
@@ -78,11 +74,8 @@ def main():
     test_out_dir = os.path.join(SCRIPT_DIR, 'test_params')
 
     tasks = [test_trim, test_align]
-    if not all([task(params, data_dir=test_files_dir, test_dir=test_dir) for task in tasks]): # check if all tasks succeed
+    if not all([task(params, data_dir=test_files_dir, test_dir=test_out_dir) for task in tasks]): # check if all tasks succeed
         raise ValueError('Parameters are not correct, see error messages')
     else:
         for err in glob.glob('*.stderr'):
             os.remove(err)
-
-if __name__ == '__main__':
-    main()
