@@ -149,14 +149,16 @@ def merge_annotations(df, annotations):
 
     # Update, now using chrom and start to stop issues with multimapping
     df_ann = pd.read_csv(
-        annotations, sep="\t", header=0, index_col=["slice_name", "chrom", "start"]
+        annotations, sep="\t", header=0, index_col=["slice_name", "chrom", "start"], low_memory=False,
     )
     df_ann = df_ann.drop(columns="end", errors="ignore")
 
     return (
         df.join(df_ann, how="inner")
         .drop(columns=["slice_name.1"], errors="ignore")
+        .assign(restriction_fragment=lambda df: df['restriction_fragment'].replace('.', 0).astype(int))
         .reset_index()
+        .sort_values(['parent_read', 'slice'])
     )
 
 
@@ -169,7 +171,7 @@ class SliceFilter:
         read_type: str = "",
     ):
 
-        self.slices = slices.copy()
+        self.slices = slices.sort_values(['parent_read', 'slice'])
 
         if filter_stages:
             self.filter_stages = filter_stages
@@ -233,22 +235,6 @@ class SliceFilter:
                 self.slices.to_csv(os.path.join(output_location, f"{stage}.tsv.gz"))
 
             self._filter_stats[stage] = self.slice_stats
-
-    def modify_re_frag(self, frag: str, adjust=1):
-        """Increases/Decreases the RE frag number.
-
-        e.g. modify_re_frag(DpnII_chr10_5, adjust=1) -> DpnII_chr10_6
-
-        Args:
-         frag: Name of restriction fragment (str)
-         adjust: Adjust fragment identifier number by value
-
-        Returns:
-         Modified fragment name (str)
-        """
-        if frag != ".":
-            enzyme, chrom, index = frag.split("_")
-            return "_".join([enzyme, chrom, str(int(index) + adjust)])
 
     def get_raw_slices(self):
         self.slices = self.slices
@@ -432,7 +418,7 @@ class CCSliceFilter(SliceFilter):
         """
         df = (
             self.slices.sort_values(["parent_read", "chrom", "start"])
-            .groupby("parent_read", as_index=False)
+            .groupby("parent_read", as_index=False, sort=False)
             .agg(
                 {
                     "slice": "nunique",
@@ -656,7 +642,7 @@ class CCSliceFilter(SliceFilter):
 
         # Generates a list of restriction fragments to be excluded from further analysis
         excluded_fragments = [
-            self.modify_re_frag(frag, modifier)
+            frag + modifier
             for frag in re_frags
             for modifier in range(-n_adjacent, n_adjacent + 1)
         ]
@@ -747,7 +733,7 @@ class TiledCSliceFilter(SliceFilter):
         """
         df = (
             self.slices.sort_values(["parent_read", "chrom", "start"])
-            .groupby("parent_read", as_index=False)
+            .groupby("parent_read", as_index=False, sort=False)
             .agg(
                 {
                     "slice": "nunique",
@@ -898,9 +884,8 @@ def main(
 
     # Initialise SliceFilter with default args
     print(f"Filtering slices with method: {method}")
-    slice_filter = slice_filters_dict[method](
-        slices=df_alignment, sample_name=sample_name, read_type=read_type
-    )
+    slice_filter_type = slice_filters_dict[method]
+    slice_filter = slice_filter_type(slices=df_alignment, sample_name=sample_name, read_type=read_type)
 
     # Filter slices using the slice_filter
     slice_filter.filter_slices()
@@ -914,22 +899,24 @@ def main(
         f"{stats_output}.reporter.stats.csv", index=False
     )
 
-    # Output fragments
-    slice_filter.fragments.to_csv(
-        f"{output_prefix}.fragments.tsv.gz", sep="\t", index=False
-    )
-
     # Output slices filtered by capture site
     for capture_site, df_cap in slice_filter.slices.query('capture != "."').groupby(
         "capture"
     ):
 
         # Extract only fragments that appear in the capture dataframe
-        slices_to_output = slice_filter.slices.loc[
+        output_slices = slice_filter.slices.loc[
             lambda df: df["parent_read"].isin(df_cap["parent_read"])
-        ]
-        (
-            slices_to_output.sort_values("slice_name").to_csv(
-                f"{output_prefix}.{capture_site.strip()}.tsv.gz", sep="\t", index=False
-            )
-        )
+            ]
+        # Generate a new slice filterer and extract the fragments
+        output_fragments = slice_filter_type(output_slices).fragments
+        
+
+        # Output fragments and slices
+        output_fragments.sort_values("parent_read").to_csv(
+                f"{output_prefix}.{capture_site.strip()}.fragments.tsv.gz", sep="\t", index=False)
+        
+        output_slices.sort_values("slice_name").to_csv(
+                f"{output_prefix}.{capture_site.strip()}.slices.tsv.gz", sep="\t", index=False)
+        
+        

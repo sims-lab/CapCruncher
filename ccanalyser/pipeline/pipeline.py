@@ -164,9 +164,9 @@ def digest_genome(infile, outfile):
     statement = """ccanalyser utils digest_genome
                    -i %(infile)s
                    -l %(tmp)s.log
-                   -o %(tmp)s
+                   -o %(outfile)s
                    -r %(restriction_enzyme)s
-                   && gzip %(tmp)s"""
+                """
 
     P.run(
         statement,
@@ -725,7 +725,7 @@ def pre_ccanalysis():
     align_slices,
     regex(r"pre_ccanalysis/aligned/(.*).bam"),
     add_inputs(r"ccanalysis/annotations/\1.annotations.tsv.gz"),
-    r"ccanalysis/reporters/\1.fragments.tsv.gz",
+    r"ccanalysis/reporters/\1.log",
 )
 def ccanalyser(infiles, outfile):
     """Processes bam files and annotations, filteres slices and outputs
@@ -737,7 +737,7 @@ def ccanalyser(infiles, outfile):
     sample_partition = sample.group(2)
     sample_read_type = sample.group(3)
 
-    output_prefix = outfile.replace(".fragments.tsv.gz", "")
+    output_prefix = outfile.replace(".log", "")
     stats_prefix = f"statistics/ccanalysis/data/{sample_name}_{sample_partition}_{sample_read_type}"
 
     statement = """ccanalyser ccanalysis ccanalysis
@@ -748,7 +748,7 @@ def ccanalyser(infiles, outfile):
                     --method %(analysis_method)s
                     --sample_name %(sample_name)s
                     --read_type %(sample_read_type)s
-                    > %(output_prefix)s.log 2>&1"""
+                    > %(outfile)s 2>&1"""
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -757,13 +757,16 @@ def ccanalyser(infiles, outfile):
     )
 
 
+
+
 @follows(ccanalyser, mkdir("ccanalysis/reporters_deduplicated"))
 @collate(
     "ccanalysis/reporters/*.tsv.gz",
-    regex(r"ccanalysis/reporters/(.*)_part\d+.(?:flashed|pe).fragments.tsv.gz"),
-    r"ccanalysis/reporters_deduplicated/\1.hdf5",
+    regex(r"ccanalysis/reporters/(.*)_part\d+.(?:flashed|pe).(.*).fragments.tsv.gz"),
+    r"ccanalysis/reporters_deduplicated/\1.\2.hdf5",
+    extras=[r'\1', r'\2']
 )
-def deduplicate_fragments(infiles, outfile):
+def deduplicate_fragments(infiles, outfile, *group_args):
 
     infiles = " ".join(infiles)
     statement = """ccanalyser ccanalysis rmdup_slices
@@ -785,15 +788,15 @@ def deduplicate_fragments(infiles, outfile):
 @follows(deduplicate_fragments)
 @transform(
     "ccanalysis/reporters/*.tsv.gz",
-    regex(r"ccanalysis/reporters/(.*)_(part\d+).(flashed|pe).(?!fragments)(.*).tsv.gz"),
-    add_inputs(r"ccanalysis/reporters_deduplicated/\1.hdf5"),
-    r"ccanalysis/reporters_deduplicated/\1_\2.\3.\4.tsv.gz",
+    regex(r"ccanalysis/reporters/(.*)_(part\d+).(flashed|pe).(.*).slices.tsv.gz"),
+    add_inputs(r"ccanalysis/reporters_deduplicated/\1.\4.hdf5"),
+    r"ccanalysis/reporters_deduplicated/\1_\2.\3.\4.slices.tsv.gz",
 )
 def deduplicate_slices(infile, outfile):
 
     tsv, dedup_frag_ids = infile
     tsv_re = re.match(
-        r"ccanalysis/reporters/(.*)_(part\d+).(flashed|pe).(?!fragments)(.*).tsv.gz",
+        r"ccanalysis/reporters/(.*)_(part\d+).(flashed|pe).(.*).slices.tsv.gz",
         tsv,
     )
     sample_name = tsv_re.group(1)
@@ -856,9 +859,9 @@ def post_ccanalysis():
 
 @follows(mkdir('ccanalysis/reporters_combined'), deduplicate_slices)
 @collate(deduplicate_slices,
-         regex(r'.*/(?P<sample>.*)_part\d+.(?:flashed|pe).(?!fragments)(?P<capture>.*).tsv.gz'),
+         regex(r'.*/(?P<sample>.*)_part\d+.(?:flashed|pe).(?!fragments)(?P<capture>.*).slices.tsv.gz'),
          r'ccanalysis/reporters_combined/\1.\2.tsv.gz')
-def merge_ccanalyser(infiles, outfile):
+def collate_ccanalyser(infiles, outfile):
    
    # Need to concat tsv files but remove headers, the sed command performs the removal
     statement = f"zcat {' '.join(infiles)} | sed -e '1n' -e '/^duplicated/d' | pigz -p 4 > {outfile}"
@@ -872,7 +875,7 @@ def merge_ccanalyser(infiles, outfile):
     
 
 @follows(mkdir("ccanalysis/bedgraphs"))
-@transform(merge_ccanalyser,
+@transform(collate_ccanalyser,
     regex(r"ccanalysis/.*/(.*).tsv.gz"),
     add_inputs(digest_genome),
     r"ccanalysis/bedgraphs/\1.raw.bedgraph.gz",
@@ -976,7 +979,7 @@ def make_bigwig(infile, outfile):
 
 @follows(mkdir("ccanalysis/interaction_counts"))
 @transform(
-    merge_ccanalyser,
+    collate_ccanalyser,
     regex(r"ccanalysis/reporters_combined/(.*)\.(.*).tsv.gz"),
     r"ccanalysis/interaction_counts/\1.\2.tsv.gz",
 )

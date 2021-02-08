@@ -8,9 +8,10 @@ from itertools import combinations
 import xopen
 from natsort import natsort_key
 
-def count_re_site_combinations(fragments, column="restriction_fragment"):
+def count_re_site_combinations(fragments, column="restriction_fragment", counts: dict=None):
 
-    counts = defaultdict(int)  # Store counts in a default dict
+    if not counts:
+        counts = defaultdict(int)  # Store counts in a default dict
 
     # For each set of ligated fragments
     for ii, (group_name, frag) in enumerate(fragments):
@@ -28,11 +29,13 @@ def main(slices, outfile=None, remove_exclusions=False, remove_capture=False, su
 
     with xopen.xopen(outfile, mode='wb', threads=4) as writer:
             
-        header = '\t'.join(['rf1', 'rf2', 'count']) + '\n'
+        header = '\t'.join(['bin1_id', 'bin2_id', 'count']) + '\n'
         writer.write(header.encode())
 
         df_slices_iterator = pd.read_csv(slices, sep='\t', chunksize=2e6) 
 
+
+        ligated_rf_counts = {}
         for ii, df_slices in enumerate(df_slices_iterator):
 
             if remove_exclusions:
@@ -68,11 +71,11 @@ def main(slices, outfile=None, remove_exclusions=False, remove_capture=False, su
 
 
             print('Started counting')
-            ligated_rf_counts = count_re_site_combinations(fragments, column='restriction_fragment')
+            ligated_rf_counts = count_re_site_combinations(fragments, column='restriction_fragment', counts=ligated_rf_counts)
 
 
             for (rf1, rf2), count in ligated_rf_counts.items():
-                line = '\t'.join([rf1, rf2, str(count)]) + '\n'
+                line = '\t'.join([str(rf1), str(rf2), str(count)]) + '\n'
                 writer.write(line.encode())
 
 

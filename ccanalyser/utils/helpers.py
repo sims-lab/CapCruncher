@@ -179,4 +179,24 @@ def extract_trimming_stats(fn):
     return stats
         
     
+def split_intervals_on_chrom(intervals):
+    if isinstance(intervals, BedTool):
+        intervals = BedTool.to_dataframe()
+    elif isinstance(intervals, str):
+        intervals = BedTool(intervals).to_dataframe()
+        
+    return {chrom: df for chrom, df in intervals.groupby('chrom')}
 
+def intersect_bins(bins_1, bins_2):
+        bt1 = BedTool.from_dataframe(bins_1)
+        bt2 = BedTool.from_dataframe(bins_2)
+        bt_intersect = bt1.intersect(bt2, wao=True, sorted=True)
+        df_intersect =  (bt_intersect.to_dataframe(disable_auto_names=True, 
+                                              header=None,
+                                              index_col=False,
+                                              names=['chrom_1', 'start_1', 'end_1', 'name_1',
+                                                     'chrom_2', 'start_2', 'end_2', 'name_2',
+                                                     'overlap'
+                                                    ]))
+        
+        return df_intersect
