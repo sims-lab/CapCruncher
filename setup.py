@@ -6,8 +6,8 @@ version='0.0.6',
 author='asmith, dsims',
 author_email='alastair.smith@ndcls.ox.ac.uk',
 packages=find_packages(),
-entry_points={'console_scripts': ['ccanalyser = ccanalyser.ccanalyser_cli:main',
-                                  'ccpipeline = ccanalyser.pipeline_cli:main']
+entry_points={'console_scripts': ['ccanalyser = ccanalyser.cli:cli',]
+                                  #'ccpipeline = ccanalyser.cli:main']
             },
 include_package_data=True,
 url='https://github.com/sims-lab/capture-c.git',
@@ -31,5 +31,6 @@ install_requires=['pandas>=0.25.3',
                   'ruffus',
                   'drmaa',
                   'joblib',
-                  'ipykernel']
+                  'ipykernel',
+                  'click']
 )

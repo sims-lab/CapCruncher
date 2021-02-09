@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 from pysam import FastxFile
 from xopen import xopen
+from ccanalyser.utils import get_timing
+import pysam
 
 #TODO: Implement error queues/pipes for handling exceptions
 
@@ -253,6 +255,107 @@ class FastqWriterProcess(Process):
         except Exception as e:
             traceback.format_exc()
             self.outq.put('END')
+
+
+def parse_alignment(aln):
+    """Parses reads from a bam file into a list.
+
+    Args:
+      aln: pysam.AlignmentFile
+    Returns:
+      List containing:
+      -read name
+      -parent reads
+      -flashed status
+      -slice number
+      -mapped status
+      -multimapping status
+      -chromosome number (e.g. chr10)
+      -start (e.g. 1000)
+      -end (e.g. 2000)
+      -coords e.g. (chr10:1000-2000)
+    """
+
+    slice_name = aln.query_name
+    parent_read, pe, slice_number, uid = slice_name.split("|")
+    ref_name = aln.reference_name
+    ref_start = aln.reference_start
+    ref_end = aln.reference_end
+    # Check if read mapped
+    if aln.is_unmapped:
+        mapped = 0
+        multimapped = 0
+        ref_name = "unmapped"
+        ref_start = ""
+        ref_end = ""
+        coords = ""
+    else:
+        mapped = 1
+        coords = f"{ref_name}:{ref_start}-{ref_end}"
+        # Check if multimapped
+        if aln.is_secondary:
+            multimapped = 1
+        else:
+            multimapped = 0
+    return [
+        slice_name,
+        parent_read,
+        pe,
+        slice_number,
+        uid,
+        mapped,
+        multimapped,
+        ref_name,
+        ref_start,
+        ref_end,
+        coords,
+    ]
+
+
+
+@get_timing(task_name="processing BAM file")
+def parse_bam(bam):
+    """Uses parse_alignment function convert bam file to a dataframe.
+
+    Args:
+     bam: File name of bam file to process.
+
+    Returns:
+     Dataframe with columns:
+     -'slice_name'
+     -'parent_read'
+     -'pe'
+     -'slice'
+     -'mapped'
+     -'multimapped'
+     -'chrom'
+     -'start'
+     -'end'
+     -'coordinates'
+    """
+
+    df_bam = pd.DataFrame(
+        [
+            parse_alignment(aln)
+            for aln in pysam.AlignmentFile(bam, "rb").fetch(until_eof=True)
+        ],
+        columns=[
+            "slice_name",
+            "parent_read",
+            "pe",
+            "slice",
+            "uid",
+            "mapped",
+            "multimapped",
+            "chrom",
+            "start",
+            "end",
+            "coordinates",
+        ],
+    )
+    df_bam.set_index(["slice_name", "chrom", "start"], inplace=True)
+    return df_bam
+
 
            
 

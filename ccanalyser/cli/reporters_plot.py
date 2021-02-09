@@ -20,7 +20,7 @@ import seaborn as sns
 import iced
 from seaborn.matrix import _matrix_mask
 
-from ccanalyser.utils.helpers import (
+from ccanalyser.utils import (
     bed_has_duplicate_names,
     bed_has_name,
     get_human_readable_number_of_bp,

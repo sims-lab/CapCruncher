@@ -7,7 +7,7 @@ import cooler
 import h5py
 from joblib import Parallel, delayed
 from typing import Union
-from ccanalyser.utils.helpers import split_intervals_on_chrom, intersect_bins
+from ccanalyser.utils import split_intervals_on_chrom, intersect_bins
 
 # Required for initial storage
 

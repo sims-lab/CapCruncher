@@ -1,16 +1,13 @@
-import os
-import sys
-import pandas as pd
-from pandas import errors
-import pybedtools
-from pybedtools import BedTool
-from joblib import Parallel, delayed
-import argparse
 import itertools
-from multiprocessing import Pool
-import numpy as np
 
-from ccanalyser.utils.helpers import is_valid_bed, bed_has_name, bed_has_duplicate_names
+import click
+import numpy as np
+import pandas as pd
+from joblib import Parallel, delayed
+from pybedtools import BedTool
+
+from ccanalyser.cli import cli
+from ccanalyser.utils import bed_has_name, is_valid_bed
 
 
 def find_intersections(
@@ -60,15 +57,13 @@ def format_intersections(intersections, column_name, failed=False, na_value=0):
         )
 
         # Extract only needed columns
-        df_intersections = df_intersections[
-            ["name", 'chrom', 'start', column_name]
-        ]
+        df_intersections = df_intersections[["name", "chrom", "start", column_name]]
 
     else:
         df_intersections[column_name] = na_value
-        df_intersections = df_intersections[['name', 'chrom', 'start', column_name]]
+        df_intersections = df_intersections[["name", "chrom", "start", column_name]]
 
-    return df_intersections.set_index(["name", 'chrom', 'start'])
+    return df_intersections.set_index(["name", "chrom", "start"])
 
 
 def cycle_argument(arg):
@@ -81,68 +76,103 @@ def cycle_argument(arg):
         return arg
 
 
-def main(
+@cli.command()
+@click.argument("slices")
+@click.option(
+    "-a",
+    "--actions",
+    help="Actions to perform for each bed_files file",
+    type=click.Choice(["get", "count"]),
+)
+@click.option("-b", "--bed_files", help="Bed files to intersect with slices", multiple=True)
+@click.option("-n", "--names", help="Names to use as column names", multiple=True)
+@click.option(
+    "-f",
+    "--overlap_fractions",
+    help="Minimum overlap fractions",
+    multiple=True,
+    default=[
+        1e-9,
+    ],
+    type=click.INT,
+)
+@click.option(
+    "-o",
+    "--output",
+    help="Output file name",
+    default="annotated.slices.tsv.gz",
+)
+@click.option(
+    "--duplicates",
+    help="Method to use for reconciling duplicate (i.e. multimapping) slices",
+    type=click.Choice(['remove']),
+    default="remove",
+)
+
+def slices_annotate(
     actions=None,
-    bed1=None,
-    bed2=None,
-    colnames=None,
+    slices=None,
+    bed_files=None,
+    names=None,
     overlap_fractions=None,
-    outfile=None,
+    output=None,
     duplicates="remove",
 ):
 
+    '''Annotates a bam file (converted to bed format) with other bed files'''
+
     # Verify bed integrity
-    assert is_valid_bed(bed1), f"Bed1 - {bed1} is invalid"
-    assert bed_has_name(bed1), f"Bed1 - {bed1} does not have a name column"
-    # assert bed_has_duplicate_names(bed1), f'Bed1 - {bed1} has duplicates in name column'
+    assert is_valid_bed(slices), f"bed - {slices} is invalid"
+    assert bed_has_name(slices), f"bed - {slices} does not have a name column"
+    # assert bed_has_duplicate_names(slices), f'slices - {slices} has duplicates in name column'
 
-    print('Formating  bed file')
+    print("Formating  bed file")
     # Make base dataframe
-    df_bed = df_bed = BedTool(bed1).to_dataframe()
+    df_bed = df_bed = BedTool(slices).to_dataframe()
 
-    print('Dealing with any duplicate names')
+    print("Dealing with any duplicate names")
     # Deal with duplicates -- currently very harsh
     if duplicates == "remove":
-        df_bed = (df_bed.sort_values(["score"], ascending=False)
-                        .drop_duplicates(subset="name", keep="first"))
-        
-        bed1 = BedTool.from_dataframe(
-            df_bed[["chrom", "start", "end", "name"]]
+        df_bed = df_bed.sort_values(["score"], ascending=False).drop_duplicates(
+            subset="name", keep="first"
         )
+
+        slices = BedTool.from_dataframe(df_bed[["chrom", "start", "end", "name"]])
 
     # Run the intersection
     n_actions = len(actions)
     dframes = Parallel(n_jobs=n_actions)(
-        delayed(find_intersections)(a=bed1, b=b2, frac=f, column_name=name, method=action)
+        delayed(find_intersections)(
+            a=slices, b=b2, frac=f, column_name=name, method=action
+        )
         for b2, f, name, action in zip(
-            bed2,
+            bed_files,
             cycle_argument(overlap_fractions),
-            colnames,
+            names,
             actions,
         )
     )
 
-
     # Merge dataframe with annotations
     df_annotations = (
-        df_bed.set_index(['name', 'chrom', 'start'])
+        df_bed.set_index(["name", "chrom", "start"])
         .join(dframes, how="left")
         .reset_index()
         .rename(columns={"name": "slice_name"})
-        .drop(columns=['score', 'strand'], errors='ignore')
+        .drop(columns=["score", "strand"], errors="ignore")
     )
 
     # Export to csv
-    df_annotations.to_csv(outfile, sep="\t", index=False)
+    df_annotations.to_csv(output, sep="\t", index=False)
 
 
 # if __name__ == '__main__':
 
 #     parser = argparse.ArgumentParser()
-#     parser.add_argument('-a', '--bed1', nargs='+')
-#     parser.add_argument('-b', '--bed2', nargs='+')
+#     parser.add_argument('-a', '--slices', nargs='+')
+#     parser.add_argument('-b', '--bed_files', nargs='+')
 #     parser.add_argument('--actions', nargs='+', choices=['get', 'count'])
-#     parser.add_argument('-c', '--colnames', nargs='+')
+#     parser.add_argument('-c', '--names', nargs='+')
 #     parser.add_argument(
 #         '-f', '--overlap_fractions', nargs='*', default=1e-9, type=float
 #     )

@@ -1,12 +1,9 @@
-import argparse
-import os
-import sys
 import pandas as pd
-import numpy as np
 from collections import defaultdict
 from itertools import combinations
 import xopen
-from natsort import natsort_key
+from ccanalyser.cli import cli
+import click
 
 def count_re_site_combinations(fragments, column="restriction_fragment", counts: dict=None):
 
@@ -20,12 +17,23 @@ def count_re_site_combinations(fragments, column="restriction_fragment", counts:
             print(f'Processed {ii} fragments')
 
         for rf1, rf2 in combinations(frag[column], 2): # Get fragment combinations
-            rf1, rf2 = sorted([rf1, rf2], key=natsort_key)     # Sort them to ensure consistency        
+            rf1, rf2 = sorted([rf1, rf2])     # Sort them to ensure consistency        
             counts[rf1, rf2] += 1
 
     return counts
 
-def main(slices, outfile=None, remove_exclusions=False, remove_capture=False, subsample=None):
+
+
+
+@cli.command()
+@click.argument('reporters')
+@click.option('--output', help='Name of output file', default='counts.tsv.gz')
+@click.option('--remove_exclusions', default=False, help='Prevents analysis of fragments marked as proximity exclusions')
+@click.option('--remove_capture', default=False, help='Prevents analysis of capture fragment interactions')
+@click.option('--subsample', default=0, help='Subsamples reporters before analysis of interactions')
+def reporters_count(slices, outfile=None, remove_exclusions=False, remove_capture=False, subsample=None):
+
+    '''Counts the number of captured interactions at the restriction fragment level'''
 
     with xopen.xopen(outfile, mode='wb', threads=4) as writer:
             
@@ -77,12 +85,3 @@ def main(slices, outfile=None, remove_exclusions=False, remove_capture=False, su
             for (rf1, rf2), count in ligated_rf_counts.items():
                 line = '\t'.join([str(rf1), str(rf2), str(count)]) + '\n'
                 writer.write(line.encode())
-
-
-# if __name__ == '__main__':
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('-f', '--slices')
-#     parser.add_argument('-o', '--outfile', default='out.tsv.gz')
-#     args = parser.parse_args()
-
-#     main(**vars(args))   
