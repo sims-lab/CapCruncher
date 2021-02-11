@@ -23,8 +23,11 @@ from . import (genome_digest,
                slices_annotate,
                reporters_identify,
                reporters_deduplicate,
-               reporters_count,
-               reporters_store,
-               reporters_bedgraph,)
+               interactions_count,
+               interactions_store,
+               reporters_bedgraph,
+               )
+
+from ccanalyser.pipeline.pipeline import pipeline
 
 

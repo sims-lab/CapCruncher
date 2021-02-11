@@ -13,6 +13,7 @@ from ccanalyser.utils import hash_column, load_json
 import numpy as np
 import ujson
 import os
+import itertools
 
 
 @cli.group()
@@ -34,61 +35,50 @@ def reporters_deduplicate():
     default=1e6,
     type=click.INT,
 )
-def identify(fragments_fn, output="duplicated_ids.json", buffer=1e6):
+@click.option("--read_type", help="Type of read", default="flashed", type=click.Choice(["flashed", "pe"], case_sensitive=False))
+def identify(fragments_fn, output="duplicated_ids.json", buffer=1e6, read_type='flashed'):
 
-    # TODO: Make the variable names cleaner and break this up a bit
-
-    df_fragments = pd.read_csv(
+    fragments = pd.read_csv(
         fragments_fn,
         sep="\t",
         chunksize=buffer,
-        usecols=["parent_read", "pe", "coordinates"],
+        usecols=["parent_read", "coordinates"],
     )
 
-    coordinates_flashed = dict()
-    coordinates_pe = dict()
-    parent_read_all = set()
+    coordinates_deduplicated = dict()
+    fragments_all = set()
+    
 
-    for df in df_fragments:
-        flashed = df.query('pe == "flashed"')
-        pe = df.query('pe == "pe"')
+    for df in fragments:
 
-        # Deal with flashed coords
-        # -> {coord(hashed): id(hashed)}
-        flashed_dict = dict(
-            zip(
-                hash_column(flashed["coordinates"]), hash_column(flashed["parent_read"])
-            )
-        )
+        df = df.sample(frac=1) # Shuffles to stop fragments at the end of the sample always being removed
 
-        # Extract chrom1 + start1 + chrom-1 + end-1
-        pe_coords = pe["coordinates"].str.extract(
-            r"^chr(?P<chrom1>[\d|X|Y|M]+):(?P<start>\d+).*\|chr(?P<chrom2>[\d|X|Y|M]+):\d+-(?P<end>\d+)"
-        )
+        if read_type == 'flashed':
+            
+            coords_hashed = hash_column(df["coordinates"])
+            parent_read_hashed = hash_column(df["parent_read"])
+       
+        else:
 
-        # -> {chrom1+start1+chrom-1+end-1(hashed): id(hashed)}
-        pe_dict = dict(
-            zip(
-                hash_column(pe_coords["chrom1"].str.cat(pe_coords.iloc[:, 1:])),
-                hash_column(pe["parent_read"]),
-            )
-        )
+            # Extract chrom1 + start1 + chrom-1 + end-1
+            coords_df = df["coordinates"].str.extract(
+                    r"^chr(?P<chrom1>[\d|X|Y|M]+):(?P<start>\d+).*\|chr(?P<chrom2>[\d|X|Y|M]+):\d+-(?P<end>\d+)")
+            
+            #{chrom1+start1+chrom-1+end-1(hashed): id(hashed)}
+            coords_hashed = hash_column(coords_df["chrom1"].str.cat(coords_df.iloc[:, 1:]))
+            parent_read_hashed = hash_column(df["parent_read"])
+    
 
-        coordinates_flashed.update(flashed_dict)
-        coordinates_pe.update(pe_dict)
-
-        id_set = {x for x in [*flashed_dict.values(), *pe_dict.values()]}
-        parent_read_all.update(id_set)
+        coordinates_deduplicated_sample = dict(zip(coords_hashed, parent_read_hashed))
+        coordinates_deduplicated.update(coordinates_deduplicated_sample)
+        fragments_all.update({x for x in parent_read_hashed})
 
     # Identify duplicates
-    parent_read_dedup = set(
-        x for x in [*coordinates_flashed.values(), *coordinates_pe.values()]
-    )
-    parent_read_duplicates = parent_read_all - parent_read_dedup
-    parent_read_duplicates = dict.fromkeys(parent_read_duplicates)
+    fragments_no_dup = {x for x in coordinates_deduplicated.values()}
+    fragments_dup = fragments_all - fragments_no_dup
 
     with xopen.xopen(output, "w") as w:
-        ujson.dump(parent_read_duplicates, w)
+        ujson.dump(dict.fromkeys(fragments_dup), w)
 
 
 @reporters_deduplicate.command()
@@ -118,7 +108,7 @@ def remove(
         os.unlink(output)
 
     df_slices = pd.read_csv(slices_fn, sep="\t", chunksize=buffer)
-    ids_duplicated = set(load_json(duplicated_ids))
+    ids_duplicated = {int(x) for x in load_json(duplicated_ids)}
     n_reads_total = 0
     n_reads_unique = 0
 

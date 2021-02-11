@@ -60,6 +60,6 @@ def genome_digest(
             fragment_stats[chrom.name] = n_fragments
             fragment_number_offset += n_fragments + 1
     
-    with xopen(logfile, 'w') as output:
+    with xopen.xopen(logfile, 'w') as output:
         for chrom, n_fragments in fragment_stats.items():
             output.write(f'{chrom}\t{n_fragments}\n')

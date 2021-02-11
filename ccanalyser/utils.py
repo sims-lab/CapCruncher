@@ -1,21 +1,21 @@
+import glob
 import os
 import re
-from typing import Union
-
-import pandas as pd
-import pybedtools
-import xxhash
-from pybedtools import BedTool
-from itertools import combinations
-import glob
-import xopen
 import sys
-import ujson
+import time
+from collections import OrderedDict
 from datetime import timedelta
 from functools import wraps
-import time
+from itertools import combinations
+from typing import Union
+
 import click
-from collections import OrderedDict
+import pandas as pd
+import pybedtools
+import ujson
+import xxhash
+from pybedtools import BedTool
+from xopen import xopen
 
 
 def open_logfile(fn):
@@ -199,15 +199,14 @@ def get_timing(task_name=None):
 
     return wrapper
 
+
 class NaturalOrderGroup(click.Group):
     def __init__(self, name=None, commands=None, **attrs):
         if commands is None:
             commands = OrderedDict()
         elif not isinstance(commands, OrderedDict):
             commands = OrderedDict(commands)
-        click.Group.__init__(self, name=name,
-                             commands=commands,
-                             **attrs)
+        click.Group.__init__(self, name=name, commands=commands, **attrs)
 
     def list_commands(self, ctx):
         return self.commands.keys()

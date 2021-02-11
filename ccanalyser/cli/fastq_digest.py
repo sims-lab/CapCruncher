@@ -1,25 +1,23 @@
-import re
-from collections import Counter, defaultdict
-from multiprocessing import Process, Queue, SimpleQueue
-from multiprocessing.queues import Queue
-from os import stat
-from typing import Union
+from multiprocessing import Queue, SimpleQueue
 
 import click
 import numpy as np
 import pandas as pd
-from ccanalyser.cli import cli
-from ccanalyser.tools.digest import DigestedRead, ReadDigestionProcess
-from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess
-from ccanalyser.tools.statistics import DigestionStatCollector, DigestionStatistics
-from ccanalyser.utils import get_re_site
-from numpy.lib.histograms import histogram
 from pysam import FastxFile
 from xopen import xopen
 
 
+from ccanalyser.cli import cli
+from ccanalyser.tools.digest import ReadDigestionProcess
+from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess
+from ccanalyser.tools.statistics import (DigestionStatCollector,
+                                         DigestionStatistics)
+from ccanalyser.utils import get_re_site
+
+
+
 @cli.command()
-@click.argument("input_fastq")
+@click.argument("input_fastq", nargs=-1)
 @click.option("-r", "--restriction_enzyme", help="Restriction enzyme name or sequence")
 @click.option(
     "-m",

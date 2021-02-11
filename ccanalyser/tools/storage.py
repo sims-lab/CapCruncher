@@ -68,7 +68,7 @@ def create_cooler_cc(
         **cooler_kwargs,
     )
 
-    return f"{fn}/{capture_name}"
+    return f"{fn}::/{capture_name}"
 
 
 # Required for binning interactions into genomic regions

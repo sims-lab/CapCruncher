@@ -27,41 +27,42 @@ def count_re_site_combinations(fragments, column="restriction_fragment", counts:
 
 @cli.command()
 @click.argument('reporters')
-@click.option('--output', help='Name of output file', default='counts.tsv.gz')
-@click.option('--remove_exclusions', default=False, help='Prevents analysis of fragments marked as proximity exclusions')
-@click.option('--remove_capture', default=False, help='Prevents analysis of capture fragment interactions')
+@click.option('-o', '--output', help='Name of output file', default='counts.tsv.gz')
+@click.option('--remove_exclusions', default=False, help='Prevents analysis of fragments marked as proximity exclusions', is_flag=True)
+@click.option('--remove_capture', default=False, help='Prevents analysis of capture fragment interactions', is_flag=True)
 @click.option('--subsample', default=0, help='Subsamples reporters before analysis of interactions')
-def reporters_count(slices, outfile=None, remove_exclusions=False, remove_capture=False, subsample=None):
+def interactions_count(reporters, output=None, remove_exclusions=False, remove_capture=False, subsample=None):
+
 
     '''Counts the number of captured interactions at the restriction fragment level'''
 
-    with xopen.xopen(outfile, mode='wb', threads=4) as writer:
+    with xopen.xopen(output, mode='wb', threads=4) as writer:
             
         header = '\t'.join(['bin1_id', 'bin2_id', 'count']) + '\n'
         writer.write(header.encode())
 
-        df_slices_iterator = pd.read_csv(slices, sep='\t', chunksize=2e6) 
+        df_reporters_iterator = pd.read_csv(reporters, sep='\t', chunksize=2e6) 
 
 
         ligated_rf_counts = {}
-        for ii, df_slices in enumerate(df_slices_iterator):
+        for ii, df_reporters in enumerate(df_reporters_iterator):
 
             if remove_exclusions:
                 # Must only remove exclusions if they are relevant for the capture being examined
                 print('Removing all excluded regions')
-                df_capture = df_slices.query('capture != "."')
-                df_reporters_exclusions = df_slices.query('(capture == ".") and (exclusion_count > 0)')
+                df_capture = df_reporters.query('capture != "."')
+                df_reporters_exclusions = df_reporters.query('(capture == ".") and (exclusion_count > 0)')
 
-                df_slices_to_remove = (df_capture.drop_duplicates(['parent_read', 'capture'])
+                df_reporters_to_remove = (df_capture.drop_duplicates(['parent_read', 'capture'])
                                                     [['parent_read', 'capture']]
                                                     .merge(df_reporters_exclusions[['parent_read', 'exclusion', 'slice_name']], on='parent_read')
                                                     .query('capture == exclusion'))
                 
-                df_slices = df_slices.loc[~(df_slices['slice_name'].isin(df_slices_to_remove['slice_name']))]
+                df_reporters = df_reporters.loc[~(df_reporters['slice_name'].isin(df_reporters_to_remove['slice_name']))]
                 
         
             if remove_capture:
-                df_slices = df_slices.query('capture != "."')
+                df_reporters = df_reporters.query('capture != "."')
 
             if subsample:
 
@@ -70,12 +71,12 @@ def reporters_count(slices, outfile=None, remove_exclusions=False, remove_captur
                 elif isinstance(subsample, int):
                     subsample_options = {'n': subsample}
 
-                df_slices = df_slices[df_slices['parent_read'].isin(df_slices['parent_read'].sample(**subsample_options))]
+                df_reporters = df_reporters[df_reporters['parent_read'].isin(df_reporters['parent_read'].sample(**subsample_options))]
                 print('Subsampled fragments')
             
             
             print('Grouping at the fragment level')
-            fragments = df_slices.groupby('parent_read')
+            fragments = df_reporters.groupby('parent_read')
 
 
             print('Started counting')

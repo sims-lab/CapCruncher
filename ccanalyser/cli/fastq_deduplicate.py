@@ -11,7 +11,7 @@ from typing import Union
 
 import pandas as pd
 import ujson
-import xopen
+from xopen import xopen
 from ccanalyser.cli import cli
 from ccanalyser.tools.deduplicate import (
     ReadDeduplicationParserProcess,
@@ -96,6 +96,8 @@ def identify(input_files, output="duplicates.json"):
         dedup_sequences.update(invert_dict(d))  # {SEQUENCE_HASH: READ_NAME_HASH}
 
     duplicated_ids = read_ids - set(dedup_sequences.values())
+    del read_ids
+    del dedup_sequences
 
     with xopen(output, "w") as w:
         duplicated_ids_dict = dict.fromkeys(duplicated_ids)
@@ -110,7 +112,7 @@ def identify(input_files, output="duplicates.json"):
     help="Output prefix for deduplicated fastq file(s)",
     default="",
 )
-@click.option('-d', '--duplicate_ids', help='Path to duplicate ids, identified by the identify subcommand')
+@click.option('-d', '--duplicated_ids', help='Path to duplicate ids, identified by the identify subcommand')
 @click.option(
     "--read_buffer",
     help="Number of reads to process before writing to file",
@@ -138,10 +140,18 @@ def remove(
     writeq = SimpleQueue()  # Deduplicated reads are placed into the queue for writing
     statq = SimpleQueue()  # Statistics are sent on this queue for processing
 
-    fn_regex = re.compile(r"(?:.*/)?(.*)_[1|2]\.(?:fastq|fq)\.(?:gz)?$")
+    #fn_regex = re.compile(r"(?:.*/)?(.*)_([1|2])\.(?:fastq|fq)\.(?:gz)?$")
     output_files = [
-        f"{output_prefix}_{fn_regex.match(fn).group(1)}.fastq.gz" for fn in input_files
+        f"{output_prefix}_{ii+1}.fastq.gz" for ii in range(len(input_files))
     ]
+
+    deduplicator = [
+    ReadDuplicateRemovalProcess(
+        inq=inputq, outq=writeq, duplicated_ids=duplicated_ids, statq=statq
+    )
+    for _ in range(1)]
+
+    del duplicated_ids
 
     reader = FastqReaderProcess(
         input_files=input_files,
@@ -150,18 +160,14 @@ def remove(
         n_subprocesses=1,
     )
 
+
     writer = FastqWriterProcess(
         inq=writeq,
         output=output_files,
         compression_level=compression_level,
     )
 
-    deduplicator = [
-        ReadDuplicateRemovalProcess(
-            inq=inputq, outq=writeq, duplicated_ids=duplicated_ids, statq=statq
-        )
-        for _ in range(1)
-    ]
+
 
     reader.start()
     writer.start()

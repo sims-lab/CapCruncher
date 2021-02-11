@@ -63,15 +63,15 @@ def format_intersections(intersections, column_name, failed=False, na_value=0):
         df_intersections[column_name] = na_value
         df_intersections = df_intersections[["name", "chrom", "start", column_name]]
 
-    return df_intersections.set_index(["name", "chrom", "start"])
+    return df_intersections.set_index("name")[column_name]
 
 
 def cycle_argument(arg):
     """Allows for the same argument to be stated once but repeated for all files"""
-    arg = arg.copy()
 
     if len(arg) == 1:
-        return itertools.cycle(arg)
+        arg_cp = arg.copy()
+        return itertools.cycle(arg_cp)
     else:
         return arg
 
@@ -82,9 +82,14 @@ def cycle_argument(arg):
     "-a",
     "--actions",
     help="Actions to perform for each bed_files file",
-    type=click.Choice(["get", "count"]),
+    multiple=True,
+    type=click.Choice(
+        ["get", "count"],
+    ),
 )
-@click.option("-b", "--bed_files", help="Bed files to intersect with slices", multiple=True)
+@click.option(
+    "-b", "--bed_files", help="Bed files to intersect with slices", multiple=True
+)
 @click.option("-n", "--names", help="Names to use as column names", multiple=True)
 @click.option(
     "-f",
@@ -94,7 +99,7 @@ def cycle_argument(arg):
     default=[
         1e-9,
     ],
-    type=click.INT,
+    type=click.FLOAT,
 )
 @click.option(
     "-o",
@@ -105,10 +110,9 @@ def cycle_argument(arg):
 @click.option(
     "--duplicates",
     help="Method to use for reconciling duplicate (i.e. multimapping) slices",
-    type=click.Choice(['remove']),
+    type=click.Choice(["remove"]),
     default="remove",
 )
-
 def slices_annotate(
     actions=None,
     slices=None,
@@ -119,12 +123,14 @@ def slices_annotate(
     duplicates="remove",
 ):
 
-    '''Annotates a bam file (converted to bed format) with other bed files'''
+    """Annotates a bam file (converted to bed format) with other bed files"""
+
+
+    #TODO: Increase speed by splitting files on chromosome and intersecting in parallel
 
     # Verify bed integrity
     assert is_valid_bed(slices), f"bed - {slices} is invalid"
     assert bed_has_name(slices), f"bed - {slices} does not have a name column"
-    # assert bed_has_duplicate_names(slices), f'slices - {slices} has duplicates in name column'
 
     print("Formating  bed file")
     # Make base dataframe
@@ -155,7 +161,7 @@ def slices_annotate(
 
     # Merge dataframe with annotations
     df_annotations = (
-        df_bed.set_index(["name", "chrom", "start"])
+        df_bed.set_index(["name"])
         .join(dframes, how="left")
         .reset_index()
         .rename(columns={"name": "slice_name"})
@@ -164,19 +170,3 @@ def slices_annotate(
 
     # Export to csv
     df_annotations.to_csv(output, sep="\t", index=False)
-
-
-# if __name__ == '__main__':
-
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('-a', '--slices', nargs='+')
-#     parser.add_argument('-b', '--bed_files', nargs='+')
-#     parser.add_argument('--actions', nargs='+', choices=['get', 'count'])
-#     parser.add_argument('-c', '--names', nargs='+')
-#     parser.add_argument(
-#         '-f', '--overlap_fractions', nargs='*', default=1e-9, type=float
-#     )
-#     parser.add_argument('-o', '--outfile', default='out.tsv.gz')
-#     args = parser.parse_args()
-
-#     main(**vars(args))
