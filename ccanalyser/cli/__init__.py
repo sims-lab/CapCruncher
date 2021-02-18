@@ -25,7 +25,7 @@ from . import (genome_digest,
                reporters_deduplicate,
                interactions_count,
                interactions_store,
-               reporters_bedgraph,
+               interactions_bedgraph,
                )
 
 from ccanalyser.pipeline.pipeline import pipeline

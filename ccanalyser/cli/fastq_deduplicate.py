@@ -25,10 +25,8 @@ import re
 
 
 @cli.group(cls=NaturalOrderGroup)
-def fastq_deduplicate(
-):
+def fastq_deduplicate():
     """Identifies PCR duplicate fragments from Fastq files"""
-
 
 
 @fastq_deduplicate.command()
@@ -47,7 +45,7 @@ def fastq_deduplicate(
 )
 def parse(input_files, output="out.json", read_buffer=1e5):
 
-    '''Parses fastq file(s) into easy to deduplicate format. (Run first)  '''
+    """Parses fastq file(s) into easy to deduplicate format. (Run first)  """
 
     # Set up multiprocessing variables
     inputq = SimpleQueue()  # Reads are placed into this queue for deduplication
@@ -84,8 +82,7 @@ def parse(input_files, output="out.json", read_buffer=1e5):
 )
 def identify(input_files, output="duplicates.json"):
 
-    '''Identifies fragments with duplicated sequences. (Run Second)'''
-
+    """Identifies fragments with duplicated sequences. (Run Second)"""
 
     dedup_sequences = dict()
     read_ids = set()
@@ -112,14 +109,28 @@ def identify(input_files, output="duplicates.json"):
     help="Output prefix for deduplicated fastq file(s)",
     default="",
 )
-@click.option('-d', '--duplicated_ids', help='Path to duplicate ids, identified by the identify subcommand')
+@click.option(
+    "-d",
+    "--duplicated_ids",
+    help="Path to duplicate ids, identified by the identify subcommand",
+)
 @click.option(
     "--read_buffer",
     help="Number of reads to process before writing to file",
     default=1e5,
     type=click.INT,
 )
-@click.option("--compression_level", help="Level of compression for output files", default=5, type=click.INT)
+@click.option(
+    "--gzip/--no-gzip",
+    help="Determines if files are gziped or not",
+    default=False
+)
+@click.option(
+    "--compression_level",
+    help="Level of compression for output files",
+    default=5,
+    type=click.INT,
+)
 @click.option("--sample_name", help="Name of sample e.g. DOX_treated_1")
 @click.option("--stats_prefix", help="Output prefix for stats file")
 def remove(
@@ -127,29 +138,30 @@ def remove(
     duplicated_ids,
     read_buffer=1e5,
     output_prefix="",
+    gzip=False, 
     compression_level=5,
     sample_name="",
     stats_prefix="",
 ):
-    
-    '''Removes fragments with duplicated sequences from fastq files. (Run Third)'''
 
+    """Removes fragments with duplicated sequences from fastq files. (Run Third)"""
 
     duplicated_ids = set(load_json(duplicated_ids))
     inputq = SimpleQueue()  # Reads are placed into this queue for deduplication
     writeq = SimpleQueue()  # Deduplicated reads are placed into the queue for writing
     statq = SimpleQueue()  # Statistics are sent on this queue for processing
 
-    #fn_regex = re.compile(r"(?:.*/)?(.*)_([1|2])\.(?:fastq|fq)\.(?:gz)?$")
+    # fn_regex = re.compile(r"(?:.*/)?(.*)_([1|2])\.(?:fastq|fq)\.(?:gz)?$")
     output_files = [
-        f"{output_prefix}_{ii+1}.fastq.gz" for ii in range(len(input_files))
+        f"{output_prefix}_{ii+1}.fastq{'.gz' if gzip else ''}" for ii in range(len(input_files))
     ]
 
     deduplicator = [
-    ReadDuplicateRemovalProcess(
-        inq=inputq, outq=writeq, duplicated_ids=duplicated_ids, statq=statq
-    )
-    for _ in range(1)]
+        ReadDuplicateRemovalProcess(
+            inq=inputq, outq=writeq, duplicated_ids=duplicated_ids, statq=statq
+        )
+        for _ in range(1)
+    ]
 
     del duplicated_ids
 
@@ -160,14 +172,11 @@ def remove(
         n_subprocesses=1,
     )
 
-
     writer = FastqWriterProcess(
         inq=writeq,
         output=output_files,
         compression_level=compression_level,
     )
-
-
 
     reader.start()
     writer.start()

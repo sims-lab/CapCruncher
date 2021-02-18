@@ -16,6 +16,7 @@ import ujson
 import xxhash
 from pybedtools import BedTool
 from xopen import xopen
+from cgatcore.iotools import zap_file
 
 
 def open_logfile(fn):
@@ -149,10 +150,10 @@ def split_intervals_on_chrom(intervals):
     return {chrom: df for chrom, df in intervals.groupby("chrom")}
 
 
-def intersect_bins(bins_1, bins_2):
+def intersect_bins(bins_1, bins_2, **bedtools_kwargs):
     bt1 = BedTool.from_dataframe(bins_1)
     bt2 = BedTool.from_dataframe(bins_2)
-    bt_intersect = bt1.intersect(bt2, wao=True, sorted=True)
+    bt_intersect = bt1.intersect(bt2, wao=True, sorted=True, **bedtools_kwargs)
     df_intersect = bt_intersect.to_dataframe(
         disable_auto_names=True,
         header=None,
@@ -210,3 +211,7 @@ class NaturalOrderGroup(click.Group):
 
     def list_commands(self, ctx):
         return self.commands.keys()
+
+def zap_files(files):
+    for fn in files:
+        zap_file(fn)

@@ -3,18 +3,20 @@ import numpy as np
 from pybedtools import BedTool
 import cooler
 from typing import Union
+from ccanalyser.tools.storage import CoolerBinner
 
 
 class CoolerBedGraph:
-    def __init__(self, cooler_fn: str):
+    def __init__(self, cooler_fn: str, sparse=True):
 
         self.cooler = cooler.Cooler(cooler_fn)
         self.bins = self.cooler.bins()[:]
         self.pixels = self.cooler.pixels()[:]
-        self.capture_name = self.ccooler.info["metadata"]["capture_name"]
+        self.capture_name = self.cooler.info["metadata"]["capture_name"]
         self.capture_bins = self.cooler.info["metadata"]["capture_bins"]
         self._bedgraph = None
         self._reporters = None
+        self.sparse = sparse
 
     def _get_reporters(self):
         concat_ids = pd.concat([self.pixels["bin1_id"], self.pixels["bin2_id"]])
@@ -42,9 +44,11 @@ class CoolerBedGraph:
 
     def _get_bedgraph(self):
 
+        merge_method = 'inner' if self.sparse else 'outer'
+
         df_bdg = (
             self.bins.merge(
-                self.reporters, left_on="name", right_on="reporter", how="outer"
+                self.reporters, left_on="name", right_on="reporter", how=merge_method
             )[["chrom", "start", "end", "count"]]
             .assign(count=lambda df: df["count"].fillna(0))
             .sort_values(["chrom", "start"])
@@ -80,7 +84,7 @@ class CoolerBedGraph:
 
     def normalise_bedgraph(self, scale_factor=1e6):
         df_bdg = self.bedgraph
-        df_bdg["count"] = (df_bdg["count"] / self.n_cis_interactions) * scale_factor
+        df_bdg["count"] = (df_bdg["count"] / scale_factor) * self.n_cis_interactions
         return df_bdg
 
     def to_file(self, fn, normalise=False, **normalise_kwargs):
@@ -94,9 +98,9 @@ class CoolerBedGraph:
 
 
 class CoolerBedGraphWindowed(CoolerBedGraph):
-    def __init__(self, cooler_fn: str, binsize=5e3, binner=None):
+    def __init__(self, cooler_fn: str, binsize: int =5e3, binner: CoolerBinner = None, sparse=True):
 
-        super(CoolerBedGraphWindowed, self).__init__(cooler_fn)
+        super(CoolerBedGraphWindowed, self).__init__(cooler_fn, sparse=sparse)
 
         self.cooler = cooler.Cooler(cooler_fn)
         self.binner = binner if binner else CoolerBinner(cooler_fn, binsize=binsize)
@@ -110,16 +114,21 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
         bct = self.binner.bin_conversion_table
         reporters = self.reporters
 
+        # Merge reporters with windows
         bedgraph_frag = bct.merge(
             reporters, left_on="name_fragment", right_on="reporter"
         ).drop(columns=["capture", "name_fragment"])
 
+        # Get aggregated count
         count_aggregated = (
             bedgraph_frag.groupby("name_bin").agg({"count": "sum"}).reset_index()
         )
+
+        # Merge bins with aggregated counts
         bedgraph_bins = self.binner.bins.merge(
-            count_aggregated, left_on="name", right_on="name_bin"
+            count_aggregated, left_on="name", right_on="name_bin", how='inner' if self.sparse else 'outer'
         ).drop(columns=["name_bin"])[["chrom", "start", "end", "count"]]
+        
         return bedgraph_bins
 
     def normalise_bedgraph(self, scale_factor=1e6):
@@ -133,9 +142,8 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
             .assign(
                 count_overfrac_norm=lambda df: df["count"] * df["overlap_fraction"],
                 count_overfrac_n_interact_norm=lambda df: (
-                    df["count_overfrac_norm"] / self.n_cis_interactions
+                    (df["count_overfrac_norm"] / scale_factor) * self.n_cis_interactions
                 )
-                * scale_factor,
             )
         )
 
@@ -146,7 +154,7 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
         )
 
         bedgraph_bins = self.binner.bins.merge(
-            count_aggregated, left_on="name", right_on="name_bin"
+            count_aggregated, left_on="name", right_on="name_bin", how='inner' if self.sparse else 'outer'
         ).drop(columns=["name_bin"])[
             ["chrom", "start", "end", "count_overfrac_n_interact_norm"]
         ]
@@ -212,24 +220,6 @@ class CCBedgraph(object):
 
     def to_bedtool(self):
         return self.df.pipe(BedTool.from_dataframe)
-
-    def normalise_by_n_cis(self, reporter_distance=1e5, n_read_scale=1e6):
-
-        if reporter_distance:
-            n_reporters = (
-                self.df.loc[lambda df: (df["chrom"] == self.capture_chrom)]
-                .loc[lambda df: df["start"] >= (self.capture_start - reporter_distance)]
-                .loc[lambda df: df["end"] <= (self.capture_end + reporter_distance)][
-                    "score"
-                ]
-                .sum()
-            )
-        else:
-            n_reporters = self.df.loc[lambda df: (df["chrom"] == self.capture_chrom)][
-                "score"
-            ].sum()
-
-        return (self / n_read_scale) * n_reporters
 
     def to_file(self, path):
         self.df.to_csv(path, sep="\t", header=None, index=None)

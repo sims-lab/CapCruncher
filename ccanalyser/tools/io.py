@@ -128,6 +128,7 @@ class FastqWriterSplitterProcess(Process):
                  inq: Queue,
                  output_prefix: Union[str, list],
                  paired_output: bool = False,
+                 gzip=False,
                  compression_level: int = 3,
                  compression_threads: int = 8,
                  n_subprocesses: int = 1,
@@ -140,6 +141,7 @@ class FastqWriterSplitterProcess(Process):
         self.output_prefix = output_prefix
         self.paired_output = paired_output
 
+        self.gzip = gzip
         self.compression_level = compression_level
         self.compression_threads = compression_threads
 
@@ -152,12 +154,12 @@ class FastqWriterSplitterProcess(Process):
     def _get_file_handles(self):
 
         if not self.paired_output:
-            fnames = [f'{self.output_prefix}_part{self.n_files_written}.fastq.gz', ]
+            fnames = [f'{self.output_prefix}_part{self.n_files_written}.fastq{".gz" if self.gzip else ""}', ]
         else:
-            fnames = [f'{self.output_prefix}_part{self.n_files_written}_{i+1}.fastq.gz'
+            fnames = [f'{self.output_prefix}_part{self.n_files_written}_{i+1}.fastq{".gz" if self.gzip else ""}'
                       for i in range(2)]
 
-        return [xopen(fn, 'w', compresslevel=self.compression_level, threads=4) 
+        return [xopen(fn, 'w', compresslevel=self.compression_level, threads=self.compression_threads) 
                 for fn in fnames]
     
     def run(self):

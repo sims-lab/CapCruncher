@@ -27,9 +27,9 @@ def find_intersections(
     if is_valid_bed(b):
 
         if method == "get":
-            bt_intersections = a.intersect(b, loj=True, f=frac)
+            bt_intersections = a.intersect(b, loj=True, f=frac, sorted=True)
         elif method == "count":
-            bt_intersections = a.intersect(b, loj=True, c=True, f=frac)
+            bt_intersections = a.intersect(b, loj=True, c=True, f=frac, sorted=True)
         else:
             raise ValueError("method argument must be in [get|count]")
 
@@ -143,7 +143,7 @@ def slices_annotate(
             subset="name", keep="first"
         )
 
-        slices = BedTool.from_dataframe(df_bed[["chrom", "start", "end", "name"]])
+        slices = BedTool.from_dataframe(df_bed[["chrom", "start", "end", "name"]].sort_values(['chrom', 'start']))
 
     # Run the intersection
     n_actions = len(actions)

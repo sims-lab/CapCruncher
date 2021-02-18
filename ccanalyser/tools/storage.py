@@ -7,6 +7,7 @@ import cooler
 import h5py
 from joblib import Parallel, delayed
 from typing import Union
+from natsort import natsorted
 from ccanalyser.utils import split_intervals_on_chrom, intersect_bins
 
 # Required for initial storage
@@ -14,86 +15,107 @@ from ccanalyser.utils import split_intervals_on_chrom, intersect_bins
 
 def get_capture_coords(oligo_file: str, oligo_name: str):
     df_oligos = BedTool(oligo_file).to_dataframe()
-    df_oligos = df_oligos.query(f'name == "oligo_name"')
-    return BedTool.from_dataframe(df_oligos)
+    df_oligos = df_oligos.query(f'name == "{oligo_name}"')
+    return df_oligos.iloc[0]
 
 
-def get_capture_bins_from_oligos(
-    oligo_name: str, oligo_file: str, fragments: Union[str, pd.DataFrame]
-):
+# def get_capture_bins_from_oligos(
+#     oligo_name: str, oligo_file: str, fragments: Union[str, pd.DataFrame]
+# ):
 
-    bt_oligo = get_capture_coords(oligo_file, oligo_name)
+#     bt_oligo = get_capture_coords(oligo_file, oligo_name)
 
-    if isinstance(fragments, str):
-        bt_rf = BedTool(fragments)
-    elif isinstance(fragments, pd.DataFrame):
-        bt_rf = BedTool.from_dataframe(fragments)
-    else:
-        raise ValueError("Provide fragments as either a filename string or DataFrame")
+#     if isinstance(fragments, str):
+#         bt_rf = BedTool(fragments)
+#     elif isinstance(fragments, pd.DataFrame):
+#         bt_rf = BedTool.from_dataframe(fragments)
+#     else:
+#         raise ValueError("Provide fragments as either a filename string or DataFrame")
 
-    bt_bins = bt_rf.intersect(bt_oligo, f=0.51, sorted=True)
-    return bt_bins.to_dataframe()["name"].to_list()
+#     bt_bins = bt_rf.intersect(bt_oligo, f=0.51, sorted=True)
+#     return bt_bins.to_dataframe()["name"].to_list()
+
+
+def get_capture_bins(bins, oligo_chrom, oligo_start, oligo_end):
+
+    return bins.query(
+        f'chrom == "{oligo_chrom}" and start >= {oligo_start} and end <= {oligo_end}'
+    )["name"]
 
 
 def create_cooler_cc(
-    fn: str,
+    output_prefix: str,
     bins: pd.DataFrame,
     pixels: pd.DataFrame,
     capture_name: str,
     capture_oligos: str,
     capture_bins: Union[int, list] = None,
+    suffix=None,
     **cooler_kwargs,
 ):
 
-    capture_coords = "\n".join(
-        ["\t".join(x for x in get_capture_coords(capture_oligos, capture_name))]
-    )
+    capture_coords = get_capture_coords(capture_oligos, capture_name)
+
+    if capture_coords is None:
+        raise ValueError(f"Incorrect capture name specified: {capture_name}.")
 
     if not capture_bins:
-        capture_bins = get_capture_bins_from_oligos(capture_name, capture_oligos, bins)
+        capture_bins = get_capture_bins(
+            bins,
+            capture_coords["chrom"],
+            capture_coords["start"],
+            capture_coords["end"],
+        )
+        capture_bins = [int(x) for x in capture_bins]
+
+    elif isinstance(capture_bins, int):
+        capture_bins = [
+            int(capture_bins),
+        ]
+
+    elif isinstance(capture_bins, (np.array, pd.Series)):
+        capture_bins = [int(x) for x in capture_bins]
 
     metadata = {
-        "capture_bins": [int(x) for x in (capture_bins,)],
+        "capture_bins": capture_bins,
         "capture_name": capture_name,
-        "capture_coords": capture_coords,
+        "capture_coords": f'{capture_coords["chrom"]}:{capture_coords["start"]}-{capture_coords["end"]}',
     }
 
-    # Create cooler
+
+    if os.path.exists(output_prefix): # Will append to a prexisting file if one is supplied
+        cooler_fn = f"{output_prefix}::/{capture_name}"
+    else:
+        cooler_fn = f"{output_prefix.replace('.hdf5', '')}.{capture_name}.{suffix if suffix else ''}.hdf5"
+        
+    
     cooler.create_cooler(
-        f"{fn}::{capture_name}",
+        cooler_fn,
         bins=bins,
         pixels=pixels,
         metadata=metadata,
-        mode="w" if not os.path.exists(fn) else "a",
+        mode="w" if not os.path.exists(cooler_fn.split('::')[0]) else "a",
         **cooler_kwargs,
     )
 
-    return f"{fn}::/{capture_name}"
+    return cooler_fn
 
 
-# Required for binning interactions into genomic regions
+class GenomicBinner:
+    def __init__(self, chromsizes, fragments, binsize=5000, n_cores=8, overlap_fraction=0.2):
 
-
-class CoolerBinner:
-    def __init__(
-        self, cooler_fn, binsize=5e4, normalise=True, scale_factor=1e6, n_cores=8
-    ):
-
-        self.cooler = cooler.Cooler(cooler_fn)
+        self.chromsizes = self._format_chromsizes(chromsizes)
+        self.fragments = self._format_fragments(fragments)
         self.binsize = binsize
-        self.normalise = normalise
-        self.scale_factor = scale_factor
-        self.n_cores = n_cores
+        self.overlap_fraction = overlap_fraction
 
-        self.bins_fragments = self.cooler.bins()[:]
         self.bins_genomic = self._get_bins()
         self._bin_conversion_table = None
-        self._pixel_conversion_table = None
-        self._pixels = None
+        self.n_cores = n_cores
 
     def _get_bins(self):
         return (
-            cooler.util.binnify(chromsizes=self.cooler.chromsizes, binsize=self.binsize)
+            cooler.util.make_bintable(chromsizes=self.chromsizes, binsize=self.binsize)
             .reset_index()
             .rename(columns={"index": "name"})[["chrom", "start", "end", "name"]]
             .assign(
@@ -102,16 +124,67 @@ class CoolerBinner:
             )
         )
 
+    def _format_chromsizes(self, chromsizes):
+
+        _chromsizes = pd.Series()
+
+        if isinstance(chromsizes, str):
+            _chromsizes = pd.read_csv(
+                chromsizes, sep="\t", index_col=0, header=None
+            ).loc[lambda df: natsorted(df.index), 0]
+
+        elif isinstance(chromsizes, pd.DataFrame):
+            if chromsizes.index.astype(str).str.contains("^chr.*"):
+                _chromsizes = chromsizes.iloc[:, 0]
+
+        elif isinstance(chromsizes, pd.Series):
+            _chromsizes = chromsizes
+
+        if not _chromsizes.empty:
+            return _chromsizes
+        else:
+            raise ValueError("Chromsizes supplied in the wrong format")
+
+    def _natsort_dataframe(self, df, column):
+
+        df_by_key = {k: df for k, df in df.groupby(column)}
+
+        _df = pd.DataFrame()
+        for k in natsorted(df_by_key):
+            if _df is not None:
+                _df = pd.concat([_df, df_by_key[k]])
+            else:
+                _df = df_by_key[k]
+
+        return _df
+
+    def _format_fragments(self, fragments):
+
+        if isinstance(fragments, str):
+            _fragments = pd.read_csv(
+                fragments,
+                sep="\t",
+                index_col=0,
+                header=None,
+                names=["chrom", "start", "end", "name"],
+            )
+        elif isinstance(fragments, pd.DataFrame):
+            _fragments = fragments
+
+        return self._natsort_dataframe(_fragments, "chrom")
+
     def _get_bin_conversion_table(self):
 
         bins_genomic_by_chrom = split_intervals_on_chrom(self.bins_genomic)
-        bins_fragments_by_chrom = split_intervals_on_chrom(self.bins_fragments)
+        bins_fragments_by_chrom = split_intervals_on_chrom(self.fragments)
+
+        shared_chroms = set(bins_fragments_by_chrom) & set(bins_genomic_by_chrom)
 
         bins_intersections = Parallel(n_jobs=self.n_cores)(
             delayed(intersect_bins)(
-                bins_genomic_by_chrom[chrom], bins_fragments_by_chrom[chrom]
+                bins_genomic_by_chrom[chrom], bins_fragments_by_chrom[chrom], F=self.overlap_fraction,
             )
-            for chrom in bins_genomic_by_chrom
+            for chrom in natsorted(shared_chroms)
         )
 
         df_bins_intersections = pd.concat(bins_intersections, ignore_index=True).rename(
@@ -124,6 +197,46 @@ class CoolerBinner:
         )
 
         return df_bins_intersections
+
+    @property
+    def bins(self):
+        return self.bins_genomic
+
+    @property
+    def bin_conversion_table(self):
+        if self._bin_conversion_table is not None:
+            return self._bin_conversion_table
+        else:
+            self._bin_conversion_table = self._get_bin_conversion_table()
+            return self._bin_conversion_table
+
+
+class CoolerBinner:
+    def __init__(
+        self,
+        cooler_fn,
+        binsize=None,
+        scale_factor=1e6,
+        n_cores=8,
+        binner=None,
+    ):
+
+        self.cooler = cooler.Cooler(cooler_fn)
+        self.binner = binner or GenomicBinner(
+            chromsizes=self.cooler.chromsizes,
+            fragments=self.cooler.bins()[:],
+            binsize=binsize,
+        )
+
+        self.binsize = self.binner.binsize
+        self.scale_factor = scale_factor
+        self.n_cores = n_cores
+
+        self.bins_fragments = self.cooler.bins()[:]
+
+        self._bin_conversion_table = None
+        self._pixel_conversion_table = None
+        self._pixels = None
 
     def _get_pixel_conversion_table(self):
 
@@ -158,21 +271,30 @@ class CoolerBinner:
         )
 
         df_pixels.columns = ["bin1_id", "bin2_id", "count"]
+        df_pixels["bin1_id_corrected"] = np.where(
+            df_pixels["bin1_id"] > df_pixels["bin2_id"],
+            df_pixels["bin2_id"],
+            df_pixels["bin1_id"],
+        )
+        df_pixels["bin2_id_corrected"] = np.where(
+            df_pixels["bin1_id"] > df_pixels["bin2_id"],
+            df_pixels["bin1_id"],
+            df_pixels["bin2_id"],
+        )
         df_pixels = df_pixels.loc[lambda df: df["bin1_id"] != df["bin2_id"]]
+        df_pixels = df_pixels.loc[:, 
+            ["bin1_id_corrected", "bin2_id_corrected", "count"]
+        ].rename(columns=lambda col: col.replace("_corrected", ""))
 
         return df_pixels
 
     @property
     def bins(self):
-        return self.bins_genomic
+        return self.binner.bins
 
     @property
     def bin_conversion_table(self):
-        if self._bin_conversion_table is not None:
-            return self._bin_conversion_table
-        else:
-            self._bin_conversion_table = self._get_bin_conversion_table()
-            return self._bin_conversion_table
+        return self.binner.bin_conversion_table
 
     @property
     def capture_bins(self):
@@ -220,33 +342,38 @@ class CoolerBinner:
 
         if n_interaction_correction:
             self.pixels["count_n_interactions_norm"] = (
-                self.pixels["count"] / total_interactions
-            ) * scale_factor
+                self.pixels["count"] / scale_factor
+            ) * total_interactions
 
         if n_fragment_correction and n_interaction_correction:
 
             self.pixels["count_n_rf_n_interactions_norm"] = (
-                self.pixels["count_n_rf_norm"] / total_interactions
-            ) * scale_factor
+                self.pixels["count_n_rf_norm"] / scale_factor
+            ) * total_interactions
 
     def to_cooler(self, store, normalise=False, **normalise_options):
 
         capture_bins = self.capture_bins
         capture_name = self.cooler.info["metadata"]["capture_name"]
-        capture_coords = self.cooler.info['metadata']['capture_coords']
+        capture_coords = self.cooler.info["metadata"]["capture_coords"]
 
         metadata = {
-            "capture_bins": [int(x) for x in (capture_bins,)],
+            "capture_bins": [int(x) for x in self.capture_bins],
             "capture_name": capture_name,
-            "capture_coords":  capture_coords
+            "capture_coords": capture_coords,
         }
 
         if normalise:
             self.normalise_pixels(**normalise_options)
 
-        # Create cooler
+        if os.path.exists(store): # Will append to a prexisting file if one is supplied
+            cooler_fn = f"{store}::/{capture_name}/resolutions/{self.binsize}"
+        else:
+            cooler_fn = f"{store.replace('.hdf5', '')}.{capture_name}.{self.binsize}.hdf5"
+        
+    
         cooler.create_cooler(
-            f"{store}::{capture_name}/resolutions/{int(self.binsize)}",
+            cooler_fn,
             bins=self.bins,
             pixels=self.pixels,
             metadata=metadata,
@@ -254,4 +381,8 @@ class CoolerBinner:
             columns=self.pixels.columns[2:],
         )
 
-        return f"{store}/{capture_name}/resolutions/{int(self.binsize)}"
+        return cooler_fn
+        
+        
+        
+        

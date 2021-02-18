@@ -80,6 +80,11 @@ def merge_annotations(df, annotations):
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
 )
 @get_timing(task_name="analysis of bam file")
+@click.option(
+    "--gzip/--no-gzip",
+    help="Determines if files are gziped or not",
+    default=False
+)
 def reporters_identify(
     bam,
     annotations,
@@ -88,6 +93,7 @@ def reporters_identify(
     method="capture",
     sample_name="",
     read_type="",
+    gzip=False,
 ):
 
     """Removes all non-capture and non-reporter slices to identify reporters."""
@@ -135,13 +141,13 @@ def reporters_identify(
 
         # Output fragments and slices
         output_fragments.sort_values("parent_read").to_csv(
-            f"{output_prefix}.{capture_site.strip()}.fragments.tsv.gz",
+            f"{output_prefix}.{capture_site.strip()}.fragments.tsv{'.gz' if gzip else ''}",
             sep="\t",
             index=False,
         )
 
         output_slices.sort_values("slice_name").to_csv(
-            f"{output_prefix}.{capture_site.strip()}.slices.tsv.gz",
+            f"{output_prefix}.{capture_site.strip()}.slices.tsv{'.gz' if gzip else ''}",
             sep="\t",
             index=False,
         )

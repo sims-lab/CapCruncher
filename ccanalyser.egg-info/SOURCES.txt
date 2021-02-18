@@ -1,0 +1,13 @@
+LICENSE
+MANIFEST.in
+README.txt
+setup.py
+ccanalyser.egg-info/PKG-INFO
+ccanalyser.egg-info/SOURCES.txt
+ccanalyser.egg-info/dependency_links.txt
+ccanalyser.egg-info/entry_points.txt
+ccanalyser.egg-info/requires.txt
+ccanalyser.egg-info/top_level.txt
+ccanalyser/pipeline/__init__.py
+ccanalyser/pipeline/get_yaml.py
+ccanalyser/pipeline/pipeline.py
