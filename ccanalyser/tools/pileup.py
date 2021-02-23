@@ -149,7 +149,7 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
 
         count_aggregated = (
             bedgraph_frag.groupby("name_bin")
-            .agg({"count_overfrac_n_interact_norm": "sum"})
+            .agg({"count_overfrac_n_interact_norm": "mean"})
             .reset_index()
         )
 

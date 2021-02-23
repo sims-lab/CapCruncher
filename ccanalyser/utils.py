@@ -6,7 +6,7 @@ import time
 from collections import OrderedDict
 from datetime import timedelta
 from functools import wraps
-from itertools import combinations
+from itertools import combinations, cycle, groupby
 from typing import Union
 
 import click
@@ -17,6 +17,7 @@ import xxhash
 from pybedtools import BedTool
 from xopen import xopen
 from cgatcore.iotools import zap_file
+import trackhub
 
 
 def open_logfile(fn):
@@ -215,3 +216,86 @@ class NaturalOrderGroup(click.Group):
 def zap_files(files):
     for fn in files:
         zap_file(fn)
+
+
+def get_ucsc_color(color):
+        return ",".join([str(int(i * 255)).strip() for i in color])
+
+def get_colors(items, colors=None):
+    
+    import seaborn as sns
+    import matplotlib
+
+    if not colors:
+        colors = sns.color_palette("rainbow", len(items))
+        return [get_ucsc_color(color) for color in colors]
+    else:
+        colors = [
+            matplotlib.colors.to_rgb(color) for color in re.split(r"\s|,|;", colors)
+        ]
+        return [color for i, color in zip(items, cycle(colors))]
+
+def make_group_track(
+    bigwigs: list, key: Union[callable, str, int], overlay=True) -> dict:
+
+    super_tracks_dict = dict()
+    for name, bws in groupby(sorted(bigwigs, key=key), key=key):
+
+        bws = list(bws)
+        name_sanitized = trackhub.helpers.sanitize(name)
+        # Create a super track
+        super_track = trackhub.SuperTrack(name=name_sanitized)
+
+        # Create an overlay track
+        if overlay:
+            overlay_track = trackhub.AggregateTrack(
+                name=f"{name_sanitized}_overlay",
+                aggregate="transparentOverlay",
+                visibility="full",
+                tracktype="bigWig",
+                maxHeightPixels="8:80:128",
+                showSubtrackColorOnUi="on",
+                windowingFunction="maximum",
+            )
+
+        # Generate entries for all of the tracks for this group
+        for bw, color in zip(bws, get_colors(bigwigs)):
+
+            bw_base = (
+                os.path.basename(bw)
+                .replace(".bigWig", "")
+                .replace(".normalised.", "")
+            )
+            bw_sanitized = trackhub.helpers.sanitize(bw_base)
+
+            track = trackhub.Track(
+                name=f"{bw_sanitized}_{name}",
+                source=bw,
+                visibility="hide",
+                color=color,
+                autoScale="off",
+                tracktype="bigWig",
+                windowingFunction="maximum",
+            )
+
+            track_sub = trackhub.Track(
+                name=f"{bw_sanitized}_{name}_subtrack",
+                source=bw,
+                visibility="hide",
+                color=color,
+                autoScale="off",
+                tracktype="bigWig",
+                windowingFunction="maximum",
+            )
+
+            super_track.add_tracks(track)
+
+            if overlay:
+                overlay_track.add_subtrack(track_sub)
+
+        if overlay:
+            super_track.add_tracks(overlay_track)
+
+        super_tracks_dict[name] = super_track
+
+    return super_tracks_dict

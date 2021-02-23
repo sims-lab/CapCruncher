@@ -84,8 +84,10 @@ def create_cooler_cc(
 
 
     if os.path.exists(output_prefix): # Will append to a prexisting file if one is supplied
+        append_to_file = False
         cooler_fn = f"{output_prefix}::/{capture_name}"
     else:
+        append_to_file = True
         cooler_fn = f"{output_prefix.replace('.hdf5', '')}.{capture_name}.{suffix if suffix else ''}.hdf5"
         
     
@@ -94,7 +96,7 @@ def create_cooler_cc(
         bins=bins,
         pixels=pixels,
         metadata=metadata,
-        mode="w" if not os.path.exists(cooler_fn.split('::')[0]) else "a",
+        mode="w" if not append_to_file else "a",
         **cooler_kwargs,
     )
 
