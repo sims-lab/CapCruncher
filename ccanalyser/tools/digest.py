@@ -2,7 +2,8 @@ import re
 import pysam
 from multiprocessing import Queue, Process, SimpleQueue
 from numpy.random import randint
-
+from typing import Union
+import traceback
 
 class DigestedChrom:
     def __init__(
@@ -57,12 +58,12 @@ class DigestedChrom:
 class DigestedRead:
     def __init__(
         self,
-        read,
-        cutsite,
-        min_slice_length=18,
-        slice_number_offset=0,
-        allow_undigested=False,
-        read_type="flashed",
+        read, #pysam proxy object
+        cutsite: str,
+        min_slice_length: int = 18,
+        slice_number_offset: int = 0,
+        allow_undigested: bool = False,
+        read_type: str = "flashed",
     ):
 
         self.read = read
@@ -149,7 +150,14 @@ class ReadDigestionProcess(Process):
         self.outq = outq
         self.statq = statq
         self.digestion_kwargs = digestion_kwargs
-        self.read_type = digestion_kwargs["read_type"]
+        self.read_type = digestion_kwargs.get("read_type", 'flashed')
+
+        
+        if not 'cutsite' in digestion_kwargs:
+            raise KeyError('Cutsite is required to be present in digestion arguments')
+            traceback.format_exc()
+            self.outq.put('END')
+
 
     def _digest_reads(self, reads, **digestion_kwargs):
         digested = []
@@ -165,34 +173,39 @@ class ReadDigestionProcess(Process):
         return digested
 
     def run(self):
-
-        reads = self.inq.get()
-        buffer_reads = []
-        buffer_stats = []
-
-        while not reads == "END":
-
-            for read in reads:
-                digested = self._digest_reads(read, **self.digestion_kwargs)
-                digested_str = [str(dr) for dr in digested]
-                digestion_stats = {read_number + 1: {'unfiltered': d.slices_unfiltered, 'filtered': d.slices_filtered}
-                                   for read_number, d in enumerate(digested)}
-                buffer_stats.append(digestion_stats)
-
-                if all(digested_str):  # Make sure that all reads have filtered slices
-                    buffer_reads.append("".join(digested_str))
-
-            self.outq.put("".join(buffer_reads))
-
-            if self.statq:
-                self.statq.put_nowait(buffer_stats)
-
+        try:
+            reads = self.inq.get()
             buffer_reads = []
             buffer_stats = []
-            reads = self.inq.get()
 
-        self.outq.put("END")
+            while not reads == "END":
 
-        if self.statq:
-            self.statq.put_nowait('END')
+                for read in reads:
+                    digested = self._digest_reads(read, **self.digestion_kwargs)
+                    digested_str = [str(dr) for dr in digested]
+                    digestion_stats = {read_number + 1: {'unfiltered': d.slices_unfiltered, 'filtered': d.slices_filtered}
+                                    for read_number, d in enumerate(digested)}
+                    buffer_stats.append(digestion_stats)
+
+                    if all(digested_str):  # Make sure that all reads have filtered slices
+                        buffer_reads.append("".join(digested_str))
+
+                self.outq.put("".join(buffer_reads))
+
+                if self.statq:
+                    self.statq.put_nowait(buffer_stats)
+
+                buffer_reads = []
+                buffer_stats = []
+                reads = self.inq.get()
+
+            self.outq.put("END")
+
+            if self.statq:
+                self.statq.put_nowait('END')
+        
+        except Exception as e:
+            traceback.format_exc()
+            self.outq.put('END')
+
   

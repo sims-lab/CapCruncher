@@ -299,3 +299,14 @@ def make_group_track(
         super_tracks_dict[name] = super_track
 
     return super_tracks_dict
+
+
+class PysamFakeEntry():
+    def __init__(self, name, sequence, quality):
+        self.name = name
+        self.sequence = sequence
+        self.quality = quality
+        self.comment = ''
+    
+    def __repr__(self) -> str:
+       return  '|'.join([self.name, self.sequence, '+', self.quality])

@@ -3,6 +3,7 @@ import sys
 from multiprocessing import Process, Queue, SimpleQueue
 from xopen import xopen
 import xxhash
+import functools
 
 
 class ReadDeduplicationParserProcess(Process):
@@ -30,7 +31,7 @@ class ReadDeduplicationParserProcess(Process):
     def run(self):
 
         hash_seed = self.hash_seed
-        hash_function = xxhash.xxh64_intdigest
+        hash_function = functools.partial(xxhash.xxh64_intdigest, seed=hash_seed)
         reads = self.inq.get()
         read_data = self.read_data
 
@@ -74,7 +75,7 @@ class ReadDuplicateRemovalProcess(Process):
     def run(self):
 
         hash_seed = self.hash_seed
-        hash_function = xxhash.xxh64_intdigest
+        hash_function = functools.partial(xxhash.xxh64_intdigest, seed=hash_seed)
         duplicated_ids = self.duplicated_ids
         reads_unique = list()
 
