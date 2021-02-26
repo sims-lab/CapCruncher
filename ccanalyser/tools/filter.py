@@ -13,6 +13,7 @@ class SliceFilter:
         read_type: str = "",
     ):
 
+        self._check_required_columns_present(slices)        
         self.slices = slices.sort_values(['parent_read', 'slice'])
 
         if filter_stages:
@@ -24,6 +25,17 @@ class SliceFilter:
         self._filter_stats = pd.DataFrame()
         self.sample_name = sample_name
         self.read_type = read_type
+    
+    def _check_required_columns_present(self, df):
+
+        columns_required = ['slice_name', 'parent_read', 'pe', 'mapped',
+                            'multimapped', 'slice', 'chrom', 'start', 'end',
+                            'capture', 'capture_count', 'exclusion', 'blacklist',
+                            'coordinates']
+
+        for col in columns_required:
+            if not col in df.columns:
+                raise KeyError(f'Required column "{col}" not in slices dataframe')
 
     @property
     def slice_stats(self):
@@ -205,13 +217,17 @@ class CCSliceFilter(SliceFilter):
     - parent_read: Identifier shared by slices from same fragment (e.g.XZKG:889:11)
     - pe: Read combined by FLASh or not (i.e. "flashed" or "pe")
     - mapped: Alignment is mapped (e.g. 0/1)
+    - multimapped: Alignment is mapped (e.g. 0/1)
     - slice: Slice number (e.g. 0)
+    - chrom: Chromosome e.g. chr1
+    - start: Start coord
+    - end: End coord
     - capture: Capture site intersecting slice (e.g. Slc25A37)
     - capture_count: Number of capture probes overlapping slice (e.g. 1)
     - exclusion: Read present in excluded region (e.g. Slc25A37)
     - exclusion_count: Number of excluded regions overlapping slice (e.g. 1)
     - blacklist: Read present in excluded region (e.g. 0)
-    - coordinates: Genome coordinates (e.g. chr1|1000|2000)
+    - coordinates: Genome coordinates (e.g. chr1:1000-2000)
 
     """
 

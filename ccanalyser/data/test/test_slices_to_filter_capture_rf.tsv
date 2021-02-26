@@ -1,0 +1,7 @@
+slice_name  parent_read mapped  slice   capture capture_count   exclusion   exclusion_count blacklist   coordinates
+S1_0  S1    1   0   capture 1   .   0   .   chr1:1000-2000
+S1_1    S1  1   1   .   0   capture 1   .   chr1:2001-2500
+S1_2    S1  1   2   .   0   . 0   .   chr1:3000-3500
+S1_3    S1  0   3   .   0   . 0   .   .
+
+

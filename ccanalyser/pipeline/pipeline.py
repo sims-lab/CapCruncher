@@ -36,8 +36,6 @@ import re
 import sys
 import glob
 from typing import Union
-from cgatcore.pipeline.parameters import PARAMS
-from ruffus.task import originate
 
 # import seaborn as sns
 import trackhub
@@ -55,6 +53,7 @@ from ruffus import (
     regex,
     transform,
     suffix,
+    originate
 )
 from ccanalyser.tools.statistics import (
     collate_slice_data,
@@ -65,13 +64,13 @@ from ccanalyser.tools.statistics import (
 )
 import click
 from ccanalyser.cli import cli
-from ccanalyser.utils import is_on, is_none, get_colors, get_ucsc_color, make_group_track
+from ccanalyser.utils import is_on, is_none, make_group_track
 
 ##############################
 #   Set-up global parameters #
 ##############################
 
-P.get_parameters("config.yml")
+P.get_parameters("config.yml", only_import=True)
 
 ##############################
 #  Pipeline stages           #
@@ -738,12 +737,14 @@ def annotate_slices(infile, outfile):
                     %(slices)s
                     %(cmd_args)s
                     -o %(outfile)s
+                    --invalid_bed_action ignore
+                    -p 8
                 """
 
     P.run(
         statement.replace("\n", " "),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=4,
+        job_threads=8,
         job_condaenv=P.PARAMS["conda_env"],
     )
 

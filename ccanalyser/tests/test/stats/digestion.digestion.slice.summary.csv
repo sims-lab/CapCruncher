@@ -1,0 +1,3 @@
+sample,stage,read_type,read_number,stat_type,stat
+test,digestion,flashed,1,unfiltered,2678
+test,digestion,flashed,1,filtered,1797

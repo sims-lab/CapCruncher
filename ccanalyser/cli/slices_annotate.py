@@ -1,4 +1,7 @@
 import itertools
+from typing import Union
+import warnings
+warnings.simplefilter('ignore')
 
 import click
 import numpy as np
@@ -7,73 +10,34 @@ from joblib import Parallel, delayed
 from pybedtools import BedTool
 
 from ccanalyser.cli import cli
-from ccanalyser.utils import bed_has_name, is_valid_bed
-
-
-def find_intersections(
-    a,
-    b,
-    frac=1e-9,
-    column_name="count",
-    method="get",
-    method_na_values={"get": ".", "count": 0},
-):
-
-    if isinstance(a, str):
-        a = BedTool(a)
-    elif isinstance(a, pd.DataFrame):
-        a = BedTool.from_dataframe(a)
-
-    if is_valid_bed(b):
-
-        if method == "get":
-            bt_intersections = a.intersect(b, loj=True, f=frac, sorted=True)
-        elif method == "count":
-            bt_intersections = a.intersect(b, loj=True, c=True, f=frac, sorted=True)
-        else:
-            raise ValueError("method argument must be in [get|count]")
-
-        return format_intersections(
-            intersections=bt_intersections, column_name=column_name
-        )
-
-    else:
-        return format_intersections(
-            intersections=a,
-            column_name=column_name,
-            failed=True,
-            na_value=method_na_values.get(method, np.nan),
-        )
-
-
-def format_intersections(intersections, column_name, failed=False, na_value=0):
-
-    df_intersections = intersections.to_dataframe()
-
-    if not failed:
-        # Rename last column to column name
-        df_intersections = df_intersections.rename(
-            columns={df_intersections.columns[-1]: column_name}
-        )
-
-        # Extract only needed columns
-        df_intersections = df_intersections[["name", "chrom", "start", column_name]]
-
-    else:
-        df_intersections[column_name] = na_value
-        df_intersections = df_intersections[["name", "chrom", "start", column_name]]
-
-    return df_intersections.set_index("name")[column_name]
-
+from ccanalyser.tools.annotate import BedIntersection
+from ccanalyser.utils import bed_has_name, convert_bed_to_dataframe, convert_to_bedtool, is_valid_bed
+from natsort import natsorted
 
 def cycle_argument(arg):
     """Allows for the same argument to be stated once but repeated for all files"""
 
     if len(arg) == 1:
-        arg_cp = arg.copy()
-        return itertools.cycle(arg_cp)
+        return itertools.cycle((arg[0],))
     else:
         return arg
+
+
+def remove_duplicates_from_bed(bed):
+
+    if isinstance(bed, str):
+        df = BedTool(bed).to_dataframe()
+    elif isinstance(bed, BedTool):
+        df = bed.to_dataframe()
+    
+    if 'score' in df.columns:
+        df = df.sort_values(["score"], ascending=False)
+
+
+    return (df.drop_duplicates(subset="name", keep="first")
+              .sort_values(['chrom', 'start'])
+              [['chrom', 'start', 'end', 'name']]
+              .pipe(BedTool.from_dataframe))
 
 
 @cli.command()
@@ -113,60 +77,66 @@ def cycle_argument(arg):
     type=click.Choice(["remove"]),
     default="remove",
 )
+@click.option(
+    "-p",
+    '--n_cores',
+    help="Number of cores to use for intersections",
+    default=8
+)
+@click.option(
+    "--invalid_bed_action",
+    help="Method to deal with invalid bed files",
+    default='error',
+    type=click.Choice(["ignore", 'error']),
+)
 def slices_annotate(
+    slices,
     actions=None,
-    slices=None,
     bed_files=None,
     names=None,
     overlap_fractions=None,
     output=None,
     duplicates="remove",
+    n_cores=8,
+    invalid_bed_action='error'
 ):
 
     """Annotates a bam file (converted to bed format) with other bed files"""
 
+    assert is_valid_bed(slices), f"bed - {slices} is invalid" # Make sure file exist and has the correct number of fields
+    assert bed_has_name(slices), f"bed - {slices} does not have a name column" # Make sure name column present
+    assert len(names) == len(bed_files) == len(actions), 'Wrong number of column names/files/actions provided, check command' # All args present
 
-    #TODO: Increase speed by splitting files on chromosome and intersecting in parallel
 
-    # Verify bed integrity
-    assert is_valid_bed(slices), f"bed - {slices} is invalid"
-    assert bed_has_name(slices), f"bed - {slices} does not have a name column"
+    if duplicates == "remove": # Deal with multimapping reads (default)
+        slices = remove_duplicates_from_bed(slices)
+    else:
+        raise NotImplementedError('Only supported option at present is to remove duplicates')
+   
 
-    print("Formating  bed file")
-    # Make base dataframe
-    df_bed = df_bed = BedTool(slices).to_dataframe()
+    # Perform intersections
+    intersection_series = []
+    for bed, name, action, fraction in zip(bed_files, names, actions, cycle_argument(overlap_fractions)):
 
-    print("Dealing with any duplicate names")
-    # Deal with duplicates -- currently very harsh
-    if duplicates == "remove":
-        df_bed = df_bed.sort_values(["score"], ascending=False).drop_duplicates(
-            subset="name", keep="first"
-        )
+        bi = BedIntersection(bed1=slices,
+                             bed2=bed,
+                             intersection_name=name,
+                             intersection_method=action,
+                             intersection_min_frac=fraction,
+                             n_cores=n_cores,
+                             invalid_bed_action=invalid_bed_action)
+        
+        intersection_series.append(bi.intersection)
+    
+    
 
-        slices = BedTool.from_dataframe(df_bed[["chrom", "start", "end", "name"]].sort_values(['chrom', 'start']))
+    # Merge intersections with slices
+    df_annotation = (convert_bed_to_dataframe(slices)
+                           .set_index('name')
+                           .join(intersection_series)
+                           .reset_index()
+                           .rename(columns={'name': 'slice_name'}))
 
-    # Run the intersection
-    n_actions = len(actions)
-    dframes = Parallel(n_jobs=n_actions)(
-        delayed(find_intersections)(
-            a=slices, b=b2, frac=f, column_name=name, method=action
-        )
-        for b2, f, name, action in zip(
-            bed_files,
-            cycle_argument(overlap_fractions),
-            names,
-            actions,
-        )
-    )
-
-    # Merge dataframe with annotations
-    df_annotations = (
-        df_bed.set_index(["name"])
-        .join(dframes, how="left")
-        .reset_index()
-        .rename(columns={"name": "slice_name"})
-        .drop(columns=["score", "strand"], errors="ignore")
-    )
 
     # Export to csv
-    df_annotations.to_csv(output, sep="\t", index=False)
+    df_annotation.to_csv(output, sep="\t", index=False)

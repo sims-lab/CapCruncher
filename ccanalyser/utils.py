@@ -73,7 +73,17 @@ def is_valid_bed(bed):
         bed = BedTool(bed)
         if bed.field_count(n=1) >= 3:
             return True
-    except FileNotFoundError:
+    except Exception as e:
+        
+        if isinstance(e, FileNotFoundError):
+            print('Bed file not found')
+        
+        elif isinstance(e, IndexError):
+            print('Wrong number of fields detected, check separator/ number of columns')
+
+        else:
+            print(e)
+        
         return False
 
 
@@ -143,11 +153,7 @@ def hash_column(col, hash_type=64):
 
 
 def split_intervals_on_chrom(intervals):
-    if isinstance(intervals, BedTool):
-        intervals = BedTool.to_dataframe()
-    elif isinstance(intervals, str):
-        intervals = BedTool(intervals).to_dataframe()
-
+    intervals = convert_bed_to_dataframe(intervals)
     return {chrom: df for chrom, df in intervals.groupby("chrom")}
 
 
@@ -310,3 +316,28 @@ class PysamFakeEntry():
     
     def __repr__(self) -> str:
        return  '|'.join([self.name, self.sequence, '+', self.quality])
+
+def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]):
+    if isinstance(bed, str):
+        bed_conv = BedTool(bed)
+    elif isinstance(bed, pd.DataFrame):
+        bed_conv = BedTool.from_dataframe(bed)
+    elif isinstance(bed, BedTool):
+        bed_conv = bed
+    
+    return bed_conv
+
+def convert_bed_to_dataframe(bed: Union[str, BedTool, pd.DataFrame]):
+    
+    if isinstance(bed, str):
+        bed_conv = BedTool(bed).to_dataframe()
+    
+    elif isinstance(bed, BedTool):
+        bed_conv = bed.to_dataframe()
+    
+    elif isinstance(bed, pd.DataFrame):
+        bed_conv = bed
+
+    
+    return bed_conv
+

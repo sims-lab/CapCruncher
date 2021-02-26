@@ -131,8 +131,8 @@ def identify(input_files, output="duplicates.json"):
     default=5,
     type=click.INT,
 )
-@click.option("--sample_name", help="Name of sample e.g. DOX_treated_1")
-@click.option("--stats_prefix", help="Output prefix for stats file")
+@click.option("--sample_name", help="Name of sample e.g. DOX_treated_1", default='sampleX')
+@click.option("--stats_prefix", help="Output prefix for stats file", default='stats')
 def remove(
     input_files,
     duplicated_ids,

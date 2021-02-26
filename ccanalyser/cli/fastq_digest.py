@@ -41,8 +41,8 @@ from ccanalyser.utils import get_re_site
     default=1e5,
     type=click.INT,
 )
-@click.option("--stats_prefix", help="Output prefix for stats file")
-@click.option("--sample_name", help="Name of sample e.g. DOX_treated_1")
+@click.option("--stats_prefix", help="Output prefix for stats file", default='stats')
+@click.option("--sample_name", help="Name of sample e.g. DOX_treated_1", default='sampleX')
 def fastq_digest(
     input_fastq,
     restriction_enzyme=None,
