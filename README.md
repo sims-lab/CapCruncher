@@ -8,7 +8,28 @@ The package is entirely written in python and  consists of a highly configurable
 
 ## Installation
 
-### PIP
+As the pipeline relies on conda enviroments to run, it is highly recomended that a conda enviroment is first generated using the provided yaml file.
+
+If conda is already installed then clone the repository:
+
+```
+git clone https://github.com/sims-lab/capture-c.git
+conda env create -f ccanalyser_conda_env.yml
+conda activate cc
+```
+
+### Installing the package
+
+#### Github
+
+```
+git clone https://github.com/sims-lab/capture-c.git
+pip install .
+```
+
+#### PIP 
+
+The package should shortly be on pip (if I can figure out how)
 
 ```
 pip install ccanalyser
@@ -17,3 +38,18 @@ pip install ccanalyser
 Please see the documentation for further details.
 
 ## Running the pipeline
+
+* Create a working directory with the fastq files required for the analysis.
+* Copy [config.yml](https://github.com/sims-lab/capture-c/blob/master/config.yml) to the working directory
+* Edit config.yml to suit your experiment and set-up.
+
+Run the pipeline:
+
+* Activate the conda enviroment
+
+To run the pipeline simply run:
+
+```
+ccanalyser pipeline make
+```
+
