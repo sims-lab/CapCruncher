@@ -7,56 +7,63 @@ from collections import OrderedDict
 from datetime import timedelta
 from functools import wraps
 from itertools import combinations, cycle, groupby
-from typing import Union
+from typing import Callable, IO, Iterable, TextIO, Union
 
 import click
 import pandas as pd
-import pybedtools
 import ujson
 import xxhash
 from pybedtools import BedTool
 from xopen import xopen
 from cgatcore.iotools import zap_file
 import trackhub
+import pybedtools
 
 
-def open_logfile(fn):
+def open_logfile(fn: str) -> IO:
+    '''Handles instances where the log file is sys.stdout'''
     if not isinstance(fn, type(sys.stdout)):
         return xopen(fn, "w")
     else:
         return fn
 
 
-def merge_dictionaries(dicts: list):
+def merge_dictionaries(dicts: list) -> dict:
+    '''Merges multiple dictionary entries'''
     dict_merged = dict()
     for d in dicts:
         dict_merged.update(d)
     return dict_merged
 
 
-def invert_dict(d):
+def invert_dict(d: dict) -> dict:
+    '''Inverts key: value pairs into value: key pairs'''
     return {v: k for k, v in d.items()}
 
 
-def is_on(param):
+def is_on(param: str) -> bool:
+    '''Returns True if parameter in "on" values'''
     values = ["true", "t", "on", "yes", "y", "1"]
     if str(param).lower() in values:
         return True
 
 
-def is_off(param):
+def is_off(param: str):
+    '''Returns True if parameter in "off" values'''
     values = ["", "None", "none", "F", "f"]
     if str(param).lower() in values:
         return True
 
 
-def is_none(param):
+def is_none(param: str) -> bool:
+    '''Returns True if parameter is none'''
     values = ["", "none"]
     if str(param).lower() in values:
         return True
 
 
-def get_human_readable_number_of_bp(bp: int) -> pd.DataFrame:
+def get_human_readable_number_of_bp(bp: int) -> str:
+    '''Converts integer into human readable basepair number'''
 
     if bp < 1000:
         bp = f"{bp}bp"
@@ -68,11 +75,14 @@ def get_human_readable_number_of_bp(bp: int) -> pd.DataFrame:
     return bp
 
 
-def is_valid_bed(bed):
+def is_valid_bed(bed: Union[str, BedTool]) -> bool:
+
+    '''Returns true if bed file can be opened and has at least 3 columns'''
     try:
         bed = BedTool(bed)
         if bed.field_count(n=1) >= 3:
             return True
+
     except Exception as e:
         
         if isinstance(e, FileNotFoundError):
@@ -85,9 +95,13 @@ def is_valid_bed(bed):
             print(e)
         
         return False
+    
+    
 
 
-def bed_has_name(bed):
+
+def bed_has_name(bed: Union[str, BedTool]) -> bool:
+    '''Returns true if bed file has at least 4 columns'''
     if isinstance(bed, str):
         bed = BedTool(bed)
 
@@ -95,7 +109,8 @@ def bed_has_name(bed):
         return True
 
 
-def bed_has_duplicate_names(bed):
+def bed_has_duplicate_names(bed) -> bool:
+    '''Returns true if bed file has no duplicated names'''
     if isinstance(bed, str):
         bed = BedTool(bed)
 
@@ -104,21 +119,21 @@ def bed_has_duplicate_names(bed):
         return True
 
 
-def get_re_site(recognition_site=None):
+def get_re_site(recognition_site: str = None) -> str:
 
     """
     Obtains the recogniton sequence for a supplied restriction enzyme or correctly
     formats a supplied recognition sequence.
 
     Args:
-        cut_sequence - DNA sequence to use for fasta digestion e.g. "GATC"
-        restriction_enzyme - Name of restriction enzyme e.g. DpnII  (case insensitive)
+     cut_sequence - DNA sequence to use for fasta digestion e.g. "GATC"
+     restriction_enzyme - Name of restriction enzyme e.g. DpnII  (case insensitive)
 
     Returns:
-        recognition sequence e.g. "GATC"
-
+     recognition sequence e.g. "GATC" 
+    
     Raises:
-        ValueError if restriction_enzyme is not in known enzymes
+     ValueError: Error if restriction_enzyme is not in known enzymes
 
     """
 
@@ -130,16 +145,20 @@ def get_re_site(recognition_site=None):
         "nlaiii": "CATG",
     }
 
-    if re.match(r"[GgAaTtCc]+", recognition_site):
-        # This matches a DNA sequence so just convert to upper case and return
-        return recognition_site.upper()
+    if re.match(r"[GgAaTtCc]+", recognition_site): # matches a DNA sequence
+        cutsite = recognition_site.upper() # Just uppercase convert and return
+    
     elif recognition_site.lower() in known_enzymes:
-        return known_enzymes.get(recognition_site.lower())
+        cutsite = known_enzymes[recognition_site.lower()]
+    
     else:
         raise ValueError("No restriction site or recognised enzyme provided")
 
+    return cutsite
 
-def hash_column(col, hash_type=64):
+def hash_column(col: Iterable, hash_type=64) -> list:
+    '''Convinience function to perform hashing using xxhash on an iterable.
+       Not vectorised.'''
 
     hash_dict = {
         32: xxhash.xxh32_intdigest,
@@ -152,15 +171,25 @@ def hash_column(col, hash_type=64):
     return [hash_func(v) for v in col]
 
 
-def split_intervals_on_chrom(intervals):
+def split_intervals_on_chrom(intervals: Union[str, BedTool, pd.DataFrame]) -> dict:
+    '''Creates dictionary from bed file with the chroms as keys'''
+
     intervals = convert_bed_to_dataframe(intervals)
     return {chrom: df for chrom, df in intervals.groupby("chrom")}
 
+    
 
-def intersect_bins(bins_1, bins_2, **bedtools_kwargs):
+
+def intersect_bins(bins_1: pd.DataFrame, bins_2: pd.DataFrame, **bedtools_kwargs) -> pd.DataFrame:
+    '''Intersects two sets of genomic intervals using bedtools intersect.
+
+       Formats the intersection in a clearer way than pybedtool auto names.
+    
+    '''
+
     bt1 = BedTool.from_dataframe(bins_1)
     bt2 = BedTool.from_dataframe(bins_2)
-    bt_intersect = bt1.intersect(bt2, wao=True, sorted=True, **bedtools_kwargs)
+    bt_intersect = bt1.intersect(bt2, **bedtools_kwargs)
     df_intersect = bt_intersect.to_dataframe(
         disable_auto_names=True,
         header=None,
@@ -181,13 +210,14 @@ def intersect_bins(bins_1, bins_2, **bedtools_kwargs):
     return df_intersect
 
 
-def load_json(fn):
+def load_json(fn) -> dict:
+    '''Convinence function to load gziped json file using xopen.'''
     with xopen(fn) as r:
         d = ujson.load(r)
         return d
 
 
-def get_timing(task_name=None):
+def get_timing(task_name=None) -> Callable:
     """Decorator:
     Gets the time taken by the wrapped function
     """
@@ -209,6 +239,7 @@ def get_timing(task_name=None):
 
 
 class NaturalOrderGroup(click.Group):
+    '''Simple class to ensure subcommand order is maintained by click.'''
     def __init__(self, name=None, commands=None, **attrs):
         if commands is None:
             commands = OrderedDict()
@@ -220,14 +251,18 @@ class NaturalOrderGroup(click.Group):
         return self.commands.keys()
 
 def zap_files(files):
+    '''Runs cgatcore zap_files on all inputs'''
     for fn in files:
         zap_file(fn)
 
 
-def get_ucsc_color(color):
-        return ",".join([str(int(i * 255)).strip() for i in color])
+def get_ucsc_color(color) -> str:
+    '''Converts rgb to UCSC compatable colours'''
+    return ",".join([str(int(i * 255)).strip() for i in color])
 
-def get_colors(items, colors=None):
+def get_colors(items: Iterable, colors: Union[Iterable, None] = None):
+    '''Extracts the appropriate number of colours for the items
+       and formats them for UCSC.'''
     
     import seaborn as sns
     import matplotlib
@@ -243,6 +278,8 @@ def get_colors(items, colors=None):
 
 def make_group_track(
     bigwigs: list, key: Union[callable, str, int], overlay=True) -> dict:
+
+    '''Generates a UCSC super track by grouping inputs by the provided key.'''
 
     super_tracks_dict = dict()
     for name, bws in groupby(sorted(bigwigs, key=key), key=key):
@@ -308,6 +345,7 @@ def make_group_track(
 
 
 class PysamFakeEntry():
+    '''Testing class used to supply a pysam FastqProxy like object'''
     def __init__(self, name, sequence, quality):
         self.name = name
         self.sequence = sequence
@@ -317,7 +355,8 @@ class PysamFakeEntry():
     def __repr__(self) -> str:
        return  '|'.join([self.name, self.sequence, '+', self.quality])
 
-def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]):
+def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
+    '''Converts a str or pd.DataFrame to a pybedtools.BedTool object'''
     if isinstance(bed, str):
         bed_conv = BedTool(bed)
     elif isinstance(bed, pd.DataFrame):
@@ -327,7 +366,8 @@ def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]):
     
     return bed_conv
 
-def convert_bed_to_dataframe(bed: Union[str, BedTool, pd.DataFrame]):
+def convert_bed_to_dataframe(bed: Union[str, BedTool, pd.DataFrame]) -> pd.DataFrame:
+    '''Converts a bed like object (including paths to bed files) to a pd.DataFrame'''
     
     if isinstance(bed, str):
         bed_conv = BedTool(bed).to_dataframe()
@@ -341,3 +381,63 @@ def convert_bed_to_dataframe(bed: Union[str, BedTool, pd.DataFrame]):
     
     return bed_conv
 
+
+def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
+    """Converts coordinates supplied in string format or a .bed file to a BedTool.
+
+    Args:
+        coordinates (Union[str, os.PathLike]): Coordinates in the form chr:start-end or a path.
+    Raises:
+        ValueError: Inputs must be supplied in the correct format.
+
+    Returns:
+        BedTool: BedTool object containing the required coordinates.
+    """
+
+    coordinates = str(coordinates)
+    pattern_genomic_coord = re.compile(r"chr[0-2xXyYmM][0-9]*:\d+-\d+(\s\w)*$")
+    pattern_bed_file = re.compile(r"(.*).bed")
+
+    if pattern_genomic_coord.match(coordinates):
+
+        coordinates_split = re.split(":|-", coordinates)
+        if len(coordinates_split) < 4:
+            coordinates_split.append("region_0")
+
+        bt = BedTool(" ".join(coordinates_split), from_string=True)
+
+    elif pattern_bed_file.match(coordinates) and bed_has_name(coordinates):
+        bt = BedTool(coordinates)
+
+    elif pattern_bed_file.match(coordinates) and not bed_has_name(coordinates):
+        bt = (
+            BedTool(coordinates)
+            .to_dataframe()
+            .reset_index()
+            .assign(name=lambda df: "region_" + df["index"].astype("string"))[
+                ["chrom", "start", "end", "name"]
+            ]
+            .pipe(BedTool.from_dataframe)
+        )
+    else:
+        raise ValueError(
+            """Coordinates not provided in the correct format. Provide coordinates in the form chr[NUMBER]:[START]-[END] or a .bed file"""
+        )
+
+    return bt
+
+def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named=False) -> str:
+    """Converts interval object to standard genomic coordinates.
+
+    e.g. chr1:1000-2000 
+
+    Args:
+        interval (Union[pybedtools.Interval, dict]): Interval to convert.
+
+    Returns:
+        str: Genomic coordinates in the format chr:start-end
+    """
+    if not named:
+        return f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}'
+    else:
+        return (interval['name'], f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')

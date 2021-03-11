@@ -13,9 +13,20 @@ import xopen
 from ccanalyser.cli import cli
 from ccanalyser.tools.digest import DigestedChrom
 from ccanalyser.utils import get_re_site
+from typing import Iterator
+import os
+import pandas as pd
 
 
-def parse_chromosomes(fasta: pysam.FastxFile) -> pysam.FastqProxy:
+def parse_chromosomes(fasta: pysam.FastxFile) -> Iterator[pysam.FastqProxy]:
+    """Parses a whole genome fasta file and yields chromosome entries.
+
+    Args:
+        fasta (pysam.FastxFile): Fasta file to process.
+
+    Yields:
+        Iterator[pysam.FastqProxy]: Chromosome entry.
+    """    
 
     for chrom in pysam.FastxFile(fasta):
         yield chrom
@@ -23,43 +34,80 @@ def parse_chromosomes(fasta: pysam.FastxFile) -> pysam.FastqProxy:
 
 @cli.command()
 @click.argument('input_fasta')
-@click.option('-r', '--recognition_site', required=True)
-@click.option('-l', '--logfile', default='genome_digest.log')
-@click.option('-o', '--output_file', default='genome_digested.bed')
-@click.option('--remove_cutsite', default=True)
+@click.option('-r', '--recognition_site', help='Recognition enzyme or sequence' ,required=True)
+@click.option('-l', '--logfile', help='Path for digestion log file', default='genome_digest.log')
+@click.option('-o', '--output_file', help='Output file path', default='genome_digested.bed')
+@click.option('--remove_cutsite', help='Exclude the recognition sequence from the output', default=True)
+@click.option('--sort', help='Sorts the output bed file by chromosome and start coord.', default=False, is_flag=True)
 def genome_digest(
-    input_fasta,
-    recognition_site=None,
-    logfile=None,
-    output_file=None,
-    remove_cutsite=True,
+    input_fasta: os.PathLike,
+    recognition_site: str,
+    logfile: os.PathLike = 'genome_digest.log',
+    output_file: os.PathLike = 'genome_digest.bed',
+    remove_cutsite: bool = True,
+    sort=False
 ):
+    """ 
+    Generates a bed formatted file of all restriction fragments.
+    
+    Digests the supplied genome fasta file and generates a bed file containing the locations of all restriction fragments
+    produced by the supplied restriction enzyme 
 
-     
-    '''Digests the supplied genome fasta file and generates a bed file containing the locations of all restriction fragments
-       produced by the supplied restriction enzyme '''
+    Args:
+     input_fasta (os.PathLike): Path to fasta file containing whole genome sequence, split by chromosome
+     recognition_site (str): Restriction enzyme name/ Sequence of recognition site.
+     logfile (os.PathLike, optional): Output path of the digestion logfile. Defaults to genome_digest.log.
+     output_file (os.PathLike, optional): Output path for digested chromosome bed file. Defaults to genome_digest.bed.
+     remove_cutsite (bool, optional): Determines if restriction site is removed. Defaults to True.
+    """    
+    
+   
     #TODO: Include option to keep or remove the cutsite. For now will just remove to keep inline with the fastq digestion script
 
+
     fragment_stats = dict()
-    fragment_number_offset = 0
+    fragment_number = 0
     cut_sequence = get_re_site(recognition_site=recognition_site)
 
     with xopen.xopen(output_file, 'w') as output:
         
         for chrom in parse_chromosomes(input_fasta):
+            
+            print(f'Processing chrom {chrom.name}')
 
             digested_chrom = DigestedChrom(chrom, 
                                            cut_sequence, 
-                                           fragment_number_offset=fragment_number_offset,
+                                           fragment_number_offset=fragment_number,
                                            fragment_min_len=1)
-        
-            for n_fragments, fragment in enumerate(digested_chrom.fragments):
 
+            for n_fragments, fragment in enumerate(digested_chrom.fragments):
+                if n_fragments % 10000 == 0:
+                    print(f'Written {n_fragments} fragments')
+                
                 output.write(fragment)
             
             fragment_stats[chrom.name] = n_fragments
-            fragment_number_offset += n_fragments + 1
+            fragment_number += n_fragments + 1
+    
+
+    if sort:
+        print('Sorting output')
+        df = pd.read_csv(output_file, sep='\t', names=['chrom', 'start', 'end', 'name'])
+
+        # If changing the order, also need to change the fragment number
+        df = (df.sort_values(['chrom', 'start'])
+                .drop(columns='name')
+                .reset_index(drop=True)
+                .reset_index()
+                .rename(columns={'index': 'name'})
+                [['chrom', 'start', 'end', 'name']])
+
+        df.to_csv(output_file, sep='\t', index=False, header=False)
+    
     
     with xopen.xopen(logfile, 'w') as output:
         for chrom, n_fragments in fragment_stats.items():
             output.write(f'{chrom}\t{n_fragments}\n')
+    
+
+

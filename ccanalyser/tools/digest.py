@@ -1,11 +1,30 @@
 import re
 import pysam
+import multiprocessing
 from multiprocessing import Queue, Process, SimpleQueue
-from numpy.random import randint
-from typing import Union
+import numpy as np
+from typing import Iterable, Union, List
 import traceback
 
+
 class DigestedChrom:
+    """
+    Performs in slico digestion of fasta files.
+
+    Identifies all restriction sites for a supplied restriction enzyme/restriction site
+    and generates bed style entries.
+
+    Attributes:
+     chrom (pysam.FastqProxy): Chromosome to digest
+     recognition_seq (str): Sequence of restriction recognition site
+     recognition_len (int): Length of restriction recognition site
+     recognition_seq (re.Pattern): Regular expression for restriction recognition site
+     fragment_indexes (List[int]): Indexes of fragment(s) start and end positions.
+     fragment_number_offset (int): Starting fragment number.
+     fragment_min_len (int): Minimum fragment length required to report fragment
+           
+    """
+
     def __init__(
         self,
         chrom: pysam.FastqProxy,
@@ -13,6 +32,13 @@ class DigestedChrom:
         fragment_number_offset: int = 0,
         fragment_min_len: int = 1,
     ):
+        """
+        Args:
+         chrom (pysam.FastqProxy): Input fastq entry to digest
+         cutsite (str): Restriction enzyme recognition sequence.
+         fragment_number_offset (int, optional): Changes the fragment number output. Useful for multiple digests. Defaults to 0.
+         fragment_min_len (int, optional): Minimum length of a fragment required to output. Defaults to 1.
+        """        
 
         self.chrom = chrom
         self.recognition_seq = cutsite.upper()
@@ -23,7 +49,19 @@ class DigestedChrom:
         self.fragment_number_offset = fragment_number_offset
         self.fragment_min_len = fragment_min_len
 
-    def get_recognition_site_indexes(self):
+    def get_recognition_site_indexes(self) -> List[int]:
+        """
+        Gets the start position of all recognition sites present in the sequence.
+
+        Notes:
+         Also appends the start and end of the sequnece to enable clearer itteration
+         through the indexes.
+
+
+        Returns:
+            List[int]: Indexes of fragment(s) start and end positions.
+        """
+
         indexes = [
             re_site.start()
             for re_site in self.recognition_re.finditer(self.chrom.sequence.upper())
@@ -35,7 +73,13 @@ class DigestedChrom:
         return indexes
     
     @property
-    def fragments(self):
+    def fragments(self) -> Iterable[str]:
+        """
+        Extracts the coordinates of restriction fragments from the sequence.
+
+        Yields:
+            Iterator[Iterable[str]]: Identified restriction fragments in bed format.
+        """
 
         indexes = self.fragment_indexes
         fragment_no = self.fragment_number_offset
@@ -52,19 +96,58 @@ class DigestedChrom:
                 yield self._prepare_fragment(fragment_start, fragment_end, fragment_no)
                 fragment_no += 1
 
-    def _prepare_fragment(self, start, end, fragment_no):
+    def _prepare_fragment(self, start: int, end: int, fragment_no: int) -> str:
+        """Formats fragment into bed style coordinates.
+
+        Args:
+         start (int): Fragment start.
+         end (int): Fragment end.
+         fragment_no (int): Fragment number.
+
+        Returns:
+         str: Bed formatted coordinates.
+        """
         return '\t'.join([str(x) for x in (self.chrom.name, start, end, fragment_no)]) + '\n'
 
 class DigestedRead:
+    """
+    Performs in slico digestion of fastq files.
+
+    Identifies all restriction sites for a supplied restriction enzyme/restriction site
+    and generates bed style entries.
+
+    Attributes:
+     read (pysam.FastqProxy): Read to digest.
+     recognition_seq (str): Sequence of restriction recognition site.
+     recognition_len (int): Length of restriction recognition site.
+     recognition_seq (re.Pattern): Regular expression for restriction recognition site.
+     slices (List[str]): List of Fastq formatted digested reads (slices).  
+     slice_indexes (List[int]): Indexes of fragment(s) start and end positions.
+     slice_number_offset (int): Starting fragment number.
+     min_slice_len (int): Minimum fragment length required to report fragment.
+     has_slices (bool): Recognition site(s) present within sequence.
+
+
+           
+    """
     def __init__(
         self,
-        read, #pysam proxy object
+        read: pysam.FastqProxy,
         cutsite: str,
         min_slice_length: int = 18,
         slice_number_offset: int = 0,
         allow_undigested: bool = False,
         read_type: str = "flashed",
     ):
+        """
+        Args:
+         read (pysam.FastqProxy): Read to digest.
+         cutsite (str): Restriction enzyme recognition sequence.
+         min_slice_length (int, optional): Minimum slice length required for output. Defaults to 18.
+         slice_number_offset (int, optional): Increases the reported output slice number. Defaults to 0.
+         allow_undigested (bool, optional): If True slices without a restriction site are not filtered out. Defaults to False.
+         read_type (str, optional): Combined (flashed) or non-combined (pe). Choose from (flashed|pe). Defaults to "flashed".
+        """    
 
         self.read = read
         self.min_slice_length = min_slice_length
@@ -82,7 +165,7 @@ class DigestedRead:
         self.has_slices = self.slices_unfiltered > 1 
         self.slices = self._get_slices()
 
-    def get_recognition_site_indexes(self):
+    def get_recognition_site_indexes(self) -> List[int]:
         indexes = [
             re_site.start()
             for re_site in self.recognition_re.finditer(self.read.sequence.upper())
@@ -93,7 +176,7 @@ class DigestedRead:
 
         return indexes
 
-    def _get_slices(self):
+    def _get_slices(self) -> List[str]:
 
         indexes = self.slice_indexes
         slice_no = self.slice_number_offset
@@ -108,9 +191,9 @@ class DigestedRead:
                 if ii > 0:
                     slice_start += self.recognition_len
 
-                if self.is_filtered_slice(slice_start, slice_end):
+                if self._slice_passes_filter(slice_start, slice_end):
                     slices_list.append(
-                        self.prepare_slice(slice_start, slice_end, slice_no)
+                        self._prepare_slice(slice_start, slice_end, slice_no)
                     )
 
                     self.slices_filtered += 1
@@ -118,17 +201,29 @@ class DigestedRead:
 
         return slices_list
 
-    def prepare_slice(self, start, end, slice_no):
+    def _prepare_slice(self, start, end, slice_no):
         return "\n".join(
             [
-                f"@{self.read.name}|{self.read_type}|{slice_no}|{randint(0,100)}",
+                f"@{self.read.name}|{self.read_type}|{slice_no}|{np.random.randint(0,100)}",
                 self.read.sequence[start:end],
                 "+",
                 self.read.quality[start:end],
             ]
         )
 
-    def is_filtered_slice(self, start, end):
+    def _slice_passes_filter(self, start: int, end: int) -> bool:
+        """
+        Determines if slice exceeds the minimum slice length.
+
+        Args:
+         start (int): Slice start position.
+         end (int): Slice end position.
+
+        Returns:
+         bool: True if greater than minimum slice length  
+        
+        """    
+
         if (end - start) >= self.min_slice_length:
             return True
     
@@ -136,13 +231,28 @@ class DigestedRead:
         return ("\n".join(self.slices) + "\n") if self.slices else ""
 
 class ReadDigestionProcess(Process):
+    """
+    Process subclass for multiprocessing fastq digestion.
+
+    """
     def __init__(
         self,
-        inq: SimpleQueue,
-        outq: SimpleQueue,
-        statq: Queue = None,
+        inq: multiprocessing.SimpleQueue,
+        outq: multiprocessing.SimpleQueue,
+        statq: multiprocessing.Queue = None,
         **digestion_kwargs
     ) -> None:
+        
+        """
+        Args:
+         inq (multiprocessing.SimpleQueue): Queue to hold list of reads to digest.
+         outq (multiprocessing.SimpleQueue): Queue to hold list of digested reads.
+         statq (multiprocessing.Queue, optional): Queue to use for aggregating statistics from digestion processes. Defaults to None.
+         **digestion_kwargs: Kwargs passed to DigestedRead.
+        
+        Raises:
+            KeyError: digestion_kwargs must contain: cutsite
+        """    
 
         super(ReadDigestionProcess, self).__init__()
 
@@ -173,6 +283,16 @@ class ReadDigestionProcess(Process):
         return digested
 
     def run(self):
+        """
+        Performs read digestion.
+        
+        Reads to digest are pulled from inq, digested with the DigestedRead class
+        and the results placed on outq for writing.
+
+        If a statq is provided, read digestion stats are placed into this queue for 
+        aggregation.
+
+        """        
         try:
             reads = self.inq.get()
             buffer_reads = []

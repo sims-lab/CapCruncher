@@ -4,34 +4,56 @@ from pybedtools import BedTool
 import cooler
 from typing import Union
 from ccanalyser.tools.storage import CoolerBinner
+import os
 
 
 class CoolerBedGraph:
-    def __init__(self, cooler_fn: str, sparse=True):
+    """Generates a bedgraph file from a cooler file created by interactions-store.
+
+    Attributes:
+     cooler (cooler.Cooler): Cooler file to use for bedgraph production
+     capture_name (str): Name of capture probe being processed.
+     sparse (bool): Only output bins with interactions.
+     only_cis (bool): Only output cis interactions.
+
+    """
+
+    def __init__(self, cooler_fn: str, sparse: bool = True, only_cis: bool = False):
+        """
+        Args:
+            cooler_fn (str): Path to cooler group in hdf5 file.
+            sparse (bool, optional): Only output non-zero bins. Defaults to True.
+        """
+        self.sparse = sparse
+        self.only_cis = only_cis
 
         self.cooler = cooler.Cooler(cooler_fn)
-        self.bins = self.cooler.bins()[:]
-        self.pixels = self.cooler.pixels()[:]
         self.capture_name = self.cooler.info["metadata"]["capture_name"]
-        self.capture_bins = self.cooler.info["metadata"]["capture_bins"]
+        self._capture_bins = self.cooler.info["metadata"]["capture_bins"]
+        self._capture_chrom = self.cooler.info["metadata"]["capture_chrom"]
+        self._n_cis_interactions = self.cooler.info["metadata"]["n_cis_interactions"]
+        self._bins = self.cooler.bins()[:]
+        self._pixels = self.cooler.pixels()[:] if not only_cis else self.cooler.pixels().fetch(self._capture_chrom) 
+        
         self._bedgraph = None
         self._reporters = None
-        self.sparse = sparse
+       
 
     def _get_reporters(self):
-        concat_ids = pd.concat([self.pixels["bin1_id"], self.pixels["bin2_id"]])
-        concat_ids_filt = concat_ids.loc[lambda ser: ser.isin(self.capture_bins)]
-        pixels = self.pixels.loc[concat_ids_filt.index]
+
+        concat_ids = pd.concat([self._pixels["bin1_id"], self._pixels["bin2_id"]])
+        concat_ids_filt = concat_ids.loc[lambda ser: ser.isin(self._capture_bins)]
+        pixels = self._pixels.loc[concat_ids_filt.index]
 
         df_interactions = pd.DataFrame()
         df_interactions["capture"] = np.where(
-            pixels["bin1_id"].isin(self.capture_bins),
+            pixels["bin1_id"].isin(self._capture_bins),
             pixels["bin1_id"],
             pixels["bin2_id"],
         )
 
         df_interactions["reporter"] = np.where(
-            pixels["bin1_id"].isin(self.capture_bins),
+            pixels["bin1_id"].isin(self._capture_bins),
             pixels["bin2_id"],
             pixels["bin1_id"],
         )
@@ -44,10 +66,10 @@ class CoolerBedGraph:
 
     def _get_bedgraph(self):
 
-        merge_method = 'inner' if self.sparse else 'outer'
+        merge_method = "inner" if self.sparse else "outer"
 
         df_bdg = (
-            self.bins.merge(
+            self._bins.merge(
                 self.reporters, left_on="name", right_on="reporter", how=merge_method
             )[["chrom", "start", "end", "count"]]
             .assign(count=lambda df: df["count"].fillna(0))
@@ -56,18 +78,23 @@ class CoolerBedGraph:
 
         return df_bdg
 
-    @property
-    def capture_chrom(self):
-        return self.bins.loc[lambda df: df["name"].isin(self.capture_bins)][
-            "chrom"
-        ].mode()[0]
+    # @property
+    # def capture_chrom(self) -> str:
+    #     """Capture chromosome.
+
+    #     Returns:
+    #         str: Name of capture chromosome.
+    #     """
+    #     return self._bins.loc[lambda df: df["name"].isin(self._capture_bins)][
+    #         "chrom"
+    #     ].mode()[0]
 
     @property
-    def n_cis_interactions(self):
-        return self.bedgraph.query(f'chrom == "{self.capture_chrom}"')["count"].sum()
-
-    @property
-    def bedgraph(self):
+    def bedgraph(self) -> pd.DataFrame:
+        """
+        Returns:
+         pd.DataFrame: DataFrame in bedgraph format.
+        """        
         if self._bedgraph is not None:
             return self._bedgraph
         else:
@@ -75,19 +102,45 @@ class CoolerBedGraph:
             return self._bedgraph
 
     @property
-    def reporters(self):
+    def reporters(self) -> pd.DataFrame:
+        """Interactions with capture fragments/bins.
+
+        Returns:
+         pd.DataFrame: DataFrame containing just bins interacting with the capture probe.
+        """        
+        
         if self._reporters is not None:
             return self._reporters
         else:
             self._reporters = self._get_reporters()
             return self._reporters
 
-    def normalise_bedgraph(self, scale_factor=1e6):
+    def normalise_bedgraph(self, scale_factor=1e6) -> pd.DataFrame:
+        """Normalises the bedgraph.
+          
+        Uses the number of cis interactions to normalise the bedgraph counts.
+
+        Args:
+         scale_factor (int, optional): Scaling factor for normalisation. Defaults to 1e6.
+
+        Returns:
+         pd.DataFrame: Normalised bedgraph formatted DataFrame
+        """        
+
         df_bdg = self.bedgraph
-        df_bdg["count"] = (df_bdg["count"] / scale_factor) * self.n_cis_interactions
+        df_bdg["count"] = (df_bdg["count"] / scale_factor) * self._n_cis_interactions
         return df_bdg
 
-    def to_file(self, fn, normalise=False, **normalise_kwargs):
+    def to_file(self, fn: os.PathLike, normalise: bool = False, **normalise_kwargs):
+        """Outputs the bedgraph dataframe to a file.
+
+        If normalise is True, will also normalise the counts by the number of cis interactions.
+
+        Args:
+         fn (os.PathLike): Output file name.
+         normalise (bool, optional): Normalise the bedgraph before writing to file. Defaults to False.
+        """        
+
 
         if not normalise:
             self.bedgraph.to_csv(fn, sep="\t", header=None, index=False)
@@ -98,7 +151,13 @@ class CoolerBedGraph:
 
 
 class CoolerBedGraphWindowed(CoolerBedGraph):
-    def __init__(self, cooler_fn: str, binsize: int =5e3, binner: CoolerBinner = None, sparse=True):
+    def __init__(
+        self,
+        cooler_fn: str,
+        binsize: int = 5e3,
+        binner: CoolerBinner = None,
+        sparse=True,
+    ):
 
         super(CoolerBedGraphWindowed, self).__init__(cooler_fn, sparse=sparse)
 
@@ -126,9 +185,12 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
 
         # Merge bins with aggregated counts
         bedgraph_bins = self.binner.bins.merge(
-            count_aggregated, left_on="name", right_on="name_bin", how='inner' if self.sparse else 'outer'
+            count_aggregated,
+            left_on="name",
+            right_on="name_bin",
+            how="inner" if self.sparse else "outer",
         ).drop(columns=["name_bin"])[["chrom", "start", "end", "count"]]
-        
+
         return bedgraph_bins
 
     def normalise_bedgraph(self, scale_factor=1e6):
@@ -142,8 +204,9 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
             .assign(
                 count_overfrac_norm=lambda df: df["count"] * df["overlap_fraction"],
                 count_overfrac_n_interact_norm=lambda df: (
-                    (df["count_overfrac_norm"] / scale_factor) * self.n_cis_interactions
-                )
+                    (df["count_overfrac_norm"] / scale_factor)
+                    * self._n_cis_interactions
+                ),
             )
         )
 
@@ -154,7 +217,10 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
         )
 
         bedgraph_bins = self.binner.bins.merge(
-            count_aggregated, left_on="name", right_on="name_bin", how='inner' if self.sparse else 'outer'
+            count_aggregated,
+            left_on="name",
+            right_on="name_bin",
+            how="inner" if self.sparse else "outer",
         ).drop(columns=["name_bin"])[
             ["chrom", "start", "end", "count_overfrac_n_interact_norm"]
         ]

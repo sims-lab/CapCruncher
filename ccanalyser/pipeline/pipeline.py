@@ -36,11 +36,12 @@ import re
 import sys
 import glob
 from typing import Union
+import pickle
 
 # import seaborn as sns
 import trackhub
 from cgatcore import pipeline as P
-from cgatcore.iotools import zap_file
+from cgatcore.iotools import touch_file, zap_file
 from pybedtools.helpers import get_chromsizes_from_ucsc
 import pandas as pd
 from ruffus import (
@@ -62,25 +63,52 @@ from ccanalyser.tools.statistics import (
     collate_histogram_data,
     extract_trimming_stats,
 )
+
 import click
 from ccanalyser.cli import cli
 from ccanalyser.utils import is_on, is_none, make_group_track
+from ccanalyser.tools.storage import GenomicBinner
 
 ##############################
 #   Set-up global parameters #
 ##############################
 
-P.get_parameters("config.yml", only_import=True)
+P.get_parameters("config.yml")
 
 ##############################
 #  Pipeline stages           #
 ##############################
 
 
+def set_up_pipeline_params_dict():
+
+    P.PARAMS["cluster_queue_manager"] = P.PARAMS.get("pipeline_cluster_queue_manager")
+    P.PARAMS["conda_env"] = P.PARAMS.get(
+        "conda_env", os.path.basename(os.environ["CONDA_PREFIX"])
+    )
+
+    # Sanitise hub name
+    P.PARAMS["hub_name"] = re.sub(r"[,\s+\t;:]", "_", P.PARAMS["hub_name"])
+
+
+def set_up_chromsizes():
+
+    if not is_none(P.PARAMS["genome_chrom_sizes"]):
+        pass
+
+    elif os.path.exists("chrom_sizes.txt.tmp"):
+        P.PARAMS["genome_chrom_sizes"] = "chrom_sizes.txt.tmp"
+
+    else:
+        get_chromsizes_from_ucsc(P.PARAMS["genome_name"], "chrom_sizes.txt.tmp")
+        P.PARAMS["genome_chrom_sizes"] = "chrom_sizes.txt.tmp"
+
 @follows(mkdir("pre_ccanalysis"), mkdir("pre_ccanalysis/fastqc"))
 @transform("*.fastq*", regex(r"(.*).fastq.*"), r"pre_ccanalysis/fastqc/\1_fastqc.zip")
 def qc_reads(infile, outfile):
-    """Quality control of raw sequencing reads"""
+    
+    """Runs fastqc on the input files"""
+    
     outdir = os.path.dirname(outfile)
     statement = " ".join(
         [
@@ -143,8 +171,7 @@ def digest_genome(infile, outfile):
                    -l %(tmp)s.log
                    -o %(tmp)s
                    -r %(analysis_restriction_enzyme)s
-                   && cat %(tmp)s | sort -k1,1 -k2,2n > %(tmp)s.sorted
-                   && mv %(tmp)s.sorted %(tmp)s
+                   --sort
                    && pigz -p 4 %(tmp)s
                 """
 
@@ -162,7 +189,7 @@ def digest_genome(infile, outfile):
     r"pre_ccanalysis/split/\1.log",
 )
 def split_fastq(infiles, outfile):
-    """Splits the combined (flashed) fastq files into chunks for parallel processing"""
+    """Splits the input fastq files into chunks for parallel processing"""
 
     infiles = " ".join(infiles)
     output_prefix = outfile.replace(".log", "")
@@ -194,10 +221,9 @@ def split_fastq(infiles, outfile):
     r"pre_ccanalysis/deduplicated/deduplicated_ids/\1_\2.json.gz",
     extras=[r"\1", r"\2"],
 )
-def parse_duplicate_reads(infiles, outfile, sample_name, part_no):
+def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
 
-    """Checks for duplicate read1/read2 pairs in a pair of fastq files
-    any duplicates are discarded"""
+    """Parses fastq files into json format for sequence deduplication"""
 
     fq1, fq2 = [os.path.abspath(fn) for fn in infiles]
 
@@ -215,11 +241,13 @@ def parse_duplicate_reads(infiles, outfile, sample_name, part_no):
 
 
 @collate(
-    parse_duplicate_reads,
+    fastq_duplicates_parse,
     regex(r"pre_ccanalysis/deduplicated/deduplicated_ids/(.*)_\d*.json.gz"),
     r"pre_ccanalysis/deduplicated/deduplicated_ids/\1.json.gz",
 )
-def identify_duplicate_reads(infiles, outfile):
+def fastq_duplicates_identify(infiles, outfile):
+
+    """Identifies duplicate sequences from parsed fastq files (json format)"""
 
     infiles_str = " ".join(infiles)
     statement = """ccanalyser fastq-deduplicate identify
@@ -240,8 +268,8 @@ def identify_duplicate_reads(infiles, outfile):
 
 @active_if(is_on(P.PARAMS.get("deduplication_pre-dedup")))
 @follows(
-    parse_duplicate_reads,
-    identify_duplicate_reads,
+    fastq_duplicates_parse,
+    fastq_duplicates_identify,
     mkdir("statistics/deduplication/data/"),
 )
 @collate(
@@ -249,10 +277,10 @@ def identify_duplicate_reads(infiles, outfile):
     regex(r".*/(.*_part\d+)_[12].fastq(?:.gz)?"),
     r"pre_ccanalysis/deduplicated/\1_1.fastq",
 )
-def remove_duplicate_reads(infiles, outfile):
+def fastq_duplicates_remove(infiles, outfile):
 
-    """Checks for duplicate read1/read2 pairs in a pair of fastq files
-    any duplicates are discarded"""
+    """Removes duplicate read fragments identified by fastq_duplicates_identify
+       from input fastq files"""
 
     fq1, fq2 = infiles
     sample = re.match(r".*/(.*)(_part\d+)_[12].fastq(?:.gz)?", fq1)
@@ -282,12 +310,14 @@ def remove_duplicate_reads(infiles, outfile):
         zap_file(fn)
 
 
-@follows(remove_duplicate_reads)
+@follows(fastq_duplicates_remove)
 @merge(
     "statistics/deduplication/data/*.csv",
     "statistics/deduplication/deduplication.reads.csv",
 )
 def collate_deduplication_stats(infiles, outfile):
+
+    """Combines deduplication statistics from partitions."""
 
     stats_prefix = outfile.replace(".reads.csv", "")
 
@@ -303,7 +333,7 @@ def collate_deduplication_stats(infiles, outfile):
 
 @follows(
     mkdir("pre_ccanalysis/trimmed"),
-    remove_duplicate_reads,
+    fastq_duplicates_remove,
     mkdir("statistics/trimming/data/"),
 )
 @collate(
@@ -312,7 +342,8 @@ def collate_deduplication_stats(infiles, outfile):
     r"pre_ccanalysis/trimmed/\1_1_val_1.fq.gz",
 )
 def trim_reads(infiles, outfile):
-    """Trim adaptor sequences using Trim-galore"""
+    
+    """Trim adaptor sequences from fastq files using Trim-galore"""
 
     fq1, fq2 = infiles
     fq1_basename, fq2_basename = os.path.basename(fq1), os.path.basename(fq2)
@@ -346,6 +377,8 @@ def trim_reads(infiles, outfile):
 @merge("statistics/trimming/data/*.txt", r"statistics/trimming/trimming.summary.csv")
 def collate_trimming_statistics(infiles, outfile):
 
+    """Extracts and collates adapter trimming statistics"""
+
     trimming_stats = []
     for fn in infiles:
         stats = extract_trimming_stats(fn)
@@ -373,7 +406,9 @@ def collate_trimming_statistics(infiles, outfile):
     r"pre_ccanalysis/flashed/\1.extendedFrags.fastq.gz",
 )
 def combine_reads(infiles, outfile):
+    
     """Combine overlapping paired-end reads using flash"""
+    
     fq1, fq2 = infiles
     output_prefix = outfile.replace(".extendedFrags.fastq.gz", "")
     statement = """flash
@@ -399,6 +434,7 @@ def combine_reads(infiles, outfile):
     r"pre_ccanalysis/digested/\1.flashed.fastq.gz",
 )
 def digest_flashed_reads(infile, outfile):
+    
     """In silico restriction enzyme digest of combined (flashed) read pairs"""
 
     fn = os.path.basename(infile).replace(".extendedFrags.fastq.gz", "")
@@ -432,6 +468,7 @@ def digest_flashed_reads(infile, outfile):
     r"pre_ccanalysis/digested/\1.pe.fastq.gz",
 )
 def digest_pe_reads(infiles, outfile):
+    
     """In silico restriction enzyme digest of non-combined (non-flashed) read pairs"""
 
     fq1, fq2 = infiles
@@ -465,6 +502,8 @@ def digest_pe_reads(infiles, outfile):
 @follows(digest_flashed_reads, digest_pe_reads)
 @merge("statistics/digestion/data/*", "statistics/digestion/digestion.reads.csv")
 def collate_digestion_stats(infiles, outfile):
+
+    """Combines digestion statistics"""
 
     stats_prefix = outfile.replace(".reads.csv", "")
     data = defaultdict(list)
@@ -505,6 +544,7 @@ def fastq_preprocessing():
     r"pre_ccanalysis/aligned/\1.bam",
 )
 def align_slices(infile, outfile):
+    
     """ Aligns digested fq files using designated aligner. (Default: Bowtie2)"""
 
     aligner = P.PARAMS["align_aligner"]
@@ -539,6 +579,7 @@ def align_slices(infile, outfile):
     r"pre_ccanalysis/aligned/\1.bam",
 )
 def merge_bam_files(infiles, outfile):
+    
     """Combines bam files (by flashed/non-flashed status and sample)"""
     fnames = " ".join(infiles)
 
@@ -552,6 +593,9 @@ def merge_bam_files(infiles, outfile):
 
 @transform([align_slices, merge_bam_files], regex("(.*).bam"), r"\1.bam.bai")
 def index_bam(infile, outfile):
+
+    '''Indexes all bam files (both partitioned and merged)'''
+
     statement = """samtools index %(infile)s"""
     P.run(
         statement,
@@ -568,6 +612,7 @@ def index_bam(infile, outfile):
     r"statistics/mapping_statistics/\1.picard.metrics",
 )
 def mapping_qc(infile, outfile):
+    
     """Uses picard CollectAlignmentSummaryMetrics to get mapping information."""
 
     cmd = [
@@ -591,6 +636,7 @@ def mapping_qc(infile, outfile):
 
 @merge(mapping_qc, "statistics/mapping_report.html")
 def mapping_multiqc(infiles, outfile):
+    
     """Combines mapping metrics using multiqc"""
 
     indir = os.path.dirname(infiles[0])
@@ -618,6 +664,7 @@ def mapping_multiqc(infiles, outfile):
     r"ccanalysis/annotations/\1.bam.bed",
 )
 def bam_to_bed(infile, outfile):
+    
     """Converts bam files to bed for faster intersection"""
 
     statement = """bedtools bamtobed -i %(infile)s | sort -k1,1 -k2,2n > %(outfile)s"""
@@ -629,16 +676,13 @@ def bam_to_bed(infile, outfile):
     )
 
 
-@transform(
-    P.PARAMS.get("analysis_capture_oligos"),
-    regex(r".*"),
-    r"ccanalysis/annotations/exclude.bed",
-)
-def build_exclusion_bed(infile, outfile):
+@originate("ccanalysis/annotations/exclude.bed")
+def build_exclusion_bed(outfile):
+    
     """Generates exclusion window around each capture site"""
 
     statement = """bedtools slop
-                    -i %(infile)s -g %(genome_chrom_sizes)s -b %(analysis_reporter_exclusion_zone)s
+                    -i %(analysis_capture_oligos)s -g %(genome_chrom_sizes)s -b %(analysis_reporter_exclusion_zone)s
                     | bedtools subtract -a - -b %(analysis_capture_oligos)s
                     | sort -k1,1 -k2,2n 
                     > %(outfile)s"""
@@ -663,12 +707,16 @@ def sort_capture_oligos(outfile):
 
 
 @active_if(P.PARAMS.get("analysis_blacklist"))
-@originate("ccanalysis/annotations/capture.bed")
+@originate("ccanalysis/annotations/blacklist.bed")
 def sort_blacklist(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
 
-    statement = """cat %(analysis_blacklist)s | sort -k1,1 -k2,2n > %(outfile)s"""
+    if os.path.exists(P.PARAMS['analysis_blacklist']):
+        statement = """cat %(analysis_blacklist)s | sort -k1,1 -k2,2n > %(outfile)s"""
+    else:
+        statement = 'touch %(outfile)s'
+    
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -724,6 +772,17 @@ def sort_blacklist(outfile):
 )
 def annotate_slices(infile, outfile):
 
+    '''Annotates mapped read slices.
+     
+       Slices are annotated with:
+       * capture name 
+       * capture count
+       * exclusion name
+       * exclusion count
+       * blacklist count
+       * restriction fragment number
+       '''
+
     slices = infile[0]
     flags = {"name": "-n", "fn": "-b", "action": "-a", "fraction": "-f"}
 
@@ -738,13 +797,13 @@ def annotate_slices(infile, outfile):
                     %(cmd_args)s
                     -o %(outfile)s
                     --invalid_bed_action ignore
-                    -p 8
+                    -p 4
                 """
 
     P.run(
         statement.replace("\n", " "),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=8,
+        job_threads=4,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -754,6 +813,7 @@ def annotate_slices(infile, outfile):
 
 @follows(fastq_preprocessing, annotate_slices)
 def pre_ccanalysis():
+    """Runs the pipeline until just prior to identification of reporters"""
     pass
 
 
@@ -769,7 +829,7 @@ def pre_ccanalysis():
     add_inputs(r"ccanalysis/annotations/\1.annotations.tsv"),
     r"ccanalysis/reporters/unfiltered/\1.log",
 )
-def ccanalyser(infiles, outfile):
+def identify_reporters(infiles, outfile):
     """Processes bam files and annotations, filteres slices and outputs
     reporter slices for each capture site"""
 
@@ -804,7 +864,7 @@ def ccanalyser(infiles, outfile):
     zap_file(annotations)
 
 
-@follows(mkdir("ccanalysis/reporters/combined"), ccanalyser)
+@follows(mkdir("ccanalysis/reporters/combined"), identify_reporters)
 @collate(
     "ccanalysis/reporters/unfiltered/*.tsv",
     regex(
@@ -814,6 +874,8 @@ def ccanalyser(infiles, outfile):
     extras=[r"\1", r"\2", r"\3", r"\4"],
 )
 def collate_reporters(infiles, outfile, *grouping_args):
+
+    """Concatenates identified reporters """
 
     # Need to concat tsv files but remove headers, the sed command performs the removal
     statement = (
@@ -832,7 +894,7 @@ def collate_reporters(infiles, outfile, *grouping_args):
         zap_file(fn)
 
 
-@follows(ccanalyser, mkdir("ccanalysis/reporters/deduplicated"))
+@follows(identify_reporters, mkdir("ccanalysis/reporters/deduplicated"))
 @transform(
     collate_reporters,
     regex(r".*/(?P<sample>.*).(flashed|pe).(?P<capture>.*).fragments.tsv"),
@@ -840,6 +902,9 @@ def collate_reporters(infiles, outfile, *grouping_args):
     extras=[r"\2"],
 )
 def deduplicate_fragments(infile, outfile, read_type):
+
+    '''Identifies duplicate fragments by removing fragments with the same coordinates
+       and slice order'''
 
     statement = """ccanalyser reporters-deduplicate
                    identify
@@ -864,7 +929,9 @@ def deduplicate_fragments(infile, outfile, read_type):
     r"ccanalysis/reporters/deduplicated/\1.\2.\3.slices.tsv",
     extras=[r"\1", r"\2", r"\3"],
 )
-def deduplicate_slices(infile, outfile, sample_name, read_type, capture_oligo):
+def deduplicate_reporters(infile, outfile, sample_name, read_type, capture_oligo):
+
+    '''Removes reporters with duplicate coordinates'''
 
     slices, duplicated_ids = infile
     stats_prefix = (
@@ -893,12 +960,14 @@ def deduplicate_slices(infile, outfile, sample_name, read_type, capture_oligo):
 
 
 @collate(
-    deduplicate_slices,
+    deduplicate_reporters,
     regex(r".*/(?P<sample>.*).(?:flashed|pe).(?P<capture>.*).slices.tsv"),
     r"ccanalysis/reporters/\1.\2.tsv.gz",
     extras=[r"\1", r"\2"],
 )
 def collate_reporters_final(infiles, outfile, *grouping_args):
+
+    '''Final collation of reporters by sample and capture probe'''
 
     # Need to concat tsv files but remove headers, the sed command performs the removal
     statement = f"cat {' '.join(infiles)} | sed -e '1n' -e '/.*parent_read.*/d' | pigz -p 4 > {outfile}"
@@ -914,6 +983,8 @@ def collate_reporters_final(infiles, outfile, *grouping_args):
 @follows(collate_reporters_final)
 @merge("statistics/ccanalysis/data/*", "statistics/ccanalysis/ccanalysis.reads.csv")
 def collate_ccanalyser_stats(infiles, outfile):
+
+    ''''Combination of all reporter identification and filtering statistics'''
 
     stats_prefix = outfile.replace(".reads.csv", "")
     data = defaultdict(list)
@@ -938,18 +1009,21 @@ def collate_ccanalyser_stats(infiles, outfile):
     collate_read_data(data["read"]).to_csv(outfile, index=False)
 
 
-@follows(deduplicate_slices, collate_ccanalyser_stats)
+@follows(deduplicate_reporters, collate_ccanalyser_stats)
 def post_ccanalysis():
-    pass
+    '''Reporters have been identified, deduplicated and collated by sample/capture probe'''
 
 
-@follows(mkdir("ccanalysis/interactions"))
+
+@follows(mkdir("ccanalysis/interactions/counts"))
 @transform(
     collate_reporters_final,
     regex(r"ccanalysis/reporters/(.*)\.(.*).tsv.gz"),
-    r"ccanalysis/interactions/\1.\2.tsv.gz",
+    r"ccanalysis/interactions/counts/\1.\2.tsv.gz",
 )
 def count_interactions(infile, outfile):
+
+    '''Counts the number of interactions identified between reporter restriction fragments'''
 
     statement = [
         "ccanalyser interactions-count",
@@ -969,15 +1043,17 @@ def count_interactions(infile, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-
+@follows(mkdir('ccanalysis/interactions/fragments'))
 @transform(
     count_interactions,
-    regex(r"ccanalysis/interactions/(.*)\.(.*)\.tsv.gz"),
+    regex(r"ccanalysis/interactions/counts/(.*)\.(.*)\.tsv.gz"),
     add_inputs(digest_genome),
-    r"ccanalysis/interactions/\1.\2.fragments.hdf5",
+    r"ccanalysis/interactions/fragments/\1.\2.fragments.hdf5",
     extras=[r"\1", r"\2"],
 )
 def store_interactions_at_fragment_level(infile, outfile, sample_name, capture_name):
+
+    '''Stores restriction fragment interaction counts in cooler format'''
 
     counts, rf_map = infile
     output_prefix = outfile.replace(f".{capture_name}.fragments", "")
@@ -999,15 +1075,43 @@ def store_interactions_at_fragment_level(infile, outfile, sample_name, capture_n
         job_condaenv=P.PARAMS["conda_env"],
     )
 
+@follows(digest_genome, count_interactions)
+@originate(r'ccanalysis/interactions/binners.pkl')
+def generate_bin_conversion_tables(outfile):
+    """Converts restriction fragments to genomic bins."
+    """    
+
+    frags = pd.read_csv('pre_ccanalysis/restriction_enzyme_map/genome.digest.bed.gz', 
+                        sep='\t', 
+                        names=['chrom', 'start', 'end', 'name'])
+    
+    binner_dict = dict()
+    for bs in re.split(r"[,;]\s*|\s+", str(P.PARAMS["plot_bin_size"])):
+        gb = GenomicBinner(chromsizes=P.PARAMS['genome_chrom_sizes'], fragments=frags, binsize=int(bs))
+        gb.bin_conversion_table # Property that is cached so need to call it to make sure it is present.
+        binner_dict[int(bs)] = gb
+   
+    with open('ccanalysis/interactions/binners.pkl', 'wb') as w:
+        pickle.dump(binner_dict, w)
+
+
 
 @active_if(not is_none(P.PARAMS.get("plot_bin_size")))
+@follows(generate_bin_conversion_tables, mkdir('ccanalysis/interactions/binned/'))
 @transform(
     store_interactions_at_fragment_level,
-    regex(r"ccanalysis/interactions/(.*)\.(.*)\.fragments\.hdf5"),
-    r"ccanalysis/interactions/\1.\2.log",
+    regex(r"ccanalysis/interactions/fragments/(.*)\.(.*)\.fragments\.hdf5"),
+    add_inputs(generate_bin_conversion_tables),
+    r"ccanalysis/interactions/binned/\1.\2.log",
     extras=[r"\2"],
 )
 def store_interactions_binned(infile, outfile, capture_name):
+
+    '''
+    Converts a cooler file of restriction fragments to even genomic bins.
+    '''
+
+    infile, conversion_tables = infile
 
     bin_options = " -b " + " -b ".join(
         re.split(r"[,;]\s*|\s+", str(P.PARAMS["plot_bin_size"]))
@@ -1019,26 +1123,30 @@ def store_interactions_binned(infile, outfile, capture_name):
                   %(infile)s
                   -o %(output_prefix)s
                   %(bin_options)s
+                  --conversion_tables %(conversion_tables)s
                   --normalise
-                  -p 8
+                  -p 4
                   > %(outfile)s
                 """
 
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=4,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
 
 @follows(store_interactions_at_fragment_level, store_interactions_binned)
 @collate(
-    "ccanalysis/interactions/*.hdf5",
-    regex(r"ccanalysis/interactions/(.*)\.(.*)\.(?:fragments|\d+)\.hdf5"),
+    ["ccanalysis/interactions/fragments/*.hdf5", "ccanalysis/interactions/binned/*.hdf5"],
+    regex(r".*/(.*)\.(.*)\.(?:fragments|\d+)\.hdf5"),
     r"ccanalysis/interactions/\1.hdf5",
     extras=[r"\1"],
 )
 def merge_interactions(infiles, outfile, sample_name):
+
+    '''Combines cooler files together'''
 
     infiles_str = " ".join(infiles)
     statement = f"""ccanalyser interactions-store
@@ -1052,6 +1160,9 @@ def merge_interactions(infiles, outfile, sample_name):
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
     )
+
+    for fn in infiles:
+        zap_file(fn)
 
 
 @follows(mkdir("ccanalysis/bedgraphs"))
@@ -1084,7 +1195,8 @@ def make_bedgraph_raw(infile, outfiles, sample_name):
     extras=[r"\1"],
 )
 def make_bedgraph_normalised(infile, outfiles, sample_name):
-    """Extract reporters in bedgraph format from stored interactions"""
+    """Extract reporters in bedgraph format from stored interactions.
+       Normalises the counts by the number of cis interactions identified."""
 
     output_prefix = f"ccanalysis/bedgraphs/{sample_name}.normalised"
 
@@ -1101,36 +1213,35 @@ def make_bedgraph_normalised(infile, outfiles, sample_name):
     )
 
 
-@transform(
-    merge_interactions,
-    regex(r".*/(.*).hdf5"),
-    r"ccanalysis/bedgraphs/\1.windowed.log",
-    extras=[r"\1"],
-)
-def make_bedgraph_windowed(infile, outfiles, sample_name):
-    """Extract reporters in bedgraph format from stored interactions"""
+# @transform(
+#     merge_interactions,
+#     regex(r".*/(.*).hdf5"),
+#     r"ccanalysis/bedgraphs/\1.windowed.log",
+#     extras=[r"\1"],
+# )
+# def make_bedgraph_windowed(infile, outfiles, sample_name):
+#     """Extract reporters in bedgraph format from stored interactions"""
 
-    output_prefix = f"ccanalysis/bedgraphs/{sample_name}.windowed"
+#     output_prefix = f"ccanalysis/bedgraphs/{sample_name}.windowed"
 
-    statement = """ccanalyser interactions-bedgraph
-                   %(infile)s
-                   -o %(output_prefix)s
-                   --binsize 5000
-                   --normalise
-                   > %(output_prefix)s.log
-                   """
-    P.run(
-        statement,
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
+#     statement = """ccanalyser interactions-bedgraph
+#                    %(infile)s
+#                    -o %(output_prefix)s
+#                    --binsize 5000
+#                    --normalise
+#                    > %(output_prefix)s.log
+#                    """
+#     P.run(
+#         statement,
+#         job_queue=P.PARAMS["pipeline_cluster_queue"],
+#         job_condaenv=P.PARAMS["conda_env"],
+#     )
 
 
 @follows(
     mkdir("ccanalysis/bigwigs"),
     make_bedgraph_raw,
     make_bedgraph_normalised,
-    make_bedgraph_windowed,
 )
 @transform(
     "ccanalysis/bedgraphs/*",
@@ -1139,9 +1250,6 @@ def make_bedgraph_windowed(infile, outfiles, sample_name):
 )
 def make_bigwig(infile, outfile):
     """Uses UCSC tools bedGraphToBigWig to generate bigWigs for each bedgraph"""
-
-    # TODO: Bedgraphs are not being sorted according to unix conventions
-    # Need to fix this but adding hack to sort this out
 
     tmp = f"{outfile}.tmp"
     statement = """  cat %(infile)s
@@ -1164,6 +1272,8 @@ def make_bigwig(infile, outfile):
     extras=[r"\1", r"\2"],
 )
 def make_union_bedgraph(infiles, outfile, normalisation_type, capture_name):
+
+    '''Collates bedgraphs by capture probe into a single file for comparison.'''
 
     infiles_str = " ".join(infiles)
     sample_names = " ".join(
@@ -1192,6 +1302,9 @@ def make_union_bedgraph(infiles, outfile, normalisation_type, capture_name):
 )
 def merge_run_statistics(infiles, outfile):
 
+    '''Generates a summary statistics file for the pipeline run.
+       Summarised at the read count level.'''
+
     df = pd.concat([pd.read_csv(fn) for fn in infiles])
 
     df.sort_values(
@@ -1204,8 +1317,7 @@ def merge_run_statistics(infiles, outfile):
     "statistics/visualise_statistics.html",
 )
 def build_report(infile, outfile):
-    """Run jupyter notebook for reporting and plotting. First moves the notebook
-    then converts to html"""
+    """Run jupyter notebook for reporting and plotting pipeline statistics"""
 
     path_script = __file__
     path_script_dir = os.path.dirname(path_script)
@@ -1230,14 +1342,15 @@ def build_report(infile, outfile):
     )
 
 
-@active_if(is_on(P.PARAMS["hub_create"]))
+@active_if(is_on(P.PARAMS.get("hub_create")))
 @collate(
     make_bigwig,
     regex(r".*/(?:.*)\.normalised\.(?:.*).bigWig"),
-    os.path.join(P.PARAMS["hub_dir"], P.PARAMS["hub_name"] + ".hub.txt"),
+    os.path.join(P.PARAMS.get("hub_dir", ''), P.PARAMS.get("hub_name", '') + ".hub.txt"),
     extras=[build_report],
 )
-def make_trackhub(infiles, outfile, statistics):
+def make_ucsc_hub(infiles, outfile, statistics):
+    '''Creates a ucsc hub from the pipeline output'''
 
     bigwigs = infiles
     key_sample = lambda b: os.path.basename(b).split(".")[0]
@@ -1272,9 +1385,10 @@ def make_trackhub(infiles, outfile, statistics):
         raise NotImplementedError("Custom genome not yet supported")
 
 
-@follows(make_trackhub)
+@follows(make_ucsc_hub)
 @originate("hub_url.txt")
 def write_hub_path(outfile):
+    '''Convinence task to write hub url to use for adding custom hub to UCSC genome browser'''
 
     with open(outfile, "w") as w:
         url = P.PARAMS["hub_url"].rstrip("/")
@@ -1286,46 +1400,73 @@ def write_hub_path(outfile):
         w.write(path_hubtxt)
 
 
-def set_up_pipeline_params_dict():
+@follows(mkdir('capture_compare/differential'))
+@transform('capture_compare/bedgraphs_union/*.tsv',
+           regex(r'.*/(.*)\.raw\.tsv'),
+           r'capture_compare/differential/\1.log',
+           extras=[r'\1'])
+def identify_differential_interactions(infile, outfile, capture_name):
 
-    P.PARAMS["cluster_queue_manager"] = P.PARAMS.get("pipeline_cluster_queue_manager")
-    P.PARAMS["conda_env"] = P.PARAMS.get(
-        "conda_env", os.path.basename(os.environ["CONDA_PREFIX"])
+    output_prefix = outfile.replace('.log', '')
+
+    statement = '''ccanalyser
+                   interactions-differential
+                   %(infile)s
+                   -n %(capture_name)s
+                   -c %(analysis_capture_oligos)s
+                   -o %(output_prefix)s
+                   > %(outfile)s
+                '''
+    
+    P.run(
+        statement,
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # Sanitise hub name
-    P.PARAMS["hub_name"] = re.sub(r"[,\s+\t;:]", "_", P.PARAMS["hub_name"])
-
-
-def set_up_chromsizes():
-
-    if not is_none(P.PARAMS["genome_chrom_sizes"]):
-        pass
-
-    elif os.path.exists("chrom_sizes.txt.tmp"):
-        P.PARAMS["genome_chrom_sizes"] = "chrom_sizes.txt.tmp"
-
-    else:
-        get_chromsizes_from_ucsc(P.PARAMS["genome_name"], "chrom_sizes.txt.tmp")
-        P.PARAMS["genome_chrom_sizes"] = "chrom_sizes.txt.tmp"
-
-
-@cli.command(
-    context_settings=dict(
-        ignore_unknown_options=True,
-    )
+@follows(merge_interactions, mkdir("ccanalysis/heatmaps/"))
+@transform(
+    "ccanalysis/interactions/*.hdf5",
+    regex(r"ccanalysis/interactions/(.*).hdf5"),
+    r"ccanalysis/heatmaps/\1.log",
 )
-@click.option("-h", "--help", default=False, is_flag=True)
-@click.argument("mode", type=click.Choice(["make", "show", "clone", "touch"]))
-# @click.option('--config', help='Path to pipeline configuration file', default='config.yml')
-@click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
-def pipeline(mode, pipeline_options, help=False):
+def plot_interactions(infile, outfile):
 
-    sys.argv = ["pipeline", mode, *pipeline_options]
-
-    if help:  # Don't want to waste time with set up if just want help with commands
-        sys.argv.append(" --help")
+    if not is_none(P.PARAMS.get("plot_normalisation")):
+        norm = P.PARAMS['plot_normalisation']
     else:
-        set_up_pipeline_params_dict()
-        set_up_chromsizes()
-        P.main()  # This runs the pipeline
+        norm_default = {'capture': 'n_interactions',
+                        'tri': "n_rf_n_interactions",
+                        'tiled': "ice",}
+        norm = norm_default[P.PARAMS['analysis_method']]
+    
+    
+    output_prefix = outfile.replace('.log', '')
+
+
+    statement = f"""ccanalyser interactions-plot
+                    %(infile)s
+                    -c %(plot_coordinates)s
+                    --normalisation %(norm)s
+                    --cmap {P.PARAMS.get('plot_cmap', 'jet')}
+                    --thresh {P.PARAMS.get('plot_thresh', '0')}
+                    -o %(output_prefix)s
+                    > %(outfile)s 2>&1"""
+
+    P.run(
+        statement,
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
+        )
+
+@merge([make_ucsc_hub, plot_interactions], 'pipeline_complete.txt')
+def full(infiles, outfile):
+    touch_file(outfile)
+
+
+if __name__ == '__main__':
+    set_up_chromsizes()
+    set_up_pipeline_params_dict()
+    P.main(sys.argv)
+
+

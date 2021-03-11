@@ -1,19 +1,17 @@
+import os
 from multiprocessing import Queue, SimpleQueue
+from typing import Tuple
 
 import click
 import numpy as np
 import pandas as pd
-from pysam import FastxFile
-from xopen import xopen
-
-
 from ccanalyser.cli import cli
 from ccanalyser.tools.digest import ReadDigestionProcess
 from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess
-from ccanalyser.tools.statistics import (DigestionStatCollector,
-                                         DigestionStatistics)
+from ccanalyser.tools.statistics import DigestionStatCollector, DigestionStatistics
 from ccanalyser.utils import get_re_site
-
+from pysam import FastxFile
+from xopen import xopen
 
 
 @cli.command()
@@ -41,26 +39,42 @@ from ccanalyser.utils import get_re_site
     default=1e5,
     type=click.INT,
 )
-@click.option("--stats_prefix", help="Output prefix for stats file", default='stats')
-@click.option("--sample_name", help="Name of sample e.g. DOX_treated_1", default='sampleX')
+@click.option("--stats_prefix", help="Output prefix for stats file", default="stats")
+@click.option(
+    "--sample_name", help="Name of sample e.g. DOX_treated_1", default="sampleX"
+)
 def fastq_digest(
-    input_fastq,
-    restriction_enzyme=None,
-    mode="pe",
-    output_file="out.fastq.gz",
-    minimum_slice_length=18,
-    compression_level=5,
-    n_cores=1,
-    read_buffer=100000,
-    stats_prefix="",
-    keep_cutsite=False,
-    sample_name='',
+    input_fastq: Tuple,
+    restriction_enzyme: str,
+    mode: str = "pe",
+    output_file: os.PathLike = "out.fastq.gz",
+    minimum_slice_length: int = 18,
+    compression_level: int = 5,
+    n_cores: int = 1,
+    read_buffer: int = 100000,
+    stats_prefix: os.PathLike = "",
+    keep_cutsite: bool = False,
+    sample_name: str = "",
 ):
+    """
+    Performs in silico digestion of one or a pair of fastq files. 
 
-    '''Performs in silico digestion of an interleaved fastq file'''
+    Args:
+     input_fastq (Tuple): Input fastq files to process
+     restriction_enzyme (str): Restriction enzyme name or site to use for digestion.
+     mode (str, optional): Digest combined(flashed) or non-combined(pe). 
+                           Undigested pe reads are output but flashed are not written. Defaults to "pe".
+     output_file (os.PathLike, optional): Output fastq file path. Defaults to "out.fastq.gz".
+     minimum_slice_length (int, optional): Minimum allowed length for in silico digested reads. Defaults to 18.
+     compression_level (int, optional): Compression level for gzip output (1-9). Defaults to 5.
+     n_cores (int, optional): Number of digestion processes to use. Defaults to 1.
+     read_buffer (int, optional): Number of reads to process before writing to file. Defaults to 100000.
+     stats_prefix (os.PathLike, optional): Output prefix for stats file. Defaults to "".
+     keep_cutsite (bool, optional): Determines if cutsite is removed from the output. Defaults to False.
+     sample_name (str, optional): Name of sample processed eg. DOX-treated_1. Defaults to ''.
+    """
 
-
-    #TODO: Enable keeping the cutsite
+    # TODO: Enable keeping the cutsite
 
     # Set up multiprocessing variables
     inputq = SimpleQueue()  # reads are placed into this queue for processing
@@ -70,8 +84,11 @@ def fastq_digest(
     # Variables
     cut_site = get_re_site(restriction_enzyme)
 
-    if mode == "flashed":  # Checks the submode to see in which mode to run
+    # Checks the submode to see in which mode to run
+    if mode == "flashed":
 
+        # If flashed reads, more confident in presence of rf junction.
+        # Will not allow undigested reads in this case as probably junk.
         reader = FastqReaderProcess(
             input_files=input_fastq,
             outq=inputq,
@@ -86,7 +103,7 @@ def fastq_digest(
                 cutsite=cut_site,
                 min_slice_length=minimum_slice_length,
                 read_type=mode,
-                allow_undigested=False,
+                allow_undigested=False,  # Prevents outputting undigested reads
                 statq=statq,
             )
             for _ in range(n_cores)
@@ -135,7 +152,6 @@ def fastq_digest(
     print("")
     print("Collating stats")
     collated_stats = DigestionStatCollector(statq, n_cores).get_collated_stats()
-    #sample_name = re.match(r".*/(.*)(_part\d+.).*", input_fastq[0]).group(1)
 
     stats = [
         DigestionStatistics(

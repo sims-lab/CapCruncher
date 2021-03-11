@@ -4,28 +4,28 @@
 Created on Fri Oct  4 13:47:20 2019
 @author: asmith
 """
-from ccanalyser.cli import cli
+import os
+import re
 from collections import Counter
 from multiprocessing import SimpleQueue
-from typing import Union
+from typing import List, Tuple, Union
 
+import click
+import numpy as np
 import pandas as pd
 import ujson
-from xopen import xopen
 from ccanalyser.cli import cli
-from ccanalyser.tools.deduplicate import (
-    ReadDeduplicationParserProcess,
-    ReadDuplicateRemovalProcess,
-)
+from ccanalyser.tools.deduplicate import (ReadDeduplicationParserProcess,
+                                          ReadDuplicateRemovalProcess)
 from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess
 from ccanalyser.tools.statistics import DeduplicationStatistics
-from ccanalyser.utils import invert_dict, load_json, NaturalOrderGroup
-import click
-import re
+from ccanalyser.utils import NaturalOrderGroup, invert_dict, load_json
+from xopen import xopen
 
 
 @cli.group(cls=NaturalOrderGroup)
-def fastq_deduplicate():
+@click.pass_context
+def fastq_deduplicate(ctx):
     """Identifies PCR duplicate fragments from Fastq files"""
 
 
@@ -43,9 +43,18 @@ def fastq_deduplicate():
     default=1e5,
     type=click.INT,
 )
-def parse(input_files, output="out.json", read_buffer=1e5):
+def parse(input_files: Tuple, output: os.PathLike = "out.json", read_buffer: int = 1e5):
+    """
+    Parses fastq file(s) into easy to deduplicate format.
 
-    """Parses fastq file(s) into easy to deduplicate format. (Run first)  """
+    Generates a hashed (using xxhash) dictionary in json format for deduplication using identify. 
+
+    Args:
+     input_files (Tuple): One or more fastq files to process
+     output (os.PathLike, optional): Output for parsed read identifiers and sequences. Defaults to "out.json".
+     read_buffer (int, optional): Number of reads to process before outputting to file. Defaults to 1e5.
+    """    
+
 
     # Set up multiprocessing variables
     inputq = SimpleQueue()  # Reads are placed into this queue for deduplication
@@ -80,13 +89,23 @@ def parse(input_files, output="out.json", read_buffer=1e5):
 @click.option(
     "-o", "--output", help="Output file", default="duplicates.json", required=True
 )
-def identify(input_files, output="duplicates.json"):
+def identify(input_files: Tuple, output: os.PathLike = "duplicates.json"):
+    """Identifies fragments with duplicated sequences.
 
-    """Identifies fragments with duplicated sequences. (Run Second)"""
+       Takes the input of the parse subcommand and deduplicates the hashed sequences 
+       using a python dictionary. Duplicate read ids (hashed) are output  as a .json file.
+
+    Args:
+     input_files (Tuple): Paths to json files containing dictionaries with hashed read ids as the keys
+                          and hashed sequences as the values.
+     output (os.PathLike, optional): Duplicate read ids identified. Defaults to "duplicates.json".
+    """    
+
 
     dedup_sequences = dict()
     read_ids = set()
 
+    np.random.shuffle(np.array(input_files))
     for fn in input_files:
         d = load_json(fn)  # {READ_NAME_HASH: SEQUENCE_HASH}
         read_ids.update(d)
@@ -134,24 +153,38 @@ def identify(input_files, output="duplicates.json"):
 @click.option("--sample_name", help="Name of sample e.g. DOX_treated_1", default='sampleX')
 @click.option("--stats_prefix", help="Output prefix for stats file", default='stats')
 def remove(
-    input_files,
-    duplicated_ids,
-    read_buffer=1e5,
-    output_prefix="",
-    gzip=False, 
-    compression_level=5,
-    sample_name="",
-    stats_prefix="",
+    input_files: Tuple,
+    duplicated_ids: os.PathLike,
+    read_buffer: int = 1e5,
+    output_prefix: os.PathLike = "",
+    gzip: bool = False, 
+    compression_level: int = 5,
+    sample_name: str = "",
+    stats_prefix: os.PathLike="",
 ):
+    """
+    Removes fragments with duplicated sequences from fastq files.
+    
+    Reads fastq files and removes all duplicate entries provided by the duplicated ids file.
+    Uses the output of the identify subcommand to identify and remove all sequence duplicates.
 
-    """Removes fragments with duplicated sequences from fastq files. (Run Third)"""
+    Args:
+     input_files (Tuple): Input fastq files (in the same order as used for the parse command).
+     duplicated_ids (os.PathLike): Duplicated read ids from identify command (hashed and in json format).
+     read_buffer (int, optional): Number of reads to process before writing to file. Defaults to 1e5.
+     output_prefix (os.PathLike, optional): Deduplicated fastq output prefix. Defaults to "".
+     gzip (bool, optional): Determines if output is gzip compressed using pigz. Defaults to False.
+     compression_level (int, optional): Level of compression if required (1-9). Defaults to 5.
+     sample_name (str, optional): Name of sample processed e.g. DOX-treated_1. Defaults to "".
+     stats_prefix (os.PathLike, optional): Output prefix for statistics. Defaults to "".
+    
+    """
 
     duplicated_ids = set(load_json(duplicated_ids))
     inputq = SimpleQueue()  # Reads are placed into this queue for deduplication
     writeq = SimpleQueue()  # Deduplicated reads are placed into the queue for writing
     statq = SimpleQueue()  # Statistics are sent on this queue for processing
 
-    # fn_regex = re.compile(r"(?:.*/)?(.*)_([1|2])\.(?:fastq|fq)\.(?:gz)?$")
     output_files = [
         f"{output_prefix}_{ii+1}.fastq{'.gz' if gzip else ''}" for ii in range(len(input_files))
     ]
@@ -160,10 +193,10 @@ def remove(
         ReadDuplicateRemovalProcess(
             inq=inputq, outq=writeq, duplicated_ids=duplicated_ids, statq=statq
         )
-        for _ in range(1)
+        for _ in range(1) # Placeholder to enable multiple digestion processes at a later date
     ]
 
-    del duplicated_ids
+    del duplicated_ids # Reduces memory usage before starting (likely by forking) a new process
 
     reader = FastqReaderProcess(
         input_files=input_files,

@@ -1,2 +1,10 @@
-.. automodule:: ccanalyser.ccanalysis.ccanalyser
-   :members:
+ccanalyser cli documentation
+============================
+
+.. click:: ccanalyser.cli:cli
+   :prog: ccanalyser
+   :nested: full
+
+
+
+

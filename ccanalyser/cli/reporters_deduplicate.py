@@ -18,7 +18,7 @@ import itertools
 
 @cli.group()
 def reporters_deduplicate():
-    """Identifies duplicate aligned fragments and removes them"""
+    """Identifies duplicate aligned fragments and removes them."""
 
 
 @reporters_deduplicate.command()
@@ -35,8 +35,29 @@ def reporters_deduplicate():
     default=1e6,
     type=click.INT,
 )
-@click.option("--read_type", help="Type of read", default="flashed", type=click.Choice(["flashed", "pe"], case_sensitive=False))
-def identify(fragments_fn, output="duplicated_ids.json", buffer=1e6, read_type='flashed'):
+@click.option(
+    "--read_type",
+    help="Type of read",
+    default="flashed",
+    type=click.Choice(["flashed", "pe"], case_sensitive=False),
+)
+def identify(
+    fragments_fn: os.PathLike,
+    output: os.PathLike = "duplicated_ids.json",
+    buffer: int = 1e6,
+    read_type: str = "flashed",
+):
+    """Identifies read fragments with duplicate coordinates and outputs these to a .json file.
+
+    Args:
+     fragments_fn (os.PathLike): Input fragments.tsv file to process.
+     output (os.PathLike, optional): Output path to output duplicated parental read ids. Defaults to "duplicated_ids.json".
+     buffer (int, optional): Number of fragments to process in memory. Defaults to 1e6.
+     read_type (str, optional): Process combined(flashed) or non-combined reads (pe). 
+                                Due to the low confidence in the quaility of pe reads, duplicates are identified by
+                                removing any fragments with matching start and end coordinates.
+                                Defaults to "flashed".
+    """
 
     fragments = pd.read_csv(
         fragments_fn,
@@ -45,33 +66,37 @@ def identify(fragments_fn, output="duplicated_ids.json", buffer=1e6, read_type='
         usecols=["parent_read", "coordinates"],
     )
 
-    coordinates_deduplicated = dict()
-    fragments_all = set()
-    
+    coordinates_deduplicated = dict() #{coord hash: id hash}
+    fragments_all = set() # {id hash}
 
     for df in fragments:
 
-        df = df.sample(frac=1) # Shuffles to stop fragments at the end of the sample always being removed
+        df = df.sample(
+            frac=1
+        )  # Shuffles to stop fragments at the end of the sample always being removed
 
-        if read_type == 'flashed':
-            
+        if read_type == "flashed":
+
             coords_hashed = hash_column(df["coordinates"])
             parent_read_hashed = hash_column(df["parent_read"])
-       
-        else:
 
-            # Extract chrom1 + start1 + chrom-1 + end-1
+        else:
+            #TODO: Slight bug here as flashed coordinates will not be compared to pe.
+
+            # Extract chrom1 + start1 + chrom(last entry) + end(last entry)
             coords_df = df["coordinates"].str.extract(
-                    r"^chr(?P<chrom1>[\d|X|Y|M]+):(?P<start>\d+).*\|chr(?P<chrom2>[\d|X|Y|M]+):\d+-(?P<end>\d+)")
-            
-            #{chrom1+start1+chrom-1+end-1(hashed): id(hashed)}
-            coords_hashed = hash_column(coords_df["chrom1"].str.cat(coords_df.iloc[:, 1:]))
+                r"^chr(?P<chrom1>[\d|X|Y|M]+):(?P<start>\d+).*\|chr(?P<chrom2>[\d|X|Y|M]+):\d+-(?P<end>\d+)"
+            )
+
+            # {chrom1+start1+chrom-1+end-1(hashed): id(hashed)}
+            coords_hashed = hash_column(
+                coords_df["chrom1"].str.cat(coords_df.iloc[:, 1:])
+            )
             parent_read_hashed = hash_column(df["parent_read"])
-    
 
         coordinates_deduplicated_sample = dict(zip(coords_hashed, parent_read_hashed))
-        coordinates_deduplicated.update(coordinates_deduplicated_sample)
-        fragments_all.update({x for x in parent_read_hashed})
+        coordinates_deduplicated.update(coordinates_deduplicated_sample) # Use dict to remove duplicated coords
+        fragments_all.update({x for x in parent_read_hashed}) # Store all ids for duplicate identification
 
     # Identify duplicates
     fragments_no_dup = {x for x in coordinates_deduplicated.values()}
@@ -82,9 +107,9 @@ def identify(fragments_fn, output="duplicated_ids.json", buffer=1e6, read_type='
 
 
 @reporters_deduplicate.command()
-@click.argument('slices_fn')
-@click.option('-d', '--duplicated_ids', help='Path to duplicated ids file')
-@click.option('-o', '--output', help='Output file for deduplicated slices')
+@click.argument("slices_fn")
+@click.option("-d", "--duplicated_ids", help="Path to duplicated ids file")
+@click.option("-o", "--output", help="Output file for deduplicated slices")
 @click.option(
     "--buffer",
     help="Number of fragments to process at one time",
@@ -93,16 +118,33 @@ def identify(fragments_fn, output="duplicated_ids.json", buffer=1e6, read_type='
 )
 @click.option("--stats_prefix", help="Output prefix for stats file")
 @click.option("--sample_name", help="Name of sample e.g. DOX_treated_1")
-@click.option("--read_type", help="Type of read", default="flashed", type=click.Choice(["flashed", "pe"], case_sensitive=False))
+@click.option(
+    "--read_type",
+    help="Type of read",
+    default="flashed",
+    type=click.Choice(["flashed", "pe"], case_sensitive=False),
+)
 def remove(
-    slices_fn,
-    duplicated_ids,
-    output="dedup.slices.tsv.gz",
-    buffer=1e6,
-    sample_name="",
-    read_type="",
-    stats_prefix="",
+    slices_fn: os.PathLike,
+    duplicated_ids: os.PathLike,
+    output: os.PathLike = "dedup.slices.tsv.gz",
+    buffer: int = 1e6,
+    sample_name: str = "",
+    read_type: str = "",
+    stats_prefix: os.PathLike = "",
 ):
+    """Removes duplicated fragments from slices file according to duplicated reads found by identify.
+
+
+    Args:
+     slices_fn (os.PathLike): Input slices.tsv file.
+     duplicated_ids (os.PathLike): Duplicated parental read ids in json format.
+     output (os.PathLike, optional): Output file path for deduplicated slices. Defaults to "dedup.slices.tsv.gz".
+     buffer (int, optional): Number of slices to process in memory. Defaults to 1e6.
+     sample_name (str, optional): Name of sample being processed e.g. DOX-treated_1 used for statistics. Defaults to "".
+     read_type (str, optional): Process combined(flashed) or non-combined reads (pe) used for statistics. Defaults to "".
+     stats_prefix (os.PathLike, optional): Output path for deduplication statistics. Defaults to "".
+    """
 
     if os.path.exists(output):
         os.unlink(output)

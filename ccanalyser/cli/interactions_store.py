@@ -1,19 +1,24 @@
 import os
-import pandas as pd
-import numpy as np
-from joblib import Parallel, delayed
-import click
 import re
+from typing import Tuple
+import warnings
+warnings.simplefilter('ignore')
+import pickle
 
-import cooler
+import click
 import h5py
+import numpy as np
+import pandas as pd
 from ccanalyser.cli import cli
-from ccanalyser.tools.storage import GenomicBinner, create_cooler_cc, CoolerBinner
+from ccanalyser.tools.storage import CoolerBinner, create_cooler_cc, link_bins
 
 
 @cli.group()
 def interactions_store():
-    """Stores interaction counts. Can also be used to bin interactions into constant genomic intervals"""
+    """
+    Stores interaction counts. 
+    
+    """
 
 
 @interactions_store.command()
@@ -54,9 +59,26 @@ def interactions_store():
     default="out.hdf5",
 )
 def fragments(
-    counts, fragment_map, output, capture_name, capture_oligos, genome="", suffix=""
+    counts: os.PathLike,
+    fragment_map: os.PathLike,
+    output: os.PathLike,
+    capture_name: str,
+    capture_oligos: os.PathLike,
+    genome: str = "",
+    suffix: str = "",
 ):
+    """
+    Stores restriction fragment interaction combinations at the restriction fragment level.
 
+    Args:
+     counts (os.PathLike): Path to restriction fragment interactions counts .tsv file.
+     fragment_map (os.PathLike): Path to restriction fragment .bed file, generated with genome-digest command.
+     output (os.PathLike): Output file path for cooler hdf5 file.
+     capture_name (str): Name of capture probe.
+     capture_oligos (os.PathLike): Path to capture oligos bed file.
+     genome (str, optional): Name of genome used for alignment e.g. hg19. Defaults to "".
+     suffix (str, optional): Suffix to append to filename. Defaults to "".
+    """
     # Load restriction fragments
     df_restriction_fragment_map = pd.read_csv(
         fragment_map,
@@ -114,33 +136,65 @@ def fragments(
     type=click.INT,
 )
 @click.option(
+    "--conversion_tables",
+    help="Pickle file containing pre-computed fragment -> bin conversions.",
+    default=None,
+)
+@click.option(
     "-o",
     "--output",
     help="Name of output file. (Cooler formatted hdf5 file)",
     default="out.hdf5",
 )
 def bins(
-    cooler_fn,
-    output,
-    binsizes=None,
-    normalise=False,
-    n_cores=1,
-    scale_factor=1e6,
-    overlap_fraction=1e-9,
+    cooler_fn: os.PathLike,
+    output: os.PathLike,
+    binsizes: Tuple = None,
+    normalise: bool = False,
+    n_cores: int = 1,
+    scale_factor: int = 1e6,
+    overlap_fraction: float = 1e-9,
+    conversion_tables: os.PathLike = None,
 ):
+    """Convert cooler file binned at the restriction fragment level to constant genomic windows.
 
-    
+    Args:
+     cooler_fn (os.PathLike): Path to cooler file. Nested coolers can be specified by STORE_FN.hdf5::/PATH_TO_COOLER
+     output (os.PathLike): Path for output binned cooler file.
+     binsizes (Tuple, optional): Genomic window sizes to use for binning. Defaults to None.
+     normalise (bool, optional): Normalise the number of interactions to total number of cis interactions (True). Defaults to False.
+     n_cores (int, optional): Number of cores to use for binning. Performed in parallel by chromosome. Defaults to 1.
+     scale_factor (int, optional): Scaling factor to use for normalising interactions. Defaults to 1e6.
+     overlap_fraction (float, optional): Minimum fraction to use for defining overlapping bins. Defaults to 1e-9.
+    """
+
+    if conversion_tables:
+        with open(conversion_tables, 'rb') as r:
+            genomic_binner_objs = pickle.load(r)
+
     for binsize in binsizes:
-        cb = CoolerBinner(cooler_fn, binsize=binsize, n_cores=n_cores)
-        cb.to_cooler(output, normalise=normalise, scale_factor=scale_factor)
 
+        if binsize in genomic_binner_objs:
+            cb = CoolerBinner(cooler_fn, binsize=binsize, n_cores=n_cores, binner=genomic_binner_objs[binsize])
+        else:
+            cb = CoolerBinner(cooler_fn, binsize=binsize, n_cores=n_cores)
+
+        cb.to_cooler(output, normalise=normalise, scale_factor=scale_factor)
 
 
 @interactions_store.command()
 @click.argument("coolers", required=True, nargs=-1)
 @click.option("-o", "--output", help="Output file name")
-def merge(coolers, output):
+def merge(coolers: Tuple, output: os.PathLike):
+    """Merges ccanalyser cooler files together.
+    
+       Produces a unified cooler with both restriction fragment and genomic bins whilst
+       reducing the storage space required by hard linking the "bins" tables to prevent duplication.
 
+    Args:
+     coolers (Tuple): Cooler files produced by either the fragments or bins subcommands.
+     output (os.PathLike): Path from merged cooler file.
+    """    
 
     with h5py.File(output, "w") as dest:
 
@@ -161,37 +215,11 @@ def merge(coolers, output):
                     dest.copy(src.parent, dest_grp_name)
                 else:
                     for key in src.keys():
-                        dest.copy(src[key], f'{dest_grp_name}/{key}')
-                
+                        dest.copy(src[key], f"{dest_grp_name}/{key}")
+
                 attributes = {k: v for k, v in src.parent.attrs.items()}
                 dest[dest_grp_name].attrs.update(attributes)
-
 
     link_bins(output)
 
 
-def link_bins(clr):
-    """ Reduces cooler storage space by linking "bins" table within each hdf5 file as these are identical for all resolutions"""
-
-    with h5py.File(clr, "a") as f:
-
-        # Get all captures stored
-        captures = list(f.keys())
-
-        # Get all resolutions stored
-        resolutions_group = f[captures[0]].get("resolutions")
-        resolutions = list(resolutions_group.keys()) if resolutions_group else None
-
-        for capture in captures[1:]:
-
-            # Delete currenly stored bins group and replace with link to first capture "bins" group
-            del f[capture]["bins"]
-            f[capture]["bins"] = f[captures[0]]["bins"]
-
-            if resolutions:
-                for resolution in resolutions:
-                    # Repeat for resolutions i.e. binned coolers
-                    del f[capture]["resolutions"][resolution]["bins"]
-                    f[capture]["resolutions"][resolution]["bins"] = f[captures[0]][
-                        "resolutions"
-                    ][resolution]["bins"]

@@ -1,7 +1,9 @@
 import itertools
-from typing import Union
+from typing import Tuple, Union
 import warnings
-warnings.simplefilter('ignore')
+
+warnings.simplefilter("ignore")
+import os
 
 import click
 import numpy as np
@@ -11,8 +13,14 @@ from pybedtools import BedTool
 
 from ccanalyser.cli import cli
 from ccanalyser.tools.annotate import BedIntersection
-from ccanalyser.utils import bed_has_name, convert_bed_to_dataframe, convert_to_bedtool, is_valid_bed
+from ccanalyser.utils import (
+    bed_has_name,
+    convert_bed_to_dataframe,
+    convert_to_bedtool,
+    is_valid_bed,
+)
 from natsort import natsorted
+
 
 def cycle_argument(arg):
     """Allows for the same argument to be stated once but repeated for all files"""
@@ -23,21 +31,29 @@ def cycle_argument(arg):
         return arg
 
 
-def remove_duplicates_from_bed(bed):
+def remove_duplicates_from_bed(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
+    """
+    Simple removal of duplicated entries from bed file.
 
-    if isinstance(bed, str):
-        df = BedTool(bed).to_dataframe()
-    elif isinstance(bed, BedTool):
-        df = bed.to_dataframe()
-    
-    if 'score' in df.columns:
+    If a "score" field is present a higher scored entry is prioritised.
+
+    Args:
+     bed (Union[str, BedTool, pd.DataFrame]): Bed object to deduplicate
+
+    Returns:
+     BedTool: BedTool with deduplicated names
+    """
+
+    df = convert_bed_to_dataframe(bed)
+
+    if "score" in df.columns:
         df = df.sort_values(["score"], ascending=False)
 
-
-    return (df.drop_duplicates(subset="name", keep="first")
-              .sort_values(['chrom', 'start'])
-              [['chrom', 'start', 'end', 'name']]
-              .pipe(BedTool.from_dataframe))
+    return (
+        df.drop_duplicates(subset="name", keep="first")
+        .sort_values(["chrom", "start"])[["chrom", "start", "end", "name"]]
+        .pipe(BedTool.from_dataframe)
+    )
 
 
 @cli.command()
@@ -78,65 +94,95 @@ def remove_duplicates_from_bed(bed):
     default="remove",
 )
 @click.option(
-    "-p",
-    '--n_cores',
-    help="Number of cores to use for intersections",
-    default=8
+    "-p", "--n_cores", help="Number of cores to use for intersections", default=8
 )
 @click.option(
     "--invalid_bed_action",
     help="Method to deal with invalid bed files",
-    default='error',
-    type=click.Choice(["ignore", 'error']),
+    default="error",
+    type=click.Choice(["ignore", "error"]),
 )
 def slices_annotate(
-    slices,
-    actions=None,
-    bed_files=None,
-    names=None,
-    overlap_fractions=None,
-    output=None,
-    duplicates="remove",
-    n_cores=8,
-    invalid_bed_action='error'
+    slices: os.PathLike,
+    actions: Tuple = None,
+    bed_files: Tuple = None,
+    names: Tuple = None,
+    overlap_fractions: Tuple = None,
+    output: os.PathLike = None,
+    duplicates: str = "remove",
+    n_cores: int = 8,
+    invalid_bed_action: str = "error",
 ):
+    """
+    Annotates a bed file using bedtools intersect.
 
-    """Annotates a bam file (converted to bed format) with other bed files"""
+    Enables annotations with both names and counts at the same time whilst dealing with multimapping reads,
+    which can lead to errors with reporter identification.
 
-    assert is_valid_bed(slices), f"bed - {slices} is invalid" # Make sure file exist and has the correct number of fields
-    assert bed_has_name(slices), f"bed - {slices} does not have a name column" # Make sure name column present
-    assert len(names) == len(bed_files) == len(actions), 'Wrong number of column names/files/actions provided, check command' # All args present
+    Args:
+     slices (os.PathLike): Input bed file.
+     actions (Tuple, optional): Methods to use for annotation. Choose from (get|count). Defaults to None.
+     bed_files (Tuple, optional): Bed files to intersect with the bed file to be annotated. Defaults to None.
+     names (Tuple, optional): Column names for output tsv file. Defaults to None.
+     overlap_fractions (Tuple, optional): Minimum overlap fractions required to call an intersection. Defaults to None.
+     output (os.PathLike, optional): Output file path for annotated .tsv file. Defaults to None.
+     duplicates (str, optional): Method to deal with multimapping reads/duplicate bed names.
+                                 Currently, "remove" is the only supported option. Defaults to "remove".
+     n_cores (int, optional): Number of corese to use for intersection. Bed files are split by chromosome for faster intersection.
+                              Defaults to 8.
+     invalid_bed_action (str, optional): Action to deal with invalid bed files. Choose from (ignore|error) .These can be ignored by setting to "ignore". Defaults to 'error'.
+
+    Raises:
+     NotImplementedError: Only supported option for duplicate bed names is remove.
+    """
 
 
-    if duplicates == "remove": # Deal with multimapping reads (default)
+    # Check if valid bed format
+    if not is_valid_bed(slices):
+        raise ValueError(f"bed - {slices} is invalid")
+    
+    # Check if name column present
+    if not bed_has_name(slices):
+        raise ValueError(f"bed - {slices} does not have a name column")
+    
+    # Check if the right number of items present
+    if not len(names) == len(bed_files) == len(actions):
+        raise IndexError("Wrong number of column names/files/actions provided, check command")
+
+    # Deal with multimapping reads.
+    if duplicates == "remove":  
         slices = remove_duplicates_from_bed(slices)
     else:
-        raise NotImplementedError('Only supported option at present is to remove duplicates')
-   
+        raise NotImplementedError(
+            "Only supported option at present is to remove duplicates"
+        )
 
     # Perform intersections
     intersection_series = []
-    for bed, name, action, fraction in zip(bed_files, names, actions, cycle_argument(overlap_fractions)):
+    for bed, name, action, fraction in zip(
+        bed_files, names, actions, cycle_argument(overlap_fractions)
+    ):
 
-        bi = BedIntersection(bed1=slices,
-                             bed2=bed,
-                             intersection_name=name,
-                             intersection_method=action,
-                             intersection_min_frac=fraction,
-                             n_cores=n_cores,
-                             invalid_bed_action=invalid_bed_action)
-        
+        bi = BedIntersection(
+            bed1=slices,
+            bed2=bed,
+            intersection_name=name,
+            intersection_method=action,
+            intersection_min_frac=fraction,
+            n_cores=n_cores,
+            invalid_bed_action=invalid_bed_action,
+        )
+
         intersection_series.append(bi.intersection)
-    
-    
 
     # Merge intersections with slices
-    df_annotation = (convert_bed_to_dataframe(slices)
-                           .set_index('name')
-                           .join(intersection_series)
-                           .reset_index()
-                           .rename(columns={'name': 'slice_name'}))
+    df_annotation = (
+        convert_bed_to_dataframe(slices)
+        .set_index("name")
+        .join(intersection_series)
+        .reset_index()
+        .rename(columns={"name": "slice_name"})
+    )
 
-
-    # Export to csv
+    # Export to tsv
     df_annotation.to_csv(output, sep="\t", index=False)

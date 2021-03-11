@@ -1,3 +1,6 @@
+from typing import Dict, TypedDict, Union
+import pybedtools
+from pybedtools.bedtool import BedTool
 import pysam
 import pytest
 import os
@@ -8,6 +11,7 @@ import pickle
 import operator
 from click.testing import CliRunner
 import functools
+import pandas as pd
 
 from ccanalyser.cli import cli
 from ccanalyser.tools.deduplicate import ReadDeduplicationParserProcess, ReadDuplicateRemovalProcess
@@ -34,7 +38,7 @@ test_json_path = os.path.join(dir_test, 'dup_parse.json')
 test_duplicates_path = os.path.join(dir_test, 'duplicates.json')
 
 
-def test_duplication_parsing():
+def test_fastq_parsing():
 
     inq = SimpleQueue()
     outq = SimpleQueue()
@@ -64,7 +68,7 @@ def test_duplication_parsing():
     assert result == result_expected
     assert len({x for x in result.values()}) == 2 
 
-def test_identify():
+def test_fastq_identify():
     
     runner = CliRunner()
     result = runner.invoke(
@@ -88,7 +92,7 @@ def test_identify():
 
 
     
-def test_removal():
+def test_fastq_removal():
 
     inq = SimpleQueue()
     outq = SimpleQueue()
@@ -121,6 +125,11 @@ def test_removal():
 
     # Correct duplicate names removed
     assert test_not_duplicated == expected_not_duplicated
+
+
+
+    
+
 
     
 

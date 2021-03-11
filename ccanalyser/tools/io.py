@@ -1,6 +1,5 @@
-from multiprocessing.queues import SimpleQueue
 import pathlib
-from multiprocessing import Manager, Process, Queue, Pipe
+import multiprocessing
 from typing import Union
 import traceback
 
@@ -11,26 +10,36 @@ from xopen import xopen
 from ccanalyser.utils import get_timing
 import pysam
 
-#TODO: Implement error queues/pipes for handling exceptions
 
-class FastqReaderProcess(Process):
+class FastqReaderProcess(multiprocessing.Process):
+    """Reads fastq file(s) in chunks and places them on a queue.
+
+    Attributes:
+     input_file: Input fastq files.
+     outq: Output queue for chunked reads/read pairs.
+     statq: (Not currently used) Queue for read statistics if required. 
+     read_buffer: Number of reads to process before placing them on outq
+     read_counter: (Not currently used) Can be used to sync between multiple readers.
+     n_subproceses: Number of processes running concurrently. Used to make sure enough termination signals are used.
+
+    """    
     def __init__(self,
                  input_files: Union[str, list],
-                 outq: Queue,
+                 outq: multiprocessing.Queue,
                  read_buffer: int = 100000,
-                 read_counter: Manager().Value = None,
+                 read_counter: multiprocessing.Manager().Value = None,
                  n_subprocesses: int = 1,
-                 statq: Queue = None) -> None:
+                 statq: multiprocessing.Queue = None) -> None:
         
         
         # Input variables
         self.input_files = input_files
-        self.multifile = self._is_multifile(input_files)
+        self._multifile = self._is_multifile(input_files)
 
-        if self.multifile:
-            self.input_files_pysam = [FastxFile(f) for f in self.input_files]
+        if self._multifile:
+            self._input_files_pysam = [FastxFile(f) for f in self.input_files]
         else:
-            self.input_files_pysam  = [FastxFile(self.input_files), ]
+            self._input_files_pysam  = [FastxFile(self.input_files), ]
         
         # Multiprocessing variables
         self.outq = outq
@@ -54,10 +63,12 @@ class FastqReaderProcess(Process):
 
 
     def run(self):
+        """Performs reading and chunking of fastq file(s). 
+        """        
 
         try:
             buffer = []
-            for read_counter, read in enumerate(zip(*self.input_files_pysam)):
+            for read_counter, read in enumerate(zip(*self._input_files_pysam)):
 
                 buffer.append(read)
 
@@ -83,10 +94,10 @@ class FastqReaderProcess(Process):
             self.outq.put('END')
 
 
-class FastqReadFormatterProcess(Process):
+class FastqReadFormatterProcess(multiprocessing.Process):
     def __init__(self,
-                 inq: SimpleQueue,
-                 outq: SimpleQueue,
+                 inq: multiprocessing.SimpleQueue,
+                 outq: multiprocessing.SimpleQueue,
                  formatting: list = None) -> None:
         
         self.inq = inq
@@ -123,9 +134,9 @@ class FastqReadFormatterProcess(Process):
 
 
 
-class FastqWriterSplitterProcess(Process):
+class FastqWriterSplitterProcess(multiprocessing.Process):
     def __init__(self,
-                 inq: Queue,
+                 inq: multiprocessing.Queue,
                  output_prefix: Union[str, list],
                  paired_output: bool = False,
                  gzip=False,
@@ -195,9 +206,9 @@ class FastqWriterSplitterProcess(Process):
             traceback.format_exc()
 
 
-class FastqWriterProcess(Process):
+class FastqWriterProcess(multiprocessing.Process):
     def __init__(self,
-                 inq: Queue,
+                 inq: multiprocessing.Queue,
                  output: Union[str, list],
                  compression_level: int = 5,
                  n_subprocesses: int = 1,
@@ -262,20 +273,24 @@ class FastqWriterProcess(Process):
 def parse_alignment(aln):
     """Parses reads from a bam file into a list.
 
+    Extracts:
+     -read name
+     -parent reads
+     -flashed status
+     -slice number
+     -mapped status
+     -multimapping status
+     -chromosome number (e.g. chr10)
+     -start (e.g. 1000)
+     -end (e.g. 2000)
+     -coords e.g. (chr10:1000-2000)
+
+
     Args:
-      aln: pysam.AlignmentFile
+     aln: pysam.AlignmentFile.
     Returns:
-      List containing:
-      -read name
-      -parent reads
-      -flashed status
-      -slice number
-      -mapped status
-      -multimapping status
-      -chromosome number (e.g. chr10)
-      -start (e.g. 1000)
-      -end (e.g. 2000)
-      -coords e.g. (chr10:1000-2000)
+     list: Containing the attributes extracted.
+      
     """
 
     slice_name = aln.query_name
@@ -319,11 +334,7 @@ def parse_alignment(aln):
 def parse_bam(bam):
     """Uses parse_alignment function convert bam file to a dataframe.
 
-    Args:
-     bam: File name of bam file to process.
-
-    Returns:
-     Dataframe with columns:
+    Extracts:
      -'slice_name'
      -'parent_read'
      -'pe'
@@ -334,6 +345,13 @@ def parse_bam(bam):
      -'start'
      -'end'
      -'coordinates'
+
+    Args:
+     bam: File name of bam file to process.
+
+    Returns:
+     pd.Dataframe: DataFrame with the columns listed above. 
+     
     """
 
     df_bam = pd.DataFrame(

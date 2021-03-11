@@ -107,8 +107,6 @@ class DigestionStatistics():
         self.slice_summary = self._get_slice_summary_df()
         self.read_summary = self._get_read_summary_df()
 
-  
-
     def _get_n_unfiltered_slices(self):
         return sum(n_slices * count for n_slices, count in self.slices_unfiltered.items())
     
@@ -176,13 +174,24 @@ def collate_histogram_data(fnames):
     )
 
 def collate_read_data(fnames):
-    return (
-        pd.concat([pd.read_csv(fn) for fn in fnames])
+
+    df = (pd.concat([pd.read_csv(fn) for fn in fnames])
         .groupby(["sample", "stage", "read_type", "read_number", "stat_type"])["stat"]
         .sum()
         .reset_index()
-        .sort_values(["sample", "stat"], ascending=[True, False])
-    )
+        )
+    
+    # PE reads result in duplicate statitsics as considered independently
+    # Need to halve all of the PE statistics but not for deduplication/digestion which are correct
+    df = df.assign(stat=np.where((df['read_type'] == 'pe') & 
+                                 (df['read_number'] == 0) & 
+                                 (df['stage'] != 'deduplication') &
+                                 (df['stage'] != 'digestion'), 
+                                 df['stat'] // 2, 
+                                 df['stat']))
+    
+    return df.sort_values(["sample", "stat"], ascending=[True, False])
+
 
 def collate_slice_data(fnames):
 
