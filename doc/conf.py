@@ -13,7 +13,11 @@
 import os
 import sys
 import sphinx_rtd_theme
-sys.path.extend([os.path.abspath('../')])
+
+sys.path.append(os.path.abspath('../'))
+sys.path.append(os.path.abspath('../ccanalyser/'))
+sys.path.append(os.path.abspath('./ext'))
+
 
 # -- Project information -----------------------------------------------------
 
@@ -31,9 +35,13 @@ release = '0.0.1'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc',
-              'sphinxcontrib.autoprogram',
               "sphinx_rtd_theme",
-              'sphinx.ext.autosectionlabel',]
+              'sphinx.ext.autosectionlabel',
+              'sphinx.ext.napoleon',
+              'sphinx-click_napolean']
+
+autodoc_member_order = 'bysource'
+
 
 # Add any paths that contain templates here, relative to this directory.
 

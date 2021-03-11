@@ -1,0 +1,4 @@
+slice_name	chrom	start	end	capture	capture_count	exclusion	rf
+R1|flashed|0|67	chr1	1000	2000	CAPTURE	1	.	0
+R1|flashed|1|68	chr1	2100	2500	.	0	.	1
+R1|flashed|3|62	chr1	3000	3500	.	0	.	4
