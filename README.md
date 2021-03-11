@@ -45,11 +45,18 @@ Please see the documentation for further details.
 
 Run the pipeline:
 
-* Activate the conda enviroment
-
-To run the pipeline simply run:
-
 ```
+# Activate the conda enviroment if it has not already been activated.
+conda activate cc
+
+# Runs the pipeline untill all tasks are completed
 ccanalyser pipeline make
 ```
+
+If a cluster is not being used, or there is an issue with the DRMAA interface. The pipeline can be run locally with the number of parallel jobs set by the -p flag:
+
+```
+ccanalyser pipeline make --local -p 4
+```
+
 
