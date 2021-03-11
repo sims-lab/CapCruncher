@@ -1,10 +1,10 @@
 import os
+
 import pandas as pd
-import diffxpy.api as de
 import click
 import itertools
 
-from ccanalyser.cli import cli 
+from ccanalyser.cli._interactions import cli 
 
 def get_chromosome_from_name(df: pd.DataFrame, name: str):
     chrom = (df.query(f'name == "{name}"')
@@ -14,7 +14,6 @@ def get_chromosome_from_name(df: pd.DataFrame, name: str):
     
 
 @cli.command()
-#@click.command()
 @click.argument('union_bedgraph')
 @click.option('-n', '--capture_name', help='Name of capture probe, must be present in oligo file.', required=True)
 @click.option('-c', '--capture_oligos', help='Path to capture oligos bed file', required=True)
@@ -24,7 +23,7 @@ def get_chromosome_from_name(df: pd.DataFrame, name: str):
 @click.option('--threshold_count', help='Minimum count required to be considered for analysis', default=20, type=click.FLOAT)
 @click.option('--threshold_q', help='Upper threshold of q-value required for output.', default=0.05, type=click.FLOAT)
 @click.option('--threshold_mean', help='Minimum mean count required for output.', default=0, type=click.FLOAT)
-def interactions_differential(union_bedgraph: os.PathLike,
+def differential(union_bedgraph: os.PathLike,
                               capture_name: str,
                               capture_oligos: os.PathLike,
                               output_prefix: os.PathLike = 'differential',
@@ -34,7 +33,27 @@ def interactions_differential(union_bedgraph: os.PathLike,
                               threshold_q: float = 0.05,
                               threshold_mean: float = 0):
     
-    '''Identifies differential interactions between conditions'''
+    """
+    Identifies differential interactions between conditions.
+
+    Uses diffxpy to run a wald test after fitting a negative binomial model to the interaction counts.
+    Results can be filtered with by threshold_mean and threshold-q.
+
+
+    \b
+    Args:
+        union_bedgraph (os.PathLike): Union bedgraph containg all samples to be compared.
+        capture_name (str): Name of capture probe. MUST match one probe within the supplied oligos.
+        capture_oligos (os.PathLike): Capture oligos used for the analysis.
+        output_prefix (os.PathLike, optional): Output prefix for differntial interactions. Defaults to 'differential'.
+        design_matrix (os.PathLike, optional): Design matrix to use for grouping samples. (N_SAMPLES * METADATA). Defaults to None.
+        grouping_col (str, optional): Column to use for grouping. Defaults to 'condition'.
+        threshold_count (float, optional): Minimum number of reported interactions required. Defaults to 20.
+        threshold_q (float, optional): Maximum q-value for output. Defaults to 0.05.
+        threshold_mean (float, optional): Minimum mean value for output. Defaults to 0.
+    """    
+
+    import diffxpy.api as de
     
     df_bdg = pd.read_csv(union_bedgraph, sep='\t')
     df_oligos = pd.read_csv(capture_oligos, sep='\t', names=['chrom', 'start', 'end', 'name'])

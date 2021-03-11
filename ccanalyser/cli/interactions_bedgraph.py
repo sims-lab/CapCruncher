@@ -7,7 +7,7 @@
 
 import cooler
 import click
-from ccanalyser.cli import cli
+from ccanalyser.cli._interactions import cli
 from ccanalyser.tools.pileup import CoolerBedGraph, CoolerBedGraphWindowed
 from ccanalyser.tools.storage import CoolerBinner
 import os
@@ -45,7 +45,7 @@ import os
     help="Produce bedgraph containing just positive bins (sparse) or all bins (dense)",
     default=True,
 )
-def interactions_bedgraph(
+def bedgraph(
     cooler_fn: os.PathLike,
     capture_names: list = None,
     output_prefix: os.PathLike = "",
@@ -60,6 +60,7 @@ def interactions_bedgraph(
        Bedgraph can be normalised for the number of cis interactions and/or binned into even genomic
        windows.
 
+    \b
     Args:
      cooler_fn (os.PathLike): Path to hdf5 file containing cooler groups.
      capture_names (list, optional): Name of capture probe to extract.

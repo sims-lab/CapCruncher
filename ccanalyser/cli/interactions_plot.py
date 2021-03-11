@@ -5,20 +5,18 @@ from typing import Tuple, Union
 import cooler
 import pandas as pd
 import numpy as np
-import iced
 import click
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
-from ccanalyser.cli import cli
+from ccanalyser.cli._interactions import cli
 from ccanalyser.utils import convert_interval_to_coords, format_coordinates
 from ccanalyser.tools.plotting import CCMatrix
 
 
 def plot_matrix(matrix, figsize=(10, 10), axis_labels=None, cmap=None, vmin=0, vmax=0):
+
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
 
     if not vmax > 0:
         vmax = np.percentile(matrix, 95)
@@ -45,6 +43,7 @@ def plot_matrix(matrix, figsize=(10, 10), axis_labels=None, cmap=None, vmin=0, v
     "--resolution",
     help="Resolution at which to plot. Must be present within the cooler file.",
     required=True,
+    multiple=True,
 )
 @click.option(
     "-n",
@@ -63,7 +62,7 @@ def plot_matrix(matrix, figsize=(10, 10), axis_labels=None, cmap=None, vmin=0, v
 @click.option("--vmin", help="Vmin for plotting", default=0, type=click.FLOAT)
 @click.option("-o", "--output_prefix", help="Output prefix for plot", default="")
 @click.option("--remove_capture", help='Removes the capture probe bins from the matrix', is_flag=True, default=False)
-def interactions_plot(
+def plot(
     cooler_fn: os.PathLike,
     coordinates: Union[str, os.PathLike],
     resolution: int,
@@ -80,7 +79,7 @@ def interactions_plot(
     Args:
         cooler_fn (os.PathLike): Path to capture cooler file containing interactions
         coordinates (Union[str, os.PathLike]): Coordinates for plotting. Either chrX:1000-2000 or bed file. 
-                                               If a bed file, the entry name must be the same as the capture probe.
+                                               If a bed file, the capture probe name must be contained in the name.
         resolution (int): Genomic resolution to plot. Must be present in the cooler. 
         capture_names (Tuple, optional): Capture probes to plot. If None will plot all probes. Defaults to None.
         normalisation (str, optional): Normalisation for heatmap. Choose from (n_interactions|n_rf_n_interactions|ice). Defaults to None.
@@ -88,6 +87,8 @@ def interactions_plot(
         vmax (float, optional): vmaxold for heatmap. Defaults to 1.
         output_prefix (os.PathLike, optional): Output prefix for heatmap. Defaults to "".
     """
+    
+
 
     # Extract a bedtool object from coordinates
     bt_coords = format_coordinates(coordinates)
@@ -99,24 +100,24 @@ def interactions_plot(
         capture_names = {clr.split("/")[1] for clr in clrs}
     
     for capture in capture_names:
-        for interval in bt_coords:
+        for res in resolution:
+            for interval in bt_coords:
 
-            interval_name, interval_coords = convert_interval_to_coords(interval, named=True)
+                interval_name, interval_coords = convert_interval_to_coords(interval, named=True)
 
-            if interval_name == capture:
-                
-                
-                # Extract matrix in correct format
-                ccm = CCMatrix(cooler_fn, binsize=resolution, capture_name=capture, remove_capture=remove_capture)
+                if capture in interval_name:
+                    
+                    # Extract matrix in correct format
+                    ccm = CCMatrix(cooler_fn, binsize=res, capture_name=capture, remove_capture=remove_capture)
 
-                if normalisation:
-                    matrix = ccm.get_matrix_normalised(
-                        coordinates=interval_coords, normalisation_method=normalisation
-                    )
-                else:
-                    matrix = ccm.get_matrix(coordinates=interval_coords)
+                    if normalisation:
+                        matrix = ccm.get_matrix_normalised(
+                            coordinates=interval_coords, normalisation_method=normalisation
+                        )
+                    else:
+                        matrix = ccm.get_matrix(coordinates=interval_coords)
 
-                print(f'Plotting {capture} at {resolution}')
-                #breakpoint()
-                fig = plot_matrix(matrix, cmap=cmap, vmax=vmax, vmin=vmin)
-                fig.savefig(f"{output_prefix}_{capture}_{resolution}.png")
+                    print(f'Plotting {capture} at {res}')
+                    #breakpoint()
+                    fig = plot_matrix(matrix, cmap=cmap, vmax=vmax, vmin=vmin)
+                    fig.savefig(f"{output_prefix}_{capture}_{res}.png")

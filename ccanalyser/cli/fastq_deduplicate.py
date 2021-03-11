@@ -14,7 +14,7 @@ import click
 import numpy as np
 import pandas as pd
 import ujson
-from ccanalyser.cli import cli
+from ccanalyser.cli._fastq import cli
 from ccanalyser.tools.deduplicate import (ReadDeduplicationParserProcess,
                                           ReadDuplicateRemovalProcess)
 from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess
@@ -24,13 +24,12 @@ from xopen import xopen
 
 
 @cli.group(cls=NaturalOrderGroup)
-@click.pass_context
-def fastq_deduplicate(ctx):
+def deduplicate():
     """Identifies PCR duplicate fragments from Fastq files"""
 
 
-@fastq_deduplicate.command()
-@click.argument("input_files", nargs=-1)
+@deduplicate.command()
+@click.argument("input_files", nargs=-1, required=True)
 @click.option(
     "-o",
     "--output",
@@ -48,7 +47,8 @@ def parse(input_files: Tuple, output: os.PathLike = "out.json", read_buffer: int
     Parses fastq file(s) into easy to deduplicate format.
 
     Generates a hashed (using xxhash) dictionary in json format for deduplication using identify. 
-
+    
+    \b
     Args:
      input_files (Tuple): One or more fastq files to process
      output (os.PathLike, optional): Output for parsed read identifiers and sequences. Defaults to "out.json".
@@ -81,7 +81,7 @@ def parse(input_files: Tuple, output: os.PathLike = "out.json", read_buffer: int
         proc.terminate()
 
 
-@fastq_deduplicate.command()
+@deduplicate.command()
 @click.argument(
     "input_files",
     nargs=-1,
@@ -120,7 +120,7 @@ def identify(input_files: Tuple, output: os.PathLike = "duplicates.json"):
         ujson.dump(duplicated_ids_dict, w)
 
 
-@fastq_deduplicate.command()
+@deduplicate.command()
 @click.argument("input_files", nargs=-1)
 @click.option(
     "-o",

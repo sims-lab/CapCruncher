@@ -6,8 +6,8 @@ import time
 from collections import OrderedDict
 from datetime import timedelta
 from functools import wraps
-from itertools import combinations, cycle, groupby
-from typing import Callable, IO, Iterable, TextIO, Union
+from itertools import cycle, groupby
+from typing import Callable, IO, Iterable, Union
 
 import click
 import pandas as pd

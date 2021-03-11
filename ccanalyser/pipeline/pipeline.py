@@ -30,19 +30,13 @@ as input and performs the following steps:
 """
 
 from collections import defaultdict
-import itertools
 import os
 import re
 import sys
-import glob
-from typing import Union
 import pickle
-
-# import seaborn as sns
-import trackhub
 from cgatcore import pipeline as P
 from cgatcore.iotools import touch_file, zap_file
-from pybedtools.helpers import get_chromsizes_from_ucsc
+
 import pandas as pd
 from ruffus import (
     active_if,
@@ -64,10 +58,8 @@ from ccanalyser.tools.statistics import (
     extract_trimming_stats,
 )
 
-import click
-from ccanalyser.cli import cli
 from ccanalyser.utils import is_on, is_none, make_group_track
-from ccanalyser.tools.storage import GenomicBinner
+
 
 ##############################
 #   Set-up global parameters #
@@ -100,6 +92,7 @@ def set_up_chromsizes():
         P.PARAMS["genome_chrom_sizes"] = "chrom_sizes.txt.tmp"
 
     else:
+        from pybedtools.helpers import get_chromsizes_from_ucsc
         get_chromsizes_from_ucsc(P.PARAMS["genome_name"], "chrom_sizes.txt.tmp")
         P.PARAMS["genome_chrom_sizes"] = "chrom_sizes.txt.tmp"
 
@@ -166,7 +159,7 @@ def digest_genome(infile, outfile):
     assert infile, "genome_fasta not provided, please provide path in config.yml"
 
     tmp = outfile.replace(".gz", "")
-    statement = """ccanalyser genome-digest
+    statement = """ccanalyser genome digest
                    %(infile)s
                    -l %(tmp)s.log
                    -o %(tmp)s
@@ -194,7 +187,7 @@ def split_fastq(infiles, outfile):
     infiles = " ".join(infiles)
     output_prefix = outfile.replace(".log", "")
 
-    statement = """ccanalyser fastq-split
+    statement = """ccanalyser fastq split
                 %(infiles)s
                 -m unix
                 -o %(output_prefix)s
@@ -227,7 +220,7 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
 
     fq1, fq2 = [os.path.abspath(fn) for fn in infiles]
 
-    statement = """ccanalyser fastq-deduplicate parse
+    statement = """ccanalyser fastq deduplicate parse
                    %(fq1)s %(fq2)s
                    -o %(outfile)s
                 """
@@ -250,7 +243,7 @@ def fastq_duplicates_identify(infiles, outfile):
     """Identifies duplicate sequences from parsed fastq files (json format)"""
 
     infiles_str = " ".join(infiles)
-    statement = """ccanalyser fastq-deduplicate identify
+    statement = """ccanalyser fastq deduplicate identify
                    %(infiles_str)s
                    -o %(outfile)s
                  """
@@ -290,7 +283,7 @@ def fastq_duplicates_remove(infiles, outfile):
     stats_prefix = f"statistics/deduplication/data/{sample_name}_{sample_part}"
     output_prefix = outfile.replace("_1.fastq", "")
 
-    statement = """ccanalyser fastq-deduplicate remove
+    statement = """ccanalyser fastq deduplicate remove
                             %(fq1)s %(fq2)s
                             -d %(dd_ids)s
                             -o %(output_prefix)s
@@ -439,7 +432,7 @@ def digest_flashed_reads(infile, outfile):
 
     fn = os.path.basename(infile).replace(".extendedFrags.fastq.gz", "")
     sn = fn.split("_part")[0]
-    statement = """ccanalyser fastq-digest
+    statement = """ccanalyser fastq digest
                    %(infile)s
                    -m flashed
                    -r %(analysis_restriction_enzyme)s
@@ -475,7 +468,7 @@ def digest_pe_reads(infiles, outfile):
     fn = os.path.basename(fq1).replace(".notCombined_1.fastq.gz", "")
     sn = fn.split("_part")[0]
 
-    statement = """ccanalyser fastq-digest
+    statement = """ccanalyser fastq digest
                    %(fq1)s
                    %(fq2)s
                    -m pe
@@ -792,7 +785,7 @@ def annotate_slices(infile, outfile):
             cmd_args.append(f'{flags.get(arg_name)} {arg if arg else "-"}')
 
     cmd_args = " ".join(cmd_args)
-    statement = """ccanalyser slices-annotate
+    statement = """ccanalyser reporters annotate
                     %(slices)s
                     %(cmd_args)s
                     -o %(outfile)s
@@ -844,7 +837,7 @@ def identify_reporters(infiles, outfile):
         f"statistics/ccanalysis/data/{sample_name}_{sample_part}_{sample_read_type}"
     )
 
-    statement = """ccanalyser reporters-identify
+    statement = """ccanalyser reporters identify
                    %(analysis_method)s
                    -b %(bam)s
                    -a %(annotations)s
@@ -906,7 +899,7 @@ def deduplicate_fragments(infile, outfile, read_type):
     '''Identifies duplicate fragments by removing fragments with the same coordinates
        and slice order'''
 
-    statement = """ccanalyser reporters-deduplicate
+    statement = """ccanalyser reporters deduplicate
                    identify
                    %(infile)s
                    --read_type %(read_type)s
@@ -938,7 +931,7 @@ def deduplicate_reporters(infile, outfile, sample_name, read_type, capture_oligo
         f"statistics/ccanalysis/data/{sample_name}_{read_type}_{capture_oligo}"
     )
 
-    statement = """ccanalyser reporters-deduplicate
+    statement = """ccanalyser reporters deduplicate
                    remove
                    %(slices)s
                    -d %(duplicated_ids)s
@@ -1026,7 +1019,7 @@ def count_interactions(infile, outfile):
     '''Counts the number of interactions identified between reporter restriction fragments'''
 
     statement = [
-        "ccanalyser interactions-count",
+        "ccanalyser interactions count",
         "%(infile)s",
         "-o %(outfile)s",
         "--remove_exclusions",
@@ -1058,7 +1051,7 @@ def store_interactions_at_fragment_level(infile, outfile, sample_name, capture_n
     counts, rf_map = infile
     output_prefix = outfile.replace(f".{capture_name}.fragments", "")
 
-    statement = """ccanalyser interactions-store
+    statement = """ccanalyser interactions store
                    fragments
                    %(counts)s
                    -f %(rf_map)s
@@ -1079,7 +1072,9 @@ def store_interactions_at_fragment_level(infile, outfile, sample_name, capture_n
 @originate(r'ccanalysis/interactions/binners.pkl')
 def generate_bin_conversion_tables(outfile):
     """Converts restriction fragments to genomic bins."
-    """    
+    """
+
+    from ccanalyser.tools.storage import GenomicBinner    
 
     frags = pd.read_csv('pre_ccanalysis/restriction_enzyme_map/genome.digest.bed.gz', 
                         sep='\t', 
@@ -1118,7 +1113,7 @@ def store_interactions_binned(infile, outfile, capture_name):
     )
     output_prefix = outfile.replace(f".{capture_name}.log", "")
 
-    statement = f"""ccanalyser interactions-store
+    statement = f"""ccanalyser interactions store
                   bins
                   %(infile)s
                   -o %(output_prefix)s
@@ -1149,7 +1144,7 @@ def merge_interactions(infiles, outfile, sample_name):
     '''Combines cooler files together'''
 
     infiles_str = " ".join(infiles)
-    statement = f"""ccanalyser interactions-store
+    statement = f"""ccanalyser interactions store
                      merge
                      %(infiles_str)s
                      -o %(outfile)s
@@ -1163,7 +1158,9 @@ def merge_interactions(infiles, outfile, sample_name):
 
     for fn in infiles:
         zap_file(fn)
-
+    
+    zap_file('ccanalysis/interactions/binners.pkl')
+    
 
 @follows(mkdir("ccanalysis/bedgraphs"))
 @transform(
@@ -1177,7 +1174,7 @@ def make_bedgraph_raw(infile, outfiles, sample_name):
 
     output_prefix = f"ccanalysis/bedgraphs/{sample_name}.raw"
 
-    statement = """ccanalyser interactions-bedgraph
+    statement = """ccanalyser interactions bedgraph
                    %(infile)s
                    -o %(output_prefix)s
                    > %(output_prefix)s.log"""
@@ -1200,7 +1197,7 @@ def make_bedgraph_normalised(infile, outfiles, sample_name):
 
     output_prefix = f"ccanalysis/bedgraphs/{sample_name}.normalised"
 
-    statement = """ccanalyser interactions-bedgraph
+    statement = """ccanalyser interactions bedgraph
                    %(infile)s
                    -o %(output_prefix)s
                    --normalise
@@ -1224,7 +1221,7 @@ def make_bedgraph_normalised(infile, outfiles, sample_name):
 
 #     output_prefix = f"ccanalysis/bedgraphs/{sample_name}.windowed"
 
-#     statement = """ccanalyser interactions-bedgraph
+#     statement = """ccanalyser interactions bedgraph
 #                    %(infile)s
 #                    -o %(output_prefix)s
 #                    --binsize 5000
@@ -1352,6 +1349,8 @@ def build_report(infile, outfile):
 def make_ucsc_hub(infiles, outfile, statistics):
     '''Creates a ucsc hub from the pipeline output'''
 
+    import trackhub
+
     bigwigs = infiles
     key_sample = lambda b: os.path.basename(b).split(".")[0]
     key_capture = lambda b: b.split(".")[-2]
@@ -1407,22 +1406,27 @@ def write_hub_path(outfile):
            extras=[r'\1'])
 def identify_differential_interactions(infile, outfile, capture_name):
 
-    output_prefix = outfile.replace('.log', '')
+    if len(infile) >= 4:
 
-    statement = '''ccanalyser
-                   interactions-differential
-                   %(infile)s
-                   -n %(capture_name)s
-                   -c %(analysis_capture_oligos)s
-                   -o %(output_prefix)s
-                   > %(outfile)s
-                '''
+        output_prefix = outfile.replace('.log', '')
+
+        statement = '''ccanalyser
+                    interactions differential
+                    %(infile)s
+                    -n %(capture_name)s
+                    -c %(analysis_capture_oligos)s
+                    -o %(output_prefix)s
+                    > %(outfile)s
+                    '''
+        
+        P.run(
+            statement,
+            job_queue=P.PARAMS["pipeline_cluster_queue"],
+            job_condaenv=P.PARAMS["conda_env"],
+        )
     
-    P.run(
-        statement,
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
+    else:
+        print('Not enough replicates for differential testing')
 
 @follows(merge_interactions, mkdir("ccanalysis/heatmaps/"))
 @transform(
@@ -1431,6 +1435,9 @@ def identify_differential_interactions(infile, outfile, capture_name):
     r"ccanalysis/heatmaps/\1.log",
 )
 def plot_interactions(infile, outfile):
+    """Plots a heatmap over a specified region"""
+
+    #TODO: Plot multiple resolutions
 
     if not is_none(P.PARAMS.get("plot_normalisation")):
         norm = P.PARAMS['plot_normalisation']
@@ -1443,13 +1450,18 @@ def plot_interactions(infile, outfile):
     
     output_prefix = outfile.replace('.log', '')
 
+    resolutions = ' -r '.join(
+        re.split(r"[,;]\s*|\s+", str(P.PARAMS["plot_bin_size"]))
+    )
 
-    statement = f"""ccanalyser interactions-plot
+    statement = f"""ccanalyser interactions plot
                     %(infile)s
+                    -r %(resolutions)s
                     -c %(plot_coordinates)s
                     --normalisation %(norm)s
                     --cmap {P.PARAMS.get('plot_cmap', 'jet')}
-                    --thresh {P.PARAMS.get('plot_thresh', '0')}
+                    --vmin {P.PARAMS.get('plot_min', '0')}
+                    --vmax {P.PARAMS.get('plot_vmax', '1')}
                     -o %(output_prefix)s
                     > %(outfile)s 2>&1"""
 

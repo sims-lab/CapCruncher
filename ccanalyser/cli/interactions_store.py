@@ -2,26 +2,25 @@ import os
 import re
 from typing import Tuple
 import warnings
-warnings.simplefilter('ignore')
+warnings.simplefilter('ignore', category=RuntimeWarning)
 import pickle
 
 import click
 import h5py
-import numpy as np
 import pandas as pd
-from ccanalyser.cli import cli
+from ccanalyser.cli._interactions import cli
 from ccanalyser.tools.storage import CoolerBinner, create_cooler_cc, link_bins
 
 
 @cli.group()
-def interactions_store():
+def store():
     """
     Stores interaction counts. 
     
     """
 
 
-@interactions_store.command()
+@store.command()
 @click.argument("counts", required=True)
 @click.option(
     "-f",
@@ -102,7 +101,7 @@ def fragments(
     )
 
 
-@interactions_store.command()
+@store.command()
 @click.argument("cooler_fn", required=True)
 @click.option(
     "-b",
@@ -182,7 +181,7 @@ def bins(
         cb.to_cooler(output, normalise=normalise, scale_factor=scale_factor)
 
 
-@interactions_store.command()
+@store.command()
 @click.argument("coolers", required=True, nargs=-1)
 @click.option("-o", "--output", help="Output file name")
 def merge(coolers: Tuple, output: os.PathLike):

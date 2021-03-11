@@ -12,7 +12,7 @@ Welcome to ccanalyser documentation!
 
    installing.rst
    running_the_pipeline.rst
-   ccanalyser.rst
+   cli.rst
    module_tools/tools.rst
    module_cli/modules.rst
 

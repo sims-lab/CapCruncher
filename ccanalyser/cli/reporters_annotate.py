@@ -11,7 +11,7 @@ import pandas as pd
 from joblib import Parallel, delayed
 from pybedtools import BedTool
 
-from ccanalyser.cli import cli
+from ccanalyser.cli._reporters import cli
 from ccanalyser.tools.annotate import BedIntersection
 from ccanalyser.utils import (
     bed_has_name,
@@ -102,7 +102,7 @@ def remove_duplicates_from_bed(bed: Union[str, BedTool, pd.DataFrame]) -> BedToo
     default="error",
     type=click.Choice(["ignore", "error"]),
 )
-def slices_annotate(
+def annotate(
     slices: os.PathLike,
     actions: Tuple = None,
     bed_files: Tuple = None,

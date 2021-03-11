@@ -1,27 +1,19 @@
 import pandas as pd
 
-# import dask
-# from dask.distributed import Client, LocalCluster
-# import dask.array as da
-# import dask.dataframe as dd
-# import random
-
 import click
 import xopen
-from ccanalyser.cli import cli
+from ccanalyser.cli._reporters import cli
 from ccanalyser.utils import hash_column, load_json
-import numpy as np
 import ujson
 import os
-import itertools
 
 
 @cli.group()
-def reporters_deduplicate():
+def deduplicate():
     """Identifies duplicate aligned fragments and removes them."""
 
 
-@reporters_deduplicate.command()
+@deduplicate.command()
 @click.argument("fragments_fn")
 @click.option(
     "-o",
@@ -106,7 +98,7 @@ def identify(
         ujson.dump(dict.fromkeys(fragments_dup), w)
 
 
-@reporters_deduplicate.command()
+@deduplicate.command()
 @click.argument("slices_fn")
 @click.option("-d", "--duplicated_ids", help="Path to duplicated ids file")
 @click.option("-o", "--output", help="Output file for deduplicated slices")

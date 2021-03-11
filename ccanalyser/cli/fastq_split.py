@@ -11,7 +11,7 @@ Script splits a fastq into specified chunks
 from multiprocessing import Manager, SimpleQueue, Pipe
 from typing import Tuple
 import click
-from ccanalyser.cli import cli
+from ccanalyser.cli._fastq import cli
 from ccanalyser.tools.io import (
     FastqReaderProcess,
     FastqWriterSplitterProcess,
@@ -24,7 +24,7 @@ import re
 
 
 @cli.command()
-@click.argument("input_files", nargs=-1)
+@click.argument("input_files", nargs=-1, required=True)
 @click.option(
     "-m",
     "--method",
@@ -54,7 +54,7 @@ import re
 @click.option(
     "--gzip/--no-gzip", help="Determines if files are gziped or not", default=False
 )
-def fastq_split(
+def split(
     input_files: Tuple,
     method: str = "unix",
     output_prefix: os.PathLike = "split",
@@ -65,9 +65,10 @@ def fastq_split(
     """ 
     Splits fastq file(s) into equal chunks of n reads.
 
+    \b
     Args:
      input_files (Tuple): Input fastq files to process.
-     method (str, optional): Use the python or unix (faster but not guarenteed to mantain read pairings between R1 and R2) method to split the fastq files. Defaults to "unix".
+     method (str, optional): Python or unix method (faster but not guarenteed to mantain read pairings) to split the fastq files. Defaults to "unix".
      output_prefix (os.PathLike, optional): Output prefix for split fastq files. Defaults to "split".
      compression_level (int, optional): Compression level for gzipped output. Defaults to 5.
      n_reads (int, optional): Number of reads to split the input fastq files into. Defaults to 1000000.

@@ -6,8 +6,8 @@ import pysam
 import pytest
 import ujson
 import xopen
-from ccanalyser.cli import cli
 from click.testing import CliRunner
+from ccanalyser.cli import cli
 
 
 # Pre-run setup
@@ -41,9 +41,9 @@ data_dd = DataDeduplicate
 
 def test_cli_runs():
     """Test checks that the cli is functional and the help option works"""
+    
     runner = CliRunner()
-
-    result = runner.invoke(cli, ["-h"])
+    result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
 
 
@@ -59,7 +59,8 @@ def test_genome_digest():
     result = runner.invoke(
         cli,
         [
-            "genome-digest",
+            "genome",  
+            "digest",
             test_fa,
             "-r",
             "dpnii",
@@ -87,7 +88,7 @@ def test_deduplicate_parse():
     runner = CliRunner()
     result = runner.invoke(
         cli,
-        ["fastq-deduplicate", "parse", data_dd.fq1, data_dd.fq2, "-o", output_parsed],
+        ["fastq",  "deduplicate", "parse", data_dd.fq1, data_dd.fq2, "-o", output_parsed],
     )
 
     # Check that the script exits successfully
@@ -110,7 +111,8 @@ def test_fastq_deduplicate_identification():
     result = runner.invoke(
         cli,
         [
-            "fastq-deduplicate",
+            "fastq", 
+            "deduplicate",
             "identify",
             data_dd.result_parsed,
             "-o",
@@ -141,7 +143,8 @@ def test_fastq_deduplicate_removal():
     result = runner.invoke(
         cli,
         [
-            "fastq-deduplicate",
+            "fastq", 
+            "deduplicate",
             "remove",
             "-d",
             data_dd.result_identify,
@@ -192,7 +195,8 @@ def test_fastq_digest():
     result = runner.invoke(
         cli,
         [
-            "fastq-digest",
+            "fastq",
+            "digest",
             "-m",
             "pe",
             "-r",
@@ -215,7 +219,8 @@ def test_fastq_digest():
     result = runner.invoke(
         cli,
         [
-            "fastq-digest",
+            "fastq",
+            "digest",
             "-m",
             "flashed",
             "-r",
@@ -249,7 +254,8 @@ def test_slices_annotate():
     result = runner.invoke(
         cli,
         [
-            "slices-annotate",
+            "reporters",
+            "annotate",
             test_bed,
             "-b",
             test_capture,
@@ -287,7 +293,8 @@ def test_slices_annotate():
     result = runner.invoke(
         cli,
         [
-            "slices-annotate",
+            "reporters", 
+            "annotate",
             test_bed,
             "-b",
             test_capture,
@@ -321,4 +328,8 @@ def test_slices_annotate():
     )
 
     assert result.exit_code == 0
+
+
+
+
 

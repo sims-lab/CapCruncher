@@ -1,11 +1,13 @@
 import os
-from multiprocessing import Queue, SimpleQueue
 from typing import Tuple
 
 import click
 import numpy as np
 import pandas as pd
-from ccanalyser.cli import cli
+from pkg_resources import require
+from ccanalyser.cli._fastq import cli
+
+from multiprocessing import Queue, SimpleQueue
 from ccanalyser.tools.digest import ReadDigestionProcess
 from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess
 from ccanalyser.tools.statistics import DigestionStatCollector, DigestionStatistics
@@ -15,13 +17,14 @@ from xopen import xopen
 
 
 @cli.command()
-@click.argument("input_fastq", nargs=-1)
-@click.option("-r", "--restriction_enzyme", help="Restriction enzyme name or sequence")
+@click.argument("input_fastq", nargs=-1, required=True)
+@click.option("-r", "--restriction_enzyme", help="Restriction enzyme name or sequence", required=True)
 @click.option(
     "-m",
     "--mode",
-    help="Digestion mode",
+    help="Digestion mode. Combined (Flashed) or non-combined (PE) read pairs.",
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
+    required=True,
 )
 @click.option("-o", "--output_file", default="out.fastq.gz")
 @click.option("-p", "--n_cores", default=1, type=click.INT)
@@ -43,7 +46,7 @@ from xopen import xopen
 @click.option(
     "--sample_name", help="Name of sample e.g. DOX_treated_1", default="sampleX"
 )
-def fastq_digest(
+def digest(
     input_fastq: Tuple,
     restriction_enzyme: str,
     mode: str = "pe",
@@ -59,6 +62,7 @@ def fastq_digest(
     """
     Performs in silico digestion of one or a pair of fastq files. 
 
+    \b
     Args:
      input_fastq (Tuple): Input fastq files to process
      restriction_enzyme (str): Restriction enzyme name or site to use for digestion.
@@ -74,7 +78,15 @@ def fastq_digest(
      sample_name (str, optional): Name of sample processed eg. DOX-treated_1. Defaults to ''.
     """
 
-    # TODO: Enable keeping the cutsite
+    
+
+
+
+
+
+
+
+
 
     # Set up multiprocessing variables
     inputq = SimpleQueue()  # reads are placed into this queue for processing

@@ -3,7 +3,7 @@ import pandas as pd
 from collections import defaultdict
 from itertools import combinations
 import xopen
-from ccanalyser.cli import cli
+from ccanalyser.cli._interactions import cli
 import click
 import os
 
@@ -63,7 +63,7 @@ def count_re_site_combinations(
     default=0,
     help="Subsamples reporters before analysis of interactions",
 )
-def interactions_count(
+def count(
     reporters: os.PathLike,
     output: os.PathLike = 'counts.tsv',
     remove_exclusions: bool = False,

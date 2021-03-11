@@ -45,34 +45,39 @@ class LazyGroup(click.Group):
     def get_params(self, ctx):
         return self._impl.get_params(ctx)
 
-@click.group(context_settings=CONTEXT_SETTINGS, cls=UnsortedGroup)
+@click.group(cls=UnsortedGroup)
 def cli():
     """
-    Base of all ccanalyser cli commands.
+
+    An end to end solution for processing:
+    
+    Capture-C, Tri-C and Tiled-C data.
+
     Type -h or --help after any subcommand for more information.
     """
 
-# TODO: LAZY imports to speed up cli
 
-from . import (genome_digest,
-               fastq_split,
-               fastq_deduplicate, 
-               fastq_digest,
-               slices_annotate,
-               reporters_identify,
-               reporters_deduplicate,
-               interactions_count,
-               interactions_store,
-               interactions_bedgraph,
-               interactions_plot_dev,
-               interactions_differential,
-               )
+@cli.group(cls=LazyGroup, import_name='ccanalyser.cli._fastq:cli')
+def fastq():
+    """Fastq splitting, deduplicating and digestion.
+    """
 
-@cli.command(
-    context_settings=dict(
-        ignore_unknown_options=True,
-    )
-)
+@cli.group(cls=LazyGroup, import_name='ccanalyser.cli._genome:cli')
+def genome():
+    """Genome digestion.
+    """
+
+@cli.group(cls=LazyGroup, import_name='ccanalyser.cli._reporters:cli')
+def reporters():
+    """Reporter annotation, identification and deduplication.
+    """
+
+@cli.group(cls=LazyGroup, import_name='ccanalyser.cli._interactions:cli')
+def interactions():
+    """Interaction counting, storing, comparison, plotting and bedgraph generation.
+    """
+
+@cli.command(context_settings=dict(ignore_unknown_options=True))
 @click.option("-h", "--help", default=False, is_flag=True)
 @click.argument("mode", type=click.Choice(["make", "show", "clone", "touch"]))
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
@@ -93,6 +98,26 @@ def pipeline(mode, pipeline_options, help=False):
         cmd.extend(pipeline_options.split())
     
     subprocess.run(cmd)
+
+
+
+# TODO: LAZY imports to speed up cli
+
+# from . import (genome_digest,
+#                fastq_split,
+#                fastq_deduplicate, 
+#                fastq_digest,
+#                slices_annotate,
+#                reporters_identify,
+#                reporters_deduplicate,
+#                interactions_count,
+#                interactions_store,
+#                interactions_bedgraph,
+#                interactions_plot_dev,
+#                interactions_differential,
+#                )
+
+
 
 
     
