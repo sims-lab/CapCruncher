@@ -837,7 +837,9 @@ def identify_reporters(infiles, outfile):
         f"statistics/ccanalysis/data/{sample_name}_{sample_part}_{sample_read_type}"
     )
 
-    statement = """ccanalyser reporters identify
+    statement = """ccanalyser
+                   reporters
+                   identify
                    %(analysis_method)s
                    -b %(bam)s
                    -a %(annotations)s

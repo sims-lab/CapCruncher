@@ -2,22 +2,19 @@ from setuptools import setup, find_packages
 
 setup(
 name='ccanalyser',
-version='0.0.6',
+version='0.0.1',
 author='asmith, dsims',
 author_email='alastair.smith@ndcls.ox.ac.uk',
 packages=find_packages(),
-entry_points={'console_scripts': ['ccanalyser = ccanalyser.cli:cli',]
-                                  #'ccpipeline = ccanalyser.cli:main']
-            },
+entry_points={'console_scripts': ['ccanalyser = ccanalyser.cli:cli',]},
 include_package_data=True,
 url='https://github.com/sims-lab/capture-c.git',
 license='LICENSE',
-description='Performs complete processing of capture-c data',
-long_description=open('README.txt').read(),
+description='An end-to-end solution for processing Capture-C, Tri-C and Tiled-C data.',
+long_description=open('README.md').read(),
 long_description_content_type="text/markdown",
 python_requires='>=3.8',
 install_requires=['pandas>=1',
-                  'seaborn>=0.9.0',
                   'pybedtools>=0.8.1',
                   'papermill>=2.1.1',
                   'plotly>=4.8.0',

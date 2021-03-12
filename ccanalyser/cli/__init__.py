@@ -95,7 +95,7 @@ def pipeline(mode, pipeline_options, help=False):
            ]
     
     if pipeline_options:
-        cmd.extend(pipeline_options.split())
+        cmd.extend(pipeline_options)
     
     subprocess.run(cmd)
 

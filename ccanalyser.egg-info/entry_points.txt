@@ -1,3 +1,0 @@
-[console_scripts]
-ccanalyser = ccanalyser.cli:cli
-
