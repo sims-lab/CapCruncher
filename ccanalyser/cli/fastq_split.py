@@ -8,15 +8,10 @@ Created on Wed Jan  8 15:45:09 2020
 Script splits a fastq into specified chunks
 """
 
-from multiprocessing import Manager, SimpleQueue, Pipe
+from multiprocessing import SimpleQueue
 from typing import Tuple
 import click
-from ccanalyser.cli._fastq import cli
-from ccanalyser.tools.io import (
-    FastqReaderProcess,
-    FastqWriterSplitterProcess,
-    FastqReadFormatterProcess,
-)
+from ccanalyser.cli.cli_fastq import cli
 import subprocess
 import glob
 import os
@@ -75,6 +70,11 @@ def split(
      gzip (bool, optional): Gzip compress output files if True. Defaults to True.
     
     """
+
+    from ccanalyser.tools.io import (
+    FastqReaderProcess,
+    FastqWriterSplitterProcess,
+    FastqReadFormatterProcess,)
 
 
     if method == "python":
