@@ -1,0 +1,1721 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>ccanalyser tools &mdash; ccanalyser 0.0.1 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cli" href="../module_cli/modules.html" />
+    <link rel="prev" title="ccanalyser cli documentation" href="../ccanalyser.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> ccanalyser
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installing.html">Installing ccanalyser</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../running_the_pipeline.html">Running the pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ccanalyser.html">ccanalyser cli documentation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ccanalyser tools</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-tools.annotate">tools.annotate module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tools.deduplicate">tools.deduplicate module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tools.digest">tools.digest module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tools.filter">tools.filter module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tools.io">tools.io module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tools.pileup">tools.pileup module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tools.statistics">tools.statistics module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tools.storage">tools.storage module</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../module_cli/modules.html">cli</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ccanalyser</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>ccanalyser tools</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/module_tools/tools.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="ccanalyser-tools">
+<h1>ccanalyser tools<a class="headerlink" href="#ccanalyser-tools" title="Permalink to this headline">¶</a></h1>
+<p>Documentation for the ccanalyser tools modules.</p>
+<div class="section" id="module-tools.annotate">
+<span id="tools-annotate-module"></span><h2>tools.annotate module<a class="headerlink" href="#module-tools.annotate" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="tools.annotate.BedIntersection">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.annotate.</span></code><code class="sig-name descname"><span class="pre">BedIntersection</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bed1</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">pybedtools.bedtool.BedTool</span><span class="p"><span class="pre">,</span> </span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bed2</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">pybedtools.bedtool.BedTool</span><span class="p"><span class="pre">,</span> </span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intersection_name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'count'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intersection_method</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'count'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intersection_min_frac</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cores</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">invalid_bed_action</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'error'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.annotate.BedIntersection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Performs intersection between two named bed files.</p>
+<p>Wrapper around bedtools intersect designed to intersect in parallel
+(by splitting file based on chromosome) and handle malformed bed files.</p>
+<dl class="py attribute">
+<dt id="tools.annotate.BedIntersection.bed1">
+<code class="sig-name descname"><span class="pre">bed1</span></code><a class="headerlink" href="#tools.annotate.BedIntersection.bed1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bed file to intersect. Must be named.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>Union[str, BedTool, pd.DataFrame]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.annotate.BedIntersection.bed2">
+<code class="sig-name descname"><span class="pre">bed2</span></code><a class="headerlink" href="#tools.annotate.BedIntersection.bed2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bed file to intersect.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>Union[str, BedTool, pd.DataFrame]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.annotate.BedIntersection.intersection_name">
+<code class="sig-name descname"><span class="pre">intersection_name</span></code><a class="headerlink" href="#tools.annotate.BedIntersection.intersection_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Name for intersection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.annotate.BedIntersection.min_frac">
+<code class="sig-name descname"><span class="pre">min_frac</span></code><a class="headerlink" href="#tools.annotate.BedIntersection.min_frac" title="Permalink to this definition">¶</a></dt>
+<dd><p>Minimum fraction required for intersection</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.annotate.BedIntersection.n_cores">
+<code class="sig-name descname"><span class="pre">n_cores</span></code><a class="headerlink" href="#tools.annotate.BedIntersection.n_cores" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of cores for parallel intersection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.annotate.BedIntersection.invalid_bed_action">
+<code class="sig-name descname"><span class="pre">invalid_bed_action</span></code><a class="headerlink" href="#tools.annotate.BedIntersection.invalid_bed_action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method to deal with missing/malformed bed files (“ignore”|”error”)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.annotate.BedIntersection.intersection">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">intersection</span></code><a class="headerlink" href="#tools.annotate.BedIntersection.intersection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Intersects the two bed files and returns a pd.Series
+with the intersection results.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-tools.deduplicate">
+<span id="tools-deduplicate-module"></span><h2>tools.deduplicate module<a class="headerlink" href="#module-tools.deduplicate" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="tools.deduplicate.ReadDeduplicationParserProcess">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.deduplicate.</span></code><code class="sig-name descname"><span class="pre">ReadDeduplicationParserProcess</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">multiprocessing.context.BaseContext.SimpleQueue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">multiprocessing.context.BaseContext.SimpleQueue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hash_seed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_hashed_dict_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">os.PathLike</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'parsed.json'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.deduplicate.ReadDeduplicationParserProcess" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">multiprocessing.context.Process</span></code></p>
+<p>Process subclass for parsing fastq file(s) into a hashed {id:sequence} json format.</p>
+<dl class="py attribute">
+<dt id="tools.deduplicate.ReadDeduplicationParserProcess.inq">
+<code class="sig-name descname"><span class="pre">inq</span></code><a class="headerlink" href="#tools.deduplicate.ReadDeduplicationParserProcess.inq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Input read queue</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.deduplicate.ReadDeduplicationParserProcess.outq">
+<code class="sig-name descname"><span class="pre">outq</span></code><a class="headerlink" href="#tools.deduplicate.ReadDeduplicationParserProcess.outq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Output read queue (Not currently used)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.deduplicate.ReadDeduplicationParserProcess.hash_seed">
+<code class="sig-name descname"><span class="pre">hash_seed</span></code><a class="headerlink" href="#tools.deduplicate.ReadDeduplicationParserProcess.hash_seed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Seed for xxhash64 algorithm to ensure consistency</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.deduplicate.ReadDeduplicationParserProcess.save_hash_dict_path">
+<code class="sig-name descname"><span class="pre">save_hash_dict_path</span></code><a class="headerlink" href="#tools.deduplicate.ReadDeduplicationParserProcess.save_hash_dict_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path to save hashed dictionary</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.deduplicate.ReadDeduplicationParserProcess.run">
+<code class="sig-name descname"><span class="pre">run</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.deduplicate.ReadDeduplicationParserProcess.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Processes fastq reads from multiple files and generates a hashed json dictionary.</p>
+<p>Dictionary is hashed and in the format {(read  1 name + read 2 name): (sequence 1 + sequence 2)}.</p>
+<p>Output path is specified by save_hashed_dict_path.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.deduplicate.ReadDuplicateRemovalProcess">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.deduplicate.</span></code><code class="sig-name descname"><span class="pre">ReadDuplicateRemovalProcess</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">multiprocessing.context.BaseContext.SimpleQueue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">multiprocessing.context.BaseContext.SimpleQueue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">duplicated_ids</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">set</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">statq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">multiprocessing.context.BaseContext.Queue</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hash_seed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.deduplicate.ReadDuplicateRemovalProcess" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">multiprocessing.context.Process</span></code></p>
+<p>Process subclass for parsing fastq file(s) and removing identified duplicates.</p>
+<dl class="py attribute">
+<dt id="tools.deduplicate.ReadDuplicateRemovalProcess.inq">
+<code class="sig-name descname"><span class="pre">inq</span></code><a class="headerlink" href="#tools.deduplicate.ReadDuplicateRemovalProcess.inq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Input read queue</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.deduplicate.ReadDuplicateRemovalProcess.outq">
+<code class="sig-name descname"><span class="pre">outq</span></code><a class="headerlink" href="#tools.deduplicate.ReadDuplicateRemovalProcess.outq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Output queue for deduplicated reads.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.deduplicate.ReadDuplicateRemovalProcess.duplicated_ids">
+<code class="sig-name descname"><span class="pre">duplicated_ids</span></code><a class="headerlink" href="#tools.deduplicate.ReadDuplicateRemovalProcess.duplicated_ids" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concatenated read ids to remove from input fastq files.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.deduplicate.ReadDuplicateRemovalProcess.statq">
+<code class="sig-name descname"><span class="pre">statq</span></code><a class="headerlink" href="#tools.deduplicate.ReadDuplicateRemovalProcess.statq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Output queue for statistics.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.deduplicate.ReadDuplicateRemovalProcess.reads_total">
+<code class="sig-name descname"><span class="pre">reads_total</span></code><a class="headerlink" href="#tools.deduplicate.ReadDuplicateRemovalProcess.reads_total" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of fastq reads processed.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.deduplicate.ReadDuplicateRemovalProcess.reads_unique">
+<code class="sig-name descname"><span class="pre">reads_unique</span></code><a class="headerlink" href="#tools.deduplicate.ReadDuplicateRemovalProcess.reads_unique" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of non-duplicated reads output.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.deduplicate.ReadDuplicateRemovalProcess.hash_seed">
+<code class="sig-name descname"><span class="pre">hash_seed</span></code><a class="headerlink" href="#tools.deduplicate.ReadDuplicateRemovalProcess.hash_seed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Seed for xxhash algorithm. MUST be the same as used by ReadDuplicationParserProcess.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.deduplicate.ReadDuplicateRemovalProcess.run">
+<code class="sig-name descname"><span class="pre">run</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.deduplicate.ReadDuplicateRemovalProcess.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs read deduplication based on sequence.</p>
+<p>Unique reads are placed on outq and deduplication statistics are placed on statq.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-tools.digest">
+<span id="tools-digest-module"></span><h2>tools.digest module<a class="headerlink" href="#module-tools.digest" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="tools.digest.DigestedChrom">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.digest.</span></code><code class="sig-name descname"><span class="pre">DigestedChrom</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chrom</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pysam.libcfaidx.FastqProxy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutsite</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fragment_number_offset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fragment_min_len</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.digest.DigestedChrom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Performs in slico digestion of fasta files.</p>
+<p>Identifies all restriction sites for a supplied restriction enzyme/restriction site
+and generates bed style entries.</p>
+<dl class="py attribute">
+<dt id="tools.digest.DigestedChrom.chrom">
+<code class="sig-name descname"><span class="pre">chrom</span></code><a class="headerlink" href="#tools.digest.DigestedChrom.chrom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Chromosome to digest</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pysam.FastqProxy</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.digest.DigestedChrom.recognition_seq">
+<code class="sig-name descname"><span class="pre">recognition_seq</span></code><a class="headerlink" href="#tools.digest.DigestedChrom.recognition_seq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sequence of restriction recognition site</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.digest.DigestedChrom.recognition_len">
+<code class="sig-name descname"><span class="pre">recognition_len</span></code><a class="headerlink" href="#tools.digest.DigestedChrom.recognition_len" title="Permalink to this definition">¶</a></dt>
+<dd><p>Length of restriction recognition site</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="id0">
+<code class="sig-name descname"><span class="pre">recognition_seq</span></code><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Regular expression for restriction recognition site</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>re.Pattern</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.digest.DigestedChrom.fragment_indexes">
+<code class="sig-name descname"><span class="pre">fragment_indexes</span></code><a class="headerlink" href="#tools.digest.DigestedChrom.fragment_indexes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Indexes of fragment(s) start and end positions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>List[int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.digest.DigestedChrom.fragment_number_offset">
+<code class="sig-name descname"><span class="pre">fragment_number_offset</span></code><a class="headerlink" href="#tools.digest.DigestedChrom.fragment_number_offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starting fragment number.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.digest.DigestedChrom.fragment_min_len">
+<code class="sig-name descname"><span class="pre">fragment_min_len</span></code><a class="headerlink" href="#tools.digest.DigestedChrom.fragment_min_len" title="Permalink to this definition">¶</a></dt>
+<dd><p>Minimum fragment length required to report fragment</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.digest.DigestedChrom.get_recognition_site_indexes">
+<code class="sig-name descname"><span class="pre">get_recognition_site_indexes</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; <span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#tools.digest.DigestedChrom.get_recognition_site_indexes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the start position of all recognition sites present in the sequence.</p>
+<p class="rubric">Notes</p>
+<p>Also appends the start and end of the sequnece to enable clearer itteration
+through the indexes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Indexes of fragment(s) start and end positions.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>List[int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.digest.DigestedChrom.fragments">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">fragments</span></code><a class="headerlink" href="#tools.digest.DigestedChrom.fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts the coordinates of restriction fragments from the sequence.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Yields</dt>
+<dd class="field-odd"><p><em>Iterator[Iterable[str]]</em> – Identified restriction fragments in bed format.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.digest.DigestedRead">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.digest.</span></code><code class="sig-name descname"><span class="pre">DigestedRead</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">read</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pysam.libcfaidx.FastqProxy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutsite</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_slice_length</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">18</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slice_number_offset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_undigested</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_type</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'flashed'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.digest.DigestedRead" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Performs in slico digestion of fastq files.</p>
+<p>Identifies all restriction sites for a supplied restriction enzyme/restriction site
+and generates bed style entries.</p>
+<dl class="py attribute">
+<dt id="tools.digest.DigestedRead.read">
+<code class="sig-name descname"><span class="pre">read</span></code><a class="headerlink" href="#tools.digest.DigestedRead.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read to digest.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pysam.FastqProxy</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.digest.DigestedRead.recognition_seq">
+<code class="sig-name descname"><span class="pre">recognition_seq</span></code><a class="headerlink" href="#tools.digest.DigestedRead.recognition_seq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sequence of restriction recognition site.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.digest.DigestedRead.recognition_len">
+<code class="sig-name descname"><span class="pre">recognition_len</span></code><a class="headerlink" href="#tools.digest.DigestedRead.recognition_len" title="Permalink to this definition">¶</a></dt>
+<dd><p>Length of restriction recognition site.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="id1">
+<code class="sig-name descname"><span class="pre">recognition_seq</span></code><a class="headerlink" href="#id1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Regular expression for restriction recognition site.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>re.Pattern</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.digest.DigestedRead.slices">
+<code class="sig-name descname"><span class="pre">slices</span></code><a class="headerlink" href="#tools.digest.DigestedRead.slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of Fastq formatted digested reads (slices).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.digest.DigestedRead.slice_indexes">
+<code class="sig-name descname"><span class="pre">slice_indexes</span></code><a class="headerlink" href="#tools.digest.DigestedRead.slice_indexes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Indexes of fragment(s) start and end positions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>List[int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.digest.DigestedRead.slice_number_offset">
+<code class="sig-name descname"><span class="pre">slice_number_offset</span></code><a class="headerlink" href="#tools.digest.DigestedRead.slice_number_offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starting fragment number.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.digest.DigestedRead.min_slice_len">
+<code class="sig-name descname"><span class="pre">min_slice_len</span></code><a class="headerlink" href="#tools.digest.DigestedRead.min_slice_len" title="Permalink to this definition">¶</a></dt>
+<dd><p>Minimum fragment length required to report fragment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.digest.DigestedRead.has_slices">
+<code class="sig-name descname"><span class="pre">has_slices</span></code><a class="headerlink" href="#tools.digest.DigestedRead.has_slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Recognition site(s) present within sequence.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.digest.DigestedRead.get_recognition_site_indexes">
+<code class="sig-name descname"><span class="pre">get_recognition_site_indexes</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; <span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#tools.digest.DigestedRead.get_recognition_site_indexes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.digest.ReadDigestionProcess">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.digest.</span></code><code class="sig-name descname"><span class="pre">ReadDigestionProcess</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">multiprocessing.context.BaseContext.SimpleQueue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">multiprocessing.context.BaseContext.SimpleQueue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">statq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">multiprocessing.context.BaseContext.Queue</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">digestion_kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.digest.ReadDigestionProcess" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">multiprocessing.context.Process</span></code></p>
+<p>Process subclass for multiprocessing fastq digestion.</p>
+<dl class="py method">
+<dt id="tools.digest.ReadDigestionProcess.run">
+<code class="sig-name descname"><span class="pre">run</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.digest.ReadDigestionProcess.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs read digestion.</p>
+<p>Reads to digest are pulled from inq, digested with the DigestedRead class
+and the results placed on outq for writing.</p>
+<p>If a statq is provided, read digestion stats are placed into this queue for
+aggregation.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-tools.filter">
+<span id="tools-filter-module"></span><h2>tools.filter module<a class="headerlink" href="#module-tools.filter" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="tools.filter.SliceFilter">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.filter.</span></code><code class="sig-name descname"><span class="pre">SliceFilter</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slices</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_stages</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_type</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.SliceFilter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Perform slice filtering (inplace) and reporter identification.</p>
+<p>The SliceFilter classes e.g. CCSliceFilter, TriCSliceFilter, TiledCSliceFilter perform all of the filtering (inplace)
+and reporter identification whilst also provide statistics of the numbers of slices/reads removed at each stage.</p>
+<dl class="py attribute">
+<dt id="tools.filter.SliceFilter.slices">
+<code class="sig-name descname"><span class="pre">slices</span></code><a class="headerlink" href="#tools.filter.SliceFilter.slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Annotated slices dataframe.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.filter.SliceFilter.fragments">
+<code class="sig-name descname"><span class="pre">fragments</span></code><a class="headerlink" href="#tools.filter.SliceFilter.fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Slices dataframe aggregated by parental read.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.filter.SliceFilter.reporters">
+<code class="sig-name descname"><span class="pre">reporters</span></code><a class="headerlink" href="#tools.filter.SliceFilter.reporters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Slices identified as reporters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.filter.SliceFilter.filter_stages">
+<code class="sig-name descname"><span class="pre">filter_stages</span></code><a class="headerlink" href="#tools.filter.SliceFilter.filter_stages" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dictionary containg stages and a list of class methods (str) required to get to this stage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.filter.SliceFilter.slice_stats">
+<code class="sig-name descname"><span class="pre">slice_stats</span></code><a class="headerlink" href="#tools.filter.SliceFilter.slice_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides slice level statistics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.filter.SliceFilter.read_stats">
+<code class="sig-name descname"><span class="pre">read_stats</span></code><a class="headerlink" href="#tools.filter.SliceFilter.read_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides statistics of slice filtering at the parental read level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.filter.SliceFilter.filter_stats">
+<code class="sig-name descname"><span class="pre">filter_stats</span></code><a class="headerlink" href="#tools.filter.SliceFilter.filter_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides statistics of read filtering.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="id2">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">slice_stats</span></code><a class="headerlink" href="#id2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets statisics at a slice level.</p>
+<p>Calculates stats at slice level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>DataFrame containing slice statistics</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="id3">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">filter_stats</span></code><a class="headerlink" href="#id3" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets statisics for each filter stage.</p>
+<p>Calculates stats per filter stage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Contains slice statistics</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.Dataframe</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="id4">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">read_stats</span></code><a class="headerlink" href="#id4" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets statisics at a read level.</p>
+<p>Aggregates slices by parental read id and calculates stats.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Contains slice statistics</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.Dataframe</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="id5">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">fragments</span></code><a class="headerlink" href="#id5" title="Permalink to this definition">¶</a></dt>
+<dd><p>Summarises slices at the fragment level.</p>
+<blockquote>
+<div><p>Uses pandas groupby to aggregate slices by their parental read name
+(shared by all slices from the same fragment). Also determines the
+number of reporter slices for each fragment.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Dataframe of slices aggregated by fragment</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="id6">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">reporters</span></code><a class="headerlink" href="#id6" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts reporter slices from slices dataframe i.e. non-capture slices</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>pd.Dataframe containg all non-capture slices</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.SliceFilter.filter_slices">
+<code class="sig-name descname"><span class="pre">filter_slices</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_slices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_location</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.SliceFilter.filter_slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs slice filtering by calling the class methods from the filter_stages dictionary</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_slices</strong> (<em>bool</em><em>, </em><em>optional</em>) – Determines if slices are to be output to a specified location after each filtering step.
+Useful for debugging. Defaults to False.</p></li>
+<li><p><strong>output_location</strong> (<em>str</em><em>, </em><em>optional</em>) – Location to output slices at each stage. Defaults to “.”.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.SliceFilter.get_raw_slices">
+<code class="sig-name descname"><span class="pre">get_raw_slices</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.SliceFilter.get_raw_slices" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.SliceFilter.remove_unmapped_slices">
+<code class="sig-name descname"><span class="pre">remove_unmapped_slices</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.SliceFilter.remove_unmapped_slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes slices marked as unmapped (Uncommon)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.SliceFilter.remove_orphan_slices">
+<code class="sig-name descname"><span class="pre">remove_orphan_slices</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.SliceFilter.remove_orphan_slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove fragments with only one aligned slice (Common)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.SliceFilter.remove_duplicate_re_frags">
+<code class="sig-name descname"><span class="pre">remove_duplicate_re_frags</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.SliceFilter.remove_duplicate_re_frags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prevent the same restriction fragment being counted more than once (Uncommon).</p>
+<p>e.g. –RE_FRAG1–-—Capture—--–RE_FRAG1—-</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.SliceFilter.remove_slices_without_re_frag_assigned">
+<code class="sig-name descname"><span class="pre">remove_slices_without_re_frag_assigned</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.SliceFilter.remove_slices_without_re_frag_assigned" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes slices if restriction_fragment column is N/A</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.SliceFilter.remove_duplicate_slices">
+<code class="sig-name descname"><span class="pre">remove_duplicate_slices</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.SliceFilter.remove_duplicate_slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove all slices if the slice coordinates and slice order are shared
+with another fragment i.e. are PCR duplicates (Common).</p>
+<dl class="simple">
+<dt>e.g</dt><dd><p>coordinates</p>
+</dd>
+</dl>
+<div class="line-block">
+<div class="line">Frag 1:  chr1:1000-1250 chr1:1500-1750</div>
+<div class="line">Frag 2:  chr1:1000-1250 chr1:1500-1750</div>
+<div class="line">Frag 3:  chr1:1050-1275 chr1:1600-1755</div>
+<div class="line">Frag 4:  chr1:1500-1750 chr1:1000-1250</div>
+</div>
+<p>Frag 2 removed. Frag 1,3,4 retained</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.SliceFilter.remove_duplicate_slices_pe">
+<code class="sig-name descname"><span class="pre">remove_duplicate_slices_pe</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.SliceFilter.remove_duplicate_slices_pe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes PCR duplicates from non-flashed (PE) fragments (Common).
+Sequence quality is often lower at the 3’ end of reads leading to variance in mapping coordinates.
+PCR duplicates are removed by checking that the fragment start and end are not duplicated in the dataframe.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.SliceFilter.remove_excluded_slices">
+<code class="sig-name descname"><span class="pre">remove_excluded_slices</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.SliceFilter.remove_excluded_slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes any slices in the exclusion region (default 1kb) (V. Common)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.SliceFilter.remove_blacklisted_slices">
+<code class="sig-name descname"><span class="pre">remove_blacklisted_slices</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.SliceFilter.remove_blacklisted_slices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes slices marked as being within blacklisted regions</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.filter.CCSliceFilter">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.filter.</span></code><code class="sig-name descname"><span class="pre">CCSliceFilter</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_stages</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">sample_kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.CCSliceFilter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tools.filter.SliceFilter" title="tools.filter.SliceFilter"><code class="xref py py-class docutils literal notranslate"><span class="pre">tools.filter.SliceFilter</span></code></a></p>
+<dl class="py method">
+<dt id="tools.filter.CCSliceFilter.fragments">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">fragments</span></code><a class="headerlink" href="#tools.filter.CCSliceFilter.fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Summarises slices at the fragment level.</p>
+<blockquote>
+<div><p>Uses pandas groupby to aggregate slices by their parental read name
+(shared by all slices from the same fragment). Also determines the
+number of reporter slices for each fragment.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Dataframe of slices aggregated by fragment</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.CCSliceFilter.slice_stats">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">slice_stats</span></code><a class="headerlink" href="#tools.filter.CCSliceFilter.slice_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets statisics at a slice level.</p>
+<p>Calculates stats at slice level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>DataFrame containing slice statistics</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.CCSliceFilter.frag_stats">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">frag_stats</span></code><a class="headerlink" href="#tools.filter.CCSliceFilter.frag_stats" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.CCSliceFilter.reporters">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">reporters</span></code><a class="headerlink" href="#tools.filter.CCSliceFilter.reporters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts reporter slices from slices dataframe i.e. non-capture slices</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>pd.Dataframe containg all non-capture slices</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.CCSliceFilter.captures">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">captures</span></code><a class="headerlink" href="#tools.filter.CCSliceFilter.captures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts capture slices from slices dataframe</p>
+<p>i.e. slices that do not have a null capture name</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>pd.DataFrame containg all capture slices</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.CCSliceFilter.capture_site_stats">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">capture_site_stats</span></code><a class="headerlink" href="#tools.filter.CCSliceFilter.capture_site_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts the number of unique capture sites.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.CCSliceFilter.merged_captures_and_reporters">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">merged_captures_and_reporters</span></code><a class="headerlink" href="#tools.filter.CCSliceFilter.merged_captures_and_reporters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Merges captures and reporters sharing the same parental id.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>pd.DataFrame containing merged capture and reporter slices</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.CCSliceFilter.cis_or_trans_stats">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">cis_or_trans_stats</span></code><a class="headerlink" href="#tools.filter.CCSliceFilter.cis_or_trans_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts reporter cis/trans statistics from slices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>DataFrame containing reporter cis/trans statistics</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.CCSliceFilter.remove_non_reporter_fragments">
+<code class="sig-name descname"><span class="pre">remove_non_reporter_fragments</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.CCSliceFilter.remove_non_reporter_fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes all slices (i.e. the entire fragment) if it has no reporter slices present (Common)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.CCSliceFilter.remove_multi_capture_fragments">
+<code class="sig-name descname"><span class="pre">remove_multi_capture_fragments</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.CCSliceFilter.remove_multi_capture_fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes double capture fragments.</p>
+<p>All slices (i.e. the entire fragment) are removed if more than
+one capture probe is present i.e. double captures (V. Common)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.CCSliceFilter.remove_multicapture_reporters">
+<code class="sig-name descname"><span class="pre">remove_multicapture_reporters</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_adjacent</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.CCSliceFilter.remove_multicapture_reporters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deals with an odd situation in which a reporter spanning two adjacent capture sites is not removed.</p>
+<p><a href="#id7"><span class="problematic" id="id8">|</span></a>e.g.
+<a href="#id9"><span class="problematic" id="id10">|</span></a>——Capture 1—-/——Capture 2——
+|                     —–REP——–</p>
+<p>In this case the “reporter” slice is not considered either a capture or exclusion.</p>
+<p>These cases are dealt with by explicitly removing reporters on restriction fragments
+adjacent to capture sites.</p>
+<p>The number of adjacent RE fragments can be adjusted with n_adjacent.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>n_adjacent</strong> – Number of adjacent restriction fragments to remove</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.filter.TriCSliceFilter">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.filter.</span></code><code class="sig-name descname"><span class="pre">TriCSliceFilter</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_stages</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">sample_kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.TriCSliceFilter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tools.filter.CCSliceFilter" title="tools.filter.CCSliceFilter"><code class="xref py py-class docutils literal notranslate"><span class="pre">tools.filter.CCSliceFilter</span></code></a></p>
+<dl class="py method">
+<dt id="tools.filter.TriCSliceFilter.remove_slices_with_one_reporter">
+<code class="sig-name descname"><span class="pre">remove_slices_with_one_reporter</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.TriCSliceFilter.remove_slices_with_one_reporter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes fragments if they do not contain at least two reporters.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.filter.TiledCSliceFilter">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.filter.</span></code><code class="sig-name descname"><span class="pre">TiledCSliceFilter</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_stages</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">sample_kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.TiledCSliceFilter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tools.filter.SliceFilter" title="tools.filter.SliceFilter"><code class="xref py py-class docutils literal notranslate"><span class="pre">tools.filter.SliceFilter</span></code></a></p>
+<dl class="py method">
+<dt id="tools.filter.TiledCSliceFilter.fragments">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">fragments</span></code><a class="headerlink" href="#tools.filter.TiledCSliceFilter.fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Summarises slices at the fragment level.</p>
+<blockquote>
+<div><p>Uses pandas groupby to aggregate slices by their parental read name
+(shared by all slices from the same fragment). Also determines the
+number of reporter slices for each fragment.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Dataframe of slices aggregated by fragment</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.TiledCSliceFilter.slice_stats">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">slice_stats</span></code><a class="headerlink" href="#tools.filter.TiledCSliceFilter.slice_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets statisics at a slice level.</p>
+<p>Calculates stats at slice level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>DataFrame containing slice statistics</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.TiledCSliceFilter.cis_or_trans_stats">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">cis_or_trans_stats</span></code><a class="headerlink" href="#tools.filter.TiledCSliceFilter.cis_or_trans_stats" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.TiledCSliceFilter.remove_slices_outside_capture">
+<code class="sig-name descname"><span class="pre">remove_slices_outside_capture</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.TiledCSliceFilter.remove_slices_outside_capture" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes slices outside of capture region(s)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.TiledCSliceFilter.remove_non_capture_fragments">
+<code class="sig-name descname"><span class="pre">remove_non_capture_fragments</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.TiledCSliceFilter.remove_non_capture_fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes fragments without a capture assigned</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.filter.TiledCSliceFilter.remove_dual_capture_fragments">
+<code class="sig-name descname"><span class="pre">remove_dual_capture_fragments</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.filter.TiledCSliceFilter.remove_dual_capture_fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes a fragment with multiple different capture sites.</p>
+<p>Modified for TiledC filtering as the fragment dataframe is generated
+slightly differently</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-tools.io">
+<span id="tools-io-module"></span><h2>tools.io module<a class="headerlink" href="#module-tools.io" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="tools.io.FastqReaderProcess">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.io.</span></code><code class="sig-name descname"><span class="pre">FastqReaderProcess</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="pre">input_files:</span> <span class="pre">Union[str,</span> <span class="pre">list],</span> <span class="pre">outq:</span> <span class="pre">multiprocessing.context.BaseContext.Queue,</span> <span class="pre">read_buffer:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">100000,</span> <span class="pre">read_counter:</span> <span class="pre">Optional[multiprocessing.managers.BaseManager.register.&lt;locals&gt;.temp]</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">n_subprocesses:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1,</span> <span class="pre">statq:</span> <span class="pre">Optional[multiprocessing.context.BaseContext.Queue]</span> <span class="pre">=</span> <span class="pre">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.io.FastqReaderProcess" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">multiprocessing.context.Process</span></code></p>
+<p>Reads fastq file(s) in chunks and places them on a queue.</p>
+<dl class="py attribute">
+<dt id="tools.io.FastqReaderProcess.input_file">
+<code class="sig-name descname"><span class="pre">input_file</span></code><a class="headerlink" href="#tools.io.FastqReaderProcess.input_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Input fastq files.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.io.FastqReaderProcess.outq">
+<code class="sig-name descname"><span class="pre">outq</span></code><a class="headerlink" href="#tools.io.FastqReaderProcess.outq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Output queue for chunked reads/read pairs.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.io.FastqReaderProcess.statq">
+<code class="sig-name descname"><span class="pre">statq</span></code><a class="headerlink" href="#tools.io.FastqReaderProcess.statq" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Not currently used) Queue for read statistics if required.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.io.FastqReaderProcess.read_buffer">
+<code class="sig-name descname"><span class="pre">read_buffer</span></code><a class="headerlink" href="#tools.io.FastqReaderProcess.read_buffer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of reads to process before placing them on outq</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.io.FastqReaderProcess.read_counter">
+<code class="sig-name descname"><span class="pre">read_counter</span></code><a class="headerlink" href="#tools.io.FastqReaderProcess.read_counter" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Not currently used) Can be used to sync between multiple readers.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.io.FastqReaderProcess.n_subproceses">
+<code class="sig-name descname"><span class="pre">n_subproceses</span></code><a class="headerlink" href="#tools.io.FastqReaderProcess.n_subproceses" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of processes running concurrently. Used to make sure enough termination signals are used.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.io.FastqReaderProcess.run">
+<code class="sig-name descname"><span class="pre">run</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.io.FastqReaderProcess.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs reading and chunking of fastq file(s).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.io.FastqReadFormatterProcess">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.io.</span></code><code class="sig-name descname"><span class="pre">FastqReadFormatterProcess</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">multiprocessing.context.BaseContext.SimpleQueue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">multiprocessing.context.BaseContext.SimpleQueue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formatting</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.io.FastqReadFormatterProcess" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">multiprocessing.context.Process</span></code></p>
+<dl class="py method">
+<dt id="tools.io.FastqReadFormatterProcess.run">
+<code class="sig-name descname"><span class="pre">run</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.io.FastqReadFormatterProcess.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method to be run in sub-process; can be overridden in sub-class</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.io.FastqWriterSplitterProcess">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.io.</span></code><code class="sig-name descname"><span class="pre">FastqWriterSplitterProcess</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">multiprocessing.context.BaseContext.Queue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_prefix</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">list</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">paired_output</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gzip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compression_level</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compression_threads</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_subprocesses</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_workers_terminated</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_files_written</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.io.FastqWriterSplitterProcess" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">multiprocessing.context.Process</span></code></p>
+<dl class="py method">
+<dt id="tools.io.FastqWriterSplitterProcess.run">
+<code class="sig-name descname"><span class="pre">run</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.io.FastqWriterSplitterProcess.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method to be run in sub-process; can be overridden in sub-class</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.io.FastqWriterProcess">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.io.</span></code><code class="sig-name descname"><span class="pre">FastqWriterProcess</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">multiprocessing.context.BaseContext.Queue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">list</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compression_level</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_subprocesses</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.io.FastqWriterProcess" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">multiprocessing.context.Process</span></code></p>
+<dl class="py method">
+<dt id="tools.io.FastqWriterProcess.run">
+<code class="sig-name descname"><span class="pre">run</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.io.FastqWriterProcess.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method to be run in sub-process; can be overridden in sub-class</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="tools.io.parse_alignment">
+<code class="sig-prename descclassname"><span class="pre">tools.io.</span></code><code class="sig-name descname"><span class="pre">parse_alignment</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aln</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.io.parse_alignment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parses reads from a bam file into a list.</p>
+<dl class="simple">
+<dt>Extracts:</dt><dd><p>-read name
+-parent reads
+-flashed status
+-slice number
+-mapped status
+-multimapping status
+-chromosome number (e.g. chr10)
+-start (e.g. 1000)
+-end (e.g. 2000)
+-coords e.g. (chr10:1000-2000)</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>aln</strong> – pysam.AlignmentFile.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Containing the attributes extracted.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="tools.io.parse_bam">
+<code class="sig-prename descclassname"><span class="pre">tools.io.</span></code><code class="sig-name descname"><span class="pre">parse_bam</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bam</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.io.parse_bam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses parse_alignment function convert bam file to a dataframe.</p>
+<dl class="simple">
+<dt>Extracts:</dt><dd><p>-‘slice_name’
+-‘parent_read’
+-‘pe’
+-‘slice’
+-‘mapped’
+-‘multimapped’
+-‘chrom’
+-‘start’
+-‘end’
+-‘coordinates’</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>bam</strong> – File name of bam file to process.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>DataFrame with the columns listed above.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.Dataframe</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-tools.pileup">
+<span id="tools-pileup-module"></span><h2>tools.pileup module<a class="headerlink" href="#module-tools.pileup" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="tools.pileup.CoolerBedGraph">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.pileup.</span></code><code class="sig-name descname"><span class="pre">CoolerBedGraph</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cooler_fn</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sparse</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.pileup.CoolerBedGraph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Generates a bedgraph file from a cooler file created by interactions-store.</p>
+<dl class="py attribute">
+<dt id="tools.pileup.CoolerBedGraph.cooler">
+<code class="sig-name descname"><span class="pre">cooler</span></code><a class="headerlink" href="#tools.pileup.CoolerBedGraph.cooler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cooler file to use for bedgraph production</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>cooler.Cooler</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.pileup.CoolerBedGraph.capture_name">
+<code class="sig-name descname"><span class="pre">capture_name</span></code><a class="headerlink" href="#tools.pileup.CoolerBedGraph.capture_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Name of capture probe being processed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.pileup.CoolerBedGraph.sparse">
+<code class="sig-name descname"><span class="pre">sparse</span></code><a class="headerlink" href="#tools.pileup.CoolerBedGraph.sparse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Only output bins with interactions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.pileup.CoolerBedGraph.capture_chrom">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">capture_chrom</span></code><a class="headerlink" href="#tools.pileup.CoolerBedGraph.capture_chrom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Capture chromosome.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Name of capture chromosome.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.pileup.CoolerBedGraph.bedgraph">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">bedgraph</span></code><a class="headerlink" href="#tools.pileup.CoolerBedGraph.bedgraph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns:
+pd.DataFrame: DataFrame in bedgraph format.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.pileup.CoolerBedGraph.reporters">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">reporters</span></code><a class="headerlink" href="#tools.pileup.CoolerBedGraph.reporters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interactions with capture fragments/bins.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>DataFrame containing just bins interacting with the capture probe.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.pileup.CoolerBedGraph.normalise_bedgraph">
+<code class="sig-name descname"><span class="pre">normalise_bedgraph</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scale_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000000.0</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="headerlink" href="#tools.pileup.CoolerBedGraph.normalise_bedgraph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalises the bedgraph.</p>
+<p>Uses the number of cis interactions to normalise the bedgraph counts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>scale_factor</strong> (<em>int</em><em>, </em><em>optional</em>) – Scaling factor for normalisation. Defaults to 1e6.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Normalised bedgraph formatted DataFrame</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.pileup.CoolerBedGraph.to_file">
+<code class="sig-name descname"><span class="pre">to_file</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fn</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">os.PathLike</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalise</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">normalise_kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.pileup.CoolerBedGraph.to_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Outputs the bedgraph dataframe to a file.</p>
+<p>If normalise is True, will also normalise the counts by the number of cis interactions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fn</strong> (<em>os.PathLike</em>) – Output file name.</p></li>
+<li><p><strong>normalise</strong> (<em>bool</em><em>, </em><em>optional</em>) – Normalise the bedgraph before writing to file. Defaults to False.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.pileup.CoolerBedGraphWindowed">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.pileup.</span></code><code class="sig-name descname"><span class="pre">CoolerBedGraphWindowed</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cooler_fn</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binsize</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">5000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binner</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">ccanalyser.tools.storage.CoolerBinner</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sparse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.pileup.CoolerBedGraphWindowed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tools.pileup.CoolerBedGraph" title="tools.pileup.CoolerBedGraph"><code class="xref py py-class docutils literal notranslate"><span class="pre">tools.pileup.CoolerBedGraph</span></code></a></p>
+<dl class="py method">
+<dt id="tools.pileup.CoolerBedGraphWindowed.normalise_bedgraph">
+<code class="sig-name descname"><span class="pre">normalise_bedgraph</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scale_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000000.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.pileup.CoolerBedGraphWindowed.normalise_bedgraph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalises the bedgraph.</p>
+<p>Uses the number of cis interactions to normalise the bedgraph counts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>scale_factor</strong> (<em>int</em><em>, </em><em>optional</em>) – Scaling factor for normalisation. Defaults to 1e6.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Normalised bedgraph formatted DataFrame</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.pileup.CoolerBedGraphWindowed.reporters_binned">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">reporters_binned</span></code><a class="headerlink" href="#tools.pileup.CoolerBedGraphWindowed.reporters_binned" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.pileup.CCBedgraph">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.pileup.</span></code><code class="sig-name descname"><span class="pre">CCBedgraph</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capture_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capture_chrom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capture_start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capture_end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.pileup.CCBedgraph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="tools.pileup.CCBedgraph.score">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">score</span></code><a class="headerlink" href="#tools.pileup.CCBedgraph.score" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="tools.pileup.CCBedgraph.coordinates">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">coordinates</span></code><a class="headerlink" href="#tools.pileup.CCBedgraph.coordinates" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="tools.pileup.CCBedgraph.to_bedtool">
+<code class="sig-name descname"><span class="pre">to_bedtool</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tools.pileup.CCBedgraph.to_bedtool" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="tools.pileup.CCBedgraph.to_file">
+<code class="sig-name descname"><span class="pre">to_file</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.pileup.CCBedgraph.to_file" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-tools.statistics">
+<span id="tools-statistics-module"></span><h2>tools.statistics module<a class="headerlink" href="#module-tools.statistics" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="tools.statistics.DeduplicationStatistics">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.statistics.</span></code><code class="sig-name descname"><span class="pre">DeduplicationStatistics</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_type</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'pe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reads_total</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reads_unique</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.statistics.DeduplicationStatistics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="tools.statistics.DeduplicationStatistics.df">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">df</span></code><a class="headerlink" href="#tools.statistics.DeduplicationStatistics.df" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.statistics.DigestionStatCollector">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.statistics.</span></code><code class="sig-name descname"><span class="pre">DigestionStatCollector</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">statq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">multiprocessing.context.BaseContext.Queue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_subprocess</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.statistics.DigestionStatCollector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="tools.statistics.DigestionStatCollector.get_collated_stats">
+<code class="sig-name descname"><span class="pre">get_collated_stats</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; <span class="pre">dict</span><a class="headerlink" href="#tools.statistics.DigestionStatCollector.get_collated_stats" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.statistics.DigestionStatistics">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.statistics.</span></code><code class="sig-name descname"><span class="pre">DigestionStatistics</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_number</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slices_unfiltered</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">collections.Counter</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slices_filtered</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">collections.Counter</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.statistics.DigestionStatistics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="tools.statistics.collate_histogram_data">
+<code class="sig-prename descclassname"><span class="pre">tools.statistics.</span></code><code class="sig-name descname"><span class="pre">collate_histogram_data</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fnames</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.statistics.collate_histogram_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="tools.statistics.collate_read_data">
+<code class="sig-prename descclassname"><span class="pre">tools.statistics.</span></code><code class="sig-name descname"><span class="pre">collate_read_data</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fnames</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.statistics.collate_read_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="tools.statistics.collate_slice_data">
+<code class="sig-prename descclassname"><span class="pre">tools.statistics.</span></code><code class="sig-name descname"><span class="pre">collate_slice_data</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fnames</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.statistics.collate_slice_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="tools.statistics.collate_cis_trans_data">
+<code class="sig-prename descclassname"><span class="pre">tools.statistics.</span></code><code class="sig-name descname"><span class="pre">collate_cis_trans_data</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fnames</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.statistics.collate_cis_trans_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="tools.statistics.extract_trimming_stats">
+<code class="sig-prename descclassname"><span class="pre">tools.statistics.</span></code><code class="sig-name descname"><span class="pre">extract_trimming_stats</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fn</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.statistics.extract_trimming_stats" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-tools.storage">
+<span id="tools-storage-module"></span><h2>tools.storage module<a class="headerlink" href="#module-tools.storage" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="tools.storage.get_capture_coords">
+<code class="sig-prename descclassname"><span class="pre">tools.storage.</span></code><code class="sig-name descname"><span class="pre">get_capture_coords</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oligo_file</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oligo_name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.storage.get_capture_coords" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="tools.storage.get_capture_bins">
+<code class="sig-prename descclassname"><span class="pre">tools.storage.</span></code><code class="sig-name descname"><span class="pre">get_capture_bins</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oligo_chrom</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oligo_start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oligo_end</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.storage.get_capture_bins" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="tools.storage.create_cooler_cc">
+<code class="sig-prename descclassname"><span class="pre">tools.storage.</span></code><code class="sig-name descname"><span class="pre">create_cooler_cc</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_prefix</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixels</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capture_name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capture_oligos</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">os.PathLike</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capture_bins</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span> </span><span class="pre">list</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">cooler_kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">os.PathLike</span><a class="headerlink" href="#tools.storage.create_cooler_cc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a cooler hdf5 file or cooler formatted group within a hdf5 file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_prefix</strong> (<em>str</em>) – Output path for hdf5 file. If this already exists, will append a new group to the file.</p></li>
+<li><p><strong>bins</strong> (<em>pd.DataFrame</em>) – DataFrame containing the genomic coordinates of all bins in the pixels table.</p></li>
+<li><p><strong>pixels</strong> (<em>pd.DataFrame</em>) – DataFrame with columns: bin1_id, bin2_id, count.</p></li>
+<li><p><strong>capture_name</strong> (<em>str</em>) – Name of capture probe to store.</p></li>
+<li><p><strong>capture_oligos</strong> (<em>os.PathLike</em>) – Path to capture oligos used for the analysis.</p></li>
+<li><p><strong>capture_bins</strong> (<em>Union</em><em>[</em><em>int</em><em>, </em><em>list</em><em>]</em><em>, </em><em>optional</em>) – Bins containing capture oligos. Can be determined from oligos if not supplied. Defaults to None.</p></li>
+<li><p><strong>suffix</strong> (<em>[</em><em>type</em><em>]</em><em>, </em><em>optional</em>) – Suffix to append before the .hdf5 file extension. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>ValueError</strong> – Capture name must exactly match the name of a supplied capture oligo.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Path of cooler hdf5 file.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>os.PathLike</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.storage.GenomicBinner">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.storage.</span></code><code class="sig-name descname"><span class="pre">GenomicBinner</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chromsizes</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">os.PathLike</span><span class="p"><span class="pre">,</span> </span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">,</span> </span><span class="pre">pandas.core.series.Series</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fragments</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binsize</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cores</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_overlap</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.storage.GenomicBinner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Provides a conversion table for converting two sets of bins.</p>
+<dl class="py attribute">
+<dt id="tools.storage.GenomicBinner.chromsizes">
+<code class="sig-name descname"><span class="pre">chromsizes</span></code><a class="headerlink" href="#tools.storage.GenomicBinner.chromsizes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Series indexed by chromosome name containg chromosome sizes in bp</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.storage.GenomicBinner.fragments">
+<code class="sig-name descname"><span class="pre">fragments</span></code><a class="headerlink" href="#tools.storage.GenomicBinner.fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>DataFrame containing bins to convert to equal genomic intervals</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.storage.GenomicBinner.binsize">
+<code class="sig-name descname"><span class="pre">binsize</span></code><a class="headerlink" href="#tools.storage.GenomicBinner.binsize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Genomic bin size</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.storage.GenomicBinner.min_overlap">
+<code class="sig-name descname"><span class="pre">min_overlap</span></code><a class="headerlink" href="#tools.storage.GenomicBinner.min_overlap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Minimum degree of intersection to define an overlap.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.storage.GenomicBinner.n_cores">
+<code class="sig-name descname"><span class="pre">n_cores</span></code><a class="headerlink" href="#tools.storage.GenomicBinner.n_cores" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of cores to use for bin intersection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.storage.GenomicBinner.bins">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">bins</span></code><a class="headerlink" href="#tools.storage.GenomicBinner.bins" title="Permalink to this definition">¶</a></dt>
+<dd><p>Equal genomic bins.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>DataFrame in bed format.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.storage.GenomicBinner.bin_conversion_table">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">bin_conversion_table</span></code><a class="headerlink" href="#tools.storage.GenomicBinner.bin_conversion_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns:
+pd.DataFrame: Conversion table containing coordinates and ids of intersecting bins.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="tools.storage.CoolerBinner">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">tools.storage.</span></code><code class="sig-name descname"><span class="pre">CoolerBinner</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cooler_fn</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">os.PathLike</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binsize</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cores</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binner</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#tools.storage.GenomicBinner" title="tools.storage.GenomicBinner"><span class="pre">tools.storage.GenomicBinner</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.storage.CoolerBinner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Bins a cooler file into equal genomic intervals.</p>
+<dl class="py attribute">
+<dt id="tools.storage.CoolerBinner.cooler">
+<code class="sig-name descname"><span class="pre">cooler</span></code><a class="headerlink" href="#tools.storage.CoolerBinner.cooler" title="Permalink to this definition">¶</a></dt>
+<dd><p>(cooler.Cooler): Cooler instance to bin.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.storage.CoolerBinner.binner">
+<code class="sig-name descname"><span class="pre">binner</span></code><a class="headerlink" href="#tools.storage.CoolerBinner.binner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Binner class to generate bin conversion tables</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>ccanalyser.storeage.GenomicBinner</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.storage.CoolerBinner.binsize">
+<code class="sig-name descname"><span class="pre">binsize</span></code><a class="headerlink" href="#tools.storage.CoolerBinner.binsize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Genomic bin size</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.storage.CoolerBinner.scale_factor">
+<code class="sig-name descname"><span class="pre">scale_factor</span></code><a class="headerlink" href="#tools.storage.CoolerBinner.scale_factor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scaling factor for normalising interaction counts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.storage.CoolerBinner.n_cis_interactions">
+<code class="sig-name descname"><span class="pre">n_cis_interactions</span></code><a class="headerlink" href="#tools.storage.CoolerBinner.n_cis_interactions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of cis interactions with the capture bins.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="tools.storage.CoolerBinner.n_cores">
+<code class="sig-name descname"><span class="pre">n_cores</span></code><a class="headerlink" href="#tools.storage.CoolerBinner.n_cores" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of cores to use for binning.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.storage.CoolerBinner.bins">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">bins</span></code><a class="headerlink" href="#tools.storage.CoolerBinner.bins" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns:
+pd.DataFrame: Even genomic bins of a specified binsize.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.storage.CoolerBinner.bin_conversion_table">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">bin_conversion_table</span></code><a class="headerlink" href="#tools.storage.CoolerBinner.bin_conversion_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns:
+pd.DataFrame: Conversion table containing coordinates and ids of intersecting bins.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.storage.CoolerBinner.capture_bins">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">capture_bins</span></code><a class="headerlink" href="#tools.storage.CoolerBinner.capture_bins" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns:
+pd.DataFrame: Capture bins converted to the new even genomic bin format.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.storage.CoolerBinner.pixel_conversion_table">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">pixel_conversion_table</span></code><a class="headerlink" href="#tools.storage.CoolerBinner.pixel_conversion_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns:
+pd.DataFrame: Conversion table to convert old binning scheme to the new.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.storage.CoolerBinner.pixels">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">pixels</span></code><a class="headerlink" href="#tools.storage.CoolerBinner.pixels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns:
+pd.DataFrame: Pixels (interaction counts) converted to the new binning scheme.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.storage.CoolerBinner.normalise_pixels">
+<code class="sig-name descname"><span class="pre">normalise_pixels</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_fragment_correction</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_interaction_correction</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_factor</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1000000.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.storage.CoolerBinner.normalise_pixels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalises pixels (interactions).</p>
+<p>Normalises pixels according to the number of restriction fragments per bin and the number of cis interactions.
+If both normalisation options are selected, will also provide a dual normalised column.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_fragment_correction</strong> (<em>bool</em><em>, </em><em>optional</em>) – Updates the pixels DataFrame with counts corrected for the number of
+restriction fragments per bin. Defaults to True.</p></li>
+<li><p><strong>n_interaction_correction</strong> (<em>bool</em><em>, </em><em>optional</em>) – Updates the pixels DataFrame with counts corrected for the number of
+cis interactions. Defaults to True.</p></li>
+<li><p><strong>scale_factor</strong> (<em>int</em><em>, </em><em>optional</em>) – Scaling factor for n_interaction_correction. Defaults to 1e6.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="tools.storage.CoolerBinner.to_cooler">
+<code class="sig-name descname"><span class="pre">to_cooler</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">store</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">normalise_options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.storage.CoolerBinner.to_cooler" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="tools.storage.link_bins">
+<code class="sig-prename descclassname"><span class="pre">tools.storage.</span></code><code class="sig-name descname"><span class="pre">link_bins</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clr</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">os.PathLike</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tools.storage.link_bins" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reduces cooler storage space by linking “bins” table.</p>
+<blockquote>
+<div><p>All of the cooler “bins” tables containing the genomic coordinates of each bin
+are identical for all cooler files of the same resoultion. As cooler.create_cooler
+generates a new bins table for each cooler, this leads to a high degree of duplication.</p>
+<p>This function hard links the bins tables for a given resolution to reduce the degree of duplication.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>clr</strong> (<em>os.PathLike</em>) – Path to cooler hdf5 produced by the merge command.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="../module_cli/modules.html" class="btn btn-neutral float-right" title="cli" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../ccanalyser.html" class="btn btn-neutral float-left" title="ccanalyser cli documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, asmith, dsims.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

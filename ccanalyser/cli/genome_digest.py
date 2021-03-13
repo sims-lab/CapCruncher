@@ -10,7 +10,7 @@ Script generates a bed file of restriction fragment locations in a given genome.
 import click
 import pysam
 import xopen
-from ccanalyser.cli._genome import cli
+from ccanalyser.cli.cli_genome import cli
 from ccanalyser.tools.digest import DigestedChrom
 from ccanalyser.utils import get_re_site
 from typing import Iterator

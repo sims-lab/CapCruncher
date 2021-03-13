@@ -14,7 +14,7 @@ import click
 import numpy as np
 import pandas as pd
 import ujson
-from ccanalyser.cli._fastq import cli
+from ccanalyser.cli.cli_fastq import cli
 from ccanalyser.tools.deduplicate import (ReadDeduplicationParserProcess,
                                           ReadDuplicateRemovalProcess)
 from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess

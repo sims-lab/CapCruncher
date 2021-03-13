@@ -1,7 +1,6 @@
 import click
 import os
 from functools import cached_property
-from pkg_resources import iter_entry_points
 from importlib import import_module
 import subprocess
 
@@ -57,28 +56,29 @@ def cli():
     """
 
 
-@cli.group(cls=LazyGroup, import_name='ccanalyser.cli._fastq:cli')
+@cli.group(cls=LazyGroup, import_name='ccanalyser.cli.cli_fastq:cli')
 def fastq():
-    """Fastq splitting, deduplicating and digestion.
+    """
+    Fastq splitting, deduplication and digestion.
     """
 
 @cli.group(cls=LazyGroup, import_name='ccanalyser.cli._genome:cli')
 def genome():
-    """Genome digestion.
+    """
+    Genome wide methods digestion.
+    """
+
+@cli.group(cls=LazyGroup, import_name='ccanalyser.cli._alignments:cli')
+def alignments():
+    """Alignment annotation, identification and deduplication.
     """
 
 @cli.group(cls=LazyGroup, import_name='ccanalyser.cli._reporters:cli')
 def reporters():
-    """Reporter annotation, identification and deduplication.
-    """
-
-@cli.group(cls=LazyGroup, import_name='ccanalyser.cli._interactions:cli')
-def interactions():
-    """Interaction counting, storing, comparison, plotting and bedgraph generation.
+    """Reporter counting, storing, comparison, pileups and heatmaps.
     """
 
 @cli.command(context_settings=dict(ignore_unknown_options=True))
-@click.option("-h", "--help", default=False, is_flag=True)
 @click.argument("mode", type=click.Choice(["make", "show", "clone", "touch"]))
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
 def pipeline(mode, pipeline_options, help=False):
@@ -100,22 +100,6 @@ def pipeline(mode, pipeline_options, help=False):
     subprocess.run(cmd)
 
 
-
-# TODO: LAZY imports to speed up cli
-
-# from . import (genome_digest,
-#                fastq_split,
-#                fastq_deduplicate, 
-#                fastq_digest,
-#                slices_annotate,
-#                reporters_identify,
-#                reporters_deduplicate,
-#                interactions_count,
-#                interactions_store,
-#                interactions_bedgraph,
-#                interactions_plot_dev,
-#                interactions_differential,
-#                )
 
 
 

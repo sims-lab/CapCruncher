@@ -2,18 +2,13 @@ import os
 from typing import Tuple
 
 import click
-import numpy as np
-import pandas as pd
-from pkg_resources import require
-from ccanalyser.cli._fastq import cli
+from ccanalyser.cli.cli_fastq import cli
 
 from multiprocessing import Queue, SimpleQueue
 from ccanalyser.tools.digest import ReadDigestionProcess
 from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess
 from ccanalyser.tools.statistics import DigestionStatCollector, DigestionStatistics
 from ccanalyser.utils import get_re_site
-from pysam import FastxFile
-from xopen import xopen
 
 
 @cli.command()
