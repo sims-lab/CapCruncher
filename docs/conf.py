@@ -38,7 +38,7 @@ extensions = ['sphinx.ext.autodoc',
               "sphinx_rtd_theme",
               'sphinx.ext.autosectionlabel',
               'sphinx.ext.napoleon',
-              'sphinx-click']
+              'sphinx_click']
 
 autodoc_member_order = 'bysource'
 
