@@ -14,14 +14,15 @@ import pandas as pd
 import ujson
 import xxhash
 from pybedtools import BedTool
-from xopen import xopen
 from cgatcore.iotools import zap_file
-import trackhub
 import pybedtools
 
 
 def open_logfile(fn: str) -> IO:
     '''Handles instances where the log file is sys.stdout'''
+
+    from xopen import xopen
+
     if not isinstance(fn, type(sys.stdout)):
         return xopen(fn, "w")
     else:
@@ -212,6 +213,9 @@ def intersect_bins(bins_1: pd.DataFrame, bins_2: pd.DataFrame, **bedtools_kwargs
 
 def load_json(fn) -> dict:
     '''Convinence function to load gziped json file using xopen.'''
+
+    from xopen import xopen
+
     with xopen(fn) as r:
         d = ujson.load(r)
         return d
@@ -280,6 +284,8 @@ def make_group_track(
     bigwigs: list, key: Union[callable, str, int], overlay=True) -> dict:
 
     '''Generates a UCSC super track by grouping inputs by the provided key.'''
+
+    import trackhub
 
     super_tracks_dict = dict()
     for name, bws in groupby(sorted(bigwigs, key=key), key=key):

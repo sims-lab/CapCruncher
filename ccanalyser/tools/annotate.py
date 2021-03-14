@@ -1,23 +1,17 @@
-import itertools
 from typing import Union
 import warnings
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
 import pandas as pd
-from joblib import Parallel, delayed
 from pybedtools import BedTool
 
 from ccanalyser.utils import (
-    bed_has_name,
     convert_bed_to_dataframe,
     convert_to_bedtool,
     is_valid_bed,
     split_intervals_on_chrom,
 )
-from natsort import natsorted
-import traceback
-
 
 class BedIntersection:
 
@@ -98,6 +92,8 @@ class BedIntersection:
     def _intersect_by_chrom(
         self, a: Union[BedTool, pd.DataFrame], b: Union[BedTool, pd.DataFrame]
     ):
+        
+        from joblib import Parallel, delayed
 
         a_by_chrom = split_intervals_on_chrom(a)
         b_by_chrom = split_intervals_on_chrom(b)

@@ -785,7 +785,7 @@ def annotate_slices(infile, outfile):
             cmd_args.append(f'{flags.get(arg_name)} {arg if arg else "-"}')
 
     cmd_args = " ".join(cmd_args)
-    statement = """ccanalyser reporters annotate
+    statement = """ccanalyser alignments annotate
                     %(slices)s
                     %(cmd_args)s
                     -o %(outfile)s
@@ -901,7 +901,7 @@ def deduplicate_fragments(infile, outfile, read_type):
     '''Identifies duplicate fragments by removing fragments with the same coordinates
        and slice order'''
 
-    statement = """ccanalyser reporters deduplicate
+    statement = """ccanalyser alignments deduplicate
                    identify
                    %(infile)s
                    --read_type %(read_type)s
@@ -933,7 +933,7 @@ def deduplicate_reporters(infile, outfile, sample_name, read_type, capture_oligo
         f"statistics/ccanalysis/data/{sample_name}_{read_type}_{capture_oligo}"
     )
 
-    statement = """ccanalyser reporters deduplicate
+    statement = """ccanalyser alignments deduplicate
                    remove
                    %(slices)s
                    -d %(duplicated_ids)s
@@ -1021,7 +1021,7 @@ def count_interactions(infile, outfile):
     '''Counts the number of interactions identified between reporter restriction fragments'''
 
     statement = [
-        "ccanalyser interactions count",
+        "ccanalyser reporters  count",
         "%(infile)s",
         "-o %(outfile)s",
         "--remove_exclusions",
@@ -1053,7 +1053,7 @@ def store_interactions_at_fragment_level(infile, outfile, sample_name, capture_n
     counts, rf_map = infile
     output_prefix = outfile.replace(f".{capture_name}.fragments", "")
 
-    statement = """ccanalyser interactions store
+    statement = """ccanalyser reporters  store
                    fragments
                    %(counts)s
                    -f %(rf_map)s
@@ -1115,7 +1115,7 @@ def store_interactions_binned(infile, outfile, capture_name):
     )
     output_prefix = outfile.replace(f".{capture_name}.log", "")
 
-    statement = f"""ccanalyser interactions store
+    statement = f"""ccanalyser reporters  store
                   bins
                   %(infile)s
                   -o %(output_prefix)s
@@ -1146,7 +1146,7 @@ def merge_interactions(infiles, outfile, sample_name):
     '''Combines cooler files together'''
 
     infiles_str = " ".join(infiles)
-    statement = f"""ccanalyser interactions store
+    statement = f"""ccanalyser reporters  store
                      merge
                      %(infiles_str)s
                      -o %(outfile)s
@@ -1176,7 +1176,7 @@ def make_bedgraph_raw(infile, outfiles, sample_name):
 
     output_prefix = f"ccanalysis/bedgraphs/{sample_name}.raw"
 
-    statement = """ccanalyser interactions bedgraph
+    statement = """ccanalyser reporters  bedgraph
                    %(infile)s
                    -o %(output_prefix)s
                    > %(output_prefix)s.log"""
@@ -1199,7 +1199,7 @@ def make_bedgraph_normalised(infile, outfiles, sample_name):
 
     output_prefix = f"ccanalysis/bedgraphs/{sample_name}.normalised"
 
-    statement = """ccanalyser interactions bedgraph
+    statement = """ccanalyser reporters  bedgraph
                    %(infile)s
                    -o %(output_prefix)s
                    --normalise
@@ -1223,7 +1223,7 @@ def make_bedgraph_normalised(infile, outfiles, sample_name):
 
 #     output_prefix = f"ccanalysis/bedgraphs/{sample_name}.windowed"
 
-#     statement = """ccanalyser interactions bedgraph
+#     statement = """ccanalyser reporters  bedgraph
 #                    %(infile)s
 #                    -o %(output_prefix)s
 #                    --binsize 5000
@@ -1456,7 +1456,7 @@ def plot_interactions(infile, outfile):
         re.split(r"[,;]\s*|\s+", str(P.PARAMS["plot_bin_size"]))
     )
 
-    statement = f"""ccanalyser interactions plot
+    statement = f"""ccanalyser reporters  plot
                     %(infile)s
                     -r %(resolutions)s
                     -c %(plot_coordinates)s

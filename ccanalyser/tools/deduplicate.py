@@ -1,5 +1,4 @@
 import ujson
-import sys
 import multiprocessing
 from multiprocessing import Process, Queue, SimpleQueue
 from xopen import xopen
