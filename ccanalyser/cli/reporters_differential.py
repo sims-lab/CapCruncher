@@ -36,11 +36,24 @@ def differential(union_bedgraph: os.PathLike,
     """
     Identifies differential interactions between conditions.
 
-    Uses diffxpy to run a wald test after fitting a negative binomial model to the interaction counts.
-    Results can be filtered with by threshold_mean and threshold-q.
+    Parses a union bedgraph containg reporter counts from at least two conditions with
+    two or more replicates for a single capture probe and outputs differential interaction
+    results. Following filtering to ensure that the number of interactions is above the required 
+    threshold (--threshold_count), diffxpy is used to run a wald test after 
+    fitting a negative binomial model to the interaction counts.The options to filter
+    results can be filtered by a minimum mean value (threshold_mean) and/or 
+    maximum q-value (threshold-q) are also provided.
 
+    Notes:
+        
+     Currently both the capture oligos and the name of the probe being analysed must 
+     be provided in order to correctly extract cis interactions.
+ 
+     If a N_SAMPLE * METADATA design matrix has not been supplied, the script 
+     assumes that the standard replicate naming structure has been followed 
+     i.e. SAMPLE_CONDITION_REPLICATE_(1|2).fastq.gz.    
 
-    \b
+    \f
     Args:
         union_bedgraph (os.PathLike): Union bedgraph containg all samples to be compared.
         capture_name (str): Name of capture probe. MUST match one probe within the supplied oligos.

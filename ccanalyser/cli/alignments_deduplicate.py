@@ -10,7 +10,17 @@ import os
 
 @cli.group()
 def deduplicate():
-    """Identifies duplicate aligned fragments and removes them."""
+    """
+    Identifies and removes duplicated aligned fragments.
+
+    PCR duplicates are very commonly present in Capture-C/Tri-C/Tiled-C data and must be removed
+    for accurate analysis. Unlike fastq deduplicate, this command removes fragments with identical
+    genomic coordinates. 
+
+    Non-combined (pe) and combined (flashed) reads are treated slightly differently due to the increased
+    confidence that the ligation junction has been captured for the flashed reads.
+
+"""
 
 
 @deduplicate.command()
@@ -39,8 +49,21 @@ def identify(
     buffer: int = 1e6,
     read_type: str = "flashed",
 ):
-    """Identifies read fragments with duplicate coordinates and outputs these to a .json file.
+    """
+    Identifies aligned fragments with duplicate coordinates.
 
+    Parses a tsv file containing filtered aligned fragments and generates a dictionary containing
+    the hashed parental read id and hashed genomic coordinates of all slices. Duplicated fragments
+    are implicitly removed if they share the same genomic coordinate hash.
+
+    For non-combined reads (pe) a genomic coordinate hash is generated from the start of the first slice and
+    the end of the last slice. This is due to the decreased confidence in the quality of the centre of the fragment. 
+    The coordinate hash for combined reads (flashed) is generated directly from the fragment coordinates. Only
+    fragments with the exact coordinates and slice order will be considered to be duplicates.
+
+    Identified duplicate fragments are output in json format to be used by the "remove" subcommand.  
+    
+    \f
     Args:
      fragments_fn (os.PathLike): Input fragments.tsv file to process.
      output (os.PathLike, optional): Output path to output duplicated parental read ids. Defaults to "duplicated_ids.json".
@@ -125,9 +148,16 @@ def remove(
     read_type: str = "",
     stats_prefix: os.PathLike = "",
 ):
-    """Removes duplicated fragments from slices file according to duplicated reads found by identify.
+    """
+    Removes duplicated aligned fragments.
 
+    Parses a tsv file containing aligned read slices and outputs only slices from unique fragments.
+    Duplicated parental read id determined by the "identify" subcommand are located within the 
+    slices tsv file and removed.
 
+    Outputs statistics for the number of unique slices and the number of duplicate slices identified.
+    
+    \f
     Args:
      slices_fn (os.PathLike): Input slices.tsv file.
      duplicated_ids (os.PathLike): Duplicated parental read ids in json format.
@@ -138,18 +168,24 @@ def remove(
      stats_prefix (os.PathLike, optional): Output path for deduplication statistics. Defaults to "".
     """
 
+    # Remove output if it exist as will need to append to file.
     if os.path.exists(output):
         os.unlink(output)
 
     df_slices = pd.read_csv(slices_fn, sep="\t", chunksize=buffer)
     ids_duplicated = {int(x) for x in load_json(duplicated_ids)}
+
     n_reads_total = 0
     n_reads_unique = 0
 
+    # Iterate slices in chunks
     for ii, df in enumerate(df_slices):
+
+        print(f'Processed {(ii + 1) * buffer} slices')
 
         n_reads_total += df["parent_read"].nunique()
 
+        # Hash the parent_read column and remove any duplicated ids.
         df = (
             df.assign(parent_read_hashed=lambda df: hash_column(df["parent_read"]))
             .set_index("parent_read_hashed")
@@ -158,11 +194,12 @@ def remove(
 
         n_reads_unique += df["parent_read"].nunique()
 
+        # Append to file.
         df.reset_index(drop=True).to_csv(
             output, sep="\t", index=None, header=True if ii < 1 else False, mode="a"
         )
 
-    # Sort stats
+    # Prepare stats
     df_stats = pd.DataFrame()
     df_stats["stat_type"] = ["not-deduplicated", "deduplicated"]
     df_stats["stat"] = [n_reads_total, n_reads_unique]
@@ -171,3 +208,5 @@ def remove(
     df_stats["read_number"] = 0
     df_stats["stage"] = "deduplicate_slices"
     df_stats.to_csv(f"{stats_prefix}.read.stats.csv", index=False)
+
+    print(df_stats)

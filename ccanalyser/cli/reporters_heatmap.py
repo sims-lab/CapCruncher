@@ -74,8 +74,22 @@ def plot(
     output_prefix: os.PathLike = "",
     remove_capture: bool = False,
 ):
-    """Plots a heatmap of interactions.
+    """
+    Plots a heatmap of reporter interactions.
 
+    Parses a HDF5 file containg the result of a capture experiment (binned into even genomic windows)
+    and plots a heatmap of interactions over a specified genomic range. If a capture probe name 
+    is not supplied the script will plot all probes present in the file.
+
+    Heatmaps can also be normalised (--normalise) using either:
+
+    - n_interactions: The number of cis interactions.
+    - n_rf_n_interactions: Normalised to the number of restriction fragments making up both genomic bins
+                           and by the number of cis interactions.
+    - ice: `ICE normalisation <https://www.nature.com/articles/nmeth.2148>` followed by number of cis interactions
+            correction.  
+
+    \f
     Args:
         cooler_fn (os.PathLike): Path to capture cooler file containing interactions
         coordinates (Union[str, os.PathLike]): Coordinates for plotting. Either chrX:1000-2000 or bed file. 

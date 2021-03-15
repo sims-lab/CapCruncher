@@ -84,11 +84,11 @@
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="installing.html">Installing ccanalyser</a></li>
-<li class="toctree-l1"><a class="reference internal" href="running_the_pipeline.html">Running the pipeline</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ccanalyser.html">ccanalyser cli documentation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="module_tools/tools.html">ccanalyser tools</a></li>
-<li class="toctree-l1"><a class="reference internal" href="module_cli/modules.html">cli</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installing.html">Installing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="running_the_pipeline.html">Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq_pipeline.html">Pipeline FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ccanalyser_module_documentation/modules.html">Module Documentation</a></li>
 </ul>
 
             
@@ -159,6 +159,7 @@
 
 <div class="genindex-jumpbox">
  <a href="#Symbols"><strong>Symbols</strong></a>
+ | <a href="#A"><strong>A</strong></a>
  | <a href="#B"><strong>B</strong></a>
  | <a href="#C"><strong>C</strong></a>
  | <a href="#D"><strong>D</strong></a>
@@ -173,10 +174,13 @@
  | <a href="#N"><strong>N</strong></a>
  | <a href="#O"><strong>O</strong></a>
  | <a href="#P"><strong>P</strong></a>
+ | <a href="#Q"><strong>Q</strong></a>
  | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
  | <a href="#U"><strong>U</strong></a>
+ | <a href="#W"><strong>W</strong></a>
+ | <a href="#Z"><strong>Z</strong></a>
  
 </div>
 <h2 id="Symbols">Symbols</h2>
@@ -186,1079 +190,1436 @@
     --actions &lt;actions&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-a">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-a">ccanalyser-alignments-annotate command line option</a>
 </li>
       </ul></li>
       <li>
     --annotations &lt;annotations&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-a">ccanalyser-reporters-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-a">ccanalyser-alignments-filter command line option</a>
 </li>
       </ul></li>
       <li>
     --bam &lt;bam&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-b">ccanalyser-reporters-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-b">ccanalyser-alignments-filter command line option</a>
 </li>
       </ul></li>
       <li>
     --bed_files &lt;bed_files&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-b">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-b">ccanalyser-alignments-annotate command line option</a>
 </li>
       </ul></li>
       <li>
     --binsize &lt;binsize&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-binsize">ccanalyser-interactions-bedgraph command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-binsize">ccanalyser-reporters-bedgraph command line option</a>
 </li>
       </ul></li>
       <li>
     --binsizes &lt;binsizes&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-b">ccanalyser-interactions-store-bins command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-b">ccanalyser-reporters-store-bins command line option</a>
 </li>
       </ul></li>
       <li>
     --buffer &lt;buffer&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-identify-buffer">ccanalyser-reporters-deduplicate-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-identify-buffer">ccanalyser-alignments-deduplicate-identify command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-buffer">ccanalyser-reporters-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-buffer">ccanalyser-alignments-deduplicate-remove command line option</a>
 </li>
       </ul></li>
       <li>
     --capture_name &lt;capture_name&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-n">ccanalyser-interactions-store-fragments command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-n">ccanalyser-reporters-differential command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-n">ccanalyser-reporters-store-fragments command line option</a>
 </li>
       </ul></li>
       <li>
     --capture_names &lt;capture_names&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-n">ccanalyser-interactions-bedgraph command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-n">ccanalyser-reporters-bedgraph command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-n">ccanalyser-reporters-plot command line option</a>
 </li>
       </ul></li>
       <li>
     --capture_oligos &lt;capture_oligos&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-c">ccanalyser-interactions-store-fragments command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-c">ccanalyser-reporters-differential command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-c">ccanalyser-reporters-store-fragments command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --cmap &lt;cmap&gt;
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-cmap">ccanalyser-reporters-plot command line option</a>
 </li>
       </ul></li>
       <li>
     --compression_level &lt;compression_level&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-compression_level">ccanalyser-fastq-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-compression_level">ccanalyser-fastq-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-compression_level">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-compression_level">ccanalyser-fastq-digest command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-compression_level">ccanalyser-fastq-split command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-compression_level">ccanalyser-fastq-split command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --conversion_tables &lt;conversion_tables&gt;
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-conversion_tables">ccanalyser-reporters-store-bins command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --coordinates &lt;coordinates&gt;
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-c">ccanalyser-reporters-plot command line option</a>
 </li>
       </ul></li>
       <li>
     --dense
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-sparse">ccanalyser-interactions-bedgraph command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-sparse">ccanalyser-reporters-bedgraph command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --design_matrix &lt;design_matrix&gt;
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-design_matrix">ccanalyser-reporters-differential command line option</a>
 </li>
       </ul></li>
       <li>
     --duplicated_ids &lt;duplicated_ids&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-d">ccanalyser-fastq-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-d">ccanalyser-alignments-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-d">ccanalyser-reporters-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-d">ccanalyser-fastq-deduplicate-remove command line option</a>
 </li>
       </ul></li>
       <li>
     --duplicates &lt;duplicates&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-duplicates">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-duplicates">ccanalyser-alignments-annotate command line option</a>
 </li>
       </ul></li>
       <li>
     --fragment_map &lt;fragment_map&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-f">ccanalyser-interactions-store-fragments command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-f">ccanalyser-reporters-store-fragments command line option</a>
 </li>
       </ul></li>
       <li>
     --genome &lt;genome&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-g">ccanalyser-interactions-store-fragments command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-g">ccanalyser-reporters-store-fragments command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --grouping_col &lt;grouping_col&gt;
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-grouping_col">ccanalyser-reporters-differential command line option</a>
 </li>
       </ul></li>
       <li>
     --gzip
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-gzip">ccanalyser-fastq-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-gzip">ccanalyser-alignments-filter command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-gzip">ccanalyser-fastq-split command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-gzip">ccanalyser-fastq-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-gzip">ccanalyser-interactions-bedgraph command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-gzip">ccanalyser-fastq-split command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-gzip">ccanalyser-reporters-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-gzip">ccanalyser-reporters-bedgraph command line option</a>
 </li>
       </ul></li>
       <li>
     --invalid_bed_action &lt;invalid_bed_action&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-invalid_bed_action">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-invalid_bed_action">ccanalyser-alignments-annotate command line option</a>
 </li>
       </ul></li>
       <li>
     --keep_cutsite &lt;keep_cutsite&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-keep_cutsite">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-keep_cutsite">ccanalyser-fastq-digest command line option</a>
 </li>
       </ul></li>
       <li>
     --logfile &lt;logfile&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-l">ccanalyser-genome-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-l">ccanalyser-genome-digest command line option</a>
 </li>
       </ul></li>
       <li>
     --method &lt;method&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-m">ccanalyser-fastq-split command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-m">ccanalyser-fastq-split command line option</a>
 </li>
       </ul></li>
       <li>
     --minimum_slice_length &lt;minimum_slice_length&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-minimum_slice_length">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-minimum_slice_length">ccanalyser-fastq-digest command line option</a>
 </li>
       </ul></li>
       <li>
     --mode &lt;mode&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-m">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-m">ccanalyser-fastq-digest command line option</a>
 </li>
       </ul></li>
       <li>
     --n_cores &lt;n_cores&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-p">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-p">ccanalyser-alignments-annotate command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-p">ccanalyser-interactions-store-bins command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-p">ccanalyser-fastq-digest command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-p">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-p">ccanalyser-reporters-store-bins command line option</a>
 </li>
       </ul></li>
       <li>
     --n_reads &lt;n_reads&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-n">ccanalyser-fastq-split command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-n">ccanalyser-fastq-split command line option</a>
 </li>
       </ul></li>
       <li>
     --names &lt;names&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-n">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-n">ccanalyser-alignments-annotate command line option</a>
 </li>
       </ul></li>
       <li>
     --no-gzip
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-gzip">ccanalyser-fastq-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-gzip">ccanalyser-alignments-filter command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-gzip">ccanalyser-fastq-split command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-gzip">ccanalyser-fastq-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-gzip">ccanalyser-reporters-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-gzip">ccanalyser-fastq-split command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --normalisation &lt;normalisation&gt;
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-normalisation">ccanalyser-reporters-plot command line option</a>
 </li>
       </ul></li>
       <li>
     --normalise
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-normalise">ccanalyser-interactions-bedgraph command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-normalise">ccanalyser-reporters-bedgraph command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-normalise">ccanalyser-interactions-store-bins command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-normalise">ccanalyser-reporters-store-bins command line option</a>
 </li>
       </ul></li>
       <li>
     --output &lt;output&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-identify-o">ccanalyser-fastq-deduplicate-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-o">ccanalyser-alignments-annotate command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-parse-o">ccanalyser-fastq-deduplicate-parse command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-identify-o">ccanalyser-alignments-deduplicate-identify command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-count-o">ccanalyser-interactions-count command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-o">ccanalyser-alignments-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-o">ccanalyser-interactions-store-bins command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-identify-o">ccanalyser-fastq-deduplicate-identify command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-o">ccanalyser-interactions-store-fragments command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-parse-o">ccanalyser-fastq-deduplicate-parse command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-merge-o">ccanalyser-interactions-store-merge command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-count-o">ccanalyser-reporters-count command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-identify-o">ccanalyser-reporters-deduplicate-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-o">ccanalyser-reporters-store-bins command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-o">ccanalyser-reporters-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-o">ccanalyser-reporters-store-fragments command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-o">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-merge-o">ccanalyser-reporters-store-merge command line option</a>
 </li>
       </ul></li>
       <li>
     --output_file &lt;output_file&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-o">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-o">ccanalyser-fastq-digest command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-o">ccanalyser-genome-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-o">ccanalyser-genome-digest command line option</a>
 </li>
       </ul></li>
       <li>
     --output_prefix &lt;output_prefix&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-o">ccanalyser-fastq-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-o">ccanalyser-alignments-filter command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-o">ccanalyser-fastq-split command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-o">ccanalyser-fastq-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-o">ccanalyser-interactions-bedgraph command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-o">ccanalyser-fastq-split command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-o">ccanalyser-reporters-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-o">ccanalyser-reporters-bedgraph command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-o">ccanalyser-reporters-differential command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-o">ccanalyser-reporters-plot command line option</a>
 </li>
       </ul></li>
       <li>
     --overlap_fraction &lt;overlap_fraction&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-overlap_fraction">ccanalyser-interactions-store-bins command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-overlap_fraction">ccanalyser-reporters-store-bins command line option</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     --overlap_fractions &lt;overlap_fractions&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-f">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-f">ccanalyser-alignments-annotate command line option</a>
 </li>
       </ul></li>
       <li>
     --read_buffer &lt;read_buffer&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-parse-read_buffer">ccanalyser-fastq-deduplicate-parse command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-parse-read_buffer">ccanalyser-fastq-deduplicate-parse command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-read_buffer">ccanalyser-fastq-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-read_buffer">ccanalyser-fastq-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-read_buffer">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-read_buffer">ccanalyser-fastq-digest command line option</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     --read_type &lt;read_type&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-identify-read_type">ccanalyser-reporters-deduplicate-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-identify-read_type">ccanalyser-alignments-deduplicate-identify command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-read_type">ccanalyser-reporters-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-read_type">ccanalyser-alignments-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-read_type">ccanalyser-reporters-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-read_type">ccanalyser-alignments-filter command line option</a>
 </li>
       </ul></li>
       <li>
     --recognition_site &lt;recognition_site&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-r">ccanalyser-genome-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-r">ccanalyser-genome-digest command line option</a>
 </li>
       </ul></li>
       <li>
     --remove_capture
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-count-remove_capture">ccanalyser-interactions-count command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-count-remove_capture">ccanalyser-reporters-count command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-remove_capture">ccanalyser-reporters-plot command line option</a>
 </li>
       </ul></li>
       <li>
     --remove_cutsite &lt;remove_cutsite&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-remove_cutsite">ccanalyser-genome-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-remove_cutsite">ccanalyser-genome-digest command line option</a>
 </li>
       </ul></li>
       <li>
     --remove_exclusions
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-count-remove_exclusions">ccanalyser-interactions-count command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-count-remove_exclusions">ccanalyser-reporters-count command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --resolution &lt;resolution&gt;
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-r">ccanalyser-reporters-plot command line option</a>
 </li>
       </ul></li>
       <li>
     --restriction_enzyme &lt;restriction_enzyme&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-r">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-r">ccanalyser-fastq-digest command line option</a>
 </li>
       </ul></li>
       <li>
     --sample_name &lt;sample_name&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-sample_name">ccanalyser-fastq-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-sample_name">ccanalyser-alignments-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-sample_name">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-sample_name">ccanalyser-alignments-filter command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-sample_name">ccanalyser-reporters-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-sample_name">ccanalyser-fastq-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-sample_name">ccanalyser-reporters-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-sample_name">ccanalyser-fastq-digest command line option</a>
 </li>
       </ul></li>
       <li>
     --scale_factor &lt;scale_factor&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-scale_factor">ccanalyser-interactions-bedgraph command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-scale_factor">ccanalyser-reporters-bedgraph command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-scale_factor">ccanalyser-interactions-store-bins command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-scale_factor">ccanalyser-reporters-store-bins command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --sort
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-sort">ccanalyser-genome-digest command line option</a>
 </li>
       </ul></li>
       <li>
     --sparse
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-sparse">ccanalyser-interactions-bedgraph command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-sparse">ccanalyser-reporters-bedgraph command line option</a>
 </li>
       </ul></li>
       <li>
     --stats_prefix &lt;stats_prefix&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-stats_prefix">ccanalyser-fastq-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-stats_prefix">ccanalyser-alignments-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-stats_prefix">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-stats_prefix">ccanalyser-alignments-filter command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-stats_prefix">ccanalyser-reporters-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-stats_prefix">ccanalyser-fastq-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-stats_prefix">ccanalyser-reporters-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-stats_prefix">ccanalyser-fastq-digest command line option</a>
 </li>
       </ul></li>
       <li>
     --subsample &lt;subsample&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-count-subsample">ccanalyser-interactions-count command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-count-subsample">ccanalyser-reporters-count command line option</a>
 </li>
       </ul></li>
       <li>
     --suffix &lt;suffix&gt;
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-suffix">ccanalyser-interactions-store-fragments command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-suffix">ccanalyser-reporters-store-fragments command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --threshold_count &lt;threshold_count&gt;
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-threshold_count">ccanalyser-reporters-differential command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --threshold_mean &lt;threshold_mean&gt;
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-threshold_mean">ccanalyser-reporters-differential command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --threshold_q &lt;threshold_q&gt;
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-threshold_q">ccanalyser-reporters-differential command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --vmax &lt;vmax&gt;
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-vmax">ccanalyser-reporters-plot command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --vmin &lt;vmin&gt;
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-vmin">ccanalyser-reporters-plot command line option</a>
 </li>
       </ul></li>
       <li>
     -a
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-a">ccanalyser-reporters-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-a">ccanalyser-alignments-annotate command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-a">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-a">ccanalyser-alignments-filter command line option</a>
 </li>
       </ul></li>
       <li>
     -b
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-b">ccanalyser-interactions-store-bins command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-b">ccanalyser-alignments-annotate command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-b">ccanalyser-reporters-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-b">ccanalyser-alignments-filter command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-b">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-b">ccanalyser-reporters-store-bins command line option</a>
 </li>
       </ul></li>
       <li>
     -c
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-c">ccanalyser-interactions-store-fragments command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-c">ccanalyser-reporters-differential command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-c">ccanalyser-reporters-plot command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-c">ccanalyser-reporters-store-fragments command line option</a>
 </li>
       </ul></li>
       <li>
     -d
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-d">ccanalyser-fastq-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-d">ccanalyser-alignments-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-d">ccanalyser-reporters-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-d">ccanalyser-fastq-deduplicate-remove command line option</a>
 </li>
       </ul></li>
       <li>
     -f
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-f">ccanalyser-interactions-store-fragments command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-f">ccanalyser-alignments-annotate command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-f">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-f">ccanalyser-reporters-store-fragments command line option</a>
 </li>
       </ul></li>
       <li>
     -g
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-g">ccanalyser-interactions-store-fragments command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-g">ccanalyser-reporters-store-fragments command line option</a>
 </li>
       </ul></li>
       <li>
     -l
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-l">ccanalyser-genome-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-l">ccanalyser-genome-digest command line option</a>
 </li>
       </ul></li>
       <li>
     -m
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-m">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-m">ccanalyser-fastq-digest command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-m">ccanalyser-fastq-split command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-m">ccanalyser-fastq-split command line option</a>
 </li>
       </ul></li>
       <li>
     -n
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-n">ccanalyser-fastq-split command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-n">ccanalyser-alignments-annotate command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-n">ccanalyser-interactions-bedgraph command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-n">ccanalyser-fastq-split command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-n">ccanalyser-interactions-store-fragments command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-n">ccanalyser-reporters-bedgraph command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-n">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-n">ccanalyser-reporters-differential command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-n">ccanalyser-reporters-plot command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-n">ccanalyser-reporters-store-fragments command line option</a>
 </li>
       </ul></li>
       <li>
     -o
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-identify-o">ccanalyser-fastq-deduplicate-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-o">ccanalyser-alignments-annotate command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-parse-o">ccanalyser-fastq-deduplicate-parse command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-identify-o">ccanalyser-alignments-deduplicate-identify command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-o">ccanalyser-fastq-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-o">ccanalyser-alignments-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-o">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-o">ccanalyser-alignments-filter command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-o">ccanalyser-fastq-split command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-identify-o">ccanalyser-fastq-deduplicate-identify command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-o">ccanalyser-genome-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-parse-o">ccanalyser-fastq-deduplicate-parse command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-o">ccanalyser-interactions-bedgraph command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-o">ccanalyser-fastq-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-count-o">ccanalyser-interactions-count command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-o">ccanalyser-fastq-digest command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-o">ccanalyser-interactions-store-bins command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-o">ccanalyser-fastq-split command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-o">ccanalyser-interactions-store-fragments command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-o">ccanalyser-genome-digest command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-merge-o">ccanalyser-interactions-store-merge command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-o">ccanalyser-reporters-bedgraph command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-identify-o">ccanalyser-reporters-deduplicate-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-count-o">ccanalyser-reporters-count command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-o">ccanalyser-reporters-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-o">ccanalyser-reporters-differential command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-o">ccanalyser-reporters-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-o">ccanalyser-reporters-plot command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-o">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-o">ccanalyser-reporters-store-bins command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-o">ccanalyser-reporters-store-fragments command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-merge-o">ccanalyser-reporters-store-merge command line option</a>
 </li>
       </ul></li>
       <li>
     -p
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-p">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-p">ccanalyser-alignments-annotate command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-p">ccanalyser-interactions-store-bins command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-p">ccanalyser-fastq-digest command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-p">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-p">ccanalyser-reporters-store-bins command line option</a>
 </li>
       </ul></li>
       <li>
     -r
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-r">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-r">ccanalyser-fastq-digest command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-r">ccanalyser-genome-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-r">ccanalyser-genome-digest command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-r">ccanalyser-reporters-plot command line option</a>
 </li>
       </ul></li>
+  </ul></td>
+</tr></table>
+
+<h2 id="A">A</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.align_slices">align_slices() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.annotate_slices">annotate_slices() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
   </ul></td>
 </tr></table>
 
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.annotate.BedIntersection.bed1">bed1 (tools.annotate.BedIntersection attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.bam_to_bed">bam_to_bed() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.annotate.BedIntersection.bed2">bed2 (tools.annotate.BedIntersection attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.annotate.BedIntersection.bed1">bed1 (ccanalyser.tools.annotate.BedIntersection attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.pileup.CoolerBedGraph.bedgraph">bedgraph() (tools.pileup.CoolerBedGraph property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.annotate.BedIntersection.bed2">bed2 (ccanalyser.tools.annotate.BedIntersection attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.annotate.BedIntersection">BedIntersection (class in tools.annotate)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.bed_has_duplicate_names">bed_has_duplicate_names() (in module ccanalyser.utils)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.bin_conversion_table">bin_conversion_table() (tools.storage.CoolerBinner property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.bed_has_name">bed_has_name() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraph.bedgraph">bedgraph() (ccanalyser.tools.pileup.CoolerBedGraph property)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.annotate.BedIntersection">BedIntersection (class in ccanalyser.tools.annotate)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.bin_conversion_table">bin_conversion_table() (ccanalyser.tools.storage.CoolerBinner property)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.storage.GenomicBinner.bin_conversion_table">(tools.storage.GenomicBinner property)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.GenomicBinner.bin_conversion_table">(ccanalyser.tools.storage.GenomicBinner property)</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.binner">binner (tools.storage.CoolerBinner attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.binner">binner (ccanalyser.tools.storage.CoolerBinner attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.bins">bins() (tools.storage.CoolerBinner property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.bins">bins() (ccanalyser.tools.storage.CoolerBinner property)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.storage.GenomicBinner.bins">(tools.storage.GenomicBinner property)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.GenomicBinner.bins">(ccanalyser.tools.storage.GenomicBinner property)</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.binsize">binsize (tools.storage.CoolerBinner attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.binsize">binsize (ccanalyser.tools.storage.CoolerBinner attribute)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.storage.GenomicBinner.binsize">(tools.storage.GenomicBinner attribute)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.GenomicBinner.binsize">(ccanalyser.tools.storage.GenomicBinner attribute)</a>
 </li>
       </ul></li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.build_exclusion_bed">build_exclusion_bed() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.build_report">build_report() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
   </ul></td>
 </tr></table>
 
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.capture_bins">capture_bins() (tools.storage.CoolerBinner property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.capture_bins">capture_bins() (ccanalyser.tools.storage.CoolerBinner property)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.pileup.CoolerBedGraph.capture_chrom">capture_chrom() (tools.pileup.CoolerBedGraph property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraph.capture_name">capture_name (ccanalyser.tools.pileup.CoolerBedGraph attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.pileup.CoolerBedGraph.capture_name">capture_name (tools.pileup.CoolerBedGraph attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.capture_site_stats">capture_site_stats() (ccanalyser.tools.filter.CCSliceFilter property)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.CCSliceFilter.capture_site_stats">capture_site_stats() (tools.filter.CCSliceFilter property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.captures">captures() (ccanalyser.tools.filter.CCSliceFilter property)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.CCSliceFilter.captures">captures() (tools.filter.CCSliceFilter property)</a>
+      <li>
+    ccanalyser-alignments-annotate command line option
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-a">--actions &lt;actions&gt;</a>
 </li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-b">--bed_files &lt;bed_files&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-duplicates">--duplicates &lt;duplicates&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-invalid_bed_action">--invalid_bed_action &lt;invalid_bed_action&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-p">--n_cores &lt;n_cores&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-n">--names &lt;names&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-o">--output &lt;output&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-f">--overlap_fractions &lt;overlap_fractions&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-a">-a</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-b">-b</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-f">-f</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-n">-n</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-o">-o</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-p">-p</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-arg-SLICES">SLICES</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser-alignments-deduplicate-identify command line option
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-identify-buffer">--buffer &lt;buffer&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-identify-o">--output &lt;output&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-identify-read_type">--read_type &lt;read_type&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-identify-o">-o</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-identify-arg-FRAGMENTS_FN">FRAGMENTS_FN</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser-alignments-deduplicate-remove command line option
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-buffer">--buffer &lt;buffer&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-d">--duplicated_ids &lt;duplicated_ids&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-o">--output &lt;output&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-read_type">--read_type &lt;read_type&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-sample_name">--sample_name &lt;sample_name&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-stats_prefix">--stats_prefix &lt;stats_prefix&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-d">-d</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-o">-o</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-arg-SLICES_FN">SLICES_FN</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser-alignments-filter command line option
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-a">--annotations &lt;annotations&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-b">--bam &lt;bam&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-gzip">--gzip</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-gzip">--no-gzip</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-o">--output_prefix &lt;output_prefix&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-read_type">--read_type &lt;read_type&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-sample_name">--sample_name &lt;sample_name&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-stats_prefix">--stats_prefix &lt;stats_prefix&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-a">-a</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-b">-b</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-o">-o</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-arg-METHOD">METHOD</a>
+</li>
+      </ul></li>
       <li>
     ccanalyser-fastq-deduplicate-identify command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-identify-o">--output &lt;output&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-identify-o">--output &lt;output&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-identify-o">-o</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-identify-o">-o</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-identify-arg-INPUT_FILES">INPUT_FILES</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-identify-arg-INPUT_FILES">INPUT_FILES</a>
 </li>
       </ul></li>
       <li>
     ccanalyser-fastq-deduplicate-parse command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-parse-o">--output &lt;output&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-parse-o">--output &lt;output&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-parse-read_buffer">--read_buffer &lt;read_buffer&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-parse-read_buffer">--read_buffer &lt;read_buffer&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-parse-o">-o</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-parse-o">-o</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-parse-arg-INPUT_FILES">INPUT_FILES</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-parse-arg-INPUT_FILES">INPUT_FILES</a>
 </li>
       </ul></li>
       <li>
     ccanalyser-fastq-deduplicate-remove command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-compression_level">--compression_level &lt;compression_level&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-compression_level">--compression_level &lt;compression_level&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-d">--duplicated_ids &lt;duplicated_ids&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-d">--duplicated_ids &lt;duplicated_ids&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-gzip">--gzip</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-gzip">--gzip</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-gzip">--no-gzip</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-gzip">--no-gzip</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-o">--output_prefix &lt;output_prefix&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-o">--output_prefix &lt;output_prefix&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-read_buffer">--read_buffer &lt;read_buffer&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-read_buffer">--read_buffer &lt;read_buffer&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-sample_name">--sample_name &lt;sample_name&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-sample_name">--sample_name &lt;sample_name&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-stats_prefix">--stats_prefix &lt;stats_prefix&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-stats_prefix">--stats_prefix &lt;stats_prefix&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-d">-d</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-d">-d</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-o">-o</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-o">-o</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-arg-INPUT_FILES">INPUT_FILES</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-arg-INPUT_FILES">INPUT_FILES</a>
 </li>
       </ul></li>
       <li>
     ccanalyser-fastq-digest command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-compression_level">--compression_level &lt;compression_level&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-compression_level">--compression_level &lt;compression_level&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-keep_cutsite">--keep_cutsite &lt;keep_cutsite&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-keep_cutsite">--keep_cutsite &lt;keep_cutsite&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-minimum_slice_length">--minimum_slice_length &lt;minimum_slice_length&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-minimum_slice_length">--minimum_slice_length &lt;minimum_slice_length&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-m">--mode &lt;mode&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-m">--mode &lt;mode&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-p">--n_cores &lt;n_cores&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-p">--n_cores &lt;n_cores&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-o">--output_file &lt;output_file&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-o">--output_file &lt;output_file&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-read_buffer">--read_buffer &lt;read_buffer&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-read_buffer">--read_buffer &lt;read_buffer&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-r">--restriction_enzyme &lt;restriction_enzyme&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-r">--restriction_enzyme &lt;restriction_enzyme&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-sample_name">--sample_name &lt;sample_name&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-sample_name">--sample_name &lt;sample_name&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-stats_prefix">--stats_prefix &lt;stats_prefix&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-stats_prefix">--stats_prefix &lt;stats_prefix&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-m">-m</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-m">-m</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-o">-o</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-o">-o</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-p">-p</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-p">-p</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-r">-r</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-r">-r</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-arg-INPUT_FASTQ">INPUT_FASTQ</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-arg-INPUT_FASTQ">INPUT_FASTQ</a>
 </li>
       </ul></li>
       <li>
     ccanalyser-fastq-split command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-compression_level">--compression_level &lt;compression_level&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-compression_level">--compression_level &lt;compression_level&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-gzip">--gzip</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-gzip">--gzip</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-m">--method &lt;method&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-m">--method &lt;method&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-n">--n_reads &lt;n_reads&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-n">--n_reads &lt;n_reads&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-gzip">--no-gzip</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-gzip">--no-gzip</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-o">--output_prefix &lt;output_prefix&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-o">--output_prefix &lt;output_prefix&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-m">-m</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-m">-m</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-n">-n</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-n">-n</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-o">-o</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-o">-o</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-arg-INPUT_FILES">INPUT_FILES</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-arg-INPUT_FILES">INPUT_FILES</a>
 </li>
       </ul></li>
       <li>
     ccanalyser-genome-digest command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-l">--logfile &lt;logfile&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-l">--logfile &lt;logfile&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-o">--output_file &lt;output_file&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-o">--output_file &lt;output_file&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-r">--recognition_site &lt;recognition_site&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-r">--recognition_site &lt;recognition_site&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-remove_cutsite">--remove_cutsite &lt;remove_cutsite&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-remove_cutsite">--remove_cutsite &lt;remove_cutsite&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-l">-l</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-sort">--sort</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-o">-o</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-l">-l</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-r">-r</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-o">-o</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-arg-INPUT_FASTA">INPUT_FASTA</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-r">-r</a>
 </li>
-      </ul></li>
-      <li>
-    ccanalyser-interactions-bedgraph command line option
-
-      <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-binsize">--binsize &lt;binsize&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-n">--capture_names &lt;capture_names&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-sparse">--dense</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-gzip">--gzip</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-normalise">--normalise</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-o">--output_prefix &lt;output_prefix&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-scale_factor">--scale_factor &lt;scale_factor&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-sparse">--sparse</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-n">-n</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-o">-o</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-arg-COOLER_FN">COOLER_FN</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-arg-INPUT_FASTA">INPUT_FASTA</a>
 </li>
       </ul></li>
       <li>
-    ccanalyser-interactions-count command line option
+    ccanalyser-pipeline command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-count-o">--output &lt;output&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-pipeline-arg-MODE">MODE</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-count-remove_capture">--remove_capture</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-count-remove_exclusions">--remove_exclusions</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-count-subsample">--subsample &lt;subsample&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-count-o">-o</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-count-arg-REPORTERS">REPORTERS</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-pipeline-arg-PIPELINE_OPTIONS">PIPELINE_OPTIONS</a>
 </li>
       </ul></li>
       <li>
-    ccanalyser-interactions-store-bins command line option
+    ccanalyser-reporters-bedgraph command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-b">--binsizes &lt;binsizes&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-binsize">--binsize &lt;binsize&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-p">--n_cores &lt;n_cores&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-n">--capture_names &lt;capture_names&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-normalise">--normalise</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-sparse">--dense</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-o">--output &lt;output&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-gzip">--gzip</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-overlap_fraction">--overlap_fraction &lt;overlap_fraction&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-normalise">--normalise</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-scale_factor">--scale_factor &lt;scale_factor&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-o">--output_prefix &lt;output_prefix&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-b">-b</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-scale_factor">--scale_factor &lt;scale_factor&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-o">-o</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-sparse">--sparse</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-p">-p</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-n">-n</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-arg-COOLER_FN">COOLER_FN</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-o">-o</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-arg-COOLER_FN">COOLER_FN</a>
 </li>
       </ul></li>
       <li>
-    ccanalyser-interactions-store-fragments command line option
+    ccanalyser-reporters-count command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-n">--capture_name &lt;capture_name&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-count-o">--output &lt;output&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-c">--capture_oligos &lt;capture_oligos&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-count-remove_capture">--remove_capture</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-f">--fragment_map &lt;fragment_map&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-count-remove_exclusions">--remove_exclusions</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-g">--genome &lt;genome&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-count-subsample">--subsample &lt;subsample&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-o">--output &lt;output&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-count-o">-o</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-suffix">--suffix &lt;suffix&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-count-arg-REPORTERS">REPORTERS</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-c">-c</a>
+      </ul></li>
+      <li>
+    ccanalyser-reporters-differential command line option
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-n">--capture_name &lt;capture_name&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-f">-f</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-c">--capture_oligos &lt;capture_oligos&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-g">-g</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-design_matrix">--design_matrix &lt;design_matrix&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-n">-n</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-grouping_col">--grouping_col &lt;grouping_col&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-o">-o</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-o">--output_prefix &lt;output_prefix&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-arg-COUNTS">COUNTS</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-threshold_count">--threshold_count &lt;threshold_count&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-threshold_mean">--threshold_mean &lt;threshold_mean&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-threshold_q">--threshold_q &lt;threshold_q&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-c">-c</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-n">-n</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-o">-o</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-arg-UNION_BEDGRAPH">UNION_BEDGRAPH</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li>
-    ccanalyser-interactions-store-merge command line option
+    ccanalyser-reporters-plot command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-merge-o">--output &lt;output&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-n">--capture_names &lt;capture_names&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-merge-o">-o</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-cmap">--cmap &lt;cmap&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-merge-arg-COOLERS">COOLERS</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-c">--coordinates &lt;coordinates&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-normalisation">--normalisation &lt;normalisation&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-o">--output_prefix &lt;output_prefix&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-remove_capture">--remove_capture</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-r">--resolution &lt;resolution&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-vmax">--vmax &lt;vmax&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-vmin">--vmin &lt;vmin&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-c">-c</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-n">-n</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-o">-o</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-r">-r</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-arg-COOLER_FN">COOLER_FN</a>
 </li>
       </ul></li>
       <li>
-    ccanalyser-reporters-deduplicate-identify command line option
+    ccanalyser-reporters-store-bins command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-identify-buffer">--buffer &lt;buffer&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-b">--binsizes &lt;binsizes&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-identify-o">--output &lt;output&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-conversion_tables">--conversion_tables &lt;conversion_tables&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-identify-read_type">--read_type &lt;read_type&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-p">--n_cores &lt;n_cores&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-identify-o">-o</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-normalise">--normalise</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-identify-arg-FRAGMENTS_FN">FRAGMENTS_FN</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-o">--output &lt;output&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-overlap_fraction">--overlap_fraction &lt;overlap_fraction&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-scale_factor">--scale_factor &lt;scale_factor&gt;</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-b">-b</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-o">-o</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-p">-p</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-arg-COOLER_FN">COOLER_FN</a>
 </li>
       </ul></li>
       <li>
-    ccanalyser-reporters-deduplicate-remove command line option
+    ccanalyser-reporters-store-fragments command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-buffer">--buffer &lt;buffer&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-n">--capture_name &lt;capture_name&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-d">--duplicated_ids &lt;duplicated_ids&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-c">--capture_oligos &lt;capture_oligos&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-o">--output &lt;output&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-f">--fragment_map &lt;fragment_map&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-read_type">--read_type &lt;read_type&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-g">--genome &lt;genome&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-sample_name">--sample_name &lt;sample_name&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-o">--output &lt;output&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-stats_prefix">--stats_prefix &lt;stats_prefix&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-suffix">--suffix &lt;suffix&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-d">-d</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-c">-c</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-o">-o</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-f">-f</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-arg-SLICES_FN">SLICES_FN</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-g">-g</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-n">-n</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-o">-o</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-arg-COUNTS">COUNTS</a>
 </li>
       </ul></li>
       <li>
-    ccanalyser-reporters-identify command line option
+    ccanalyser-reporters-store-merge command line option
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-a">--annotations &lt;annotations&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-merge-o">--output &lt;output&gt;</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-b">--bam &lt;bam&gt;</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-merge-o">-o</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-gzip">--gzip</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-gzip">--no-gzip</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-o">--output_prefix &lt;output_prefix&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-read_type">--read_type &lt;read_type&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-sample_name">--sample_name &lt;sample_name&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-stats_prefix">--stats_prefix &lt;stats_prefix&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-a">-a</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-b">-b</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-o">-o</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-arg-METHOD">METHOD</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-merge-arg-COOLERS">COOLERS</a>
 </li>
       </ul></li>
       <li>
-    ccanalyser-slices-annotate command line option
+    ccanalyser.cli
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-a">--actions &lt;actions&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-b">--bed_files &lt;bed_files&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-duplicates">--duplicates &lt;duplicates&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-invalid_bed_action">--invalid_bed_action &lt;invalid_bed_action&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-p">--n_cores &lt;n_cores&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-n">--names &lt;names&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-o">--output &lt;output&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-f">--overlap_fractions &lt;overlap_fractions&gt;</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-a">-a</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-b">-b</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-f">-f</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-n">-n</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-o">-o</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-p">-p</a>
-</li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-arg-SLICES">SLICES</a>
-</li>
-      </ul></li>
-      <li><a href="module_tools/tools.html#tools.pileup.CCBedgraph">CCBedgraph (class in tools.pileup)</a>
-</li>
-      <li><a href="module_tools/tools.html#tools.filter.CCSliceFilter">CCSliceFilter (class in tools.filter)</a>
-</li>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedChrom.chrom">chrom (tools.digest.DigestedChrom attribute)</a>
-</li>
-      <li><a href="module_tools/tools.html#tools.storage.GenomicBinner.chromsizes">chromsizes (tools.storage.GenomicBinner attribute)</a>
-</li>
-      <li><a href="module_tools/tools.html#tools.filter.CCSliceFilter.cis_or_trans_stats">cis_or_trans_stats() (tools.filter.CCSliceFilter property)</a>
-
-      <ul>
-        <li><a href="module_tools/tools.html#tools.filter.TiledCSliceFilter.cis_or_trans_stats">(tools.filter.TiledCSliceFilter property)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli">module</a>
 </li>
       </ul></li>
       <li>
-    cli
+    ccanalyser.cli.alignments_annotate
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.alignments_annotate">module</a>
 </li>
       </ul></li>
       <li>
-    cli.fastq_deduplicate
+    ccanalyser.cli.alignments_deduplicate
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli.fastq_deduplicate">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.alignments_deduplicate">module</a>
 </li>
       </ul></li>
       <li>
-    cli.fastq_digest
+    ccanalyser.cli.alignments_filter
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli.fastq_digest">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.alignments_filter">module</a>
 </li>
       </ul></li>
       <li>
-    cli.fastq_split
+    ccanalyser.cli.cli_alignments
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli.fastq_split">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.cli_alignments">module</a>
 </li>
       </ul></li>
       <li>
-    cli.genome_digest
+    ccanalyser.cli.cli_fastq
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli.genome_digest">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.cli_fastq">module</a>
 </li>
       </ul></li>
       <li>
-    cli.interactions_bedgraph
+    ccanalyser.cli.cli_genome
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli.interactions_bedgraph">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.cli_genome">module</a>
 </li>
       </ul></li>
       <li>
-    cli.interactions_count
+    ccanalyser.cli.cli_reporters
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli.interactions_count">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.cli_reporters">module</a>
 </li>
       </ul></li>
       <li>
-    cli.interactions_store
+    ccanalyser.cli.fastq_deduplicate
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli.interactions_store">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.fastq_deduplicate">module</a>
 </li>
       </ul></li>
       <li>
-    cli.reporters_deduplicate
+    ccanalyser.cli.fastq_digest
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli.reporters_deduplicate">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.fastq_digest">module</a>
 </li>
       </ul></li>
       <li>
-    cli.reporters_identify
+    ccanalyser.cli.fastq_split
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli.reporters_identify">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.fastq_split">module</a>
 </li>
       </ul></li>
       <li>
-    cli.slices_annotate
+    ccanalyser.cli.genome_digest
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli.slices_annotate">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.genome_digest">module</a>
 </li>
       </ul></li>
       <li>
-    cli.tsv_aggregate
+    ccanalyser.cli.reporters_count
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli.tsv_aggregate">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.reporters_count">module</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.statistics.collate_cis_trans_data">collate_cis_trans_data() (in module tools.statistics)</a>
-</li>
-      <li><a href="module_tools/tools.html#tools.statistics.collate_histogram_data">collate_histogram_data() (in module tools.statistics)</a>
-</li>
-      <li><a href="module_tools/tools.html#tools.statistics.collate_read_data">collate_read_data() (in module tools.statistics)</a>
-</li>
-      <li><a href="module_tools/tools.html#tools.statistics.collate_slice_data">collate_slice_data() (in module tools.statistics)</a>
-</li>
-      <li><a href="module_cli/cli.html#cli.tsv_aggregate.concat_tsvs">concat_tsvs() (in module cli.tsv_aggregate)</a>
-</li>
-      <li><a href="module_tools/tools.html#tools.pileup.CoolerBedGraph.cooler">cooler (tools.pileup.CoolerBedGraph attribute)</a>
+      <li>
+    ccanalyser.cli.reporters_differential
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.cooler">(tools.storage.CoolerBinner attribute)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.reporters_differential">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.cli.reporters_heatmap
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.reporters_heatmap">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.cli.reporters_pileup
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.reporters_pileup">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.cli.reporters_store
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.reporters_store">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.cli.tsv_aggregate
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.tsv_aggregate">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.pipeline.pipeline
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#module-ccanalyser.pipeline.pipeline">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.tools.annotate
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.annotate">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.tools.deduplicate
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.deduplicate">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.tools.digest
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.digest">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.tools.filter
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.filter">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.tools.io
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.io">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.tools.pileup
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.pileup">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.tools.plotting
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.plotting">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.tools.statistics
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.statistics">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.tools.storage
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.storage">module</a>
+</li>
+      </ul></li>
+      <li>
+    ccanalyser.utils
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#module-ccanalyser.utils">module</a>
+</li>
+      </ul></li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CCBedgraph">CCBedgraph (class in ccanalyser.tools.pileup)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.plotting.CCMatrix">CCMatrix (class in ccanalyser.tools.plotting)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter">CCSliceFilter (class in ccanalyser.tools.filter)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedChrom.chrom">chrom (ccanalyser.tools.digest.DigestedChrom attribute)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.GenomicBinner.chromsizes">chromsizes (ccanalyser.tools.storage.GenomicBinner attribute)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.cis_or_trans_stats">cis_or_trans_stats() (ccanalyser.tools.filter.CCSliceFilter property)</a>
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TiledCSliceFilter.cis_or_trans_stats">(ccanalyser.tools.filter.TiledCSliceFilter property)</a>
+</li>
+      </ul></li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.collate_ccanalyser_stats">collate_ccanalyser_stats() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.collate_cis_trans_data">collate_cis_trans_data() (in module ccanalyser.tools.statistics)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.collate_deduplication_stats">collate_deduplication_stats() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.collate_digestion_stats">collate_digestion_stats() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.collate_histogram_data">collate_histogram_data() (in module ccanalyser.tools.statistics)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.collate_read_data">collate_read_data() (in module ccanalyser.tools.statistics)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.collate_reporters">collate_reporters() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.collate_reporters_final">collate_reporters_final() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.collate_slice_data">collate_slice_data() (in module ccanalyser.tools.statistics)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.collate_trimming_statistics">collate_trimming_statistics() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.combine_reads">combine_reads() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.tsv_aggregate.concat_tsvs">concat_tsvs() (in module ccanalyser.cli.tsv_aggregate)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.convert_bed_to_dataframe">convert_bed_to_dataframe() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.convert_interval_to_coords">convert_interval_to_coords() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.convert_to_bedtool">convert_to_bedtool() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraph.cooler">cooler (ccanalyser.tools.pileup.CoolerBedGraph attribute)</a>
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.cooler">(ccanalyser.tools.storage.CoolerBinner attribute)</a>
 </li>
       </ul></li>
       <li>
     COOLER_FN
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-bedgraph-arg-COOLER_FN">ccanalyser-interactions-bedgraph command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-arg-COOLER_FN">ccanalyser-reporters-bedgraph command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-bins-arg-COOLER_FN">ccanalyser-interactions-store-bins command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-plot-arg-COOLER_FN">ccanalyser-reporters-plot command line option</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-bins-arg-COOLER_FN">ccanalyser-reporters-store-bins command line option</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.pileup.CoolerBedGraph">CoolerBedGraph (class in tools.pileup)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraph">CoolerBedGraph (class in ccanalyser.tools.pileup)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.pileup.CoolerBedGraphWindowed">CoolerBedGraphWindowed (class in tools.pileup)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraphWindowed">CoolerBedGraphWindowed (class in ccanalyser.tools.pileup)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.storage.CoolerBinner">CoolerBinner (class in tools.storage)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner">CoolerBinner (class in ccanalyser.tools.storage)</a>
 </li>
       <li>
     COOLERS
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-merge-arg-COOLERS">ccanalyser-interactions-store-merge command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-merge-arg-COOLERS">ccanalyser-reporters-store-merge command line option</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.pileup.CCBedgraph.coordinates">coordinates() (tools.pileup.CCBedgraph property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CCBedgraph.coordinates">coordinates() (ccanalyser.tools.pileup.CCBedgraph property)</a>
 </li>
-      <li><a href="module_cli/cli.html#cli.interactions_count.count_re_site_combinations">count_re_site_combinations() (in module cli.interactions_count)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.count_interactions">count_interactions() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.reporters_count.count_re_site_combinations">count_re_site_combinations() (in module ccanalyser.cli.reporters_count)</a>
 </li>
       <li>
     COUNTS
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-store-fragments-arg-COUNTS">ccanalyser-interactions-store-fragments command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-store-fragments-arg-COUNTS">ccanalyser-reporters-store-fragments command line option</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.storage.create_cooler_cc">create_cooler_cc() (in module tools.storage)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.create_cooler_cc">create_cooler_cc() (in module ccanalyser.tools.storage)</a>
 </li>
-      <li><a href="module_cli/cli.html#cli.slices_annotate.cycle_argument">cycle_argument() (in module cli.slices_annotate)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.alignments_annotate.cycle_argument">cycle_argument() (in module ccanalyser.cli.alignments_annotate)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1266,21 +1627,31 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.statistics.DeduplicationStatistics">DeduplicationStatistics (class in tools.statistics)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.deduplicate_fragments">deduplicate_fragments() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.statistics.DeduplicationStatistics.df">df() (tools.statistics.DeduplicationStatistics property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.deduplicate_reporters">deduplicate_reporters() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedChrom">DigestedChrom (class in tools.digest)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.DeduplicationStatistics">DeduplicationStatistics (class in ccanalyser.tools.statistics)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.DeduplicationStatistics.df">df() (ccanalyser.tools.statistics.DeduplicationStatistics property)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.digest_flashed_reads">digest_flashed_reads() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.digest_genome">digest_genome() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedRead">DigestedRead (class in tools.digest)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.digest_pe_reads">digest_pe_reads() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.statistics.DigestionStatCollector">DigestionStatCollector (class in tools.statistics)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedChrom">DigestedChrom (class in ccanalyser.tools.digest)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.statistics.DigestionStatistics">DigestionStatistics (class in tools.statistics)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedRead">DigestedRead (class in ccanalyser.tools.digest)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.deduplicate.ReadDuplicateRemovalProcess.duplicated_ids">duplicated_ids (tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.DigestionStatCollector">DigestionStatCollector (class in ccanalyser.tools.statistics)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.DigestionStatistics">DigestionStatistics (class in ccanalyser.tools.statistics)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess.duplicated_ids">duplicated_ids (ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1288,7 +1659,7 @@
 <h2 id="E">E</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.statistics.extract_trimming_stats">extract_trimming_stats() (in module tools.statistics)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.extract_trimming_stats">extract_trimming_stats() (in module ccanalyser.tools.statistics)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1296,95 +1667,133 @@
 <h2 id="F">F</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.io.FastqReaderProcess">FastqReaderProcess (class in tools.io)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_duplicates_identify">fastq_duplicates_identify() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.io.FastqReadFormatterProcess">FastqReadFormatterProcess (class in tools.io)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_duplicates_parse">fastq_duplicates_parse() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.io.FastqWriterProcess">FastqWriterProcess (class in tools.io)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_duplicates_remove">fastq_duplicates_remove() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.io.FastqWriterSplitterProcess">FastqWriterSplitterProcess (class in tools.io)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_preprocessing">fastq_preprocessing() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.filter_slices">filter_slices() (tools.filter.SliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqReaderProcess">FastqReaderProcess (class in ccanalyser.tools.io)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.filter_stages">filter_stages (tools.filter.SliceFilter attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqReadFormatterProcess">FastqReadFormatterProcess (class in ccanalyser.tools.io)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.filter_stats">filter_stats (tools.filter.SliceFilter attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqWriterProcess">FastqWriterProcess (class in ccanalyser.tools.io)</a>
 </li>
-      <li><a href="module_tools/tools.html#id3">filter_stats() (tools.filter.SliceFilter property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqWriterSplitterProcess">FastqWriterSplitterProcess (class in ccanalyser.tools.io)</a>
 </li>
-      <li><a href="module_cli/cli.html#cli.tsv_aggregate.format_index_var">format_index_var() (in module cli.tsv_aggregate)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.filter_slices">filter_slices() (ccanalyser.tools.filter.SliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.CCSliceFilter.frag_stats">frag_stats() (tools.filter.CCSliceFilter property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.filter_stages">filter_stages (ccanalyser.tools.filter.SliceFilter attribute)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.filter_stats">filter_stats (ccanalyser.tools.filter.SliceFilter attribute)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#id3">filter_stats() (ccanalyser.tools.filter.SliceFilter property)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.format_coordinates">format_coordinates() (in module ccanalyser.utils)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedChrom.fragment_indexes">fragment_indexes (tools.digest.DigestedChrom attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.tsv_aggregate.format_index_var">format_index_var() (in module ccanalyser.cli.tsv_aggregate)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedChrom.fragment_min_len">fragment_min_len (tools.digest.DigestedChrom attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.frag_stats">frag_stats() (ccanalyser.tools.filter.CCSliceFilter property)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedChrom.fragment_number_offset">fragment_number_offset (tools.digest.DigestedChrom attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedChrom.fragment_indexes">fragment_indexes (ccanalyser.tools.digest.DigestedChrom attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.fragments">fragments (tools.filter.SliceFilter attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedChrom.fragment_min_len">fragment_min_len (ccanalyser.tools.digest.DigestedChrom attribute)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedChrom.fragment_number_offset">fragment_number_offset (ccanalyser.tools.digest.DigestedChrom attribute)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.fragments">fragments (ccanalyser.tools.filter.SliceFilter attribute)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.storage.GenomicBinner.fragments">(tools.storage.GenomicBinner attribute)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.GenomicBinner.fragments">(ccanalyser.tools.storage.GenomicBinner attribute)</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedChrom.fragments">fragments() (tools.digest.DigestedChrom property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedChrom.fragments">fragments() (ccanalyser.tools.digest.DigestedChrom property)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.filter.CCSliceFilter.fragments">(tools.filter.CCSliceFilter property)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.fragments">(ccanalyser.tools.filter.CCSliceFilter property)</a>
 </li>
-        <li><a href="module_tools/tools.html#id5">(tools.filter.SliceFilter property)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#id5">(ccanalyser.tools.filter.SliceFilter property)</a>
 </li>
-        <li><a href="module_tools/tools.html#tools.filter.TiledCSliceFilter.fragments">(tools.filter.TiledCSliceFilter property)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TiledCSliceFilter.fragments">(ccanalyser.tools.filter.TiledCSliceFilter property)</a>
 </li>
       </ul></li>
       <li>
     FRAGMENTS_FN
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-identify-arg-FRAGMENTS_FN">ccanalyser-reporters-deduplicate-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-identify-arg-FRAGMENTS_FN">ccanalyser-alignments-deduplicate-identify command line option</a>
 </li>
       </ul></li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.full">full() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
   </ul></td>
 </tr></table>
 
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.storage.GenomicBinner">GenomicBinner (class in tools.storage)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.generate_bin_conversion_tables">generate_bin_conversion_tables() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.storage.get_capture_bins">get_capture_bins() (in module tools.storage)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.GenomicBinner">GenomicBinner (class in ccanalyser.tools.storage)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.storage.get_capture_coords">get_capture_coords() (in module tools.storage)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.get_capture_bins">get_capture_bins() (in module ccanalyser.tools.storage)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.get_capture_coords">get_capture_coords() (in module ccanalyser.tools.storage)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.reporters_differential.get_chromosome_from_name">get_chromosome_from_name() (in module ccanalyser.cli.reporters_differential)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.DigestionStatCollector.get_collated_stats">get_collated_stats() (ccanalyser.tools.statistics.DigestionStatCollector method)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.get_colors">get_colors() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.LazyGroup.get_command">get_command() (ccanalyser.cli.LazyGroup method)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.get_human_readable_number_of_bp">get_human_readable_number_of_bp() (in module ccanalyser.utils)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.statistics.DigestionStatCollector.get_collated_stats">get_collated_stats() (tools.statistics.DigestionStatCollector method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.plotting.CCMatrix.get_matrix">get_matrix() (ccanalyser.tools.plotting.CCMatrix method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.get_raw_slices">get_raw_slices() (tools.filter.SliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.plotting.CCMatrix.get_matrix_normalised">get_matrix_normalised() (ccanalyser.tools.plotting.CCMatrix method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedChrom.get_recognition_site_indexes">get_recognition_site_indexes() (tools.digest.DigestedChrom method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.LazyGroup.get_params">get_params() (ccanalyser.cli.LazyGroup method)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.get_raw_slices">get_raw_slices() (ccanalyser.tools.filter.SliceFilter method)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.get_re_site">get_re_site() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedChrom.get_recognition_site_indexes">get_recognition_site_indexes() (ccanalyser.tools.digest.DigestedChrom method)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.digest.DigestedRead.get_recognition_site_indexes">(tools.digest.DigestedRead method)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedRead.get_recognition_site_indexes">(ccanalyser.tools.digest.DigestedRead method)</a>
 </li>
       </ul></li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.get_timing">get_timing() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.get_ucsc_color">get_ucsc_color() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.LazyGroup.get_usage">get_usage() (ccanalyser.cli.LazyGroup method)</a>
+</li>
   </ul></td>
 </tr></table>
 
 <h2 id="H">H</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedRead.has_slices">has_slices (tools.digest.DigestedRead attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedRead.has_slices">has_slices (ccanalyser.tools.digest.DigestedRead attribute)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.hash_column">hash_column() (in module ccanalyser.utils)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.deduplicate.ReadDeduplicationParserProcess.hash_seed">hash_seed (tools.deduplicate.ReadDeduplicationParserProcess attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess.hash_seed">hash_seed (ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess attribute)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.deduplicate.ReadDuplicateRemovalProcess.hash_seed">(tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess.hash_seed">(ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -1393,50 +1802,70 @@
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.identify_differential_interactions">identify_differential_interactions() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.identify_reporters">identify_reporters() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.index_bam">index_bam() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
       <li>
     INPUT_FASTA
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-genome-digest-arg-INPUT_FASTA">ccanalyser-genome-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-genome-digest-arg-INPUT_FASTA">ccanalyser-genome-digest command line option</a>
 </li>
       </ul></li>
       <li>
     INPUT_FASTQ
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-digest-arg-INPUT_FASTQ">ccanalyser-fastq-digest command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-digest-arg-INPUT_FASTQ">ccanalyser-fastq-digest command line option</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.io.FastqReaderProcess.input_file">input_file (tools.io.FastqReaderProcess attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqReaderProcess.input_file">input_file (ccanalyser.tools.io.FastqReaderProcess attribute)</a>
 </li>
       <li>
     INPUT_FILES
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-identify-arg-INPUT_FILES">ccanalyser-fastq-deduplicate-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-identify-arg-INPUT_FILES">ccanalyser-fastq-deduplicate-identify command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-parse-arg-INPUT_FILES">ccanalyser-fastq-deduplicate-parse command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-parse-arg-INPUT_FILES">ccanalyser-fastq-deduplicate-parse command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-deduplicate-remove-arg-INPUT_FILES">ccanalyser-fastq-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-deduplicate-remove-arg-INPUT_FILES">ccanalyser-fastq-deduplicate-remove command line option</a>
 </li>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-fastq-split-arg-INPUT_FILES">ccanalyser-fastq-split command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-arg-INPUT_FILES">ccanalyser-fastq-split command line option</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.deduplicate.ReadDeduplicationParserProcess.inq">inq (tools.deduplicate.ReadDeduplicationParserProcess attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess.inq">inq (ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess attribute)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.deduplicate.ReadDuplicateRemovalProcess.inq">(tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess.inq">(ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.annotate.BedIntersection.intersection">intersection() (tools.annotate.BedIntersection property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.intersect_bins">intersect_bins() (in module ccanalyser.utils)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.annotate.BedIntersection.intersection_name">intersection_name (tools.annotate.BedIntersection attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.annotate.BedIntersection.intersection">intersection() (ccanalyser.tools.annotate.BedIntersection property)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.annotate.BedIntersection.invalid_bed_action">invalid_bed_action (tools.annotate.BedIntersection attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.annotate.BedIntersection.intersection_name">intersection_name (ccanalyser.tools.annotate.BedIntersection attribute)</a>
 </li>
-      <li><a href="module_cli/cli.html#cli.tsv_aggregate.is_compressed">is_compressed() (in module cli.tsv_aggregate)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.annotate.BedIntersection.invalid_bed_action">invalid_bed_action (ccanalyser.tools.annotate.BedIntersection attribute)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.invert_dict">invert_dict() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.LazyGroup.invoke">invoke() (ccanalyser.cli.LazyGroup method)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.tsv_aggregate.is_compressed">is_compressed() (in module ccanalyser.cli.tsv_aggregate)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.is_none">is_none() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.is_off">is_off() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.is_on">is_on() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.is_valid_bed">is_valid_bed() (in module ccanalyser.utils)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1444,7 +1873,7 @@
 <h2 id="J">J</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_cli/cli.html#cli.tsv_aggregate.join_tsvs">join_tsvs() (in module cli.tsv_aggregate)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.tsv_aggregate.join_tsvs">join_tsvs() (in module ccanalyser.cli.tsv_aggregate)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1452,13 +1881,23 @@
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.storage.link_bins">link_bins() (in module tools.storage)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.LazyGroup">LazyGroup (class in ccanalyser.cli)</a>
 </li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.link_bins">link_bins() (in module ccanalyser.tools.storage)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.LazyGroup.list_commands">list_commands() (ccanalyser.cli.LazyGroup method)</a>
+
+      <ul>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.UnsortedGroup.list_commands">(ccanalyser.cli.UnsortedGroup method)</a>
+</li>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.NaturalOrderGroup.list_commands">(ccanalyser.utils.NaturalOrderGroup method)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_cli/cli.html#cli.UnsortedGroup.list_commands">list_commands() (cli.UnsortedGroup method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.load_json">load_json() (in module ccanalyser.utils)</a>
 </li>
-      <li><a href="module_cli/cli.html#cli.tsv_aggregate.load_tsv">load_tsv() (in module cli.tsv_aggregate)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.tsv_aggregate.load_tsv">load_tsv() (in module ccanalyser.cli.tsv_aggregate)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1466,97 +1905,152 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_cli/cli.html#cli.tsv_aggregate.main">main() (in module cli.tsv_aggregate)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.tsv_aggregate.main">main() (in module ccanalyser.cli.tsv_aggregate)</a>
 </li>
-      <li><a href="module_cli/cli.html#cli.reporters_identify.merge_annotations">merge_annotations() (in module cli.reporters_identify)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.make_bedgraph_normalised">make_bedgraph_normalised() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.CCSliceFilter.merged_captures_and_reporters">merged_captures_and_reporters() (tools.filter.CCSliceFilter property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.make_bedgraph_raw">make_bedgraph_raw() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.make_bigwig">make_bigwig() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.make_group_track">make_group_track() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.make_ucsc_hub">make_ucsc_hub() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.make_union_bedgraph">make_union_bedgraph() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.mapping_multiqc">mapping_multiqc() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.mapping_qc">mapping_qc() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.alignments_filter.merge_annotations">merge_annotations() (in module ccanalyser.cli.alignments_filter)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.merge_bam_files">merge_bam_files() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.merge_dictionaries">merge_dictionaries() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.merge_interactions">merge_interactions() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.merge_run_statistics">merge_run_statistics() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.merged_captures_and_reporters">merged_captures_and_reporters() (ccanalyser.tools.filter.CCSliceFilter property)</a>
 </li>
       <li>
     METHOD
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-identify-arg-METHOD">ccanalyser-reporters-identify command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-filter-arg-METHOD">ccanalyser-alignments-filter command line option</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.annotate.BedIntersection.min_frac">min_frac (tools.annotate.BedIntersection attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.annotate.BedIntersection.min_frac">min_frac (ccanalyser.tools.annotate.BedIntersection attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.storage.GenomicBinner.min_overlap">min_overlap (tools.storage.GenomicBinner attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.GenomicBinner.min_overlap">min_overlap (ccanalyser.tools.storage.GenomicBinner attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedRead.min_slice_len">min_slice_len (tools.digest.DigestedRead attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedRead.min_slice_len">min_slice_len (ccanalyser.tools.digest.DigestedRead attribute)</a>
 </li>
+      <li>
+    MODE
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-pipeline-arg-MODE">ccanalyser-pipeline command line option</a>
+</li>
+      </ul></li>
       <li>
     module
 
       <ul>
-        <li><a href="module_cli/cli.html#module-cli">cli</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli">ccanalyser.cli</a>
 </li>
-        <li><a href="module_cli/cli.html#module-cli.fastq_deduplicate">cli.fastq_deduplicate</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.alignments_annotate">ccanalyser.cli.alignments_annotate</a>
 </li>
-        <li><a href="module_cli/cli.html#module-cli.fastq_digest">cli.fastq_digest</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.alignments_deduplicate">ccanalyser.cli.alignments_deduplicate</a>
 </li>
-        <li><a href="module_cli/cli.html#module-cli.fastq_split">cli.fastq_split</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.alignments_filter">ccanalyser.cli.alignments_filter</a>
 </li>
-        <li><a href="module_cli/cli.html#module-cli.genome_digest">cli.genome_digest</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.cli_alignments">ccanalyser.cli.cli_alignments</a>
 </li>
-        <li><a href="module_cli/cli.html#module-cli.interactions_bedgraph">cli.interactions_bedgraph</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.cli_fastq">ccanalyser.cli.cli_fastq</a>
 </li>
-        <li><a href="module_cli/cli.html#module-cli.interactions_count">cli.interactions_count</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.cli_genome">ccanalyser.cli.cli_genome</a>
 </li>
-        <li><a href="module_cli/cli.html#module-cli.interactions_store">cli.interactions_store</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.cli_reporters">ccanalyser.cli.cli_reporters</a>
 </li>
-        <li><a href="module_cli/cli.html#module-cli.reporters_deduplicate">cli.reporters_deduplicate</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.fastq_deduplicate">ccanalyser.cli.fastq_deduplicate</a>
 </li>
-        <li><a href="module_cli/cli.html#module-cli.reporters_identify">cli.reporters_identify</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.fastq_digest">ccanalyser.cli.fastq_digest</a>
 </li>
-        <li><a href="module_cli/cli.html#module-cli.slices_annotate">cli.slices_annotate</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.fastq_split">ccanalyser.cli.fastq_split</a>
 </li>
-        <li><a href="module_cli/cli.html#module-cli.tsv_aggregate">cli.tsv_aggregate</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.genome_digest">ccanalyser.cli.genome_digest</a>
 </li>
-        <li><a href="module_tools/tools.html#module-tools.annotate">tools.annotate</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.reporters_count">ccanalyser.cli.reporters_count</a>
 </li>
-        <li><a href="module_tools/tools.html#module-tools.deduplicate">tools.deduplicate</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.reporters_differential">ccanalyser.cli.reporters_differential</a>
 </li>
-        <li><a href="module_tools/tools.html#module-tools.digest">tools.digest</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.reporters_heatmap">ccanalyser.cli.reporters_heatmap</a>
 </li>
-        <li><a href="module_tools/tools.html#module-tools.filter">tools.filter</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.reporters_pileup">ccanalyser.cli.reporters_pileup</a>
 </li>
-        <li><a href="module_tools/tools.html#module-tools.io">tools.io</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.reporters_store">ccanalyser.cli.reporters_store</a>
 </li>
-        <li><a href="module_tools/tools.html#module-tools.pileup">tools.pileup</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#module-ccanalyser.cli.tsv_aggregate">ccanalyser.cli.tsv_aggregate</a>
 </li>
-        <li><a href="module_tools/tools.html#module-tools.statistics">tools.statistics</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#module-ccanalyser.pipeline.pipeline">ccanalyser.pipeline.pipeline</a>
 </li>
-        <li><a href="module_tools/tools.html#module-tools.storage">tools.storage</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.annotate">ccanalyser.tools.annotate</a>
+</li>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.deduplicate">ccanalyser.tools.deduplicate</a>
+</li>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.digest">ccanalyser.tools.digest</a>
+</li>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.filter">ccanalyser.tools.filter</a>
+</li>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.io">ccanalyser.tools.io</a>
+</li>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.pileup">ccanalyser.tools.pileup</a>
+</li>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.plotting">ccanalyser.tools.plotting</a>
+</li>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.statistics">ccanalyser.tools.statistics</a>
+</li>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#module-ccanalyser.tools.storage">ccanalyser.tools.storage</a>
+</li>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#module-ccanalyser.utils">ccanalyser.utils</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.multiqc_reads">multiqc_reads() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
   </ul></td>
 </tr></table>
 
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.n_cis_interactions">n_cis_interactions (tools.storage.CoolerBinner attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.n_cis_interactions">n_cis_interactions (ccanalyser.tools.storage.CoolerBinner attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.annotate.BedIntersection.n_cores">n_cores (tools.annotate.BedIntersection attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.annotate.BedIntersection.n_cores">n_cores (ccanalyser.tools.annotate.BedIntersection attribute)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.n_cores">(tools.storage.CoolerBinner attribute)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.n_cores">(ccanalyser.tools.storage.CoolerBinner attribute)</a>
 </li>
-        <li><a href="module_tools/tools.html#tools.storage.GenomicBinner.n_cores">(tools.storage.GenomicBinner attribute)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.GenomicBinner.n_cores">(ccanalyser.tools.storage.GenomicBinner attribute)</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.io.FastqReaderProcess.n_subproceses">n_subproceses (tools.io.FastqReaderProcess attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqReaderProcess.n_subproceses">n_subproceses (ccanalyser.tools.io.FastqReaderProcess attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.pileup.CoolerBedGraph.normalise_bedgraph">normalise_bedgraph() (tools.pileup.CoolerBedGraph method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.NaturalOrderGroup">NaturalOrderGroup (class in ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraph.normalise_bedgraph">normalise_bedgraph() (ccanalyser.tools.pileup.CoolerBedGraph method)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.pileup.CoolerBedGraphWindowed.normalise_bedgraph">(tools.pileup.CoolerBedGraphWindowed method)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraphWindowed.normalise_bedgraph">(ccanalyser.tools.pileup.CoolerBedGraphWindowed method)</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.normalise_pixels">normalise_pixels() (tools.storage.CoolerBinner method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.normalise_pixels">normalise_pixels() (ccanalyser.tools.storage.CoolerBinner method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1564,12 +2058,18 @@
 <h2 id="O">O</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.deduplicate.ReadDeduplicationParserProcess.outq">outq (tools.deduplicate.ReadDeduplicationParserProcess attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraph.only_cis">only_cis (ccanalyser.tools.pileup.CoolerBedGraph attribute)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.open_logfile">open_logfile() (in module ccanalyser.utils)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess.outq">outq (ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess attribute)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.deduplicate.ReadDuplicateRemovalProcess.outq">(tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess.outq">(ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
 </li>
-        <li><a href="module_tools/tools.html#tools.io.FastqReaderProcess.outq">(tools.io.FastqReaderProcess attribute)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqReaderProcess.outq">(ccanalyser.tools.io.FastqReaderProcess attribute)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -1578,17 +2078,42 @@
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.io.parse_alignment">parse_alignment() (in module tools.io)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.parse_alignment">parse_alignment() (in module ccanalyser.tools.io)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.io.parse_bam">parse_bam() (in module tools.io)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.parse_bam">parse_bam() (in module ccanalyser.tools.io)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.genome_digest.parse_chromosomes">parse_chromosomes() (in module ccanalyser.cli.genome_digest)</a>
+</li>
+      <li>
+    PIPELINE_OPTIONS
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-pipeline-arg-PIPELINE_OPTIONS">ccanalyser-pipeline command line option</a>
+</li>
+      </ul></li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.pixel_conversion_table">pixel_conversion_table() (ccanalyser.tools.storage.CoolerBinner property)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_cli/cli.html#cli.genome_digest.parse_chromosomes">parse_chromosomes() (in module cli.genome_digest)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.pixels">pixels() (ccanalyser.tools.storage.CoolerBinner property)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.pixel_conversion_table">pixel_conversion_table() (tools.storage.CoolerBinner property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.plot_interactions">plot_interactions() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.pixels">pixels() (tools.storage.CoolerBinner property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.reporters_heatmap.plot_matrix">plot_matrix() (in module ccanalyser.cli.reporters_heatmap)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.post_ccanalysis">post_ccanalysis() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.pre_ccanalysis">pre_ccanalysis() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.PysamFakeEntry">PysamFakeEntry (class in ccanalyser.utils)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="Q">Q</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.qc_reads">qc_reads() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1596,107 +2121,107 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedRead.read">read (tools.digest.DigestedRead attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedRead.read">read (ccanalyser.tools.digest.DigestedRead attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.io.FastqReaderProcess.read_buffer">read_buffer (tools.io.FastqReaderProcess attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqReaderProcess.read_buffer">read_buffer (ccanalyser.tools.io.FastqReaderProcess attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.io.FastqReaderProcess.read_counter">read_counter (tools.io.FastqReaderProcess attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqReaderProcess.read_counter">read_counter (ccanalyser.tools.io.FastqReaderProcess attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.read_stats">read_stats (tools.filter.SliceFilter attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.read_stats">read_stats (ccanalyser.tools.filter.SliceFilter attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#id4">read_stats() (tools.filter.SliceFilter property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#id4">read_stats() (ccanalyser.tools.filter.SliceFilter property)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.deduplicate.ReadDeduplicationParserProcess">ReadDeduplicationParserProcess (class in tools.deduplicate)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess">ReadDeduplicationParserProcess (class in ccanalyser.tools.deduplicate)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.digest.ReadDigestionProcess">ReadDigestionProcess (class in tools.digest)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.ReadDigestionProcess">ReadDigestionProcess (class in ccanalyser.tools.digest)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.deduplicate.ReadDuplicateRemovalProcess">ReadDuplicateRemovalProcess (class in tools.deduplicate)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess">ReadDuplicateRemovalProcess (class in ccanalyser.tools.deduplicate)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.deduplicate.ReadDuplicateRemovalProcess.reads_total">reads_total (tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess.reads_total">reads_total (ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.deduplicate.ReadDuplicateRemovalProcess.reads_unique">reads_unique (tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess.reads_unique">reads_unique (ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedChrom.recognition_len">recognition_len (tools.digest.DigestedChrom attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedChrom.recognition_len">recognition_len (ccanalyser.tools.digest.DigestedChrom attribute)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.digest.DigestedRead.recognition_len">(tools.digest.DigestedRead attribute)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedRead.recognition_len">(ccanalyser.tools.digest.DigestedRead attribute)</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#id0">recognition_seq (tools.digest.DigestedChrom attribute)</a>, <a href="module_tools/tools.html#tools.digest.DigestedChrom.recognition_seq">[1]</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedChrom.recognition_seq">recognition_seq (ccanalyser.tools.digest.DigestedChrom attribute)</a>, <a href="ccanalyser_module_documentation/ccanalyser.tools.html#id0">[1]</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#id1">(tools.digest.DigestedRead attribute)</a>, <a href="module_tools/tools.html#tools.digest.DigestedRead.recognition_seq">[1]</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedRead.recognition_seq">(ccanalyser.tools.digest.DigestedRead attribute)</a>, <a href="ccanalyser_module_documentation/ccanalyser.tools.html#id1">[1]</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.remove_blacklisted_slices">remove_blacklisted_slices() (tools.filter.SliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.remove_blacklisted_slices">remove_blacklisted_slices() (ccanalyser.tools.filter.SliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.TiledCSliceFilter.remove_dual_capture_fragments">remove_dual_capture_fragments() (tools.filter.TiledCSliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TiledCSliceFilter.remove_dual_capture_fragments">remove_dual_capture_fragments() (ccanalyser.tools.filter.TiledCSliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.remove_duplicate_re_frags">remove_duplicate_re_frags() (tools.filter.SliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.remove_duplicate_re_frags">remove_duplicate_re_frags() (ccanalyser.tools.filter.SliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.remove_duplicate_slices">remove_duplicate_slices() (tools.filter.SliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.remove_duplicate_slices">remove_duplicate_slices() (ccanalyser.tools.filter.SliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.remove_duplicate_slices_pe">remove_duplicate_slices_pe() (tools.filter.SliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.remove_duplicate_slices_pe">remove_duplicate_slices_pe() (ccanalyser.tools.filter.SliceFilter method)</a>
 </li>
-      <li><a href="module_cli/cli.html#cli.slices_annotate.remove_duplicates_from_bed">remove_duplicates_from_bed() (in module cli.slices_annotate)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.alignments_annotate.remove_duplicates_from_bed">remove_duplicates_from_bed() (in module ccanalyser.cli.alignments_annotate)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.remove_excluded_slices">remove_excluded_slices() (tools.filter.SliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.remove_excluded_slices">remove_excluded_slices() (ccanalyser.tools.filter.SliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.CCSliceFilter.remove_multi_capture_fragments">remove_multi_capture_fragments() (tools.filter.CCSliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.remove_multi_capture_fragments">remove_multi_capture_fragments() (ccanalyser.tools.filter.CCSliceFilter method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.filter.CCSliceFilter.remove_multicapture_reporters">remove_multicapture_reporters() (tools.filter.CCSliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.remove_multicapture_reporters">remove_multicapture_reporters() (ccanalyser.tools.filter.CCSliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.TiledCSliceFilter.remove_non_capture_fragments">remove_non_capture_fragments() (tools.filter.TiledCSliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TiledCSliceFilter.remove_non_capture_fragments">remove_non_capture_fragments() (ccanalyser.tools.filter.TiledCSliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.CCSliceFilter.remove_non_reporter_fragments">remove_non_reporter_fragments() (tools.filter.CCSliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.remove_non_reporter_fragments">remove_non_reporter_fragments() (ccanalyser.tools.filter.CCSliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.remove_orphan_slices">remove_orphan_slices() (tools.filter.SliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.remove_orphan_slices">remove_orphan_slices() (ccanalyser.tools.filter.SliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.TiledCSliceFilter.remove_slices_outside_capture">remove_slices_outside_capture() (tools.filter.TiledCSliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TiledCSliceFilter.remove_slices_outside_capture">remove_slices_outside_capture() (ccanalyser.tools.filter.TiledCSliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.TriCSliceFilter.remove_slices_with_one_reporter">remove_slices_with_one_reporter() (tools.filter.TriCSliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TriCSliceFilter.remove_slices_with_one_reporter">remove_slices_with_one_reporter() (ccanalyser.tools.filter.TriCSliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.remove_slices_without_re_frag_assigned">remove_slices_without_re_frag_assigned() (tools.filter.SliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.remove_slices_without_re_frag_assigned">remove_slices_without_re_frag_assigned() (ccanalyser.tools.filter.SliceFilter method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.remove_unmapped_slices">remove_unmapped_slices() (tools.filter.SliceFilter method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.remove_unmapped_slices">remove_unmapped_slices() (ccanalyser.tools.filter.SliceFilter method)</a>
 </li>
-      <li><a href="module_cli/cli.html#cli.tsv_aggregate.replace_na">replace_na() (in module cli.tsv_aggregate)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.tsv_aggregate.replace_na">replace_na() (in module ccanalyser.cli.tsv_aggregate)</a>
 </li>
       <li>
     REPORTERS
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-interactions-count-arg-REPORTERS">ccanalyser-interactions-count command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-count-arg-REPORTERS">ccanalyser-reporters-count command line option</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.reporters">reporters (tools.filter.SliceFilter attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.reporters">reporters (ccanalyser.tools.filter.SliceFilter attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.CCSliceFilter.reporters">reporters() (tools.filter.CCSliceFilter property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.reporters">reporters() (ccanalyser.tools.filter.CCSliceFilter property)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#id6">(tools.filter.SliceFilter property)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#id6">(ccanalyser.tools.filter.SliceFilter property)</a>
 </li>
-        <li><a href="module_tools/tools.html#tools.pileup.CoolerBedGraph.reporters">(tools.pileup.CoolerBedGraph property)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraph.reporters">(ccanalyser.tools.pileup.CoolerBedGraph property)</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.pileup.CoolerBedGraphWindowed.reporters_binned">reporters_binned() (tools.pileup.CoolerBedGraphWindowed property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraphWindowed.reporters_binned">reporters_binned() (ccanalyser.tools.pileup.CoolerBedGraphWindowed property)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.deduplicate.ReadDeduplicationParserProcess.run">run() (tools.deduplicate.ReadDeduplicationParserProcess method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess.run">run() (ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess method)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.deduplicate.ReadDuplicateRemovalProcess.run">(tools.deduplicate.ReadDuplicateRemovalProcess method)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess.run">(ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess method)</a>
 </li>
-        <li><a href="module_tools/tools.html#tools.digest.ReadDigestionProcess.run">(tools.digest.ReadDigestionProcess method)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.ReadDigestionProcess.run">(ccanalyser.tools.digest.ReadDigestionProcess method)</a>
 </li>
-        <li><a href="module_tools/tools.html#tools.io.FastqReaderProcess.run">(tools.io.FastqReaderProcess method)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqReaderProcess.run">(ccanalyser.tools.io.FastqReaderProcess method)</a>
 </li>
-        <li><a href="module_tools/tools.html#tools.io.FastqReadFormatterProcess.run">(tools.io.FastqReadFormatterProcess method)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqReadFormatterProcess.run">(ccanalyser.tools.io.FastqReadFormatterProcess method)</a>
 </li>
-        <li><a href="module_tools/tools.html#tools.io.FastqWriterProcess.run">(tools.io.FastqWriterProcess method)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqWriterProcess.run">(ccanalyser.tools.io.FastqWriterProcess method)</a>
 </li>
-        <li><a href="module_tools/tools.html#tools.io.FastqWriterSplitterProcess.run">(tools.io.FastqWriterSplitterProcess method)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqWriterSplitterProcess.run">(ccanalyser.tools.io.FastqWriterSplitterProcess method)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -1705,135 +2230,97 @@
 <h2 id="S">S</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.deduplicate.ReadDeduplicationParserProcess.save_hash_dict_path">save_hash_dict_path (tools.deduplicate.ReadDeduplicationParserProcess attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess.save_hash_dict_path">save_hash_dict_path (ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.scale_factor">scale_factor (tools.storage.CoolerBinner attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.scale_factor">scale_factor (ccanalyser.tools.storage.CoolerBinner attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.pileup.CCBedgraph.score">score() (tools.pileup.CCBedgraph property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CCBedgraph.score">score() (ccanalyser.tools.pileup.CCBedgraph property)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedRead.slice_indexes">slice_indexes (tools.digest.DigestedRead attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.set_up_chromsizes">set_up_chromsizes() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedRead.slice_number_offset">slice_number_offset (tools.digest.DigestedRead attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.set_up_pipeline_params_dict">set_up_pipeline_params_dict() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter.slice_stats">slice_stats (tools.filter.SliceFilter attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedRead.slice_indexes">slice_indexes (ccanalyser.tools.digest.DigestedRead attribute)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.filter.CCSliceFilter.slice_stats">slice_stats() (tools.filter.CCSliceFilter property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedRead.slice_number_offset">slice_number_offset (ccanalyser.tools.digest.DigestedRead attribute)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.slice_stats">slice_stats (ccanalyser.tools.filter.SliceFilter attribute)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.slice_stats">slice_stats() (ccanalyser.tools.filter.CCSliceFilter property)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#id2">(tools.filter.SliceFilter property)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#id2">(ccanalyser.tools.filter.SliceFilter property)</a>
 </li>
-        <li><a href="module_tools/tools.html#tools.filter.TiledCSliceFilter.slice_stats">(tools.filter.TiledCSliceFilter property)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TiledCSliceFilter.slice_stats">(ccanalyser.tools.filter.TiledCSliceFilter property)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.filter.SliceFilter">SliceFilter (class in tools.filter)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter">SliceFilter (class in ccanalyser.tools.filter)</a>
 </li>
       <li>
     SLICES
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-slices-annotate-arg-SLICES">ccanalyser-slices-annotate command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-annotate-arg-SLICES">ccanalyser-alignments-annotate command line option</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.digest.DigestedRead.slices">slices (tools.digest.DigestedRead attribute)</a>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedRead.slices">slices (ccanalyser.tools.digest.DigestedRead attribute)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.filter.SliceFilter.slices">(tools.filter.SliceFilter attribute)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.slices">(ccanalyser.tools.filter.SliceFilter attribute)</a>
 </li>
       </ul></li>
       <li>
     SLICES_FN
 
       <ul>
-        <li><a href="ccanalyser.html#cmdoption-ccanalyser-reporters-deduplicate-remove-arg-SLICES_FN">ccanalyser-reporters-deduplicate-remove command line option</a>
+        <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-arg-SLICES_FN">ccanalyser-alignments-deduplicate-remove command line option</a>
 </li>
       </ul></li>
-      <li><a href="module_tools/tools.html#tools.pileup.CoolerBedGraph.sparse">sparse (tools.pileup.CoolerBedGraph attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.sort_blacklist">sort_blacklist() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.deduplicate.ReadDuplicateRemovalProcess.statq">statq (tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.sort_capture_oligos">sort_capture_oligos() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraph.sparse">sparse (ccanalyser.tools.pileup.CoolerBedGraph attribute)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.split_fastq">split_fastq() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.split_intervals_on_chrom">split_intervals_on_chrom() (in module ccanalyser.utils)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess.statq">statq (ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#tools.io.FastqReaderProcess.statq">(tools.io.FastqReaderProcess attribute)</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqReaderProcess.statq">(ccanalyser.tools.io.FastqReaderProcess attribute)</a>
 </li>
       </ul></li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.store_interactions_at_fragment_level">store_interactions_at_fragment_level() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.store_interactions_binned">store_interactions_binned() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
   </ul></td>
 </tr></table>
 
 <h2 id="T">T</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_tools/tools.html#tools.filter.TiledCSliceFilter">TiledCSliceFilter (class in tools.filter)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TiledCSliceFilter">TiledCSliceFilter (class in ccanalyser.tools.filter)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.pileup.CCBedgraph.to_bedtool">to_bedtool() (tools.pileup.CCBedgraph method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CCBedgraph.to_bedtool">to_bedtool() (ccanalyser.tools.pileup.CCBedgraph method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.storage.CoolerBinner.to_cooler">to_cooler() (tools.storage.CoolerBinner method)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.to_cooler">to_cooler() (ccanalyser.tools.storage.CoolerBinner method)</a>
 </li>
-      <li><a href="module_tools/tools.html#tools.pileup.CCBedgraph.to_file">to_file() (tools.pileup.CCBedgraph method)</a>
-
-      <ul>
-        <li><a href="module_tools/tools.html#tools.pileup.CoolerBedGraph.to_file">(tools.pileup.CoolerBedGraph method)</a>
-</li>
-      </ul></li>
-      <li>
-    tools.annotate
-
-      <ul>
-        <li><a href="module_tools/tools.html#module-tools.annotate">module</a>
-</li>
-      </ul></li>
-      <li>
-    tools.deduplicate
-
-      <ul>
-        <li><a href="module_tools/tools.html#module-tools.deduplicate">module</a>
-</li>
-      </ul></li>
-      <li>
-    tools.digest
-
-      <ul>
-        <li><a href="module_tools/tools.html#module-tools.digest">module</a>
-</li>
-      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li>
-    tools.filter
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CCBedgraph.to_file">to_file() (ccanalyser.tools.pileup.CCBedgraph method)</a>
 
       <ul>
-        <li><a href="module_tools/tools.html#module-tools.filter">module</a>
+        <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraph.to_file">(ccanalyser.tools.pileup.CoolerBedGraph method)</a>
 </li>
       </ul></li>
-      <li>
-    tools.io
-
-      <ul>
-        <li><a href="module_tools/tools.html#module-tools.io">module</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TriCSliceFilter">TriCSliceFilter (class in ccanalyser.tools.filter)</a>
 </li>
-      </ul></li>
-      <li>
-    tools.pileup
-
-      <ul>
-        <li><a href="module_tools/tools.html#module-tools.pileup">module</a>
-</li>
-      </ul></li>
-      <li>
-    tools.statistics
-
-      <ul>
-        <li><a href="module_tools/tools.html#module-tools.statistics">module</a>
-</li>
-      </ul></li>
-      <li>
-    tools.storage
-
-      <ul>
-        <li><a href="module_tools/tools.html#module-tools.storage">module</a>
-</li>
-      </ul></li>
-      <li><a href="module_tools/tools.html#tools.filter.TriCSliceFilter">TriCSliceFilter (class in tools.filter)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.trim_reads">trim_reads() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1841,7 +2328,32 @@
 <h2 id="U">U</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="module_cli/cli.html#cli.UnsortedGroup">UnsortedGroup (class in cli)</a>
+      <li>
+    UNION_BEDGRAPH
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-reporters-differential-arg-UNION_BEDGRAPH">ccanalyser-reporters-differential command line option</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.UnsortedGroup">UnsortedGroup (class in ccanalyser.cli)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="W">W</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.write_hub_path">write_hub_path() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="Z">Z</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.zap_files">zap_files() (in module ccanalyser.utils)</a>
 </li>
   </ul></td>
 </tr></table>

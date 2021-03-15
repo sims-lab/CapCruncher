@@ -110,11 +110,16 @@ def annotate(
     invalid_bed_action: str = "error",
 ):
     """
-    Annotates a bed file using bedtools intersect.
+    Annotates a bed file with other bed files using bedtools intersect.
 
-    Enables annotations with both names and counts at the same time whilst dealing with multimapping reads,
-    which can lead to errors with reporter identification.
+    Whilst bedtools intersect allows for interval names and counts to be used for annotating intervals, this command
+    provides the ability to annotate intervals with both interval names and counts at the same time. As the pipeline allows
+    for empty bed files, this command has built in support to deal with blank/malformed bed files and will return default N/A values.
 
+    Prior to interval annotation, the bed file to be intersected is validated and duplicate entries/multimapping reads are removed 
+    to ensure consistent annotations and prevent issues with reporter identification. 
+
+    \f
     Args:
      slices (os.PathLike): Input bed file.
      actions (Tuple, optional): Methods to use for annotation. Choose from (get|count). Defaults to None.

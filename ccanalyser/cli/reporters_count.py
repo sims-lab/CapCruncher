@@ -71,9 +71,15 @@ def count(
     subsample: int = 0,
 ):
     """
-    Determines the number of captured restriction fragment interactions genome wide. 
+    Determines the number of captured restriction fragment interactions genome wide.
+
+    Parses a reporter slices tsv and counts the number of unique restriction fragment 
+    interaction combinations that occur within each fragment.
     
-    \b
+    Options to ignore unwanted counts e.g. excluded regions or capture fragments are provided. 
+    In addition the number of reporter fragments can be subsampled if required.
+    
+    \f
     Args:
      reporters (os.PathLike): Reporter tsv file path.
      output (os.PathLike, optional): Output file path for interaction counts tsv. Defaults to 'counts.tsv'.

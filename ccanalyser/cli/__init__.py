@@ -62,18 +62,18 @@ def fastq():
     Fastq splitting, deduplication and digestion.
     """
 
-@cli.group(cls=LazyGroup, import_name='ccanalyser.cli._genome:cli')
+@cli.group(cls=LazyGroup, import_name='ccanalyser.cli.cli_genome:cli')
 def genome():
     """
     Genome wide methods digestion.
     """
 
-@cli.group(cls=LazyGroup, import_name='ccanalyser.cli._alignments:cli')
+@cli.group(cls=LazyGroup, import_name='ccanalyser.cli.cli_alignments:cli')
 def alignments():
     """Alignment annotation, identification and deduplication.
     """
 
-@cli.group(cls=LazyGroup, import_name='ccanalyser.cli._reporters:cli')
+@cli.group(cls=LazyGroup, import_name='ccanalyser.cli.cli_reporters:cli')
 def reporters():
     """Reporter counting, storing, comparison, pileups and heatmaps.
     """

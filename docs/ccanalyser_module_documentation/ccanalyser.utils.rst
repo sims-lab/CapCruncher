@@ -1,7 +1,7 @@
-digest module
-=============
+Utilities
+=========
 
-.. automodule:: digest
+.. automodule:: ccanalyser.utils
    :members:
    :undoc-members:
    :show-inheritance:

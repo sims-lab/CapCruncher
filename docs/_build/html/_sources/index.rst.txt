@@ -12,9 +12,9 @@ Welcome to ccanalyser documentation!
 
    installing.rst
    running_the_pipeline.rst
-   ccanalyser.rst
-   module_tools/tools.rst
-   module_cli/modules.rst
+   faq_pipeline.rst
+   cli.rst
+   ccanalyser_module_documentation/modules.rst
 
 Indices and tables
 ==================

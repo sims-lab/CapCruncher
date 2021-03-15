@@ -60,7 +60,7 @@ def split(
     """ 
     Splits fastq file(s) into equal chunks of n reads.
 
-    \b
+    \f
     Args:
      input_files (Tuple): Input fastq files to process.
      method (str, optional): Python or unix method (faster but not guarenteed to mantain read pairings) to split the fastq files. Defaults to "unix".

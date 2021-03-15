@@ -55,12 +55,16 @@ def bedgraph(
     scale_factor: int = 1e6,
     sparse: bool = True,
 ):
-    """Extracts a bedgraph for a specific capture probe/ all capture probes present in a cooler file.
-       
-       Bedgraph can be normalised for the number of cis interactions and/or binned into even genomic
-       windows.
+    """
+    Extracts reporters from a capture experiment and generates a bedgraph file.
 
-    \b
+    Identifies reporters for a single probe (if a probe name is supplied) or all capture 
+    probes present in a capture experiment HDF5 file. 
+    
+    The bedgraph generated can be normalised by the number of cis interactions for
+    inter experiment comparisons and/or binned into even genomic windows.
+
+    \f
     Args:
      cooler_fn (os.PathLike): Path to hdf5 file containing cooler groups.
      capture_names (list, optional): Name of capture probe to extract.

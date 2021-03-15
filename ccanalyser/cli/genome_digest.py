@@ -48,12 +48,15 @@ def digest(
     sort=False
 ):
     """ 
-    Generates a bed formatted file of all restriction fragments.
+    Performs in silico digestion of a genome in fasta format.
     
-    Digests the supplied genome fasta file and generates a bed file containing the locations of all restriction fragments
-    produced by the supplied restriction enzyme 
+    Digests the supplied genome fasta file and generates a bed file containing the
+    locations of all restriction fragments produced by the supplied restriction enzyme.
 
-    \b
+    A log file recording the number of restriction fragments for the suplied genome is also
+    generated.
+
+    \f
     Args:
      input_fasta (os.PathLike): Path to fasta file containing whole genome sequence, split by chromosome
      recognition_site (str): Restriction enzyme name/ Sequence of recognition site.

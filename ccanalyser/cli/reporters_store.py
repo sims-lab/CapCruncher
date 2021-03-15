@@ -15,8 +15,13 @@ from ccanalyser.tools.storage import CoolerBinner, create_cooler_cc, link_bins
 @cli.group()
 def store():
     """
-    Stores interaction counts. 
-    
+    Store reporter counts.
+
+    These commands store and manipulate reporter restriction fragment interaction 
+    counts as cooler formated groups in HDF5 files.
+
+    See subcommands for details. 
+
     """
 
 
@@ -69,6 +74,12 @@ def fragments(
     """
     Stores restriction fragment interaction combinations at the restriction fragment level.
 
+    Parses reporter restriction fragment interaction counts produced by 
+    "ccanalyser reporters count" and gerates a cooler formatted group in an HDF5 File. 
+    See `https://cooler.readthedocs.io/en/latest/` for further details.
+
+
+    \f
     Args:
      counts (os.PathLike): Path to restriction fragment interactions counts .tsv file.
      fragment_map (os.PathLike): Path to restriction fragment .bed file, generated with genome-digest command.
@@ -155,7 +166,19 @@ def bins(
     overlap_fraction: float = 1e-9,
     conversion_tables: os.PathLike = None,
 ):
-    """Convert cooler file binned at the restriction fragment level to constant genomic windows.
+    """
+    Convert a cooler group containing restriction fragments to constant genomic windows
+
+    Parses a cooler group and aggregates restriction fragment interaction counts into 
+    genomic bins of a specified size. If the normalise option is selected,  
+    columns containing normalised counts are added to the pixels table of the output 
+
+
+    Notes:
+     To avoid repeatedly calculating restriction fragment to bin conversions,
+     bin conversion tables (a .pkl file containing a dictionary of 
+     `:class:ccanalyser.tools.storage.GenomicBinner` objects, one per binsize) can be supplied.
+
 
     Args:
      cooler_fn (os.PathLike): Path to cooler file. Nested coolers can be specified by STORE_FN.hdf5::/PATH_TO_COOLER
@@ -185,10 +208,11 @@ def bins(
 @click.argument("coolers", required=True, nargs=-1)
 @click.option("-o", "--output", help="Output file name")
 def merge(coolers: Tuple, output: os.PathLike):
-    """Merges ccanalyser cooler files together.
+    """
+    Merges ccanalyser cooler files together.
     
-       Produces a unified cooler with both restriction fragment and genomic bins whilst
-       reducing the storage space required by hard linking the "bins" tables to prevent duplication.
+    Produces a unified cooler with both restriction fragment and genomic bins whilst
+    reducing the storage space required by hard linking the "bins" tables to prevent duplication.
 
     Args:
      coolers (Tuple): Cooler files produced by either the fragments or bins subcommands.

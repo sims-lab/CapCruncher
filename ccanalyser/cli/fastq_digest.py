@@ -57,7 +57,7 @@ def digest(
     """
     Performs in silico digestion of one or a pair of fastq files. 
 
-    \b
+    \f
     Args:
      input_fastq (Tuple): Input fastq files to process
      restriction_enzyme (str): Restriction enzyme name or site to use for digestion.
@@ -72,16 +72,6 @@ def digest(
      keep_cutsite (bool, optional): Determines if cutsite is removed from the output. Defaults to False.
      sample_name (str, optional): Name of sample processed eg. DOX-treated_1. Defaults to ''.
     """
-
-    
-
-
-
-
-
-
-
-
 
     # Set up multiprocessing variables
     inputq = SimpleQueue()  # reads are placed into this queue for processing
