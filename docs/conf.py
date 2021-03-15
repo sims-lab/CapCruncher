@@ -13,7 +13,6 @@
 import os
 import sys
 import sphinx_rtd_theme
-import sphinx_click
 
 sys.path.append(os.path.abspath('../'))
 sys.path.append(os.path.abspath('../ccanalyser/'))
