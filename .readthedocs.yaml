@@ -20,3 +20,6 @@ python:
    - requirements: docs/requirements.txt
    - method: pip
      path: .
+
+conda:
+  environment: ccanalyser_conda_env.yml
