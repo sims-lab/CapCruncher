@@ -1,4 +1,4 @@
-name: cc3
+name: cc
 channels:
   - bioconda
   - conda-forge
@@ -310,7 +310,6 @@ dependencies:
     - alabaster==0.7.12
     - anndata==0.7.5
     - batchglm==0.7.4
-    - ccanalyser==0.0.1
     - diffxpy==0.7.4
     - docutils==0.16
     - imagesize==1.2.0

@@ -4,3 +4,4 @@
 **.vscode
 .pytest_cache
 .env
+docs/_build/
