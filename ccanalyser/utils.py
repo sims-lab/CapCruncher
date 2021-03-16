@@ -76,7 +76,7 @@ def get_human_readable_number_of_bp(bp: int) -> str:
     return bp
 
 
-def is_valid_bed(bed: Union[str, BedTool]) -> bool:
+def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
 
     '''Returns true if bed file can be opened and has at least 3 columns'''
     try:
@@ -87,10 +87,12 @@ def is_valid_bed(bed: Union[str, BedTool]) -> bool:
     except Exception as e:
         
         if isinstance(e, FileNotFoundError):
-            print('Bed file not found')
+            if verbose:
+                print('Bed file not found')
         
         elif isinstance(e, IndexError):
-            print('Wrong number of fields detected, check separator/ number of columns')
+            if verbose:
+                print('Wrong number of fields detected, check separator/ number of columns')
 
         else:
             print(e)

@@ -2,28 +2,37 @@
 # -*- coding: utf-8 -*-
 """
 Capture Pipeline
-==================
+================
 
 This script processes data from the capture-c or NG capture-c sequencing
 protocols designed to identify 3d interactions in the genome.
 
-It takes Illumina paired-end sequencing reads in fastq format (gz compressed)
-as input and performs the following steps:
+It takes Illumina paired-end sequencing reads in fastq format 
+(gzip compression is prefered) as input and performs the following steps:
 
-1: Identifies all restriction fragments in the genome (digest_genome.py)
+1: Identifies all restriction fragments in the genome
 2: Quality control of raw reads (fastqc, multiqc)
-3: Removal of PCR duplicates (based on exact sequence matches; deduplicate_fastq.py)
-4: Trimming of reads to remove adaptor sequence (trim_galore)
-5: Combining overlapping read pairs (flash)
-6: Splits fastq(s) into smaller files (enables fast parallel processing; split_fastq.py)
-7: In silico digestion of reads (digest_fastq.py)
+3: Splits fastqs into smaller files to enable fast parallel processing.
+4: Removal of PCR duplicates based on exact sequence matches from fastq files
+5: Trimming of reads to remove adaptor sequence (trim_galore)
+6: Combining overlapping read pairs (FLASh)
+7: In silico digestion of reads in fastq files
 8: Alignment of fastq files with a user specified aligner (i.e. bowtie/bowtie2; BWA is not supported)
 9: Analysis of alignment statistics (picard CollectAlignmentSummaryMetrics, multiqc)
-10: Intersection of mapped reads with: capture probes, exclusion regions, blacklist, restriction fragments
-11: Classification of mapped read slices (ccanalyser.py)
-12: Generation of bedgraphs/BigWigs (convert_tsv_to_bedgraph.py and make_bigwig)
-13: Generation of a UCSC track hub for visualisation
-14: Collation of run statistics and generation of a run report
+10: Annotation of mapped reads with overlaps of capture probes, exclusion regions, blacklist, restriction fragments
+11: Removal of non-reporter slices and indentification of reporters
+12: Removal of PCR duplicates (exact coordinate matches) 
+13: Storage of reporters in `cooler format <https://cooler.readthedocs.io/en/latest/datamodel.html>`
+14: Generation of bedgraphs/BigWigs.
+15: Collation of run statistics and generation of a run report
+
+
+Optional:
+
+* Generation of a UCSC track hub for visualisation.
+* Differential interaction identification.
+* Generation of subtraction bedgraphs for between condition comparisons
+* Plotting of heatmaps.  
 
 
 @authors: asmith, dsims
@@ -80,10 +89,11 @@ N_SAMPLES = len(
 )
 
 # Has valid plotting coordinate bed file
-VALID_PLOT_COORDINATES = is_valid_bed(P.PARAMS.get('plot_coordinates'))
+VALID_PLOT_COORDINATES = is_valid_bed(P.PARAMS.get('plot_coordinates'), verbose=False)
 
 # Create a UCSC hub or not
 MAKE_HUB = is_on(P.PARAMS.get("hub_create"))
+
 
 ##############################
 #  Pipeline set-up functions #
@@ -116,7 +126,6 @@ def set_up_chromsizes():
         P.PARAMS["genome_chrom_sizes"] = "chrom_sizes.txt.tmp"
 
 
-
 ##################
 # Prepare genome #
 #################
@@ -146,9 +155,9 @@ def genome_digest(infile, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-############################
-# Fastq file pre-processing#
-###########################
+#############################
+# Fastq file pre-processing #
+#############################
 
 
 @follows(mkdir("capture_preprocessing"), mkdir("capture_preprocessing/fastqc"))
@@ -466,7 +475,7 @@ def fastq_digest_combined(infile, outfile):
                    -o %(outfile)s
                    --stats_prefix %(outfile)s.stats
                    --minimum_slice_length 18
-                   --compression_level %(pipeline_advanced_compression)s
+                   --compression_level %(pipeline_compression)s
                    -p 1
                    --stats_prefix statistics/digestion/data/%(fn)s.flashed
                    --sample_name %(sn)s
@@ -503,7 +512,7 @@ def fastq_digest_non_combined(infiles, outfile):
                    -o %(outfile)s
                    --minimum_slice_length 18
                    -p 1
-                   --compression_level %(pipeline_advanced_compression)s
+                   --compression_level %(pipeline_compression)s
                    --stats_prefix statistics/digestion/data/%(fn)s.pe
                    --sample_name %(sn)s
                    """
@@ -744,14 +753,14 @@ def annotate_sort_capture_oligos(outfile):
     )
 
 
-@active_if(P.PARAMS.get("analysis_blacklist"))
+@active_if(P.PARAMS.get("analysis_optional_blacklist"))
 @originate("capture_analysis/annotations/blacklist.bed")
 def annotate_sort_blacklist(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
 
-    if os.path.exists(P.PARAMS["analysis_blacklist"]):
-        statement = """cat %(analysis_blacklist)s | sort -k1,1 -k2,2n > %(outfile)s"""
+    if os.path.exists(P.PARAMS["analysis_optional_blacklist"]):
+        statement = """cat %(analysis_optional_blacklist)s | sort -k1,1 -k2,2n > %(outfile)s"""
     else:
         statement = "touch %(outfile)s"
 
@@ -900,7 +909,7 @@ def alignments_filter(infiles, outfile):
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_memory=P.PARAMS["pipeline_advanced_memory"],
+        job_memory=P.PARAMS["pipeline_memory"],
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -996,7 +1005,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type, captu
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
-        job_memory=P.PARAMS["pipeline_advanced_memory"],
+        job_memory=P.PARAMS["pipeline_memory"],
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1147,7 +1156,7 @@ def generate_bin_conversion_tables(outfile):
     )
 
     binner_dict = dict()
-    for bs in re.split(r"[,;]\s*|\s+", str(P.PARAMS["plot_bin_size"])):
+    for bs in re.split(r"[,;]\s*|\s+", str(P.PARAMS["analysis_bin_size"])):
         gb = GenomicBinner(
             chromsizes=P.PARAMS["genome_chrom_sizes"], fragments=frags, binsize=int(bs)
         )
@@ -1158,7 +1167,7 @@ def generate_bin_conversion_tables(outfile):
         pickle.dump(binner_dict, w)
 
 
-@active_if(not is_none(P.PARAMS.get("plot_bin_size")))
+@active_if(not is_none(P.PARAMS.get("analysis_bin_size")))
 @follows(generate_bin_conversion_tables, mkdir("capture_analysis/reporters/binned/"))
 @transform(
     reporters_store_restriction_fragment,
@@ -1176,7 +1185,7 @@ def reporters_store_binned(infile, outfile, capture_name):
     infile, conversion_tables = infile
 
     bin_options = " -b " + " -b ".join(
-        re.split(r"[,;]\s*|\s+", str(P.PARAMS["plot_bin_size"]))
+        re.split(r"[,;]\s*|\s+", str(P.PARAMS["analysis_bin_size"]))
     )
     output_prefix = outfile.replace(f".{capture_name}.log", "")
 
@@ -1617,8 +1626,6 @@ if __name__ == "__main__":
     set_up_chromsizes()
     set_up_pipeline_params_dict()
     P.main(sys.argv)
-
-
 
 
 

@@ -2,70 +2,72 @@
 # Essential configuration options #
 ###################################
 
-genome:
-    name: hg19
-    fasta: /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/WholeGenomeFasta/genome.fa
-    aligner_index: /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/Bowtie2Index/genome
-    chrom_sizes: #Will be determined automatically from the genome name if this is a UCSC genome.
-    
 analysis:
     method: capture
-    capture_oligos: capture_oligos.bed
+    capture_oligos: capture-c_oligos.bed
     restriction_enzyme: dpnii
     reporter_exclusion_zone: 1000
-    blacklist:
+    bin_size: 2500
+
+genome:
+    name: mm9
+    fasta: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa
+    aligner_index: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/Bowtie2Index/genome
+    chrom_sizes: #Will be determined automatically from the genome name if this is a UCSC genome.
+
+#############################
+# Essential cluster options #
+#############################
 
 pipeline:
     n_cores: 4
     cluster_queue: batch
     cluster_queue_manager: slurm
-
-hub:
-    create: True
-    url: http://userweb.molbiol.ox.ac.uk/ # Url/IP of server to host bigWigs
-    dir: /public/asmith/capture-c/test # Location of publically accessible location on the server
-    name: capturec # Name for the hub (UCSC required)
-    short: capturec new pipeline # Short hub name (UCSC required)
-    long: capturec processed with the new python pipeline # Long hub name (UCSC required)
-    email: alastair.smith@ndcls.ox.ac.uk # Email address (UCSC required)
-    colors: red blue green yellow purple # Colours to use for bigWig tracks. Leave blank for random. Colours are cycled if there are more tracks than colours.
-
-
-plot:
-    coordinates: plot_coords.bed
-    bin_size: 2500
-    format: png
-    vmin: 0
-    vmax: 1
-
-
-##################################
-# Advanced configuration options #
-##################################
-
-pipeline_advanced:
     compression: 5
     memory: 32G
 
-deduplication:
-    pre-dedup: True # Turns on initial removal of identical reads
 
-trim:
-    options: --length 21 # Options passed to trim_galore
-
-split:
-    n_reads: 2500000 # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
+###################################
+# Optional configuration options #
+###################################
 
 align:
     aligner: bowtie2 # Aligner to use
     index_flag: -x # Flag to specify index for the aligner. Leave blank for none i.e. bowtie
     options: -p 6 --very-sensitive # Aligner parameters
 
-bigwig:
-    normalise: n_cis # Normalisation method to use for bigwig plotting
+analysis_optional:
+    blacklist:
+
+deduplication:
+    pre-dedup: True # Turns on initial removal of identical reads
+
+hub:
+    create: False
+    url: http://userweb.molbiol.ox.ac.uk/ # Url/IP of server to host bigWigs
+    dir: /public/asmith/capture-c/test # Location of publically accessible location on the server
+    name: capturec_test # Name for the hub (UCSC required)
+    short: capturec new pipeline # Short hub name (UCSC required)
+    long: capturec processed with the new python pipeline # Long hub name (UCSC required)
+    email: alastair.smith@ndcls.ox.ac.uk # Email address (UCSC required)
+    colors: red blue green yellow purple # Colours to use for bigWig tracks. Leave blank for random. Colours are cycled if there are more tracks than colours.
+
+normalisation:
     scale_factor: 1000000 # Scaling factor for normalisation.
-    
-    
+
+plot:
+    coordinates: plot_coords.bed
+    format: png
+    vmin: 0
+    vmax: 1
+    bin_size: 2500
+    normalisation:
+
+trim:
+    options: --length 21 # Options passed to trim_galore
+
+split:
+    n_reads: 2500000 # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
 
 
 
