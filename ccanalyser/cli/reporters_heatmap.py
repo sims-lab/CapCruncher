@@ -132,6 +132,6 @@ def plot(
                         matrix = ccm.get_matrix(coordinates=interval_coords)
 
                     print(f'Plotting {capture} at {res}')
-                    #breakpoint()
+
                     fig = plot_matrix(matrix, cmap=cmap, vmax=vmax, vmin=vmin)
                     fig.savefig(f"{output_prefix}_{capture}_{res}.png")

@@ -411,20 +411,23 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
             coordinates_split.append("region_0")
 
         bt = BedTool(" ".join(coordinates_split), from_string=True)
+    
+    elif pattern_bed_file.match(coordinates):
+        if is_valid_bed(coordinates):
+            if bed_has_name(coordinates):
+                bt = BedTool(coordinates)
+            else:
+                bt = (
+                        BedTool(coordinates)
+                        .to_dataframe()
+                        .reset_index()
+                        .assign(name=lambda df: "region_" + df["index"].astype("string"))[
+                            ["chrom", "start", "end", "name"]
+                        ]
+                        .pipe(BedTool.from_dataframe))
+        else:
+            raise ValueError('Invalid bed file supplied.')
 
-    elif pattern_bed_file.match(coordinates) and bed_has_name(coordinates):
-        bt = BedTool(coordinates)
-
-    elif pattern_bed_file.match(coordinates) and not bed_has_name(coordinates):
-        bt = (
-            BedTool(coordinates)
-            .to_dataframe()
-            .reset_index()
-            .assign(name=lambda df: "region_" + df["index"].astype("string"))[
-                ["chrom", "start", "end", "name"]
-            ]
-            .pipe(BedTool.from_dataframe)
-        )
     else:
         raise ValueError(
             """Coordinates not provided in the correct format. Provide coordinates in the form chr[NUMBER]:[START]-[END] or a .bed file"""
