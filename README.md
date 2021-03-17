@@ -19,12 +19,7 @@ As the pipeline relies on conda enviroments to run, it is highly recomended that
 
 If conda is already installed then clone the repository:
 
----
-**NOTE**
-
-As creating this conda enviroment takes a while, using [mamba](https://github.com/mamba-org/mamba) is encouraged.
-
----
+**Note** As creating this conda enviroment takes a while, using [mamba](https://github.com/mamba-org/mamba) is encouraged.
 
 ```
 git clone https://github.com/sims-lab/capture-c.git
