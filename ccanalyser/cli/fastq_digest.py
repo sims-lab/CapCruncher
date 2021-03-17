@@ -13,7 +13,7 @@ from ccanalyser.utils import get_re_site
 
 @cli.command()
 @click.argument("input_fastq", nargs=-1, required=True)
-@click.option("-r", "--restriction_enzyme", help="Restriction enzyme name or sequence", required=True)
+@click.option("-r", "--restriction_enzyme", help="Restriction enzyme name or sequence to use for in silico digestion.", required=True)
 @click.option(
     "-m",
     "--mode",
@@ -27,19 +27,19 @@ from ccanalyser.utils import get_re_site
 @click.option("--keep_cutsite", default=False)
 @click.option(
     "--compression_level",
-    help="Level of compression for output files",
+    help="Level of compression for output files (1=low, 9=high)",
     default=5,
     type=click.INT,
 )
 @click.option(
     "--read_buffer",
-    help="Number of reads to process before writing to file",
+    help="Number of reads to process before writing to file to conserve memory.",
     default=1e5,
     type=click.INT,
 )
 @click.option("--stats_prefix", help="Output prefix for stats file", default="stats")
 @click.option(
-    "--sample_name", help="Name of sample e.g. DOX_treated_1", default="sampleX"
+    "--sample_name", help="Name of sample e.g. DOX_treated_1. Required for correct statistics.", default="sampleX"
 )
 def digest(
     input_fastq: Tuple,
@@ -78,7 +78,6 @@ def digest(
     writeq = SimpleQueue()  # digested reads are placed into the queue for writing
     statq = Queue()  # stats queue
 
-    # Variables
     cut_site = get_re_site(restriction_enzyme)
 
     # Checks the submode to see in which mode to run

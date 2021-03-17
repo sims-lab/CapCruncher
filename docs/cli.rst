@@ -1,6 +1,5 @@
-=================
 CLI Documentation
-=================
+#################
 
 .. click:: ccanalyser.cli:cli
    :prog: ccanalyser

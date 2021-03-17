@@ -95,7 +95,8 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
                 print('Wrong number of fields detected, check separator/ number of columns')
 
         else:
-            print(e)
+            if verbose:
+                print(e)
         
         return False
     

@@ -47,12 +47,8 @@ class LazyGroup(click.Group):
 @click.group(cls=UnsortedGroup)
 def cli():
     """
+    An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.
 
-    An end to end solution for processing:
-    
-    Capture-C, Tri-C and Tiled-C data.
-
-    Type -h or --help after any subcommand for more information.
     """
 
 
@@ -79,10 +75,11 @@ def reporters():
     """
 
 @cli.command(context_settings=dict(ignore_unknown_options=True))
+@click.option('-h', '--help', is_flag=True)
 @click.argument("mode", type=click.Choice(["make", "show", "clone", "touch"]))
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
-@click.option('-h', '--help', is_flag=True)
 def pipeline(mode, pipeline_options, help=False):
+    
     '''Runs the data processing pipeline'''
     
     fn = os.path.abspath(__file__)

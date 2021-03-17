@@ -174,12 +174,10 @@
  | <a href="#N"><strong>N</strong></a>
  | <a href="#O"><strong>O</strong></a>
  | <a href="#P"><strong>P</strong></a>
- | <a href="#Q"><strong>Q</strong></a>
  | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
  | <a href="#U"><strong>U</strong></a>
- | <a href="#W"><strong>W</strong></a>
  | <a href="#Z"><strong>Z</strong></a>
  
 </div>
@@ -358,6 +356,13 @@
         <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-gzip">ccanalyser-fastq-split command line option</a>
 </li>
         <li><a href="cli.html#cmdoption-ccanalyser-reporters-bedgraph-gzip">ccanalyser-reporters-bedgraph command line option</a>
+</li>
+      </ul></li>
+      <li>
+    --help
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-pipeline-h">ccanalyser-pipeline command line option</a>
 </li>
       </ul></li>
       <li>
@@ -740,6 +745,13 @@
 </li>
       </ul></li>
       <li>
+    -h
+
+      <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-pipeline-h">ccanalyser-pipeline command line option</a>
+</li>
+      </ul></li>
+      <li>
     -l
 
       <ul>
@@ -839,11 +851,33 @@
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.align_slices">align_slices() (in module ccanalyser.pipeline.pipeline)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.alignments_deduplicate_collate">alignments_deduplicate_collate() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.alignments_deduplicate_fragments">alignments_deduplicate_fragments() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.alignments_deduplicate_slices">alignments_deduplicate_slices() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.alignments_filter">alignments_filter() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.alignments_index">alignments_index() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.alignments_merge">alignments_merge() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.annotate_slices">annotate_slices() (in module ccanalyser.pipeline.pipeline)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.alignments_multiqc">alignments_multiqc() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.alignments_qc">alignments_qc() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.annotate_alignments">annotate_alignments() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.annotate_bam_to_bed">annotate_bam_to_bed() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.annotate_make_exclusion_bed">annotate_make_exclusion_bed() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.annotate_sort_blacklist">annotate_sort_blacklist() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.annotate_sort_capture_oligos">annotate_sort_capture_oligos() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -851,8 +885,6 @@
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.bam_to_bed">bam_to_bed() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.annotate.BedIntersection.bed1">bed1 (ccanalyser.tools.annotate.BedIntersection attribute)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.annotate.BedIntersection.bed2">bed2 (ccanalyser.tools.annotate.BedIntersection attribute)</a>
@@ -865,14 +897,14 @@
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.annotate.BedIntersection">BedIntersection (class in ccanalyser.tools.annotate)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.bin_conversion_table">bin_conversion_table() (ccanalyser.tools.storage.CoolerBinner property)</a>
 
       <ul>
         <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.GenomicBinner.bin_conversion_table">(ccanalyser.tools.storage.GenomicBinner property)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.binner">binner (ccanalyser.tools.storage.CoolerBinner attribute)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.bins">bins() (ccanalyser.tools.storage.CoolerBinner property)</a>
@@ -887,10 +919,6 @@
         <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.GenomicBinner.binsize">(ccanalyser.tools.storage.GenomicBinner attribute)</a>
 </li>
       </ul></li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.build_exclusion_bed">build_exclusion_bed() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.build_report">build_report() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
   </ul></td>
 </tr></table>
 
@@ -1145,6 +1173,10 @@
     ccanalyser-pipeline command line option
 
       <ul>
+        <li><a href="cli.html#cmdoption-ccanalyser-pipeline-h">--help</a>
+</li>
+        <li><a href="cli.html#cmdoption-ccanalyser-pipeline-h">-h</a>
+</li>
         <li><a href="cli.html#cmdoption-ccanalyser-pipeline-arg-MODE">MODE</a>
 </li>
         <li><a href="cli.html#cmdoption-ccanalyser-pipeline-arg-PIPELINE_OPTIONS">PIPELINE_OPTIONS</a>
@@ -1544,27 +1576,13 @@
         <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TiledCSliceFilter.cis_or_trans_stats">(ccanalyser.tools.filter.TiledCSliceFilter property)</a>
 </li>
       </ul></li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.collate_ccanalyser_stats">collate_ccanalyser_stats() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.collate_cis_trans_data">collate_cis_trans_data() (in module ccanalyser.tools.statistics)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.collate_deduplication_stats">collate_deduplication_stats() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.collate_digestion_stats">collate_digestion_stats() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.collate_histogram_data">collate_histogram_data() (in module ccanalyser.tools.statistics)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.collate_read_data">collate_read_data() (in module ccanalyser.tools.statistics)</a>
 </li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.collate_reporters">collate_reporters() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.collate_reporters_final">collate_reporters_final() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.collate_slice_data">collate_slice_data() (in module ccanalyser.tools.statistics)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.collate_trimming_statistics">collate_trimming_statistics() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.combine_reads">combine_reads() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.tsv_aggregate.concat_tsvs">concat_tsvs() (in module ccanalyser.cli.tsv_aggregate)</a>
 </li>
@@ -1606,8 +1624,6 @@
       </ul></li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CCBedgraph.coordinates">coordinates() (ccanalyser.tools.pileup.CCBedgraph property)</a>
 </li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.count_interactions">count_interactions() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.reporters_count.count_re_site_combinations">count_re_site_combinations() (in module ccanalyser.cli.reporters_count)</a>
 </li>
       <li>
@@ -1627,24 +1643,14 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.deduplicate_fragments">deduplicate_fragments() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.deduplicate_reporters">deduplicate_reporters() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.DeduplicationStatistics">DeduplicationStatistics (class in ccanalyser.tools.statistics)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.DeduplicationStatistics.df">df() (ccanalyser.tools.statistics.DeduplicationStatistics property)</a>
 </li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.digest_flashed_reads">digest_flashed_reads() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.digest_genome">digest_genome() (in module ccanalyser.pipeline.pipeline)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedChrom">DigestedChrom (class in ccanalyser.tools.digest)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.digest_pe_reads">digest_pe_reads() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedChrom">DigestedChrom (class in ccanalyser.tools.digest)</a>
-</li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.digest.DigestedRead">DigestedRead (class in ccanalyser.tools.digest)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.statistics.DigestionStatCollector">DigestionStatCollector (class in ccanalyser.tools.statistics)</a>
@@ -1667,13 +1673,29 @@
 <h2 id="F">F</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_alignment">fastq_alignment() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_digest_combined">fastq_digest_combined() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_digest_non_combined">fastq_digest_non_combined() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_duplicates_identify">fastq_duplicates_identify() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_duplicates_parse">fastq_duplicates_parse() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_duplicates_remove">fastq_duplicates_remove() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_flash">fastq_flash() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_multiqc">fastq_multiqc() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_preprocessing">fastq_preprocessing() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_qc">fastq_qc() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_split">fastq_split() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.fastq_trim">fastq_trim() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqReaderProcess">FastqReaderProcess (class in ccanalyser.tools.io)</a>
 </li>
@@ -1685,6 +1707,8 @@
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.filter_slices">filter_slices() (ccanalyser.tools.filter.SliceFilter method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.filter_stages">filter_stages (ccanalyser.tools.filter.SliceFilter attribute)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.filter_stats">filter_stats (ccanalyser.tools.filter.SliceFilter attribute)</a>
@@ -1693,8 +1717,6 @@
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.format_coordinates">format_coordinates() (in module ccanalyser.utils)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.tsv_aggregate.format_index_var">format_index_var() (in module ccanalyser.cli.tsv_aggregate)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.frag_stats">frag_stats() (ccanalyser.tools.filter.CCSliceFilter property)</a>
@@ -1737,6 +1759,8 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.generate_bin_conversion_tables">generate_bin_conversion_tables() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.genome_digest">genome_digest() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.GenomicBinner">GenomicBinner (class in ccanalyser.tools.storage)</a>
 </li>
@@ -1788,8 +1812,6 @@
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.hash_column">hash_column() (in module ccanalyser.utils)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess.hash_seed">hash_seed (ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess attribute)</a>
 
       <ul>
@@ -1797,16 +1819,18 @@
 </li>
       </ul></li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.hub_make">hub_make() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.hub_write_path">hub_write_path() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.identify_differential_interactions">identify_differential_interactions() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.identify_reporters">identify_reporters() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.index_bam">index_bam() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
       <li>
     INPUT_FASTA
@@ -1837,14 +1861,14 @@
         <li><a href="cli.html#cmdoption-ccanalyser-fastq-split-arg-INPUT_FILES">ccanalyser-fastq-split command line option</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess.inq">inq (ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess attribute)</a>
 
       <ul>
         <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess.inq">(ccanalyser.tools.deduplicate.ReadDuplicateRemovalProcess attribute)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.intersect_bins">intersect_bins() (in module ccanalyser.utils)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.annotate.BedIntersection.intersection">intersection() (ccanalyser.tools.annotate.BedIntersection property)</a>
@@ -1907,31 +1931,11 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.tsv_aggregate.main">main() (in module ccanalyser.cli.tsv_aggregate)</a>
 </li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.make_bedgraph_normalised">make_bedgraph_normalised() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.make_bedgraph_raw">make_bedgraph_raw() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.make_bigwig">make_bigwig() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.make_group_track">make_group_track() (in module ccanalyser.utils)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.make_ucsc_hub">make_ucsc_hub() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.make_union_bedgraph">make_union_bedgraph() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.mapping_multiqc">mapping_multiqc() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.mapping_qc">mapping_qc() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.alignments_filter.merge_annotations">merge_annotations() (in module ccanalyser.cli.alignments_filter)</a>
 </li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.merge_bam_files">merge_bam_files() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.merge_dictionaries">merge_dictionaries() (in module ccanalyser.utils)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.merge_interactions">merge_interactions() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.merge_run_statistics">merge_run_statistics() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.merged_captures_and_reporters">merged_captures_and_reporters() (ccanalyser.tools.filter.CCSliceFilter property)</a>
 </li>
@@ -2019,10 +2023,6 @@
 </li>
       </ul></li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.multiqc_reads">multiqc_reads() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-  </ul></td>
 </tr></table>
 
 <h2 id="N">N</h2>
@@ -2084,6 +2084,10 @@
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.genome_digest.parse_chromosomes">parse_chromosomes() (in module ccanalyser.cli.genome_digest)</a>
 </li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.pipeline_make_report">pipeline_make_report() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.pipeline_merge_stats">pipeline_merge_stats() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
       <li>
     PIPELINE_OPTIONS
 
@@ -2091,29 +2095,21 @@
         <li><a href="cli.html#cmdoption-ccanalyser-pipeline-arg-PIPELINE_OPTIONS">ccanalyser-pipeline command line option</a>
 </li>
       </ul></li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.pixel_conversion_table">pixel_conversion_table() (ccanalyser.tools.storage.CoolerBinner property)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.pixels">pixels() (ccanalyser.tools.storage.CoolerBinner property)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.pixel_conversion_table">pixel_conversion_table() (ccanalyser.tools.storage.CoolerBinner property)</a>
 </li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.plot_interactions">plot_interactions() (in module ccanalyser.pipeline.pipeline)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.storage.CoolerBinner.pixels">pixels() (ccanalyser.tools.storage.CoolerBinner property)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.reporters_heatmap.plot_matrix">plot_matrix() (in module ccanalyser.cli.reporters_heatmap)</a>
 </li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.post_ccanalysis">post_ccanalysis() (in module ccanalyser.pipeline.pipeline)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.post_annotation">post_annotation() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.pre_ccanalysis">pre_ccanalysis() (in module ccanalyser.pipeline.pipeline)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.post_ccanalyser_analysis">post_ccanalyser_analysis() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.pre_annotation">pre_annotation() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.PysamFakeEntry">PysamFakeEntry (class in ccanalyser.utils)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="Q">Q</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.qc_reads">qc_reads() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -2169,8 +2165,6 @@
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.remove_multi_capture_fragments">remove_multi_capture_fragments() (ccanalyser.tools.filter.CCSliceFilter method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.CCSliceFilter.remove_multicapture_reporters">remove_multicapture_reporters() (ccanalyser.tools.filter.CCSliceFilter method)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TiledCSliceFilter.remove_non_capture_fragments">remove_non_capture_fragments() (ccanalyser.tools.filter.TiledCSliceFilter method)</a>
@@ -2183,6 +2177,8 @@
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TriCSliceFilter.remove_slices_with_one_reporter">remove_slices_with_one_reporter() (ccanalyser.tools.filter.TriCSliceFilter method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.remove_slices_without_re_frag_assigned">remove_slices_without_re_frag_assigned() (ccanalyser.tools.filter.SliceFilter method)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.SliceFilter.remove_unmapped_slices">remove_unmapped_slices() (ccanalyser.tools.filter.SliceFilter method)</a>
@@ -2207,6 +2203,28 @@
 </li>
       </ul></li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraphWindowed.reporters_binned">reporters_binned() (ccanalyser.tools.pileup.CoolerBedGraphWindowed property)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.reporters_collate">reporters_collate() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.reporters_count">reporters_count() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.reporters_make_bedgraph">reporters_make_bedgraph() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.reporters_make_bedgraph_normalised">reporters_make_bedgraph_normalised() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.reporters_make_bigwig">reporters_make_bigwig() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.reporters_make_subtraction_bedgraph">reporters_make_subtraction_bedgraph() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.reporters_make_union_bedgraph">reporters_make_union_bedgraph() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.reporters_plot_heatmap">reporters_plot_heatmap() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.reporters_store_binned">reporters_store_binned() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.reporters_store_merged">reporters_store_merged() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.reporters_store_restriction_fragment">reporters_store_restriction_fragment() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess.run">run() (ccanalyser.tools.deduplicate.ReadDeduplicationParserProcess method)</a>
 
@@ -2278,13 +2296,7 @@
         <li><a href="cli.html#cmdoption-ccanalyser-alignments-deduplicate-remove-arg-SLICES_FN">ccanalyser-alignments-deduplicate-remove command line option</a>
 </li>
       </ul></li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.sort_blacklist">sort_blacklist() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.sort_capture_oligos">sort_capture_oligos() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.pileup.CoolerBedGraph.sparse">sparse (ccanalyser.tools.pileup.CoolerBedGraph attribute)</a>
-</li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.split_fastq">split_fastq() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.utils.html#ccanalyser.utils.split_intervals_on_chrom">split_intervals_on_chrom() (in module ccanalyser.utils)</a>
 </li>
@@ -2294,9 +2306,13 @@
         <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.io.FastqReaderProcess.statq">(ccanalyser.tools.io.FastqReaderProcess attribute)</a>
 </li>
       </ul></li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.store_interactions_at_fragment_level">store_interactions_at_fragment_level() (in module ccanalyser.pipeline.pipeline)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.stats_alignment_filtering_collate">stats_alignment_filtering_collate() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.store_interactions_binned">store_interactions_binned() (in module ccanalyser.pipeline.pipeline)</a>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.stats_deduplication_collate">stats_deduplication_collate() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.stats_digestion_collate">stats_digestion_collate() (in module ccanalyser.pipeline.pipeline)</a>
+</li>
+      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.stats_trim_collate">stats_trim_collate() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -2320,8 +2336,6 @@
       </ul></li>
       <li><a href="ccanalyser_module_documentation/ccanalyser.tools.html#ccanalyser.tools.filter.TriCSliceFilter">TriCSliceFilter (class in ccanalyser.tools.filter)</a>
 </li>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.trim_reads">trim_reads() (in module ccanalyser.pipeline.pipeline)</a>
-</li>
   </ul></td>
 </tr></table>
 
@@ -2338,14 +2352,6 @@
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ccanalyser_module_documentation/ccanalyser.cli.html#ccanalyser.cli.UnsortedGroup">UnsortedGroup (class in ccanalyser.cli)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="W">W</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="ccanalyser_module_documentation/ccanalyser.pipeline.html#ccanalyser.pipeline.pipeline.write_hub_path">write_hub_path() (in module ccanalyser.pipeline.pipeline)</a>
 </li>
   </ul></td>
 </tr></table>

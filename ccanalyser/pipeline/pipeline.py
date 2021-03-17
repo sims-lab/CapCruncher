@@ -5,7 +5,7 @@ Capture Pipeline
 ================
 
 This pipeline processes data from Capture-C/NG Capture-C/Tri-C and Tiled-C sequencing
-protocols designed to identify 3d interactions in the genome from a specified viewpoint.
+protocols designed to identify 3D interactions in the genome from a specified viewpoint.
 
 It takes Illumina paired-end sequencing reads in fastq format 
 (gzip compression is prefered) as input and performs the following steps:
@@ -112,6 +112,8 @@ def set_up_pipeline_params_dict():
 
 
 def set_up_chromsizes():
+
+    assert P.PARAMS.get('genome_name'), 'Genome name has not been provided.'
 
     if not is_none(P.PARAMS["genome_chrom_sizes"]):
         pass
@@ -699,6 +701,9 @@ def alignments_multiqc(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
+@follows(alignments_multiqc)
+def pre_annotation():
+    pass
 
 ############################
 # Annotation of alignments #
@@ -859,7 +864,7 @@ def annotate_alignments(infile, outfile):
 
 
 @follows(fastq_preprocessing, annotate_alignments)
-def ccanalyser_preprocessing():
+def post_annotation():
     """Runs the pipeline until just prior to identification of reporters"""
     pass
 
@@ -869,7 +874,7 @@ def ccanalyser_preprocessing():
 ###########################
 
 @follows(
-    ccanalyser_preprocessing,
+    post_annotation,
     annotate_alignments,
     mkdir("ccanalyser_analysis/reporters/unfiltered/"),
     mkdir("statistics/reporters/data"),
@@ -1623,9 +1628,13 @@ def full(infiles, outfile):
 
 
 if __name__ == "__main__":
-    set_up_chromsizes()
-    set_up_pipeline_params_dict()
-    P.main(sys.argv)
+
+    if '-h' in sys.argv or '--help' in sys.argv: # If --help then just run the pipeline without setup
+        P.main(sys.argv)
+    else:
+        set_up_chromsizes()
+        set_up_pipeline_params_dict()
+        P.main(sys.argv)
 
 
 
