@@ -13,9 +13,18 @@ For further information see the [documentation](https://ccanalyser.readthedocs.i
 
 ## Installation
 
+### Pre-Installation
+
 As the pipeline relies on conda enviroments to run, it is highly recomended that a conda enviroment is first generated using the provided yaml file.
 
 If conda is already installed then clone the repository:
+
+---
+**NOTE**
+
+As creating this conda enviroment takes a while, using [mamba](https://github.com/mamba-org/mamba) is encouraged.
+
+---
 
 ```
 git clone https://github.com/sims-lab/capture-c.git
