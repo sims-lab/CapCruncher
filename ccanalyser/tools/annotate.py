@@ -123,6 +123,15 @@ class BedIntersection:
         return pd.concat([*intersections, *not_intersected], ignore_index=True).fillna(
             self._intersection_na
         )
+    
+
+    def _format_invalid_intersection(self, bed):
+        return (
+                convert_bed_to_dataframe(bed)
+                .assign(**{self.intersection_name: self._intersection_na})
+                .set_index("name")
+                .loc[:, self.intersection_name])
+
 
     @property
     def intersection(self) -> pd.Series:
@@ -136,15 +145,11 @@ class BedIntersection:
             ser.name = self.intersection_name
 
         elif self.invalid_bed_action == "ignore":
-            ser = (
-                convert_bed_to_dataframe(self.bed1)
-                .assign(**{self.intersection_name: self._intersection_na})
-                .set_index("name")
-                .loc[:, self.intersection_name]
-            )
+            ser = self._format_invalid_intersection(self.bed1)
+        
         else:
             raise ValueError(
                 f"Slices valid: {self.bed1_valid}\n {self.intersection_name} .bed file valid: {self.bed2_valid}"
-            )
+            )     
 
         return ser

@@ -176,6 +176,7 @@ def collate_histogram_data(fnames):
 def collate_read_data(fnames):
 
     df = (pd.concat([pd.read_csv(fn) for fn in fnames])
+        .query('(read_number == 0) or (read_number == 1)')
         .groupby(["sample", "stage", "read_type", "read_number", "stat_type"])["stat"]
         .sum()
         .reset_index()
@@ -183,12 +184,12 @@ def collate_read_data(fnames):
     
     # PE reads result in duplicate statitsics as considered independently
     # Need to halve all of the PE statistics but not for deduplication/digestion which are correct
-    df = df.assign(stat=np.where((df['read_type'] == 'pe') & 
-                                 (df['read_number'] == 0) & 
-                                 (df['stage'] != 'deduplication') &
-                                 (df['stage'] != 'digestion'), 
-                                 df['stat'] // 2, 
-                                 df['stat']))
+    # df = df.assign(stat=np.where((df['read_type'] == 'pe') & 
+    #                              (df['read_number'] == 0) & 
+    #                              (df['stage'] != 'deduplication') &
+    #                              (df['stage'] != 'digestion'), 
+    #                              df['stat'] // 2, 
+    #                              df['stat']))
     
     return df.sort_values(["sample", "stat"], ascending=[True, False])
 

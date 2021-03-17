@@ -129,19 +129,15 @@ class SliceFilter:
         Aggregates slices by parental read id and calculates stats.
 
         Returns:
-         pd.Dataframe: Contains slice statistics
+         pd.Dataframe: Contains slice  statistics aggregated at the read count level 
         """
-        return self.filter_stats.rename(
-            columns={
-                "stage": "stat_type",
-                "unique_fragments": "stat",
-            }
-        )[["stat_type", "stat"]].assign(
-            stage="ccanalysis",
-            read_type=self.read_type,
-            sample=self.sample_name,
-            read_number=0,
-        )
+        return (self.filter_stats.rename(columns={"stage": "stat_type", "unique_fragments": "stat",})
+                                 [["stat_type", "stat"]]
+                                 .assign(stage="ccanalysis",
+                                         read_type=self.read_type,
+                                         sample=self.sample_name,
+                                         read_number=0,)
+                )
 
     @property
     def fragments(self):

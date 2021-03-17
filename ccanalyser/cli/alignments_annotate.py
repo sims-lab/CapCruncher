@@ -40,7 +40,7 @@ def remove_duplicates_from_bed(bed: Union[str, BedTool, pd.DataFrame]) -> BedToo
      BedTool: BedTool with deduplicated names
     """
 
-    df = convert_bed_to_dataframe(bed)
+    df = convert_bed_to_dataframe(bed).sample(frac=1)
 
     if "score" in df.columns:
         df = df.sort_values(["score"], ascending=False)
