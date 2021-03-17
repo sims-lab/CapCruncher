@@ -67,5 +67,12 @@ If a cluster is not being used, or there is an issue with the DRMAA interface. T
 ```
 ccanalyser pipeline make --local -p 4
 ```
+## Using the CLI
+
+All ccanalyser commands can be accessed by running:
+
+```
+ccanalyser [Subcommand]
+```
 
 
