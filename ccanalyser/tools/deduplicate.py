@@ -6,7 +6,7 @@ import xxhash
 import functools
 import os
 
-
+#TODO: Look at https://github.com/realead/cykhash/blob/master/doc/README_API.md
 class ReadDeduplicationParserProcess(Process):
     """
     Process subclass for parsing fastq file(s) into a hashed {id:sequence} json format.

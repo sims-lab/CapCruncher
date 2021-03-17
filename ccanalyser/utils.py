@@ -76,7 +76,7 @@ def get_human_readable_number_of_bp(bp: int) -> str:
     return bp
 
 
-def is_valid_bed(bed: Union[str, BedTool]) -> bool:
+def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
 
     '''Returns true if bed file can be opened and has at least 3 columns'''
     try:
@@ -87,13 +87,16 @@ def is_valid_bed(bed: Union[str, BedTool]) -> bool:
     except Exception as e:
         
         if isinstance(e, FileNotFoundError):
-            print('Bed file not found')
+            if verbose:
+                print('Bed file not found')
         
         elif isinstance(e, IndexError):
-            print('Wrong number of fields detected, check separator/ number of columns')
+            if verbose:
+                print('Wrong number of fields detected, check separator/ number of columns')
 
         else:
-            print(e)
+            if verbose:
+                print(e)
         
         return False
     
@@ -411,20 +414,23 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
             coordinates_split.append("region_0")
 
         bt = BedTool(" ".join(coordinates_split), from_string=True)
+    
+    elif pattern_bed_file.match(coordinates):
+        if is_valid_bed(coordinates):
+            if bed_has_name(coordinates):
+                bt = BedTool(coordinates)
+            else:
+                bt = (
+                        BedTool(coordinates)
+                        .to_dataframe()
+                        .reset_index()
+                        .assign(name=lambda df: "region_" + df["index"].astype("string"))[
+                            ["chrom", "start", "end", "name"]
+                        ]
+                        .pipe(BedTool.from_dataframe))
+        else:
+            raise ValueError('Invalid bed file supplied.')
 
-    elif pattern_bed_file.match(coordinates) and bed_has_name(coordinates):
-        bt = BedTool(coordinates)
-
-    elif pattern_bed_file.match(coordinates) and not bed_has_name(coordinates):
-        bt = (
-            BedTool(coordinates)
-            .to_dataframe()
-            .reset_index()
-            .assign(name=lambda df: "region_" + df["index"].astype("string"))[
-                ["chrom", "start", "end", "name"]
-            ]
-            .pipe(BedTool.from_dataframe)
-        )
     else:
         raise ValueError(
             """Coordinates not provided in the correct format. Provide coordinates in the form chr[NUMBER]:[START]-[END] or a .bed file"""

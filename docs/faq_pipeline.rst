@@ -1,6 +1,5 @@
-============
 Pipeline FAQ
-============
+############
 
 Interruptions to the pipeline
 =============================
@@ -20,25 +19,23 @@ processed files and re-run the pipeline:
 
 ::
 
-    rm -rf pre-ccanalysis/ ccanalysis/ capture_compare/ statistics/ pipeline.log
+    rm -rf ccanalyser_preprocessing/ ccanalyser_analysis/ ccanalyser_compare/ statistics/ pipeline.log
     ccanalyser pipeline make
 
 
 DRMAA error
 ===========
 
-One of the most common errors when running the pipeline is:
+A common error when running the pipeline is:
 
 ::
-
 
     GLOBAL_SESSION = drmaa.Session()
     NameError: name 'drmaa' is not defined
 
 This error occurrs because you are not connected to the cluster.
 See :ref:`Pre-Installation recommendations`  for how to add DRMAA_LIBRARY_PATH to your bashrc.
-Alternatively, if you do not want to use a cluster (or can't) you can run the
-pipeline in local mode see above.
+Alternatively, if you do not want to use a cluster you can run the pipeline in :ref:`local mode <Step 4 - Running the pipeline>`. 
 
 KeyError: 'missing parameter accessed'
 ======================================

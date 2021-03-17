@@ -40,7 +40,7 @@ def remove_duplicates_from_bed(bed: Union[str, BedTool, pd.DataFrame]) -> BedToo
      BedTool: BedTool with deduplicated names
     """
 
-    df = convert_bed_to_dataframe(bed)
+    df = convert_bed_to_dataframe(bed).sample(frac=1)
 
     if "score" in df.columns:
         df = df.sort_values(["score"], ascending=False)
@@ -57,20 +57,20 @@ def remove_duplicates_from_bed(bed: Union[str, BedTool, pd.DataFrame]) -> BedToo
 @click.option(
     "-a",
     "--actions",
-    help="Actions to perform for each bed_files file",
+    help="Determines if the overlaps are counted or if the name should just be reported",
     multiple=True,
     type=click.Choice(
         ["get", "count"],
     ),
 )
 @click.option(
-    "-b", "--bed_files", help="Bed files to intersect with slices", multiple=True
+    "-b", "--bed_files", help="Bed file(s) to intersect with slices", multiple=True
 )
-@click.option("-n", "--names", help="Names to use as column names", multiple=True)
+@click.option("-n", "--names", help="Names to use as column names for the output tsv file.", multiple=True)
 @click.option(
     "-f",
     "--overlap_fractions",
-    help="Minimum overlap fractions",
+    help="The minimum overlap required for an intersection between two intervals to be reported.",
     multiple=True,
     default=[
         1e-9,
@@ -80,21 +80,23 @@ def remove_duplicates_from_bed(bed: Union[str, BedTool, pd.DataFrame]) -> BedToo
 @click.option(
     "-o",
     "--output",
-    help="Output file name",
+    help="Path for the annotated slices to be output.",
     default="annotated.slices.tsv.gz",
 )
 @click.option(
     "--duplicates",
-    help="Method to use for reconciling duplicate (i.e. multimapping) slices",
+    help="Method to use for reconciling duplicate slices (i.e. multimapping). Currently only 'remove' is supported.",
     type=click.Choice(["remove"]),
     default="remove",
 )
 @click.option(
-    "-p", "--n_cores", help="Number of cores to use for intersections", default=8
+    "-p", "--n_cores", help="Intersections are performed by chromosome, this determines the number of cores.", default=8
 )
 @click.option(
     "--invalid_bed_action",
-    help="Method to deal with invalid bed files",
+    help=' '.join(["Method to deal with invalid bed files e.g. blank or incorrectly formatted.",
+                  "Setting this to 'ignore' will report default N/A values (either '.' or 0) for invalid files"
+                  ]),
     default="error",
     type=click.Choice(["ignore", "error"]),
 )

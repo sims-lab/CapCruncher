@@ -28,18 +28,18 @@ def deduplicate():
 @click.option(
     "-o",
     "--output",
-    help="File to output fragments with duplicated coordinates",
+    help="Path for outputting fragments with duplicated coordinates in json format.",
     default="duplicated_ids.json.gz",
 )
 @click.option(
     "--buffer",
-    help="Number of fragments to process at one time",
+    help="Number of fragments to process at one time in order to preserve memory.",
     default=1e6,
     type=click.INT,
 )
 @click.option(
     "--read_type",
-    help="Type of read",
+    help="Indicates if the fragments have been combined (flashed) or not (pe).",
     default="flashed",
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
 )
@@ -123,19 +123,19 @@ def identify(
 
 @deduplicate.command()
 @click.argument("slices_fn")
-@click.option("-d", "--duplicated_ids", help="Path to duplicated ids file")
-@click.option("-o", "--output", help="Output file for deduplicated slices")
+@click.option("-d", "--duplicated_ids", help="Path to duplicated fragment ids determined by the 'identify' subcommand.")
+@click.option("-o", "--output", help="Path for outputting deduplicated slices in tsv format.")
 @click.option(
     "--buffer",
-    help="Number of fragments to process at one time",
+    help="Number of fragments to process at one time, in order to preserve memory.",
     default=1e6,
     type=click.INT,
 )
-@click.option("--stats_prefix", help="Output prefix for stats file")
-@click.option("--sample_name", help="Name of sample e.g. DOX_treated_1")
+@click.option("--stats_prefix", help="Output prefix for deduplication statistics")
+@click.option("--sample_name", help="Name of sample being analysed e.g. DOX_treated_1. Required for correct statistics.")
 @click.option(
     "--read_type",
-    help="Type of read",
+    help="Indicates if the fragments have been combined (flashed) or not (pe). Required for correct statistics.",
     default="flashed",
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
 )
