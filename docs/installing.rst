@@ -12,7 +12,7 @@ Pre-Installation recommendations
 ::
     
     conda env create -f ccanalyser_conda_env.yml
-    conda activate capture-c
+    conda activate cc
 
 3. If you intend to use a cluster e.g. SunGrid engine/SLURM add the path to the DRMAA interface to your .bashrc:
 
