@@ -83,11 +83,11 @@ def plot(
 
     Heatmaps can also be normalised (--normalise) using either:
 
-    - n_interactions: The number of cis interactions.
-    - n_rf_n_interactions: Normalised to the number of restriction fragments making up both genomic bins
+     - n_interactions: The number of cis interactions.
+     - n_rf_n_interactions: Normalised to the number of restriction fragments making up both genomic bins
                            and by the number of cis interactions.
-    - ice: `ICE normalisation <https://www.nature.com/articles/nmeth.2148>` followed by number of cis interactions
-            correction.  
+     - ice: `ICE normalisation <https://www.nature.com/articles/nmeth.2148>`_ followed by number of cis interactions
+             correction.  
 
     \f
     Args:

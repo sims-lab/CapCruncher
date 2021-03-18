@@ -8,8 +8,9 @@ class SliceFilter:
     """
     Perform slice filtering (inplace) and reporter identification.
 
-    The SliceFilter classes e.g. CCSliceFilter, TriCSliceFilter, TiledCSliceFilter perform all of the filtering (inplace)
-    and reporter identification whilst also provide statistics of the numbers of slices/reads removed at each stage.
+    The SliceFilter classes e.g. CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
+    perform all of the filtering (inplace) and reporter identification whilst also 
+    providing statistics of the numbers of slices/reads removed at each stage.
     
     Attributes:
      slices (pd.DataFrame): Annotated slices dataframe.
@@ -29,34 +30,35 @@ class SliceFilter:
         sample_name: str = "",
         read_type: str = "",
     ):
-        """Base for all slice filter objects.
+        """
+        Base for all slice filter objects.
 
-            Slices DataFrame must have the following columns:
+        Slices DataFrame must have the following columns:
 
-            - slice_name: Unique aligned read identifier (e.g. XZKG:889:11|flashed|1)
-            - parent_read: Identifier shared by slices from same fragment (e.g.XZKG:889:11)
-            - pe: Read combined by FLASh or not (i.e. "flashed" or "pe")
-            - mapped: Alignment is mapped (e.g. 0/1)
-            - multimapped: Alignment is mapped (e.g. 0/1)
-            - slice: Slice number (e.g. 0)
-            - chrom: Chromosome e.g. chr1
-            - start: Start coord
-            - end: End coord
-            - capture: Capture site intersecting slice (e.g. Slc25A37)
-            - capture_count: Number of capture probes overlapping slice (e.g. 1)
-            - exclusion: Read present in excluded region (e.g. Slc25A37)
-            - exclusion_count: Number of excluded regions overlapping slice (e.g. 1)
-            - blacklist: Read present in excluded region (e.g. 0)
-            - coordinates: Genome coordinates (e.g. chr1:1000-2000)
+         - slice_name: Unique aligned read identifier (e.g. XZKG:889:11|flashed|1)
+         - parent_read: Identifier shared by slices from same fragment (e.g.XZKG:889:11)
+         - pe: Read combined by FLASh or not (i.e. "flashed" or "pe")
+         - mapped: Alignment is mapped (e.g. 0/1)
+         - multimapped: Alignment is mapped (e.g. 0/1)
+         - slice: Slice number (e.g. 0)
+         - chrom: Chromosome e.g. chr1
+         - start: Start coord
+         - end: End coord
+         - capture: Capture site intersecting slice (e.g. Slc25A37)
+         - capture_count: Number of capture probes overlapping slice (e.g. 1)
+         - exclusion: Read present in excluded region (e.g. Slc25A37)
+         - exclusion_count: Number of excluded regions overlapping slice (e.g. 1)
+         - blacklist: Read present in excluded region (e.g. 0)
+         - coordinates: Genome coordinates (e.g. chr1:1000-2000)
 
         Args:
-            slices (pd.DataFrame): DatFrame containing annotated slices
-            filter_stages (dict, optional): Dictionary defining order of slice filtering. Defaults to None.
-            sample_name (str, optional): Name of sample being processed e.g. DOX-treated_1. Defaults to "".
-            read_type (str, optional): Combined (flashed) or not-combined (pe). Defaults to "".
-
+         slices (pd.DataFrame): DatFrame containing annotated slices
+         filter_stages (dict, optional): Dictionary defining order of slice filtering. Defaults to None.
+         sample_name (str, optional): Name of sample being processed e.g. DOX-treated_1. Defaults to "".
+         read_type (str, optional): Combined (flashed) or not-combined (pe). Defaults to "".
+ 
         Raises:
-            ValueError: Filter stages must be provided. This is done automatically by all subclasses
+         ValueError: Filter stages must be provided. This is done automatically by all subclasses
         """
 
         self._check_required_columns_present(slices)
@@ -95,25 +97,24 @@ class SliceFilter:
             if not col in df.columns:
                 raise KeyError(f'Required column "{col}" not in slices dataframe')
 
+
     @property
     def slice_stats(self) -> pd.DataFrame:
-        """Gets statisics at a slice level.
-
-        Calculates stats at slice level.
+        """
+        Statistics at the slice level.
 
         Returns:
-         DataFrame containing slice statistics
+         pd.DataFrame: Statistics per slice.
         """
         raise NotImplementedError("Override this method")
 
     @property
-    def filter_stats(self):
-        """Gets statisics for each filter stage.
-
-        Calculates stats per filter stage.
+    def filter_stats(self) -> pd.DataFrame:
+        """
+        Statistics for each filter stage.
 
         Returns:
-         pd.Dataframe: Contains slice statistics
+         pd.DataFrame: Statistics of the number of slices removed at each stage.
         """
         return (
             self._filter_stats.transpose()
@@ -123,13 +124,14 @@ class SliceFilter:
         )
 
     @property
-    def read_stats(self):
-        """Gets statisics at a read level.
+    def read_stats(self) -> pd.DataFrame:
+        """
+        Gets statistics at a read level.
 
         Aggregates slices by parental read id and calculates stats.
 
         Returns:
-         pd.Dataframe: Contains slice  statistics aggregated at the read count level 
+         pd.DataFrame: Statistics of the slices/fragments removed aggregated by read id.
         """
         return (self.filter_stats.rename(columns={"stage": "stat_type", "unique_fragments": "stat",})
                                  [["stat_type", "stat"]]
@@ -140,37 +142,43 @@ class SliceFilter:
                 )
 
     @property
-    def fragments(self):
-        """Summarises slices at the fragment level.
+    def fragments(self) -> pd.DataFrame:
+        """
+        Summarises slices at the fragment level.
 
-         Uses pandas groupby to aggregate slices by their parental read name
-         (shared by all slices from the same fragment). Also determines the
-         number of reporter slices for each fragment.
+        Uses pandas groupby to aggregate slices by their parental read name
+        (shared by all slices from the same fragment). Also determines the
+        number of reporter slices for each fragment.
 
         Returns:
-          Dataframe of slices aggregated by fragment
+         pd.DataFrame: Slices aggregated by parental read name.
 
         """
         raise NotImplementedError("Override this property")
 
     @property
-    def reporters(self):
+    def reporters(self) -> pd.DataFrame:
         """
         Extracts reporter slices from slices dataframe i.e. non-capture slices
 
         Returns:
-         pd.Dataframe containg all non-capture slices
+         pd.DataFrame: All non-capture slices
 
         """
         raise NotImplementedError("Override this property")
 
     def filter_slices(self, output_slices=False, output_location="."):
-        """Performs slice filtering by calling the class methods from the filter_stages dictionary
+        """
+        Performs slice filtering.
+        
+        Filters are applied to the slices dataframe in the order specified by 
+        filter_stages. Filtering stats aggregated at the slice and fragment level 
+        are also printed. 
 
         Args:
-            output_slices (bool, optional): Determines if slices are to be output to a specified location after each filtering step.
-                                            Useful for debugging. Defaults to False.
-            output_location (str, optional): Location to output slices at each stage. Defaults to ".".
+         output_slices (bool, optional): Determines if slices are to be output to a specified location after each filtering step.
+                                         Useful for debugging. Defaults to False.
+         output_location (str, optional): Location to output slices at each stage. Defaults to ".".
         """
 
         for stage, filters in self.filter_stages.items():
@@ -189,7 +197,10 @@ class SliceFilter:
 
             self._filter_stats[stage] = self.slice_stats
 
-    def get_raw_slices(self):
+    def get_unfiltered_slices(self):
+        """
+        Does not modify slices.        
+        """
         self.slices = self.slices
 
     def remove_unmapped_slices(self):
@@ -211,7 +222,9 @@ class SliceFilter:
         """
         Prevent the same restriction fragment being counted more than once (Uncommon).
         
-        e.g. --RE_FRAG1--\----Capture----\---RE_FRAG1----
+        Example:
+
+         --RE_FRAG1--\----Capture----\---RE_FRAG1----
 
         """
         self.slices = self.slices.drop_duplicates(subset=["parent_read", "restriction_fragment"])
@@ -221,17 +234,20 @@ class SliceFilter:
         self.slices = self.slices.query('restriction_fragment != "."')
 
     def remove_duplicate_slices(self):
-        """Remove all slices if the slice coordinates and slice order are shared
-        with another fragment i.e. are PCR duplicates (Common).
+        """
+        Remove all slices if the slice coordinates and slice order are shared.
 
-        e.g
-                          coordinates
-        | Frag 1:  chr1:1000-1250 chr1:1500-1750
-        | Frag 2:  chr1:1000-1250 chr1:1500-1750
-        | Frag 3:  chr1:1050-1275 chr1:1600-1755
-        | Frag 4:  chr1:1500-1750 chr1:1000-1250
+        This method is designed to remove a fragment if it is a PCR duplicate
+        (Common).
 
-        Frag 2 removed. Frag 1,3,4 retained
+        Example:
+        
+         | Frag 1:  chr1:1000-1250 chr1:1500-1750
+         | Frag 2:  chr1:1000-1250 chr1:1500-1750
+         | Frag 3:  chr1:1050-1275 chr1:1600-1755
+         | Frag 4:  chr1:1500-1750 chr1:1000-1250
+ 
+         Frag 2 removed. Frag 1,3,4 retained
 
 
         """
@@ -245,10 +261,12 @@ class SliceFilter:
         ]
 
     def remove_duplicate_slices_pe(self):
-        """Removes PCR duplicates from non-flashed (PE) fragments (Common).
-        Sequence quality is often lower at the 3' end of reads leading to variance in mapping coordinates.
-        PCR duplicates are removed by checking that the fragment start and end are not duplicated in the dataframe.
+        """
+        Removes PCR duplicates from non-flashed (PE) fragments (Common).
 
+        Sequence quality is often lower at the 3' end of reads leading to variance 
+        in mapping coordinates.  PCR duplicates are removed by checking that the 
+        fragment start and end are not duplicated in the dataframe.
 
         """
         if (
@@ -290,11 +308,44 @@ class SliceFilter:
 
 
 class CCSliceFilter(SliceFilter):
+    """
+    Perform Capture-C slice filtering (inplace) and reporter identification.
+
+    SliceFilter tuned specifically for Capture-C data. This class has addtional methods
+    to remove common artifacts in Capture-C data i.e. multi-capture fragments, 
+    non-reporter fragments, multi-capture reporters. The default filter order is as follows:
+     
+     - remove_unmapped_slices
+     - remove_orphan_slices
+     - remove_multi_capture_fragments
+     - remove_excluded_slices
+     - remove_blacklisted_slices
+     - remove_non_reporter_fragments
+     - remove_multicapture_reporters
+     - remove_slices_without_re_frag_assigned
+     - remove_duplicate_re_frags
+     - remove_duplicate_slices
+     - remove_duplicate_slices_pe
+     - remove_non_reporter_fragments
+
+    See the individual methods for further details.
+
+    Attributes:
+     slices (pd.DataFrame): Annotated slices dataframe.
+     fragments (pd.DataFrame): Slices dataframe aggregated by parental read.
+     reporters (pd.DataFrame): Slices identified as reporters.
+     filter_stages (dict): Dictionary containg stages and a list of class methods (str) required to get to this stage.
+     slice_stats (pd.DataFrame): Provides slice level statistics.
+     read_stats (pd.DataFrame): Provides statistics of slice filtering at the parental read level.
+     filter_stats (pd.DataFrame): Provides statistics of read filtering.
+
+    """
+
     def __init__(self, slices, filter_stages=None, **sample_kwargs):
         if not filter_stages:
             filter_stages = {
                 "pre-filtering": [
-                    "get_raw_slices",
+                    "get_unfiltered_slices",
                 ],
                 "mapped": [
                     "remove_unmapped_slices",
@@ -321,7 +372,19 @@ class CCSliceFilter(SliceFilter):
         super(CCSliceFilter, self).__init__(slices, filter_stages, **sample_kwargs)
 
     @property
-    def fragments(self):
+    def fragments(self) -> pd.DataFrame:
+        """
+        Summarises slices at the fragment level.
+
+        Uses pandas groupby to aggregate slices by their parental read name
+        (shared by all slices from the same fragment). Also determines the
+        number of reporter slices for each fragment.
+
+        Returns:
+         pd.DataFrame: Slices aggregated by parental read name.
+        
+        """
+
         df = (
             self.slices.sort_values(["parent_read", "chrom", "start"])
             .groupby("parent_read", as_index=False, sort=False)
@@ -368,7 +431,6 @@ class CCSliceFilter(SliceFilter):
 
     @property
     def slice_stats(self):
-
         slices = self.slices.copy()
         if slices.empty:  # Deal with empty dataframe i.e. no valid slices
             for col in slices:
@@ -402,7 +464,19 @@ class CCSliceFilter(SliceFilter):
         return stats_df
 
     @property
-    def frag_stats(self):
+    def frag_stats(self) -> pd.DataFrame:
+        """
+        Statistics aggregated at the fragment level.
+
+        As this involves slice aggregation it can be rather slow
+        for large datasets. It is recomended to only use this
+        property if it is required.
+
+
+        Returns:
+         pd.DataFrame: Fragment level statistics
+        """
+
         return self.fragments.agg(
             {
                 "parent_read": "nunique",
@@ -430,12 +504,15 @@ class CCSliceFilter(SliceFilter):
 
     @property
     def captures(self) -> pd.DataFrame:
-        """Extracts capture slices from slices dataframe
+        """
+        Extracts capture slices from slices dataframe
 
         i.e. slices that do not have a null capture name
 
         Returns:
-         pd.DataFrame containg all capture slices"""
+         pd.DataFrame: Capture slices
+         
+        """
         return self.slices.query('~(capture == ".")')
 
     @property
@@ -445,10 +522,15 @@ class CCSliceFilter(SliceFilter):
 
     @property
     def merged_captures_and_reporters(self) -> pd.DataFrame:
-        """Merges captures and reporters sharing the same parental id.
+        """
+        Merges captures and reporters sharing the same parental id.
+
+        Capture slices and reporter slices with the same parental read id are
+        merged together. The prefixes 'capture' and 'reporter' are used to 
+        identify slices marked as either captures or reporters.
 
         Returns:
-         pd.DataFrame containing merged capture and reporter slices
+         pd.DataFrame: Merged capture and reporter slices
         """
 
         captures = (
@@ -468,10 +550,11 @@ class CCSliceFilter(SliceFilter):
 
     @property
     def cis_or_trans_stats(self) -> pd.DataFrame:
-        """Extracts reporter cis/trans statistics from slices.
+        """
+        Extracts reporter cis/trans statistics from slices.
 
         Returns:
-         DataFrame containing reporter cis/trans statistics
+         pd.DataFrame: Reporter cis/trans statistics
         """
         cap_and_rep = self.merged_captures_and_reporters.copy()
 
@@ -498,7 +581,11 @@ class CCSliceFilter(SliceFilter):
         return interactions_by_capture
 
     def remove_non_reporter_fragments(self):
-        """Removes all slices (i.e. the entire fragment) if it has no reporter slices present (Common)"""
+        """
+        Removes the fragment if it has no reporter slices present (Common)
+
+        """
+
         frags_reporter = self.fragments.query("reporter_count > 0")
         self.slices = self.slices[
             self.slices["parent_read"].isin(frags_reporter["parent_read"])
@@ -509,7 +596,7 @@ class CCSliceFilter(SliceFilter):
         Removes double capture fragments.
         
         All slices (i.e. the entire fragment) are removed if more than
-        one capture probe is present i.e. double captures (V. Common)
+        one capture probe is present i.e. a double capture (V. Common)
         
         """
         frags_capture = self.fragments.query("0 < unique_capture_sites < 2")
@@ -521,16 +608,14 @@ class CCSliceFilter(SliceFilter):
         """
         Deals with an odd situation in which a reporter spanning two adjacent capture sites is not removed.
 
-        |e.g.
-        |------Capture 1----/------Capture 2------
-        |                     -----REP--------
+        Example:
+         ------Capture 1----/------Capture 2------\
+                  -----REP--------
 
         In this case the "reporter" slice is not considered either a capture or exclusion.
 
         These cases are dealt with by explicitly removing reporters on restriction fragments
         adjacent to capture sites.
-
-        The number of adjacent RE fragments can be adjusted with n_adjacent.
 
         Args:
          n_adjacent: Number of adjacent restriction fragments to remove
@@ -555,6 +640,38 @@ class CCSliceFilter(SliceFilter):
 
 
 class TriCSliceFilter(CCSliceFilter):
+    """
+    Perform Tri-C slice filtering (inplace) and reporter identification.
+
+    SliceFilter tuned specifically for Tri-C data. Whilst the vast majority of filters
+    are inherited from CCSliceFilter, this class has addtional methods for Tri-C analysis 
+    i.e. remove_slices_with_one_reporter. The default filtering order is:
+     
+     - remove_unmapped_slices
+     - remove_slices_without_re_frag_assigned
+     - remove_orphan_slices
+     - remove_multi_capture_fragments
+     - remove_blacklisted_slices
+     - remove_non_reporter_fragments
+     - remove_multicapture_reporters
+     - remove_duplicate_re_frags
+     - remove_duplicate_slices
+     - remove_duplicate_slices_pe
+     - remove_non_reporter_fragments
+     - remove_slices_with_one_reporter
+
+    See the individual methods for further details.
+
+    Attributes:
+     slices (pd.DataFrame): Annotated slices dataframe.
+     fragments (pd.DataFrame): Slices dataframe aggregated by parental read.
+     reporters (pd.DataFrame): Slices identified as reporters.
+     filter_stages (dict): Dictionary containg stages and a list of class methods (str) required to get to this stage.
+     slice_stats (pd.DataFrame): Provides slice level statistics.
+     read_stats (pd.DataFrame): Provides statistics of slice filtering at the parental read level.
+     filter_stats (pd.DataFrame): Provides statistics of read filtering."""
+
+
     def __init__(self, slices, filter_stages=None, **sample_kwargs):
 
         if filter_stages:
@@ -562,7 +679,7 @@ class TriCSliceFilter(CCSliceFilter):
         else:
             filter_stages = {
                 "pre-filtering": [
-                    "get_raw_slices",
+                    "get_unfiltered_slices",
                 ],
                 "mapped": [
                     "remove_unmapped_slices",
@@ -596,12 +713,47 @@ class TriCSliceFilter(CCSliceFilter):
 
 
 class TiledCSliceFilter(SliceFilter):
+    """
+    Perform Tiled-C slice filtering (inplace) and reporter identification.
+
+    SliceFilter tuned specifically for Tiled-C data. This class has addtional methods
+    to remove common artifacts in Tiled-C data i.e. non-capture fragments,
+    multi-capture (with different tiled regions) fragments. 
+    A reporter is defined differently in a Tiled-C analysis as a reporter slice can also
+    be a capture slice.
+
+    The default filter order is as follows:
+     
+     - remove_unmapped_slices
+     - remove_orphan_slices
+     - remove_blacklisted_slices
+     - remove_non_capture_fragments
+     - remove_dual_capture_fragments
+     - remove_slices_without_re_frag_assigned
+     - remove_duplicate_re_frags
+     - remove_duplicate_slices
+     - remove_duplicate_slices_pe
+     - remove_orphan_slices
+
+    See the individual methods for further details.
+
+    Attributes:
+     slices (pd.DataFrame): Annotated slices dataframe.
+     fragments (pd.DataFrame): Slices dataframe aggregated by parental read.
+     reporters (pd.DataFrame): Slices identified as reporters.
+     filter_stages (dict): Dictionary containg stages and a list of class methods (str) required to get to this stage.
+     slice_stats (pd.DataFrame): Provides slice level statistics.
+     read_stats (pd.DataFrame): Provides statistics of slice filtering at the parental read level.
+     filter_stats (pd.DataFrame): Provides statistics of read filtering.
+
+     """
+
     def __init__(self, slices, filter_stages=None, **sample_kwargs):
 
         if not filter_stages:
             filter_stages = {
                 "pre-filtering": [
-                    "get_raw_slices",
+                    "get_unfiltered_slices",
                 ],
                 "mapped": ["remove_unmapped_slices", "remove_orphan_slices"],
                 "not_blacklisted": ["remove_blacklisted_slices"],
@@ -675,7 +827,20 @@ class TiledCSliceFilter(SliceFilter):
         return stats_df
 
     @property
-    def cis_or_trans_stats(self):
+    def cis_or_trans_stats(self) -> pd.DataFrame:
+        """
+        Extracts reporter cis/trans statistics from slices.
+
+        Unlike Capture-C/Tri-C reporter slice can also be capture slices as 
+        all slices within the capture region are considered as reporters. To extract
+        cis/trans statistics, one capture slice in each fragment is considered to be 
+        the "primary capture" this then enables merging of this "primary capture" with
+        the other reporters both inside and outside of the tiled region. 
+
+        Returns:
+         pd.DataFrame: Reporter cis/trans statistics
+        """
+
         interactions_by_capture = dict()
 
         for capture_site, df_cap in self.slices.query('capture != "."').groupby(
@@ -728,10 +893,11 @@ class TiledCSliceFilter(SliceFilter):
         ]
 
     def remove_dual_capture_fragments(self):
-        """Removes a fragment with multiple different capture sites.
+        """
+        Removes a fragment with multiple different capture sites.
 
         Modified for TiledC filtering as the fragment dataframe is generated
-        slightly differently
+        slightly differently.
         """
         multicapture_fragments = (
             self.slices.query('capture != "."')

@@ -10,21 +10,21 @@ protocols designed to identify 3D interactions in the genome from a specified vi
 It takes Illumina paired-end sequencing reads in fastq format 
 (gzip compression is prefered) as input and performs the following steps:
 
-1: Identifies all restriction fragments in the genome
-2: Quality control of raw reads (fastqc, multiqc)
-3: Splits fastqs into smaller files to enable fast parallel processing.
-4: Removal of PCR duplicates based on exact sequence matches from fastq files
-5: Trimming of reads to remove adaptor sequence (trim_galore)
-6: Combining overlapping read pairs (FLASh)
-7: In silico digestion of reads in fastq files
-8: Alignment of fastq files with a user specified aligner (i.e. bowtie/bowtie2; BWA is not supported)
-9: Analysis of alignment statistics (picard CollectAlignmentSummaryMetrics, multiqc)
-10: Annotation of mapped reads with overlaps of capture probes, exclusion regions, blacklist, restriction fragments
-11: Removal of non-reporter slices and indentification of reporters
-12: Removal of PCR duplicates (exact coordinate matches) 
-13: Storage of reporters in `cooler format <https://cooler.readthedocs.io/en/latest/datamodel.html>`
-14: Generation of bedgraphs/BigWigs.
-15: Collation of run statistics and generation of a run report
+1. Identifies all restriction fragments in the genome
+2. Quality control of raw reads (fastqc, multiqc)
+3. Splits fastqs into smaller files to enable fast parallel processing.
+4. Removal of PCR duplicates based on exact sequence matches from fastq files
+5. Trimming of reads to remove adaptor sequence (trim_galore)
+6. Combining overlapping read pairs (FLASh)
+7. In silico digestion of reads in fastq files
+8. Alignment of fastq files with a user specified aligner (i.e. bowtie/bowtie2; BWA is not supported)
+9. Analysis of alignment statistics (picard CollectAlignmentSummaryMetrics, multiqc)
+10. Annotation of mapped reads with overlaps of capture probes, exclusion regions, blacklist, restriction fragments
+11. Removal of non-reporter slices and indentification of reporters
+12. Removal of PCR duplicates (exact coordinate matches) 
+13. Storage of reporters in `cooler format <https.//cooler.readthedocs.io/en/latest/datamodel.html>`
+14. Generation of bedgraphs/BigWigs.
+15. Collation of run statistics and generation of a run report
 
 
 Optional:
@@ -100,7 +100,16 @@ MAKE_HUB = is_on(P.PARAMS.get("hub_create"))
 ##############################
 
 
-def set_up_pipeline_params_dict():
+def modify_pipeline_params_dict():
+
+    """
+    Modifies P.PARAMS dictionary.
+
+    * Selects the correct conda enviroment
+    * Ensures the correct queue manager is selected.
+    * Corrects the name of a UCSC hub by removing spaces and incorrect characters.
+
+    """
 
     P.PARAMS["cluster_queue_manager"] = P.PARAMS.get("pipeline_cluster_queue_manager")
     P.PARAMS["conda_env"] = P.PARAMS.get(
@@ -108,10 +117,19 @@ def set_up_pipeline_params_dict():
     )
 
     # Sanitise hub name
-    P.PARAMS["hub_name"] = re.sub(r"[,\s+\t;:]", "_", P.PARAMS["hub_name"])
+    if P.PARAMS['hub_name']:
+        P.PARAMS["hub_name"] = re.sub(r"[,\s+\t;:]", "_", P.PARAMS["hub_name"])
 
 
 def set_up_chromsizes():
+    """
+    Ensures that genome chromsizes are present.
+
+    If chromsizes are not provided this function attempts to download them from UCSC.
+    The P.PARAMS dictionary is updated with the location of the chromsizes.
+
+    """    
+
 
     assert P.PARAMS.get('genome_name'), 'Genome name has not been provided.'
 
@@ -139,7 +157,12 @@ def set_up_chromsizes():
     r"ccanalyser_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
 )
 def genome_digest(infile, outfile):
-    """In silco digestion of the genome to identify restriction fragment coordinates."""
+    """
+    In silco digestion of the genome to identify restriction fragment coordinates.
+
+    Runs :ref:`ccanalyser genome digest <CLI Documentation>`.
+    
+    """
 
     tmp = outfile.replace(".gz", "")
     statement = """ccanalyser genome digest
@@ -219,7 +242,12 @@ def fastq_multiqc(infile, outfile):
     r"ccanalyser_preprocessing/split/\1.log",
 )
 def fastq_split(infiles, outfile):
-    """Splits the input fastq files into chunks for parallel processing"""
+    """
+    Splits the input fastq files into chunks for parallel processing
+
+    Runs :ref:`ccanalyser fastq split <CLI Documentation>`.
+    
+    """
 
     infiles = " ".join(infiles)
     output_prefix = outfile.replace(".log", "")
@@ -253,7 +281,12 @@ def fastq_split(infiles, outfile):
 )
 def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
 
-    """Parses fastq files into json format for sequence deduplication"""
+    """
+    Parses fastq files into json format for sequence deduplication.
+
+    Runs :ref:`ccanalyser fastq deduplicate parse <CLI Documentation>`
+    
+    """
 
     fq1, fq2 = [os.path.abspath(fn) for fn in infiles]
 
@@ -277,7 +310,12 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
 )
 def fastq_duplicates_identify(infiles, outfile):
 
-    """Identifies duplicate sequences from parsed fastq files in json format"""
+    """
+    Identifies duplicate sequences from parsed fastq files in json format.
+
+    Runs :ref:`ccanalyser fastq deduplicate identify <CLI Documentation>`
+    
+    """
 
     infiles_str = " ".join(infiles)
     statement = """ccanalyser fastq deduplicate identify
@@ -934,7 +972,9 @@ def alignments_filter(infiles, outfile):
 def reporters_collate(infiles, outfile, *grouping_args):
 
     """Concatenates identified reporters """
-
+    
+    # TODO: Speed up this step. Might be quicker to just remove the first line of all but the
+    # first file and then run the cat step.
     # Need to concat tsv files but remove headers, the sed command performs the removal
     statement = (
         f"cat {' '.join(infiles)} | sed -e '1n' -e '/.*parent_read.*/d' > {outfile}"
@@ -1633,7 +1673,7 @@ if __name__ == "__main__":
         P.main(sys.argv)
     else:
         set_up_chromsizes()
-        set_up_pipeline_params_dict()
+        modify_pipeline_params_dict()
         P.main(sys.argv)
 
 

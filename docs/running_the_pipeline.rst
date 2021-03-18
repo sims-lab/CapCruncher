@@ -2,11 +2,12 @@
 Pipeline
 ########
 
-The main feature of ccanalyser is the end-to-end data processing pipeline, the 
-following diagram illustrates the steps performed by the pipeline:
+The main feature of ccanalyser is the end-to-end data processing pipeline. 
+The pipeline has been written using the `cgat-core pipelining library <https://github.com/cgat-developers/cgat-core>`_ 
+and the following diagram illustrates the steps performed by the pipeline:
 
 .. image:: images/pipeline_flow.svg
-    :width: 1000
+    :width: 100%
     :alt: Pipeline flow diagram
 
 
@@ -188,6 +189,8 @@ recomended to copy the capture oligos used to the :term:`working directory`.
     split:
 
         # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
+        # For Tiled-C or highly enriched assays it is advised to reduce this to ~1e6 readpairs to speed up the analysis.
+        # The pipeline will cope with a high number of reads but it will run slower. 
         n_reads: 2500000 
 
 

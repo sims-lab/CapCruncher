@@ -16,7 +16,30 @@ import subprocess
 import glob
 import os
 import re
+from joblib import Parallel, delayed
 
+
+def run_unix_split(fn: os.PathLike, 
+                   n_reads: int, 
+                   read_number: int,
+                   output_prefix: os.PathLike = '',
+                   gzip: bool = False,
+                   compression_level: int = 5):
+
+    statement = []    
+    if fn.endswith(".gz"):
+        cmd = f"""zcat {fn} | split -l {n_reads * 4} -d --additional-suffix=_{read_number}.fastq - {output_prefix}_part;"""
+    else:
+        cmd = f"cat {fn} | split -l {n_reads * 4} -d  --additional-suffix=_{read_number}.fastq - {output_prefix}_part;"
+    
+    statement.append(cmd)
+
+    if gzip:
+        statement.append(
+            f"ls {output_prefix}_part* | xargs -P 8 -n 1 gzip -{compression_level}"
+        )
+
+    subprocess.run(' '.join(statement), shell=True)
 
 @cli.command()
 @click.argument("input_files", nargs=-1, required=True)
@@ -114,21 +137,21 @@ def split(
 
     elif method == "unix": # Using unix split to perform the splitting
 
-        statement = []
+        
+        tasks = []
         for ii, fn in enumerate(input_files):
-            if fn.endswith(".gz"):
-                cmd = f"""zcat {fn} | split -l {n_reads * 4} -d --additional-suffix=_{ii + 1}.fastq - {output_prefix}_part;"""
-            else:
-                cmd = f"cat {fn} | split -l {n_reads * 4} -d  --additional-suffix=_{ii + 1}.fastq - {output_prefix}_part;"
+            t = delayed(run_unix_split)(fn, 
+                                        n_reads=n_reads,
+                                        read_number=ii+1,
+                                        gzip=gzip,
+                                        compression_level=compression_level,
+                                        output_prefix=output_prefix)
+            
+            tasks.append(t)
+        
+        # Run splitting
+        Parallel(n_jobs=2)(tasks)
 
-            statement.append(cmd)
-
-        if gzip:
-            statement.append(
-                f"ls {output_prefix}_part* | xargs -P 8 -n 1 gzip -{compression_level}"
-            )
-
-        subprocess.run(" ".join(statement), shell=True)
 
         # The suffixes are in the format 00, 01, 02 etc need to replace with int
         for fn in glob.glob(f"{output_prefix}_part*"):

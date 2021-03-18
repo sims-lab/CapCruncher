@@ -8,6 +8,12 @@ from ccanalyser.tools.io import parse_bam
 from ccanalyser.tools.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
 from ccanalyser.utils import get_timing
 
+SLICE_FILTERS = {
+        "capture": CCSliceFilter,
+        "tri": TriCSliceFilter,
+        "tiled": TiledCSliceFilter,
+    }
+
 
 @get_timing(task_name="merging annotations with BAM input")
 def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFrame:
@@ -48,6 +54,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
         .reset_index()
         .sort_values(["parent_read", "slice"])
     )
+
 
 
 @cli.command()
@@ -145,15 +152,9 @@ def filter(
     df_alignment = parse_bam(bam)
     df_alignment = merge_annotations(df_alignment, annotations)
 
-    slice_filters_dict = {
-        "capture": CCSliceFilter,
-        "tri": TriCSliceFilter,
-        "tiled": TiledCSliceFilter,
-    }
-
     # Initialise SliceFilter with default args
     print(f"Filtering slices with method: {method}")
-    slice_filter_type = slice_filters_dict[method]
+    slice_filter_type = SLICE_FILTERS[method]
     slice_filter = slice_filter_type(
         slices=df_alignment, sample_name=sample_name, read_type=read_type
     )
@@ -171,9 +172,7 @@ def filter(
     )
 
     # Output slices filtered by capture site
-    for capture_site, df_cap in slice_filter.slices.query('capture != "."').groupby(
-        "capture"
-    ):
+    for capture_site, df_cap in slice_filter.slices.query('capture != "."').groupby("capture"):
 
         # Extract only fragments that appear in the capture dataframe
         output_slices = slice_filter.slices.loc[
