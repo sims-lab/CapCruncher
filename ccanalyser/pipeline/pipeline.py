@@ -590,17 +590,17 @@ def stats_digestion_collate(infiles, outfile):
     # Collate histogram, read and slice statistics
     df_hist_filt = collate_histogram_data(data["hist_filt"])
     df_hist_unfilt = collate_histogram_data(data["hist_unfilt"])
-    df_slice = collate_read_data(data["slice"])
+    #df_slice = collate_read_data(data["slice"])
     df_read = collate_read_data(data["read"])
 
     # Merge filtered and unfiltered histograms
     df_hist = pd.concat(
         [df_hist_unfilt.assign(filtered=0), df_hist_filt.assign(filtered=1)]
-    ).sort_values(["sample", "read_type", "number_of_slices"])
+    ).sort_values(["sample", "read_type", "n_slices"])
 
     # Output histogram, slice and read statics
     df_hist.to_csv(f"{stats_prefix}.histogram.csv", index=False)
-    df_slice.to_csv(f"{stats_prefix}.slice.csv", index=False)
+    #df_slice.to_csv(f"{stats_prefix}.slice.csv", index=False)
     df_read.to_csv(outfile, index=False)
 
 
@@ -632,6 +632,7 @@ def fastq_alignment(infile, outfile):
     options = (
         P.PARAMS["align_options"] if not is_none(P.PARAMS["align_options"]) else ""
     )
+
 
     s1 = "%(aligner)s %(options)s %(index_flag)s %(genome_aligner_index)s %(infile)s"  # Align reads
     s2 = "| samtools view -b -S > %(outfile)s"  # Convert to bam
@@ -924,8 +925,7 @@ def post_annotation():
     r"ccanalyser_analysis/reporters/unfiltered/\1.log",
 )
 def alignments_filter(infiles, outfile):
-    """Processes bam files and annotations, filteres slices and outputs
-    reporter slices for each capture site"""
+    """Filteres slices and outputs reporter slices for each capture site"""
 
     bam, annotations = infiles
     sample = re.match(r".*/(.*)_(part\d+).(flashed|pe).bam", bam)
@@ -973,15 +973,17 @@ def reporters_collate(infiles, outfile, *grouping_args):
 
     """Concatenates identified reporters """
     
-    # TODO: Speed up this step. Might be quicker to just remove the first line of all but the
-    # first file and then run the cat step.
-    # Need to concat tsv files but remove headers, the sed command performs the removal
-    statement = (
-        f"cat {' '.join(infiles)} | sed -e '1n' -e '/.*parent_read.*/d' > {outfile}"
-    )
+    statement = []
+    for ii, fn in enumerate(infiles):
+        if ii == 0:
+            cmd = f'cat {fn} > {outfile}'
+        else:
+            cmd = f'tail -n +2 {fn} >> {outfile}'
+
+        statement.append(cmd)
 
     P.run(
-        statement,
+        ' && '.join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
@@ -1068,11 +1070,20 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
 
     """Final collation of reporters by sample and capture probe"""
 
-    # Need to concat tsv files but remove headers, the sed command performs the removal
-    statement = f"cat {' '.join(infiles)} | sed -e '1n' -e '/.*parent_read.*/d' | pigz -p 4 > {outfile}"
+    statement = []
+    tmp = outfile.replace(".gz", "")
+    for ii, fn in enumerate(infiles):
+        if ii == 0:
+            cmd = f'cat {fn} > {tmp}'
+        else:
+            cmd = f'tail -n +2 {fn} >> {tmp}'
+
+        statement.append(cmd)
+    
+    statement.append(f'pigz -p {P.PARAMS["pipeline_n_cores"]} {tmp}')
 
     P.run(
-        statement,
+        ' && '.join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
@@ -1405,7 +1416,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
     """
     Collates bedgraphs by capture probe into a single file for comparison.
 
-    See `bedtools unionbedg <https://bedtools.readthedocs.io/en/latest/content/tools/unionbedg.html>`
+    See `bedtools unionbedg <https://bedtools.readthedocs.io/en/latest/content/tools/unionbedg.html>`_
     for more details.
     
     """
@@ -1435,8 +1446,8 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
 @active_if(N_SAMPLES >= 2)
 @follows(mkdir("ccanalyser_compare/bedgraphs_subtraction/"), reporters_make_union_bedgraph)
 @transform(
-    "ccanalyser_analysis/bedgraphs/*.bedgraph",
-    regex(r".*/(?:.*)\.normalised\.(.*).bedgraph"),
+    reporters_make_union_bedgraph,
+    regex(r"ccanalyser_compare/bedgraphs_union/(.*)\.normalised\.tsv"),
     r"ccanalyser_compare/bedgraphs_subtraction/\1.log",
 )
 def reporters_make_subtraction_bedgraph(infile, outfile):
@@ -1470,10 +1481,10 @@ def reporters_make_subtraction_bedgraph(infile, outfile):
         )
 
         a_mean_sub_b_mean_bdg.to_csv(
-            f"{output_prefix}/{a}_vs_{b}.bedgraph", sep="\t", index=None, header=False
+            f"{output_prefix}/{a}_vs_{b}.subtraction.bedgraph", sep="\t", index=None, header=False
         )
         b_mean_sub_a_mean_bdg.to_csv(
-            f"{output_prefix}/{b}_vs_{a}.bedgraph", sep="\t", index=None, header=False
+            f"{output_prefix}/{b}_vs_{a}.subtraction.bedgraph", sep="\t", index=None, header=False
         )
 
     touch_file(outfile)
@@ -1486,8 +1497,10 @@ def reporters_make_subtraction_bedgraph(infile, outfile):
     reporters_make_subtraction_bedgraph
 )
 @transform(
-    "ccanalyser_analysis/bedgraphs/*",
-    regex(r"ccanalyser_analysis/bedgraphs/(.*).bedgraph"),
+    ["ccanalyser_analysis/bedgraphs/*",
+     "ccanalyser_compare/bedgraphs_subtraction/*.bedgraph"
+     ],
+    regex(r".*/(.*).bedgraph"),
     r"ccanalyser_analysis/bigwigs/\1.bigWig",
 )
 def reporters_make_bigwig(infile, outfile):
@@ -1510,9 +1523,8 @@ def reporters_make_bigwig(infile, outfile):
 #######################
 
 @active_if(MAKE_HUB)
-@collate(
+@merge(
     reporters_make_bigwig,
-    regex(r".*/(?:.*)\.normalised\.(?:.*).bigWig"),
     os.path.join(
         P.PARAMS.get("hub_dir", ""), P.PARAMS.get("hub_name", "") + ".hub.txt"
     ),

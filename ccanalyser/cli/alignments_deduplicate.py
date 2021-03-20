@@ -143,7 +143,7 @@ def remove(
     slices_fn: os.PathLike,
     duplicated_ids: os.PathLike,
     output: os.PathLike = "dedup.slices.tsv.gz",
-    buffer: int = 1e6,
+    buffer: int = 5e6,
     sample_name: str = "",
     read_type: str = "",
     stats_prefix: os.PathLike = "",

@@ -2,13 +2,60 @@ import os
 from typing import Tuple
 
 import click
+from pandas.core import groupby
 from ccanalyser.cli.cli_fastq import cli
 
 from multiprocessing import Queue, SimpleQueue
 from ccanalyser.tools.digest import ReadDigestionProcess
 from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess
-from ccanalyser.tools.statistics import DigestionStatCollector, DigestionStatistics
 from ccanalyser.utils import get_re_site
+import pandas as pd
+import queue
+
+
+def collate_statistics(statq: Queue, 
+                       n_subprocesses: int) -> pd.DataFrame:
+    """Collates digestion statistics from supplied statistics queue.
+
+    Args:
+        statq (Queue): Queue to use for collating statistics. Final item(s) must be 'END'
+        n_subprocesses (int): Number of digestion processes used. Required to know when to stop aquiring
+                              data from the queue.
+
+    Returns:
+        pd.DataFrame: Digestion statistics in histogram format. 
+                      Columns: 'read_type', 'read_number', 'unfiltered/filtered', 'n_slices', 'n_reads'
+    """
+
+    n_subprocesses_terminated = 0
+    dframes = []
+
+    while n_subprocesses_terminated < n_subprocesses:
+
+        stats = statq.get()
+           
+        if stats == 'END':
+            n_subprocesses_terminated += 1
+            continue
+    
+        else:
+            df = pd.DataFrame(stats)
+            df_melt = df.melt(id_vars=['read_type', 'read_number'], var_name='unfiltered/filtered', value_name='n_slices')
+            df_hist = (df_melt.groupby(['read_type', 'read_number', 'unfiltered/filtered', 'n_slices'])
+                              .size()
+                              .to_frame('n_reads')
+                              .reset_index()
+                              .sort_values('n_slices'))
+
+            dframes.append(df_hist)
+
+    
+    return (pd.concat(dframes)
+              .groupby(['read_type', 'read_number', 'unfiltered/filtered', 'n_slices'])
+              .sum()
+              .reset_index()
+              .sort_values('n_slices')
+            )
 
 
 @cli.command()
@@ -74,8 +121,8 @@ def digest(
     """
 
     # Set up multiprocessing variables
-    inputq = SimpleQueue()  # reads are placed into this queue for processing
-    writeq = SimpleQueue()  # digested reads are placed into the queue for writing
+    inputq = Queue()  # reads are placed into this queue for processing
+    writeq = Queue()  # digested reads are placed into the queue for writing
     statq = Queue()  # stats queue
 
     cut_site = get_re_site(restriction_enzyme)
@@ -141,42 +188,43 @@ def digest(
     for proc in processes:
         proc.start()
 
+
+    # Collate statistics
+    df_stats = collate_statistics(statq=statq, n_subprocesses=n_cores)
+    df_stats['sample'] = sample_name 
+
+    # Ensure that all processes have rejoined the main thread.
     reader.join()
     writer.join()
+    
+    # Ensure that the queues are joined to the main process
+    inputq.close()
+    writeq.close()
+    statq.close()
 
-    # Collate stats
-    print("")
-    print("Collating stats")
-    collated_stats = DigestionStatCollector(statq, n_cores).get_collated_stats()
+    # Kill the digestion processes
+    for proc in digestion_processes:
+        proc.terminate()
 
-    stats = [
-        DigestionStatistics(
-            sample=sample_name,
-            read_type=mode,
-            read_number=read_number,
-            slices_unfiltered=stats["unfiltered"],
-            slices_filtered=stats["filtered"],
-        )
-        for read_number, stats in collated_stats.items()
-    ]
 
-    if len(stats) > 1:  # Need to collate stats from digestion of 2+ files
-        for stat in stats[1:]:
-            digestion_stats = stats[0] + stat
-    else:
-        digestion_stats = stats[0]
-
-    digestion_stats.unfiltered_histogram.to_csv(
-        f"{stats_prefix}.digestion.unfiltered.histogram.csv", index=False
-    )
-    digestion_stats.filtered_histogram.to_csv(
-        f"{stats_prefix}.digestion.filtered.histogram.csv", index=False
-    )
-    digestion_stats.slice_summary.to_csv(
-        f"{stats_prefix}.digestion.slice.summary.csv", index=False
-    )
-    digestion_stats.read_summary.to_csv(
-        f"{stats_prefix}.digestion.read.summary.csv", index=False
+    # Unfiltered histogram
+    (df_stats.query('`unfiltered/filtered` == "unfiltered"')
+            .to_csv(f"{stats_prefix}.digestion.unfiltered.histogram.csv", index=False)
     )
 
-    print(digestion_stats.read_summary)
+    # Filtered histogram
+    (df_stats.query('`unfiltered/filtered` == "filtered"')
+            .to_csv(f"{stats_prefix}.digestion.filtered.histogram.csv", index=False)
+    )
+
+    # Read summary - reads that pass the filter
+    (df_stats.query('n_slices > 0')
+             .groupby(['sample', 'read_type', 'read_number', 'unfiltered/filtered'])
+             ['n_reads']
+             .sum()
+             .reset_index()
+             .assign(stage='digestion')
+             .rename(columns={'unfiltered/filtered': 'stat_type', 'n_reads': 'stat'})
+             .to_csv(f"{stats_prefix}.digestion.read.summary.csv", index=False)
+    )
+

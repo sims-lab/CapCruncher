@@ -5,7 +5,7 @@ from multiprocessing import Queue, Process, SimpleQueue
 import numpy as np
 from typing import Iterable, Union, List
 import traceback
-
+from ccanalyser.tools.statistics import DigestionStats
 
 class DigestedChrom:
     """
@@ -164,6 +164,7 @@ class DigestedRead:
         self.slices_filtered = 0
         self.has_slices = self.slices_unfiltered > 1 
         self.slices = self._get_slices()
+        self.has_valid_slices = True if self.slices else False
 
     def get_recognition_site_indexes(self) -> List[int]:
         indexes = [
@@ -261,6 +262,7 @@ class ReadDigestionProcess(Process):
         self.statq = statq
         self.digestion_kwargs = digestion_kwargs
         self.read_type = digestion_kwargs.get("read_type", 'flashed')
+        self._stat_container = DigestionStats
 
         
         if not 'cutsite' in digestion_kwargs:
@@ -294,6 +296,7 @@ class ReadDigestionProcess(Process):
 
         """        
         try:
+            read_type = self.read_type
             reads = self.inq.get()
             buffer_reads = []
             buffer_stats = []
@@ -302,28 +305,35 @@ class ReadDigestionProcess(Process):
 
                 for read in reads:
                     digested = self._digest_reads(read, **self.digestion_kwargs)
-                    digested_str = [str(dr) for dr in digested]
-                    digestion_stats = {read_number + 1: {'unfiltered': d.slices_unfiltered, 'filtered': d.slices_filtered}
-                                    for read_number, d in enumerate(digested)}
-                    buffer_stats.append(digestion_stats)
 
-                    if all(digested_str):  # Make sure that all reads have filtered slices
-                        buffer_reads.append("".join(digested_str))
+                    for read_number, digested_read in enumerate(digested):
+
+                        if digested_read.has_valid_slices:
+                            buffer_reads.append(str(digested_read))
+
+                        digested_read_stats = self._stat_container(read_type=read_type,
+                                                                   read_number=read_number + 1 if not read_type == 'flashed' else read_number,
+                                                                   unfiltered=digested_read.slices_unfiltered,
+                                                                   filtered=digested_read.slices_filtered)
+                        
+                        buffer_stats.append(digested_read_stats)
 
                 self.outq.put("".join(buffer_reads))
 
                 if self.statq:
-                    self.statq.put_nowait(buffer_stats)
+                    self.statq.put(buffer_stats)
 
                 buffer_reads = []
                 buffer_stats = []
+
                 reads = self.inq.get()
 
             self.outq.put("END")
 
             if self.statq:
-                self.statq.put_nowait('END')
-        
+                self.statq.put('END')
+
+
         except Exception as e:
             traceback.format_exc()
             self.outq.put('END')
