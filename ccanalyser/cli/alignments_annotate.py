@@ -1,21 +1,18 @@
 import itertools
-from typing import Tuple, Union
+import sys
 import warnings
+from typing import Tuple, Union
 
 warnings.simplefilter("ignore")
 import os
 
 import click
 import pandas as pd
-from pybedtools import BedTool
-
 from ccanalyser.cli.cli_alignments import cli
 from ccanalyser.tools.annotate import BedIntersection
-from ccanalyser.utils import (
-    bed_has_name,
-    convert_bed_to_dataframe,
-    is_valid_bed,
-)
+from ccanalyser.utils import (bed_has_name, convert_bed_to_dataframe,
+                              is_valid_bed)
+from pybedtools import BedTool
 
 
 def cycle_argument(arg):
@@ -90,7 +87,7 @@ def remove_duplicates_from_bed(bed: Union[str, BedTool, pd.DataFrame]) -> BedToo
     default="remove",
 )
 @click.option(
-    "-p", "--n_cores", help="Intersections are performed by chromosome, this determines the number of cores.", default=8
+    "-p", "--n_cores", help="Intersections are performed by chromosome, this determines the number of cores.", default=1
 )
 @click.option(
     "--invalid_bed_action",
@@ -139,6 +136,11 @@ def annotate(
      NotImplementedError: Only supported option for duplicate bed names is remove.
     """
 
+    # If reading from stdin
+    if slices == '-':
+        slices = pd.read_csv(sys.stdin, sep='\t', header=None).pipe(BedTool.from_dataframe)
+
+    print('Validating bed file')
 
     # Check if valid bed format
     if not is_valid_bed(slices):
@@ -152,6 +154,8 @@ def annotate(
     if not len(names) == len(bed_files) == len(actions):
         raise IndexError("Wrong number of column names/files/actions provided, check command")
 
+    print('Dealing with duplicates in the bed file')
+
     # Deal with multimapping reads.
     if duplicates == "remove":  
         slices = remove_duplicates_from_bed(slices)
@@ -159,6 +163,8 @@ def annotate(
         raise NotImplementedError(
             "Only supported option at present is to remove duplicates"
         )
+
+    print('Performing intersection')
 
     # Perform intersections
     intersection_series = []
@@ -172,12 +178,14 @@ def annotate(
             intersection_name=name,
             intersection_method=action,
             intersection_min_frac=fraction,
+            intersection_split_chrom=True if n_cores > 1 else False,
             n_cores=n_cores,
             invalid_bed_action=invalid_bed_action,
         )
 
         intersection_series.append(bi.intersection)
 
+    print('Merging annotations')
     # Merge intersections with slices
     df_annotation = (
         convert_bed_to_dataframe(slices)
@@ -187,5 +195,6 @@ def annotate(
         .rename(columns={"name": "slice_name"})
     )
 
+    print('Writing annotations to file.')
     # Export to tsv
     df_annotation.to_csv(output, sep="\t", index=False)

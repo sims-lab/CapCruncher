@@ -675,7 +675,7 @@ def alignments_merge(infiles, outfile):
     )
 
 
-@transform([fastq_alignment, alignments_merge], regex("(.*).bam"), r"\1.bam.bai")
+@transform(alignments_merge, regex("(.*).bam"), r"\1.bam.bai")
 def alignments_index(infile, outfile):
 
     """Indexes all bam files (both partitioned and merged)"""
@@ -692,7 +692,7 @@ def alignments_index(infile, outfile):
 @follows(mkdir("statistics/mapping_statistics"), alignments_index, fastq_alignment)
 @transform(
     alignments_merge,
-    regex(r"ccanalyser_preprocessing/(.*).bam"),
+    regex(r"ccanalyser_preprocessing/aligned/(.*).bam"),
     r"statistics/mapping_statistics/\1.picard.metrics",
 )
 def alignments_qc(infile, outfile):
@@ -748,23 +748,23 @@ def pre_annotation():
 # Annotation of alignments #
 ############################
 
-@follows(mkdir("ccanalyser_analysis/annotations"))
-@transform(
-    fastq_alignment,
-    regex(r"ccanalyser_preprocessing/aligned/(.*).bam"),
-    r"ccanalyser_analysis/annotations/\1.bam.bed",
-)
-def annotate_bam_to_bed(infile, outfile):
+# @follows(mkdir("ccanalyser_analysis/annotations"))
+# @transform(
+#     fastq_alignment,
+#     regex(r"ccanalyser_preprocessing/aligned/(.*).bam"),
+#     r"ccanalyser_analysis/annotations/\1.bam.bed",
+# )
+# def annotate_bam_to_bed(infile, outfile):
 
-    """Converts bam files to bed for faster intersection"""
+#     """Converts bam files to bed for faster intersection"""
 
-    statement = """bedtools bamtobed -i %(infile)s | sort -k1,1 -k2,2n > %(outfile)s"""
+#     statement = """bedtools bamtobed -i %(infile)s | sort -k1,1 -k2,2n > %(outfile)s"""
 
-    P.run(
-        statement,
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
+#     P.run(
+#         statement,
+#         job_queue=P.PARAMS["pipeline_cluster_queue"],
+#         job_condaenv=P.PARAMS["conda_env"],
+#     )
 
 
 @originate("ccanalyser_analysis/annotations/exclude.bed")
@@ -817,8 +817,8 @@ def annotate_sort_blacklist(outfile):
 
 @follows(genome_digest, annotate_make_exclusion_bed, annotate_sort_capture_oligos, annotate_sort_blacklist)
 @transform(
-    annotate_bam_to_bed,
-    regex(r"ccanalyser_analysis/annotations/(.*).bam.bed"),
+    fastq_alignment,
+    regex(r".*/(.*).bam"),
     add_inputs(
         [
             {
@@ -883,18 +883,20 @@ def annotate_alignments(infile, outfile):
             cmd_args.append(f'{flags.get(arg_name)} {arg if arg else "-"}')
 
     cmd_args = " ".join(cmd_args)
-    statement = """ccanalyser alignments annotate
-                    %(slices)s
+    statement = """bedtools bamtobed -i %(slices)s | 
+                    sort -k1,1 -k2,2n |
+                    ccanalyser alignments annotate
+                    -
                     %(cmd_args)s
                     -o %(outfile)s
                     --invalid_bed_action ignore
-                    -p 4
+                    -p 1
                 """
 
     P.run(
         statement.replace("\n", " "),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=4,
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 

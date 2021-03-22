@@ -144,6 +144,23 @@ class SliceFilter:
         
         return filters
 
+
+    @property
+    def filters(self) -> list:
+        """A list of the callable filters present within the slice filterer instance.
+
+        Returns:
+            list: All filters present in the class.
+        """
+        filters = [attr for attr in dir(self) if 'remove_' in attr]
+        
+        # There is at least one filter not indicated by remove
+        # Need to append to the filter list.
+        filters.append('get_unfiltered_slices')
+        
+        return filters
+
+
     @property
     def slice_stats(self) -> pd.DataFrame:
         """
