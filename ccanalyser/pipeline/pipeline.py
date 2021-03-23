@@ -900,8 +900,6 @@ def annotate_alignments(infile, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # Zero bed file used
-    zap_file(infile[0])
 
 
 @follows(fastq_preprocessing, annotate_alignments)
