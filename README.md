@@ -49,7 +49,7 @@ Please see the documentation for further details.
 ## Running the pipeline
 
 1. Create a working directory with the fastq files required for the analysis.
-2. Copy [config.yml](https://github.com/sims-lab/capture-c/blob/master/config.yml) to the working directory
+2. Copy [config.yml](https://raw.githubusercontent.com/sims-lab/capture-c/master/config.yml) to the working directory
 3. Edit config.yml to suit your experiment and set-up.
 
 Run the pipeline:
