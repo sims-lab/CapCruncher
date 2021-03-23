@@ -33,6 +33,7 @@ conda activate cc
 
 ```
 git clone https://github.com/sims-lab/capture-c.git
+cd capture-c
 pip install .
 ```
 
