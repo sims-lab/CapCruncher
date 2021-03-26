@@ -23,7 +23,7 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Install mamba
       run: |
-        conda install mamba
+        conda install mamba -n base -c conda-forge
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
