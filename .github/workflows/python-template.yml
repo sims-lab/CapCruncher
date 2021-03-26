@@ -24,6 +24,9 @@ jobs:
     - name: Install mamba
       run: |
         conda install mamba -n base -c conda-forge
+    - name: Install conda environment
+      run: |
+        mamba env create -n cc -f conda.yml
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
