@@ -45,3 +45,4 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+      shell: bash -l {0}
