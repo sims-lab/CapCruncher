@@ -130,7 +130,6 @@ def set_up_chromsizes():
 
     """    
 
-
     assert P.PARAMS.get('genome_name'), 'Genome name has not been provided.'
 
     if not is_none(P.PARAMS["genome_chrom_sizes"]):
@@ -688,84 +687,13 @@ def alignments_index(infile, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-
-@follows(mkdir("statistics/mapping_statistics"), alignments_index, fastq_alignment)
-@transform(
-    alignments_merge,
-    regex(r"ccanalyser_preprocessing/aligned/(.*).bam"),
-    r"statistics/mapping_statistics/\1.picard.metrics",
-)
-def alignments_qc(infile, outfile):
-
-    """Uses picard CollectAlignmentSummaryMetrics to get mapping information."""
-
-    cmd = [
-        "picard",
-        "CollectAlignmentSummaryMetrics",
-        "VALIDATION_STRINGENCY=LENIENT",
-        "R=%(genome_fasta)s",
-        "I=%(infile)s",
-        "O=%(outfile)s",
-        "&> %(outfile)s.log",
-    ]
-
-    statement = " ".join(cmd)
-
-    P.run(
-        statement,
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
-
-
-@merge(alignments_qc, "statistics/mapping_report.html")
-def alignments_multiqc(infiles, outfile):
-
-    """Combines mapping metrics using multiqc"""
-
-    indir = os.path.dirname(infiles[0])
-    out_fn = os.path.basename(outfile)
-    out_dn = os.path.dirname(outfile)
-    statement = """rm -f %(outfile)s &&
-                   export LC_ALL=en_US.UTF-8 &&
-                   export LANG=en_US.UTF-8 &&
-                   multiqc
-                   %(indir)s
-                   -o %(out_dn)s
-                   -n %(out_fn)s"""
-    P.run(
-        statement,
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_memory="8G",
-        job_condaenv=P.PARAMS["conda_env"],
-    )
-
-@follows(alignments_multiqc)
+@follows(fastq_alignment)
 def pre_annotation():
     pass
 
 ############################
 # Annotation of alignments #
 ############################
-
-# @follows(mkdir("ccanalyser_analysis/annotations"))
-# @transform(
-#     fastq_alignment,
-#     regex(r"ccanalyser_preprocessing/aligned/(.*).bam"),
-#     r"ccanalyser_analysis/annotations/\1.bam.bed",
-# )
-# def annotate_bam_to_bed(infile, outfile):
-
-#     """Converts bam files to bed for faster intersection"""
-
-#     statement = """bedtools bamtobed -i %(infile)s | sort -k1,1 -k2,2n > %(outfile)s"""
-
-#     P.run(
-#         statement,
-#         job_queue=P.PARAMS["pipeline_cluster_queue"],
-#         job_condaenv=P.PARAMS["conda_env"],
-#     )
-
 
 @originate("ccanalyser_analysis/annotations/exclude.bed")
 def annotate_make_exclusion_bed(outfile):
