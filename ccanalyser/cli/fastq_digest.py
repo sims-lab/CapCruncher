@@ -2,15 +2,13 @@ import os
 from typing import Tuple
 
 import click
-from pandas.core import groupby
 from ccanalyser.cli.cli_fastq import cli
 
-from multiprocessing import Queue, SimpleQueue
+from multiprocessing import Queue
 from ccanalyser.tools.digest import ReadDigestionProcess
 from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess
 from ccanalyser.utils import get_re_site
 import pandas as pd
-import queue
 
 
 def collate_statistics(statq: Queue, 

@@ -5,14 +5,12 @@ Created on Fri Oct  4 13:47:20 2019
 @author: asmith
 """
 import os
-import re
 from collections import Counter
 from multiprocessing import SimpleQueue
 from typing import List, Tuple, Union
 
 import click
 import numpy as np
-import pandas as pd
 import ujson
 from ccanalyser.cli.cli_fastq import cli
 from ccanalyser.tools.deduplicate import (ReadDeduplicationParserProcess,
