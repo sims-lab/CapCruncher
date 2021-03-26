@@ -29,6 +29,9 @@ jobs:
         channel-priority: true
         activate-environment: cc
         environment-file: conda.yml
+    - name: Initialise conda
+      run: |
+        conda init
     - shell: bash -l {0}
       run: |
         conda info
@@ -44,6 +47,5 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        conda init
         conda activate cc
         pytest
