@@ -26,6 +26,7 @@ jobs:
         conda install mamba -n base -c conda-forge
     - name: Install conda environment
       run: |
+        conda activate base
         mamba env create -n cc -f conda.yml
     - name: Lint with flake8
       run: |
