@@ -8,4 +8,5 @@ CCanalyser is a tool designed to automate the processing of Capture-C, Tri-C and
 
 The package is entirely written in python and  consists of an end-to-end data processing pipline and supporting command line interface to enable finer grained control.
 
+
 For further information see the [documentation](https://ccanalyser.readthedocs.io/en/latest/)
