@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 import numpy as np
+import itertools
 
 
 class SliceFilter:
@@ -50,6 +51,20 @@ class SliceFilter:
          - exclusion_count: Number of excluded regions overlapping slice (e.g. 1)
          - blacklist: Read present in excluded region (e.g. 0)
          - coordinates: Genome coordinates (e.g. chr1:1000-2000)
+        
+        Filtering to be performed can be left as the default (all start with 'remove')
+        or a custom filtering order can be supplied with a yaml file. This must have the format:
+
+         FILTER_STAGE_NAME:
+             - FILTER 1
+             - FILTER 2
+         FILTER_STAGE_NAME2:
+             - FILTER 3
+             - FILTER 1
+
+
+        *All* filters present in the file must be defined within the SliceFilter class. 
+
 
         Args:
          slices (pd.DataFrame): DatFrame containing annotated slices
@@ -59,22 +74,22 @@ class SliceFilter:
  
         Raises:
          ValueError: Filter stages must be provided. This is done automatically by all subclasses
+         AttributeError: All filters must be defined in the SliceFilter.
         """
 
-        self._check_required_columns_present(slices)
+        self._has_required_columns = self._required_columns_present(slices)
         self.slices = slices.sort_values(["parent_read", "slice"])
 
         if filter_stages:
-            self.filter_stages = filter_stages
+            self.filter_stages = self._extract_filter_stages(filter_stages)
         else:
             raise ValueError("Filter stages not provided")
 
-        self.filtered = False
         self._filter_stats = pd.DataFrame()
         self.sample_name = sample_name
         self.read_type = read_type
 
-    def _check_required_columns_present(self, df):
+    def _required_columns_present(self, df) -> bool:
 
         columns_required = [
             "slice_name",
@@ -96,6 +111,54 @@ class SliceFilter:
         for col in columns_required:
             if not col in df.columns:
                 raise KeyError(f'Required column "{col}" not in slices dataframe')
+        
+        return True
+    
+    
+    def _extract_filter_stages(self, filter_stages) -> dict:
+        '''
+        Extracts filter stages from a supplied dictionary or yaml file
+        
+        Checks that the filters provided are within the dictionary supplied.
+        '''
+        
+        if isinstance(filter_stages, dict):
+            filters = filter_stages
+        
+        elif os.path.exists(filter_stages) and ('.yaml' in filter_stages or '.yml' in filter_stages):
+            
+            import yaml
+            
+            with open(filter_stages, 'r') as f:
+                filters = yaml.safe_load(f)    
+        
+        else:
+            raise ValueError('Provide either a path to a .yaml file or a python dictionary')
+        
+        
+        all_filters = itertools.chain.from_iterable(filters.values())
+        
+        for filt in all_filters:
+            if not filt in self.filters:
+                raise AttributeError(f'Required filter: {filt} not present. Check for correct spelling and format.')
+        
+        return filters
+
+
+    @property
+    def filters(self) -> list:
+        """A list of the callable filters present within the slice filterer instance.
+
+        Returns:
+            list: All filters present in the class.
+        """
+        filters = [attr for attr in dir(self) if 'remove_' in attr]
+        
+        # There is at least one filter not indicated by remove
+        # Need to append to the filter list.
+        filters.append('get_unfiltered_slices')
+        
+        return filters
 
 
     @property

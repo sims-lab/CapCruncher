@@ -3,7 +3,6 @@ import multiprocessing
 from typing import Union
 import traceback
 
-import numpy as np
 import pandas as pd
 from pysam import FastxFile
 from xopen import xopen
