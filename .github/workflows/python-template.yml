@@ -31,13 +31,13 @@ jobs:
       with:
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
-    - name: Update install environment using YAML file
+    - name: Install package dependencies
       run: |
         conda env update -n test -f environment.yml
       shell: bash -l {0}
-    - name: Install pytest in the environment
+    - name: Install testing dependencies
       run: |
-        conda install -n test pytest
+        conda env update -n test -f testing.yml
       shell: bash -l {0}
     - name: Conda info
       shell: bash -l {0}
