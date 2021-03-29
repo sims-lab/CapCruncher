@@ -6,7 +6,6 @@ import pytest
 import click
 from click.testing import CliRunner
 
-from ccanalyser.cli import interactions_store
 from ccanalyser.tools.storage import GenomicBinner, CoolerBinner, create_cooler_cc
 
 
@@ -17,7 +16,9 @@ dir_data = os.path.join(dir_package, "data")
 
 
 def test_make_cooler():
-    pixels = pd.read_csv(os.path.join(dir_data, "test", "RS411_0uM_1.BCL2.tsv.gz"), sep='\t')
+    pixels = pd.read_csv(
+        os.path.join(dir_data, "test", "RS411_0uM_1.BCL2.tsv.gz"), sep="\t"
+    )
     bins = pd.read_csv(
         os.path.join(dir_data, "test", "genome.digest.bed.gz"),
         sep="\t",
@@ -43,10 +44,8 @@ def test_make_cooler():
 def test_binning():
 
     cooler_fn = "test/cooler.BCL2.hdf5"
-    outfile = 'test/cooler.BCL2.binned.hdf5'
+    outfile = "test/cooler.BCL2.binned.hdf5"
     cb = CoolerBinner(cooler_fn, binsize=2500, n_cores=8)
     cb.to_cooler(outfile, normalise=False, scale_factor=1e6)
 
     assert os.path.exists(outfile)
-    
-
