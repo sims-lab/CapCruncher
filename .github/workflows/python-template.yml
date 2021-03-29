@@ -34,6 +34,7 @@ jobs:
     - name: Update install environment using YAML file
       run: |
         conda env update -n test -f environment.yml
+      shell: bash -l {0}
     - name: Conda info
       shell: bash -l {0}
       run: conda info
