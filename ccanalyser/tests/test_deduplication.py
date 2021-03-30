@@ -22,7 +22,11 @@ dir_test = os.path.realpath(os.path.dirname(__file__))
 dir_package = os.path.dirname(dir_test)
 dir_data = os.path.join(dir_package, "data")
 
+if not os.path.exists(os.path.join(dir_test, 'test')):
+    os.mkdir(os.path.join(dir_test, 'test'))
 
+if not os.path.exists(os.path.join(dir_test, 'stats')):
+    os.mkdir(os.path.join(dir_test, 'stats'))
 
 
 test_data = [(PysamFakeEntry('1_1', 'AAAA', '\\\\'), PysamFakeEntry('1_2', 'TTTT', '\\\\')),
@@ -34,8 +38,8 @@ test_data_dedup = [(PysamFakeEntry('2_1', 'AAAA', '\\\\'), PysamFakeEntry('2_2',
                    (PysamFakeEntry('3_1', 'TTTT', '\\\\'), PysamFakeEntry('3_2', 'AAAA', '\\\\')),
             ]
 
-test_json_path = os.path.join(dir_test, 'dup_parse.json')
-test_duplicates_path = os.path.join(dir_test, 'duplicates.json')
+test_json_path = os.path.join(dir_test, 'test','dup_parse.json')
+test_duplicates_path = os.path.join(dir_test, 'test','duplicates.json')
 
 
 def test_fastq_parsing():
@@ -74,7 +78,8 @@ def test_fastq_identify():
     result = runner.invoke(
             cli,
             [
-                "fastq-deduplicate",
+                "fastq",
+                "deduplicate",
                 "identify",
                 test_json_path,
                 "-o",

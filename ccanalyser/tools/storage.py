@@ -15,7 +15,14 @@ from ccanalyser.utils import split_intervals_on_chrom, intersect_bins
 def get_capture_coords(oligo_file: str, oligo_name: str):
     df_oligos = BedTool(oligo_file).to_dataframe()
     df_oligos = df_oligos.query(f'name == "{oligo_name}"')
-    return df_oligos.iloc[0]
+
+    try:
+        oligo =  df_oligos.iloc[0]
+    except IndexError:
+        print('Oligo name cannot be found within oligos')
+        oligo = None
+    
+    return oligo
 
 
 def get_capture_bins(bins, oligo_chrom, oligo_start, oligo_end):
