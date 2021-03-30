@@ -61,7 +61,7 @@ jobs:
       shell: pwsh
       run: |
         pip install coverage
-        coverage run -m unittest
+        coverage run -m ccanalyser
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v1
       with:
