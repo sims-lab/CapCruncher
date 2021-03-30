@@ -22,14 +22,13 @@ def test_make_cooler():
         sep="\t",
         names=["chrom", "start", "end", "name"],
     )
-    oligos = os.path.join(dir_data, "test", "capture_oligos.bed")
+    oligos = os.path.join(dir_data, "test", "mm9_capture_oligos.bed")
     output_prefix = os.path.join(dir_test, "test/cooler")
     outfile = os.path.join(dir_test, "test/cooler.Slc25A37.hdf5")
 
     if os.path.exists(outfile):
         os.unlink(outfile)
 
-    breakpoint()
     create_cooler_cc(output_prefix, bins, pixels, "Slc25A37", oligos)
 
     assert os.path.exists(outfile)
@@ -42,8 +41,8 @@ def test_make_cooler():
 
 def test_binning():
 
-    cooler_fn = "test/cooler.Slc25A37.hdf5"
-    outfile = 'test/cooler.Slc25A37.binned.hdf5'
+    cooler_fn = os.path.join(dir_test,"test/cooler.Slc25A37.hdf5")
+    outfile = os.path.join(dir_test,'test/cooler.Slc25A37.binned.hdf5')
     cb = CoolerBinner(cooler_fn, binsize=2500, n_cores=8)
     cb.to_cooler(outfile, normalise=False, scale_factor=1e6)
 
