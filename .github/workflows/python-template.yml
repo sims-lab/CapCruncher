@@ -47,7 +47,7 @@ jobs:
       run: conda list
     - name: set pythonpath
       run: |
-        echo "PYTHONPATH=ccanalyser" >> $GITHUB_ENV
+        echo "PYTHONPATH=home/runner/work/capture-c/ccanalyser" >> $GITHUB_ENV
     - name: Test with pytest
       run: |
         pytest
