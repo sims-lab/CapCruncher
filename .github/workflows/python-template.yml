@@ -61,7 +61,7 @@ jobs:
       shell: pwsh
       run: |
         pip install pytest-cov
-        pytest --cov ccanalyser/tests/
+        pytest --cov=./
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v1
       with:
