@@ -42,12 +42,12 @@ jobs:
     - name: Conda info
       shell: bash -l {0}
       run: conda info
+    - name: Install the package
+      run: |
+        pip install -e .
     - name: Conda list
       shell: pwsh
       run: conda list
-    - name: set pythonpath
-      run: |
-        echo "PYTHONPATH=$GITHUB_WORKSPACE/ccanalyser" >> $GITHUB_ENV
     - name: Test with pytest
       run: |
         pytest
