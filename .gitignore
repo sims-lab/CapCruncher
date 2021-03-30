@@ -5,3 +5,5 @@
 .pytest_cache
 .env
 docs/_build/
+ccanalyser/tests/test/*
+ccanalyser/tests/stats/*
