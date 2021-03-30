@@ -9,5 +9,5 @@ dist/
 build/
 ccanalyser.egg-info/
 pkgs/
-ccanalyser/tests/test/
-ccanalyser/tests/stats/
+ccanalyser/tests/test/*.*
+ccanalyser/tests/stats/*.*
