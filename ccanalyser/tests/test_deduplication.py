@@ -34,8 +34,8 @@ test_data_dedup = [(PysamFakeEntry('2_1', 'AAAA', '\\\\'), PysamFakeEntry('2_2',
                    (PysamFakeEntry('3_1', 'TTTT', '\\\\'), PysamFakeEntry('3_2', 'AAAA', '\\\\')),
             ]
 
-test_json_path = os.path.join(dir_test, 'dup_parse.json')
-test_duplicates_path = os.path.join(dir_test, 'duplicates.json')
+test_json_path = os.path.join(dir_test, 'test','dup_parse.json')
+test_duplicates_path = os.path.join(dir_test, 'test','duplicates.json')
 
 
 def test_fastq_parsing():
@@ -74,7 +74,8 @@ def test_fastq_identify():
     result = runner.invoke(
             cli,
             [
-                "fastq-deduplicate",
+                "fastq",
+                "deduplicate",
                 "identify",
                 test_json_path,
                 "-o",
