@@ -5,5 +5,9 @@
 .pytest_cache
 .env
 docs/_build/
+dist/
+build/
+ccanalyser.egg-info/
+pkgs/
 ccanalyser/tests/test/
 ccanalyser/tests/stats/

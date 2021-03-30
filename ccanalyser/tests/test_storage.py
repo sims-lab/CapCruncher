@@ -21,7 +21,8 @@ if not os.path.exists(os.path.join(dir_test, 'test')):
 
 def test_make_cooler():
     pixels = pd.read_csv(
-        os.path.join(dir_data, "test", "Slc25A37_reporter_counts.tsv.gz"), sep="\t"
+      os.path.join(dir_data, "test", "Slc25A37_reporter_counts.tsv.gz"), sep="\t"
+
     )
     bins = pd.read_csv(
         os.path.join(dir_data, "test", "genome.digest.bed.gz"),
@@ -46,7 +47,7 @@ def test_make_cooler():
 
 
 def test_binning():
-
+  
     cooler_fn = os.path.join(dir_test, "test", "cooler.Slc25A37.hdf5")
     outfile = os.path.join(dir_test, "test", "cooler.binned")
     cb = CoolerBinner(cooler_fn, binsize=2500, n_cores=8)
