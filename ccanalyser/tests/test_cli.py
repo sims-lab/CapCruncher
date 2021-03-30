@@ -15,11 +15,17 @@ dir_test = os.path.realpath(os.path.dirname(__file__))
 dir_package = os.path.dirname(dir_test)
 dir_data = os.path.join(dir_package, "data")
 
+if not os.path.exists(os.path.join(dir_test, 'test')):
+    os.mkdir(os.path.join(dir_test, 'test'))
+
+if not os.path.exists(os.path.join(dir_test, 'stats')):
+    os.mkdir(os.path.join(dir_test, 'stats'))
+
 # Remove previous test files
-for fn in glob.glob(os.path.join(dir_test, "tests", "*")):
+for fn in glob.glob(os.path.join(dir_test, "test", "*")):
     os.unlink(fn)
 
-for fn in glob.glob(os.path.join(dir_test, "tests", "stats", "*")):
+for fn in glob.glob(os.path.join(dir_test, "stats", "*")):
     os.unlink(fn)
 
 
