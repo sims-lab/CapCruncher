@@ -48,8 +48,7 @@ def test_make_cooler():
 def test_binning():
 
     cooler_fn = os.path.join(dir_test, "test", "cooler.Slc25A37.hdf5")
-    outfile = os.path.join(dir_test, "test", "cooler.Slc25A37.binned.Slc25A37.2500.hdf5")
+    outfile = os.path.join(dir_test, "test", "cooler.binned")
     cb = CoolerBinner(cooler_fn, binsize=2500, n_cores=8)
     cb.to_cooler(outfile, normalise=False, scale_factor=1e6)
-
-    assert os.path.exists(outfile)
+    assert os.path.exists(f'{outfile}.Slc25A37.2500.hdf5')
