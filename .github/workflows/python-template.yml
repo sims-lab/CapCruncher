@@ -45,6 +45,9 @@ jobs:
     - name: Conda list
       shell: pwsh
       run: conda list
+    - name: set pythonpath
+      run: |
+        echo "PYTHONPATH=ccanalyser" >> $GITHUB_ENV
     - name: Test with pytest
       run: |
         pytest
