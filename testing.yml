@@ -3,9 +3,10 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - cooler=0.8.10
+  - cooler
+  - pip
   - pytest
-  - ujson=4.0.2
-  - xopen=1.1.0
+  - ujson
+  - xopen
   - pip:
-    - xxhash==2.0.0
+    - xxhash

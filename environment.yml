@@ -4,9 +4,9 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - cgatcore=0.6.7
-  - click=7.1.2
-  - joblib=1.0.1
-  - natsort=7.1.1
-  - pybedtools=0.8.1
-  - pysam=0.16.0.1
+  - cgatcore
+  - click
+  - joblib
+  - natsort
+  - pybedtools
+  - pysam
