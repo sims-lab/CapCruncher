@@ -1,0 +1,11 @@
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - cooler=0.8.10
+  - pytest
+  - ujson=4.0.2
+  - xopen=1.1.0
+  - pip:
+    - xxhash==2.0.0
