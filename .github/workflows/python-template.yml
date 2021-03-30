@@ -58,6 +58,7 @@ jobs:
       run: |
         pytest
     - name: Generate Report
+      shell: pwsh
       run: |
         pip install coverage
         coverage run -m unittest
