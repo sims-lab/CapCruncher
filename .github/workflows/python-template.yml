@@ -42,6 +42,9 @@ jobs:
     - name: Conda info
       shell: bash -l {0}
       run: conda info
+    - name: Install the package
+      run: |
+        pip install -e .
     - name: Conda list
       shell: pwsh
       run: conda list
