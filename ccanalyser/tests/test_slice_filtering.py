@@ -10,6 +10,12 @@ dir_test = os.path.realpath(os.path.dirname(__file__))
 dir_package = os.path.dirname(dir_test)
 dir_data = os.path.join(dir_package, "data")
 
+if not os.path.exists(os.path.join(dir_test, 'test')):
+    os.mkdir(os.path.join(dir_test, 'test'))
+
+if not os.path.exists(os.path.join(dir_test, 'stats')):
+    os.mkdir(os.path.join(dir_test, 'stats'))
+
 def test_ccslice_filter():
 
     test_slices = os.path.join(dir_data, 'test', 'test_slices_to_filter_capture.tsv')

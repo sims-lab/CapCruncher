@@ -1,4 +1,0 @@
-stat,stat_type,read_type,read_number,stage,sample
-1520,reads_total,pe,0,deduplication,test
-982,reads_unique,pe,0,deduplication,test
-538,reads_removed,pe,0,deduplication,test

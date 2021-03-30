@@ -15,11 +15,17 @@ dir_test = os.path.realpath(os.path.dirname(__file__))
 dir_package = os.path.dirname(dir_test)
 dir_data = os.path.join(dir_package, "data")
 
+if not os.path.exists(os.path.join(dir_test, 'test')):
+    os.mkdir(os.path.join(dir_test, 'test'))
+
+if not os.path.exists(os.path.join(dir_test, 'stats')):
+    os.mkdir(os.path.join(dir_test, 'stats'))
+
 # Remove previous test files
-for fn in glob.glob(os.path.join(dir_test, "tests", "*")):
+for fn in glob.glob(os.path.join(dir_test, "test", "*")):
     os.unlink(fn)
 
-for fn in glob.glob(os.path.join(dir_test, "tests", "stats", "*")):
+for fn in glob.glob(os.path.join(dir_test, "stats", "*")):
     os.unlink(fn)
 
 
@@ -31,7 +37,7 @@ class DataDeduplicate:
     fq1 = os.path.join(dir_data, "test", "duplicated_1.fastq.gz")
     fq2 = os.path.join(dir_data, "test", "duplicated_2.fastq.gz")
     result_parsed = os.path.join(dir_test, "expected", "fq_parsed_result.json")
-    result_identify = os.path.join(dir_test, "expected", "fq_duplicates_result.json")
+    result_identify = os.path.join(dir_test, "expected", "fq_duplicates_results.json")
     result_remove = os.path.join(dir_test, "expected", "fq_dedup_1.fastq")
 
 
@@ -52,7 +58,7 @@ def test_genome_digest():
     test_fa = os.path.join(dir_data, "test", "test.fa")
     test_output = os.path.join(dir_test, "test", "test_digest_genome.bed")
     test_output_stats = os.path.join(
-        dir_test, "test", "stats", "test_digest_genome.bed"
+        dir_test, "stats", "test_digest_genome.bed"
     )
 
     runner = CliRunner()
@@ -137,7 +143,7 @@ def test_fastq_deduplicate_removal():
     # Test removal
     output_removal_prefix = os.path.join(dir_test, "test", "fq_dedup_test")
     output_removal_test = output_removal_prefix + "_1.fastq"
-    output_removal_test_stats = os.path.join(dir_test, "test", "stats", "deduplication")
+    output_removal_test_stats = os.path.join(dir_test, "stats", "deduplication")
 
     runner = CliRunner()
     result = runner.invoke(
@@ -189,7 +195,7 @@ def test_fastq_digest():
         dir_test, "test", "test_fastq_digest_flashed.fastq"
     )
     test_output_pe = os.path.join(dir_test, "test", "test_fastq_digest_pe.fastq")
-    test_output_stats = os.path.join(dir_test, "test", "stats", "digestion")
+    test_output_stats = os.path.join(dir_test, "stats", "digestion")
 
     runner = CliRunner()
     result = runner.invoke(
@@ -254,7 +260,7 @@ def test_slices_annotate():
     result = runner.invoke(
         cli,
         [
-            "reporters",
+            "alignments",
             "annotate",
             test_bed,
             "-b",
@@ -293,7 +299,7 @@ def test_slices_annotate():
     result = runner.invoke(
         cli,
         [
-            "reporters", 
+            "alignments", 
             "annotate",
             test_bed,
             "-b",
