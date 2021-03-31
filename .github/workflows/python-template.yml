@@ -57,3 +57,11 @@ jobs:
       shell: pwsh
       run: |
         pytest
+    - name: Generate coverage report
+      shell: pwsh
+      run: |
+        pytest --cov=./ --cov-report=xml
+    - name: Upload Coverage to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        verbose: true # optional (default = false)
