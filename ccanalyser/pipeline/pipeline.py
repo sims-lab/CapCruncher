@@ -1265,8 +1265,10 @@ def reporters_store_merged(infiles, outfile, sample_name):
 )
 def pipeline_merge_stats(infiles, outfile):
 
-    """Generates a summary statistics file for the pipeline run.
-    Summarised at the read count level."""
+    """
+    Generates a summary statistics file for the pipeline run.
+
+    """
 
     df = pd.concat([pd.read_csv(fn) for fn in infiles])
 
@@ -1296,6 +1298,8 @@ def pipeline_make_report(infile, outfile):
                    --to html
                    statistics/visualise_statistics.ipynb
                    statistics/visualise_statistics.html
+                   &&
+                   rm statistics/visualise_statistics.ipynb
                    """
 
     P.run(
