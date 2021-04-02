@@ -24,10 +24,15 @@ install_requires=['pandas>=1',
                   'paramiko>=2.7.1',
                   'sqlalchemy>=1.3.18',
                   'cgatcore>=0.6.7',
+                  'cooler',
                   'apsw',
                   'ruffus',
                   'drmaa',
                   'joblib',
                   'ipykernel',
-                  'click']
+                  'natsort',
+                  'iced',
+                  'click',
+                  'ujson',
+                  'xxhash']
 )
