@@ -12,7 +12,7 @@ dir_package = os.path.dirname(dir_test)
 dir_data = os.path.join(dir_package, "data")
 
 test_slices = os.path.join(dir_data, 'test', 'test_slices_to_filter_capture.tsv')
-df_test_slices = pd.read_csv(test_slices, sep=r'\s+')
+df_test_slices = pd.read_csv(test_slices, sep=r'\t')
 df_test_slices['restriction_fragment'] = df_test_slices['restriction_fragment'].replace('.', -1).astype(int)
 
 test_yaml = os.path.join(dir_data, 'test', 'ccslicefilter_test.yml')
