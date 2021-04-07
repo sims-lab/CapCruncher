@@ -1,14 +1,11 @@
-slice_name	parent_read	mapped	slice	capture	capture_count	exclusion	exclusion_count	blacklist	coordinates restriction_fragment chrom start end    pe  multimapped 
-S1_0	S1	1	0	capture	1	.	0	0	chr1:1000-2000  1   chr1    1000    2000    flashed 0
-S1_1	S1	1	1	.	0	capture	1	0	chr1:2001-2500  2   chr1    2001    2500    flashed 0
-S1_2	S1	1	2	.	0	.	0	0	chr1:3000-3500  3       chr1    3000    3500    flashed 0
-S1_3	S1	0	3	.	0	.	0	0	.   .   .   .   .   pe  0
-S2_0	S2	1	0	.	0	.	0	0	chr1:90000-100000   68  chr1    90000   100000  pe  0
-S3_0	S3	1	0	.	0	.	0	0	chr11:90000-94000   90  chr11   90000   94000   pe  0
-S3_1	S3	1	1	.	0	.	0	0	chr11:95000-96000   91  chr11   95000   96000   pe  0
-S3_2	S3	1	2	.	0	.	0	0	chr11:96500-97000   92  chr11   96500   97000 pe    0
-S4_0	S4	1	0	.	0	.	0	1	chr11:96500-97000   92  chr11   96500   97000 pe    0
-S4_1	S4	1	1	.	0	.	0	0	chr11:96500-97000   92  chr11   96500   97000 pe    0
-
-
-
+slice_name	parent_read	mapped	slice	capture	capture_count	exclusion	exclusion_count	blacklist	coordinates	restriction_fragment	chrom	start	end	pe	multimapped
+S1_0	S1	1	0	capture	1	.	0	0	chr1:1000-2000	1	chr1	1000	2000	flashed	0
+S1_1	S1	1	1	.	0	capture	1	0	chr1:2001-2500	2	chr1	2001	2500	flashed	0
+S1_2	S1	1	2	.	0	.	0	0	chr1:3000-3500	3	chr1	3000	3500	flashed	0
+S1_3	S1	0	3	.	0	.	0	0	.	.	.	.	.	pe	0
+S2_0	S2	1	0	.	0	.	0	0	chr1:90000-100000	68	chr1	90000	100000	pe	0
+S3_0	S3	1	0	.	0	.	0	0	chr11:90000-94000	90	chr11	90000	94000	pe	0
+S3_1	S3	1	1	.	0	.	0	0	chr11:95000-96000	91	chr11	95000	96000	pe	0
+S3_2	S3	1	2	.	0	.	0	0	chr11:96500-97000	92	chr11	96500	97000	pe	0
+S4_0	S4	1	0	.	0	.	0	1	chr11:96500-97000	92	chr11	96500	97000	pe	0
+S4_1	S4	1	1	.	0	.	0	0	chr11:96500-97000	92	chr11	96500	97000	pe	0

@@ -8,18 +8,13 @@ import ujson
 import xopen
 from click.testing import CliRunner
 from ccanalyser.cli import cli
+import pandas as pd
 
 
 # Pre-run setup
 dir_test = os.path.realpath(os.path.dirname(__file__))
 dir_package = os.path.dirname(dir_test)
 dir_data = os.path.join(dir_package, "data")
-
-if not os.path.exists(os.path.join(dir_test, 'test')):
-    os.mkdir(os.path.join(dir_test, 'test'))
-
-if not os.path.exists(os.path.join(dir_test, 'stats')):
-    os.mkdir(os.path.join(dir_test, 'stats'))
 
 # Remove previous test files
 for fn in glob.glob(os.path.join(dir_test, "test", "*")):
@@ -247,7 +242,7 @@ def test_fastq_digest():
     assert os.path.exists(test_output_stats + ".digestion.read.summary.csv")
 
 
-def test_slices_annotate():
+def test_alignments_annotate():
 
     test_output = os.path.join(dir_test, 'test' ,"test_annotate.tsv")
     test_bed = os.path.join(dir_data, "test", "test_slices.bed")
@@ -334,6 +329,39 @@ def test_slices_annotate():
     )
 
     assert result.exit_code == 0
+
+def test_alignments_filter():
+
+    bam = os.path.join(dir_data, 'test', 'Slc25A37-test_1_part0.pe.bam')
+    annotations = os.path.join(dir_data, 'test', 'Slc25A37-test_1_part0.pe.annotations.tsv')
+    output_prefix = os.path.join(dir_test, 'test', 'test_filtering_cli')
+    stats_prefix = os.path.join(dir_test, 'stats', 'test_filtering_cli')
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "alignments",
+            "filter",
+            "capture",
+            "-b",
+             bam,
+            "-a",
+            annotations,
+            '-o',
+            output_prefix,
+            "--stats_prefix",
+            stats_prefix,
+        ],
+    )
+
+    assert result.exit_code == 0
+    
+    df_slices = pd.read_csv(f'{output_prefix}.Slc25A37.slices.tsv', sep='\t')
+    assert df_slices.shape[0] == 1062
+
+    
+
 
 
 

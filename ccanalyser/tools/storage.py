@@ -182,10 +182,13 @@ class GenomicBinner:
     def _format_chromsizes(self, chromsizes):
 
         _chromsizes = pd.Series()
-
         if isinstance(chromsizes, str):
-            _chromsizes = (pd.read_csv(chromsizes, sep="\t", header=None, names=['chrom', 'size'])
-                            .set_index('chrom')
+            _chromsizes = (pd.read_csv(chromsizes, 
+                                       sep="\t", 
+                                       header=None,
+                                       names=['chrom', 'size'],
+                                       usecols=[0, 1],
+                                       index_col=0)
                             ['size']
                             .sort_index(key=natsort_key))
 
