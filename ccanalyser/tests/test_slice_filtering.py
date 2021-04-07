@@ -2,6 +2,7 @@ import pytest
 import pandas as pd
 import pysam
 import os
+import numpy as np
 
 from ccanalyser.tools.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
 
@@ -10,10 +11,13 @@ dir_test = os.path.realpath(os.path.dirname(__file__))
 dir_package = os.path.dirname(dir_test)
 dir_data = os.path.join(dir_package, "data")
 
-def test_ccslice_filter():
+test_slices = os.path.join(dir_data, 'test', 'test_slices_to_filter_capture.tsv')
+df_test_slices = pd.read_csv(test_slices, sep=r'\s+')
+df_test_slices['restriction_fragment'] = df_test_slices['restriction_fragment'].replace('.', -1).astype(int)
 
-    test_slices = os.path.join(dir_data, 'test', 'test_slices_to_filter_capture.tsv')
-    df_test_slices = pd.read_csv(test_slices, sep=r'\s+')
+test_yaml = os.path.join(dir_data, 'test', 'ccslicefilter_test.yml')
+
+def test_ccslicefilter():
 
     sf = CCSliceFilter(df_test_slices)
     n_removed = 0
@@ -34,6 +38,19 @@ def test_ccslice_filter():
     n_removed += 4 # 4 slices with no capture
     assert sf.slices.shape[0] == (df_test_slices.shape[0] - n_removed)
 
+def test_ccslicefilter_filter_slices():
+
+    sf = CCSliceFilter(df_test_slices)
+
+    sf.filter_slices()
+    assert sf.slices.shape[0] == 2
+
+def test_from_yaml():
+
+    sf = CCSliceFilter(df_test_slices, filter_stages=test_yaml)
+
+    sf.filter_slices()
+    assert sf.slices.shape[0] == 2
 
 
 
