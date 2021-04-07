@@ -20,11 +20,11 @@ genome:
 #############################
 
 pipeline:
-    n_cores: 
+    n_cores: 4
     cluster_queue:
     cluster_queue_manager:
     compression: 5
-    memory:
+    memory: 4G
 
 
 ###################################
