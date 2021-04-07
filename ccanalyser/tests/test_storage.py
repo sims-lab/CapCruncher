@@ -15,10 +15,6 @@ dir_test = os.path.realpath(os.path.dirname(__file__))
 dir_package = os.path.dirname(dir_test)
 dir_data = os.path.join(dir_package, "data")
 
-if not os.path.exists(os.path.join(dir_test, 'test')):
-    os.mkdir(os.path.join(dir_test, 'test'))
-
-
 def test_make_cooler():
     pixels = pd.read_csv(
       os.path.join(dir_data, "test", "Slc25A37_reporter_counts.tsv.gz"), sep="\t"
