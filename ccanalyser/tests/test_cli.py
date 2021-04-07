@@ -355,10 +355,10 @@ def test_alignments_filter():
         ],
     )
 
-    assert result.exit_code == 1
+    assert result.exit_code == 0
     
     df_slices = pd.read_csv(f'{output_prefix}.Slc25A37.slices.tsv', sep='\t')
-    assert df_slices.shape == 1062
+    assert df_slices.shape[0] == 1062
 
     
 
