@@ -10,6 +10,7 @@ import glob
 dir_test = os.path.realpath(os.path.dirname(__file__))
 dir_test_run = os.path.join(dir_test, 'pipeline_test_run')
 dir_package = os.path.dirname(dir_test)
+dir_pipeline = os.path.join(dir_package, 'pipeline')
 dir_data = os.path.join(dir_package, "data")
 
 # data paths
@@ -54,26 +55,26 @@ with open(data_path_config, 'r') as config:
 
 def test_pipeline_fastq_preprocessing():
 
-    cmd = 'ccanalyser pipeline make fastq_preprocessing --local -p 4'
+    cmd = f'python {dir_pipeline}/pipeline.py make fastq_preprocessing --local -p 4'
     completed = subprocess.run(cmd.split())
 
 def test_pipeline_pre_annotation():
 
-    cmd = 'ccanalyser pipeline make pre_annotation --local -p 4'
+    cmd = f'python {dir_pipeline}/pipeline.py make pre_annotation --local -p 4'
     completed = subprocess.run(cmd.split())
 
 def test_pipeline_post_annotation():
 
-    cmd = 'ccanalyser pipeline make post_annotation --local -p 4'
+    cmd = f'python {dir_pipeline}/pipeline.py make post_annotation --local -p 4'
     completed = subprocess.run(cmd.split())
 
 def test_pipeline_post_ccanalyser_analysis():
 
-    cmd = 'ccanalyser pipeline make post_ccanalyser_analysis --local -p 4'
+    cmd = f'python {dir_pipeline}/pipeline.py make post_ccanalyser_analysis --local -p 4'
     completed = subprocess.run(cmd.split())
 
 def test_pipeline_full():
 
-    cmd = 'ccanalyser pipeline make full --local -p 4'
+    cmd = f'python {dir_pipeline}/pipeline.py make full --local -p 4'
     completed = subprocess.run(cmd.split())
     
