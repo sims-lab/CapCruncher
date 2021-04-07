@@ -16,7 +16,7 @@ dir_data = os.path.join(dir_package, "data")
 # data paths
 data_path_fq1 = os.path.join(dir_data, 'test', 'Slc25A37-test_1_1.fastq.gz')
 data_path_fq2 = os.path.join(dir_data, 'test', 'Slc25A37-test_1_2.fastq.gz')
-data_path_oligos = os.path.join(dir_data, 'test', 'mm9_capture_oligos.bed')
+data_path_oligos = os.path.join(dir_data, 'test', 'mm9_capture_oligos_Slc25A37.bed')
 data_path_genome = os.path.join(dir_data, 'test', 'data_for_pipeline_run', 'chr14.fa.gz')
 data_path_chromsizes = os.path.join(dir_data, 'test', 'data_for_pipeline_run', 'chr14.fa.fai')
 data_path_bowtie2_indicies = os.path.join(dir_data, 'test', 'data_for_pipeline_run', 'chr14_bowtie2_indicies')
