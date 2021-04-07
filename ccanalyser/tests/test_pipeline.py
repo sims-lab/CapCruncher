@@ -2,7 +2,7 @@ import os
 import sys
 import subprocess
 import shutil
-import re
+import glob
 
 
 
@@ -22,6 +22,11 @@ data_path_bowtie2_indicies = os.path.join(dir_data, 'test', 'data_for_pipeline_r
 data_path_config = os.path.join(dir_data, 'test', 'data_for_pipeline_run', 'config.yml')
 
 # Set-up
+if os.path.exists(dir_test_run):
+    shutil.rmtree(dir_test_run) # Remove old run files
+
+## Set-up run.
+os.mkdir(dir_test_run) 
 os.chdir(dir_test_run)
 cwd = os.getcwd()
 
@@ -43,14 +48,32 @@ with open(data_path_config, 'r') as config:
                 if key in line:
                     line = line.replace(key, replacements[key])
 
-            writer.write(line.strip() + '\n')
+            writer.write(line)
 
 
 
 def test_pipeline_fastq_preprocessing():
 
-    cmd = 'ccanalyser pipeline make fastq_preprocessing'
-    return_code = subprocess.call(cmd.split())
-    assert return_code == 0
+    cmd = 'ccanalyser pipeline make fastq_preprocessing --local -p 4'
+    completed = subprocess.run(cmd.split())
 
+def test_pipeline_pre_annotation():
+
+    cmd = 'ccanalyser pipeline make pre_annotation --local -p 4'
+    completed = subprocess.run(cmd.split())
+
+def test_pipeline_post_annotation():
+
+    cmd = 'ccanalyser pipeline make post_annotation --local -p 4'
+    completed = subprocess.run(cmd.split())
+
+def test_pipeline_post_ccanalyser_analysis():
+
+    cmd = 'ccanalyser pipeline make post_ccanalyser_analysis --local -p 4'
+    completed = subprocess.run(cmd.split())
+
+def test_pipeline_full():
+
+    cmd = 'ccanalyser pipeline make full --local -p 4'
+    completed = subprocess.run(cmd.split())
     
