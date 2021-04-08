@@ -186,7 +186,7 @@ def store():
 
     """
 
-@store.command(names='fragments')
+@store.command(name='fragments')
 @click.argument("counts", required=True)
 @click.option(
     "-f",
