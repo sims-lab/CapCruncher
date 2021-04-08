@@ -1326,7 +1326,7 @@ def reporters_make_bedgraph(infile, outfiles, sample_name):
 
     output_prefix = f"ccanalyser_analysis/bedgraphs/{sample_name}.raw"
 
-    statement = """ccanalyser reporters  bedgraph
+    statement = """ccanalyser reporters  pileup
                    %(infile)s
                    -o %(output_prefix)s
                    > %(output_prefix)s.log"""
@@ -1354,7 +1354,7 @@ def reporters_make_bedgraph_normalised(infile, outfiles, sample_name):
 
     output_prefix = f"ccanalyser_analysis/bedgraphs/{sample_name}.normalised"
 
-    statement = """ccanalyser reporters  bedgraph
+    statement = """ccanalyser reporters  pileup
                    %(infile)s
                    -o %(output_prefix)s
                    --normalise
