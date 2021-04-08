@@ -69,6 +69,7 @@ def test_genome_digest():
             test_output,
             "-l",
             test_output_stats,
+            '--sort'
         ],
     )
 
@@ -329,6 +330,25 @@ def test_alignments_annotate():
     )
 
     assert result.exit_code == 0
+
+
+    # Test with bad path
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "alignments", 
+            "annotate",
+            "XXXXXXXXXXXX",
+        ],
+    )
+
+    assert result.exit_code != 0
+
+
+
+
+
 
 def test_alignments_filter():
 
