@@ -10,8 +10,6 @@ Script splits a fastq into specified chunks
 
 from multiprocessing import SimpleQueue
 from typing import Tuple
-import click
-from ccanalyser.cli.cli_fastq import cli
 import subprocess
 import glob
 import os
@@ -41,37 +39,7 @@ def run_unix_split(fn: os.PathLike,
 
     subprocess.run(' '.join(statement), shell=True)
 
-@cli.command()
-@click.argument("input_files", nargs=-1, required=True)
-@click.option(
-    "-m",
-    "--method",
-    help="Method to use for splitting",
-    type=click.Choice(["python", "unix"]),
-    default="unix",
-)
-@click.option(
-    "-o",
-    "--output_prefix",
-    help="Output prefix for deduplicated fastq file(s)",
-    default="split",
-)
-@click.option(
-    "--compression_level",
-    help="Level of compression for output files",
-    default=5,
-    type=click.INT,
-)
-@click.option(
-    "-n",
-    "--n_reads",
-    help="Number of reads per fastq file",
-    default=1e6,
-    type=click.INT,
-)
-@click.option(
-    "--gzip/--no-gzip", help="Determines if files are gziped or not", default=False
-)
+
 def split(
     input_files: Tuple,
     method: str = "unix",

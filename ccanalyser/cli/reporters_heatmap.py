@@ -5,9 +5,7 @@ from typing import Tuple, Union
 import cooler
 import pandas as pd
 import numpy as np
-import click
 
-from ccanalyser.cli.cli_reporters import cli
 from ccanalyser.utils import convert_interval_to_coords, format_coordinates
 from ccanalyser.tools.plotting import CCMatrix
 
@@ -31,37 +29,6 @@ def plot_matrix(matrix, figsize=(10, 10), axis_labels=None, cmap=None, vmin=0, v
     return fig
 
 
-@cli.command()
-@click.argument("cooler_fn", required=True)
-@click.option(
-    "-c",
-    "--coordinates",
-    help="Coordinates in the format chr1:1000-2000 or a path to a .bed file with coordinates",
-)
-@click.option(
-    "-r",
-    "--resolution",
-    help="Resolution at which to plot. Must be present within the cooler file.",
-    required=True,
-    multiple=True,
-)
-@click.option(
-    "-n",
-    "--capture_names",
-    multiple=True,
-    help="Capture names to plot. If not supplied will plot all",
-)
-@click.option(
-    "--normalisation",
-    help="Normalisation method for heatmap",
-    default="n_interactions",
-    type=click.Choice(["n_interactions", "n_rf_n_interactions", "ice"]),
-)
-@click.option("--cmap", help="Colour map to use for plotting", default="jet")
-@click.option("--vmax", help="Vmax for plotting", default=0, type=click.FLOAT)
-@click.option("--vmin", help="Vmin for plotting", default=0, type=click.FLOAT)
-@click.option("-o", "--output_prefix", help="Output prefix for plot", default="")
-@click.option("--remove_capture", help='Removes the capture probe bins from the matrix', is_flag=True, default=False)
 def plot(
     cooler_fn: os.PathLike,
     coordinates: Union[str, os.PathLike],

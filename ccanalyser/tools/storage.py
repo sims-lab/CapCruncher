@@ -181,7 +181,7 @@ class GenomicBinner:
 
     def _format_chromsizes(self, chromsizes):
 
-        _chromsizes = pd.Series()
+        _chromsizes = pd.Series(dtype=np.int64)
         if isinstance(chromsizes, str):
             _chromsizes = (pd.read_csv(chromsizes, 
                                        sep="\t", 

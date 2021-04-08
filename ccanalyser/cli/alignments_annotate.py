@@ -6,9 +6,7 @@ from typing import Tuple, Union
 warnings.simplefilter("ignore")
 import os
 
-import click
 import pandas as pd
-from ccanalyser.cli.cli_alignments import cli
 from ccanalyser.tools.annotate import BedIntersection
 from ccanalyser.utils import (bed_has_name, convert_bed_to_dataframe,
                               is_valid_bed)
@@ -49,54 +47,7 @@ def remove_duplicates_from_bed(bed: Union[str, BedTool, pd.DataFrame]) -> BedToo
     )
 
 
-@cli.command()
-@click.argument("slices")
-@click.option(
-    "-a",
-    "--actions",
-    help="Determines if the overlaps are counted or if the name should just be reported",
-    multiple=True,
-    type=click.Choice(
-        ["get", "count"],
-    ),
-)
-@click.option(
-    "-b", "--bed_files", help="Bed file(s) to intersect with slices", multiple=True
-)
-@click.option("-n", "--names", help="Names to use as column names for the output tsv file.", multiple=True)
-@click.option(
-    "-f",
-    "--overlap_fractions",
-    help="The minimum overlap required for an intersection between two intervals to be reported.",
-    multiple=True,
-    default=[
-        1e-9,
-    ],
-    type=click.FLOAT,
-)
-@click.option(
-    "-o",
-    "--output",
-    help="Path for the annotated slices to be output.",
-    default="annotated.slices.tsv.gz",
-)
-@click.option(
-    "--duplicates",
-    help="Method to use for reconciling duplicate slices (i.e. multimapping). Currently only 'remove' is supported.",
-    type=click.Choice(["remove"]),
-    default="remove",
-)
-@click.option(
-    "-p", "--n_cores", help="Intersections are performed by chromosome, this determines the number of cores.", default=1
-)
-@click.option(
-    "--invalid_bed_action",
-    help=' '.join(["Method to deal with invalid bed files e.g. blank or incorrectly formatted.",
-                  "Setting this to 'ignore' will report default N/A values (either '.' or 0) for invalid files"
-                  ]),
-    default="error",
-    type=click.Choice(["ignore", "error"]),
-)
+
 def annotate(
     slices: os.PathLike,
     actions: Tuple = None,

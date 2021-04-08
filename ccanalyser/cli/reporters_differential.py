@@ -1,10 +1,7 @@
 import os
-
 import pandas as pd
-import click
 import itertools
 
-from ccanalyser.cli.cli_reporters import cli 
 
 def get_chromosome_from_name(df: pd.DataFrame, name: str):
     chrom = (df.query(f'name == "{name}"')
@@ -13,16 +10,6 @@ def get_chromosome_from_name(df: pd.DataFrame, name: str):
     return chrom
     
 
-@cli.command()
-@click.argument('union_bedgraph')
-@click.option('-n', '--capture_name', help='Name of capture probe, must be present in oligo file.', required=True)
-@click.option('-c', '--capture_oligos', help='Path to capture oligos bed file', required=True)
-@click.option('-o', '--output_prefix', help='Output prefix for pairwise statistical comparisons', default='out')
-@click.option('--design_matrix', help='Path tsv file containing sample annotations (N_SAMPLES * N_INFO_COLUMNS)', default=None)
-@click.option('--grouping_col', help='Column to use for grouping replicates', default='condition')
-@click.option('--threshold_count', help='Minimum count required to be considered for analysis', default=20, type=click.FLOAT)
-@click.option('--threshold_q', help='Upper threshold of q-value required for output.', default=0.05, type=click.FLOAT)
-@click.option('--threshold_mean', help='Minimum mean count required for output.', default=0, type=click.FLOAT)
 def differential(union_bedgraph: os.PathLike,
                               capture_name: str,
                               capture_oligos: os.PathLike,

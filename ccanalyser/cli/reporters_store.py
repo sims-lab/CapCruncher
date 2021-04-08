@@ -12,56 +12,6 @@ from ccanalyser.cli.cli_reporters import cli
 from ccanalyser.tools.storage import CoolerBinner, create_cooler_cc, link_bins
 
 
-@cli.group()
-def store():
-    """
-    Store reporter counts.
-
-    These commands store and manipulate reporter restriction fragment interaction 
-    counts as cooler formated groups in HDF5 files.
-
-    See subcommands for details. 
-
-    """
-
-
-@store.command()
-@click.argument("counts", required=True)
-@click.option(
-    "-f",
-    "--fragment_map",
-    help="Path to digested genome bed file",
-    required=True,
-)
-@click.option(
-    "-c",
-    "--capture_oligos",
-    "capture_oligos",
-    help="Path to capture oligos file",
-    required=True,
-)
-@click.option(
-    "-n",
-    "--capture_name",
-    "capture_name",
-    help="Name of capture oligo to store",
-    required=True,
-)
-@click.option(
-    "-g",
-    "--genome",
-    help="Name of genome",
-)
-@click.option(
-    "--suffix",
-    help="Suffix to append after the capture name for the output file",
-)
-@click.option(
-    "-o",
-    "--output",
-    help="Name of output file. (Cooler formatted hdf5 file)",
-    default="out.hdf5",
-)
 def fragments(
     counts: os.PathLike,
     fragment_map: os.PathLike,
@@ -112,50 +62,6 @@ def fragments(
     )
 
 
-@store.command()
-@click.argument("cooler_fn", required=True)
-@click.option(
-    "-b",
-    "--binsizes",
-    help="Binsizes to use for windowing",
-    default=(5000,),
-    multiple=True,
-    type=click.INT,
-)
-@click.option(
-    "--normalise",
-    is_flag=True,
-    help="Enables normalisation of interaction counts during windowing",
-)
-@click.option(
-    "--overlap_fraction",
-    help="Minimum overlap between genomic bins and restriction fragments for overlap",
-    default=0.5,
-)
-@click.option(
-    "-p",
-    "--n_cores",
-    help="Number of cores used for binning",
-    default=4,
-    type=click.INT,
-)
-@click.option(
-    "--scale_factor",
-    help="Scaling factor used for normalisation",
-    default=1e6,
-    type=click.INT,
-)
-@click.option(
-    "--conversion_tables",
-    help="Pickle file containing pre-computed fragment -> bin conversions.",
-    default=None,
-)
-@click.option(
-    "-o",
-    "--output",
-    help="Name of output file. (Cooler formatted hdf5 file)",
-    default="out.hdf5",
-)
 def bins(
     cooler_fn: os.PathLike,
     output: os.PathLike,
@@ -204,9 +110,6 @@ def bins(
         cb.to_cooler(output, normalise=normalise, scale_factor=scale_factor)
 
 
-@store.command()
-@click.argument("coolers", required=True, nargs=-1)
-@click.option("-o", "--output", help="Output file name")
 def merge(coolers: Tuple, output: os.PathLike):
     """
     Merges ccanalyser cooler files together.

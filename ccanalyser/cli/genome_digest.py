@@ -7,10 +7,8 @@ Created on Fri Oct  4 13:47:20 2019
 Script generates a bed file of restriction fragment locations in a given genome.
 
 """
-import click
 import pysam
 import xopen
-from ccanalyser.cli.cli_genome import cli
 from ccanalyser.tools.digest import DigestedChrom
 from ccanalyser.utils import get_re_site
 from typing import Iterator
@@ -32,13 +30,6 @@ def parse_chromosomes(fasta: pysam.FastxFile) -> Iterator[pysam.FastqProxy]:
         yield chrom
 
 
-@cli.command()
-@click.argument('input_fasta')
-@click.option('-r', '--recognition_site', help='Recognition enzyme or sequence' ,required=True)
-@click.option('-l', '--logfile', help='Path for digestion log file', default='genome_digest.log')
-@click.option('-o', '--output_file', help='Output file path', default='genome_digested.bed')
-@click.option('--remove_cutsite', help='Exclude the recognition sequence from the output', default=True)
-@click.option('--sort', help='Sorts the output bed file by chromosome and start coord.', default=False, is_flag=True)
 def digest(
     input_fasta: os.PathLike,
     recognition_site: str,

@@ -1,9 +1,7 @@
 import os
-import click
 import pandas as pd
 
 
-from ccanalyser.cli.cli_alignments import cli
 from ccanalyser.tools.io import parse_bam
 from ccanalyser.tools.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
 from ccanalyser.utils import get_timing
@@ -56,42 +54,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
     )
 
 
-@cli.command()
-@click.argument("method", type=click.Choice(["capture", "tri", "tiled"]))
-@click.option("-b", "--bam", help="Bam file to process", required=True)
-@click.option(
-    "-a",
-    "--annotations",
-    help="Annotations for the bam file that must contain the required columns, see description.",
-    required=True,
-)
-@click.option(
-    "--custom_filtering",
-    help="Custom filtering to be used. This must be supplied as a path to a yaml file.",
-    default=None,
-)
-@click.option(
-    "-o",
-    "--output_prefix",
-    help="Output prefix for deduplicated fastq file(s)",
-    default="",
-)
-@click.option(
-    "--stats_prefix",
-    help="Output prefix for stats file(s)",
-    default="",
-)
-@click.option("--sample_name", help="Name of sample e.g. DOX_treated_1")
-@click.option(
-    "--read_type",
-    help="Type of read",
-    default="flashed",
-    type=click.Choice(["flashed", "pe"], case_sensitive=False),
-)
 @get_timing(task_name="analysis of bam file")
-@click.option(
-    "--gzip/--no-gzip", help="Determines if files are gziped or not", default=False
-)
 def filter(
     bam: os.PathLike,
     annotations: os.PathLike,

@@ -1,9 +1,5 @@
 import os
 from typing import Tuple
-
-import click
-from ccanalyser.cli.cli_fastq import cli
-
 from multiprocessing import Queue
 from ccanalyser.tools.digest import ReadDigestionProcess
 from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess
@@ -56,36 +52,6 @@ def collate_statistics(statq: Queue,
             )
 
 
-@cli.command()
-@click.argument("input_fastq", nargs=-1, required=True)
-@click.option("-r", "--restriction_enzyme", help="Restriction enzyme name or sequence to use for in silico digestion.", required=True)
-@click.option(
-    "-m",
-    "--mode",
-    help="Digestion mode. Combined (Flashed) or non-combined (PE) read pairs.",
-    type=click.Choice(["flashed", "pe"], case_sensitive=False),
-    required=True,
-)
-@click.option("-o", "--output_file", default="out.fastq.gz")
-@click.option("-p", "--n_cores", default=1, type=click.INT)
-@click.option("--minimum_slice_length", default=18, type=click.INT)
-@click.option("--keep_cutsite", default=False)
-@click.option(
-    "--compression_level",
-    help="Level of compression for output files (1=low, 9=high)",
-    default=5,
-    type=click.INT,
-)
-@click.option(
-    "--read_buffer",
-    help="Number of reads to process before writing to file to conserve memory.",
-    default=1e5,
-    type=click.INT,
-)
-@click.option("--stats_prefix", help="Output prefix for stats file", default="stats")
-@click.option(
-    "--sample_name", help="Name of sample e.g. DOX_treated_1. Required for correct statistics.", default="sampleX"
-)
 def digest(
     input_fastq: Tuple,
     restriction_enzyme: str,
