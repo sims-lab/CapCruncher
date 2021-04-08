@@ -45,7 +45,7 @@ def split(*args, **kwargs):
     """
 
     from ccanalyser.cli.fastq_split import split
-    split(**args, **kwargs)
+    split(*args, **kwargs)
 
 @cli.command()
 @click.argument("input_fastq", nargs=-1, required=True)
