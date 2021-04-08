@@ -380,7 +380,27 @@ def test_alignments_filter():
     df_slices = pd.read_csv(f'{output_prefix}.Slc25A37.slices.tsv', sep='\t')
     assert df_slices.shape[0] == 1062
 
-    
+
+def test_reporter_count():
+
+    reporters = os.path.join(dir_data, 'test', 'Slc25A37_reporters.tsv.gz')
+    output = os.path.join(dir_test, 'test', 'test_reporter_counts.tsv')
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "reporters",
+            "count",
+            reporters,
+            '-o',
+            output,
+        ],
+    )
+
+    assert result.exit_code == 0
+
+
+
 
 
 
