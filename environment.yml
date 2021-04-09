@@ -17,3 +17,5 @@ dependencies:
   - flash
   - ucsc-bedgraphtobigwig
   - ucsc-fetchchromsizes
+  - bedtools
+  - samtools
