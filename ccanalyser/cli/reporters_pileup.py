@@ -1,50 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-
-
-"""
 
 import cooler
-import click
-from ccanalyser.cli.cli_reporters import cli
 from ccanalyser.tools.pileup import CoolerBedGraph, CoolerBedGraphWindowed
 from ccanalyser.tools.storage import CoolerBinner
 import os
 
-
-@cli.command()
-@click.argument("cooler_fn")
-@click.option(
-    "-n",
-    "--capture_names",
-    help="Capture to extract and convert to bedgraph, if not provided will transform all.",
-    multiple=True,
-)
-@click.option("-o", "--output_prefix", help="Output prefix for bedgraphs")
-@click.option(
-    "--normalise",
-    help="Normalised bedgraph (Correct for number of cis reads)",
-    default=False,
-    is_flag=True,
-)
-@click.option(
-    "--binsize",
-    help="Binsize to use for converting bedgraph to evenly sized genomic bins",
-    default=0,
-)
-@click.option("--gzip", help="Compress output using gzip", default=False, is_flag=True)
-@click.option(
-    "--scale_factor",
-    help="Scale factor to use for bedgraph normalisation",
-    default=1e6,
-    type=click.INT,
-)
-@click.option(
-    "--sparse/--dense",
-    help="Produce bedgraph containing just positive bins (sparse) or all bins (dense)",
-    default=True,
-)
 def bedgraph(
     cooler_fn: os.PathLike,
     capture_names: list = None,

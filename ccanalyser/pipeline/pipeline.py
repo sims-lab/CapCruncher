@@ -1032,7 +1032,7 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
 
         statement.append(cmd)
 
-    statement.append(f'pigz -p {P.PARAMS["pipeline_n_cores"]} {tmp}')
+    statement.append(f'cat {tmp} | pigz -p {P.PARAMS["pipeline_n_cores"]} > {outfile}')
 
     P.run(
         " && ".join(statement),
@@ -1326,7 +1326,7 @@ def reporters_make_bedgraph(infile, outfiles, sample_name):
 
     output_prefix = f"ccanalyser_analysis/bedgraphs/{sample_name}.raw"
 
-    statement = """ccanalyser reporters  bedgraph
+    statement = """ccanalyser reporters  pileup
                    %(infile)s
                    -o %(output_prefix)s
                    > %(output_prefix)s.log"""
@@ -1354,7 +1354,7 @@ def reporters_make_bedgraph_normalised(infile, outfiles, sample_name):
 
     output_prefix = f"ccanalyser_analysis/bedgraphs/{sample_name}.normalised"
 
-    statement = """ccanalyser reporters  bedgraph
+    statement = """ccanalyser reporters  pileup
                    %(infile)s
                    -o %(output_prefix)s
                    --normalise

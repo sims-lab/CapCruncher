@@ -12,41 +12,13 @@ from typing import List, Tuple, Union
 import click
 import numpy as np
 import ujson
-from ccanalyser.cli.cli_fastq import cli
 from ccanalyser.tools.deduplicate import (ReadDeduplicationParserProcess,
                                           ReadDuplicateRemovalProcess)
 from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess
 from ccanalyser.tools.statistics import DeduplicationStatistics
-from ccanalyser.utils import NaturalOrderGroup, invert_dict, load_json
+from ccanalyser.utils import invert_dict, load_json
 from xopen import xopen
 
-
-@cli.group(cls=NaturalOrderGroup)
-def deduplicate():
-    """
-    Identifies PCR duplicate fragments from Fastq files.
-
-    PCR duplicates are very commonly present in Capture-C/Tri-C/Tiled-C data and must be removed
-    for accurate analysis. These commands attempt to identify and remove duplicate reads/fragments
-    from fastq file(s) to speed up downstream analysis.
-
-    """
-
-
-@deduplicate.command()
-@click.argument("input_files", nargs=-1, required=True)
-@click.option(
-    "-o",
-    "--output",
-    help="File to store hashed sequence identifiers",
-    default="out.json",
-)
-@click.option(
-    "--read_buffer",
-    help="Number of reads to process before writing to file",
-    default=1e5,
-    type=click.INT,
-)
 def parse(input_files: Tuple, output: os.PathLike = "out.json", read_buffer: int = 1e5):
     """
     Parses fastq file(s) into easy to deduplicate format.
@@ -89,14 +61,6 @@ def parse(input_files: Tuple, output: os.PathLike = "out.json", read_buffer: int
         proc.terminate()
 
 
-@deduplicate.command()
-@click.argument(
-    "input_files",
-    nargs=-1,
-)
-@click.option(
-    "-o", "--output", help="Output file", default="duplicates.json", required=True
-)
 def identify(input_files: Tuple, output: os.PathLike = "duplicates.json"):
     """
     Identifies fragments with duplicated sequences.
@@ -133,38 +97,6 @@ def identify(input_files: Tuple, output: os.PathLike = "duplicates.json"):
         ujson.dump(duplicated_ids_dict, w)
 
 
-@deduplicate.command()
-@click.argument("input_files", nargs=-1)
-@click.option(
-    "-o",
-    "--output_prefix",
-    help="Output prefix for deduplicated fastq file(s)",
-    default="",
-)
-@click.option(
-    "-d",
-    "--duplicated_ids",
-    help="Path to duplicate ids, identified by the identify subcommand",
-)
-@click.option(
-    "--read_buffer",
-    help="Number of reads to process before writing to file",
-    default=1e5,
-    type=click.INT,
-)
-@click.option(
-    "--gzip/--no-gzip",
-    help="Determines if files are gziped or not",
-    default=False
-)
-@click.option(
-    "--compression_level",
-    help="Level of compression for output files",
-    default=5,
-    type=click.INT,
-)
-@click.option("--sample_name", help="Name of sample e.g. DOX_treated_1", default='sampleX')
-@click.option("--stats_prefix", help="Output prefix for stats file", default='stats')
 def remove(
     input_files: Tuple,
     duplicated_ids: os.PathLike,

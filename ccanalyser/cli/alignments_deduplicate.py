@@ -8,41 +8,6 @@ import ujson
 import os
 
 
-@cli.group()
-def deduplicate():
-    """
-    Identifies and removes duplicated aligned fragments.
-
-    PCR duplicates are very commonly present in Capture-C/Tri-C/Tiled-C data and must be removed
-    for accurate analysis. Unlike fastq deduplicate, this command removes fragments with identical
-    genomic coordinates. 
-
-    Non-combined (pe) and combined (flashed) reads are treated slightly differently due to the increased
-    confidence that the ligation junction has been captured for the flashed reads.
-
-"""
-
-
-@deduplicate.command()
-@click.argument("fragments_fn")
-@click.option(
-    "-o",
-    "--output",
-    help="Path for outputting fragments with duplicated coordinates in json format.",
-    default="duplicated_ids.json.gz",
-)
-@click.option(
-    "--buffer",
-    help="Number of fragments to process at one time in order to preserve memory.",
-    default=1e6,
-    type=click.INT,
-)
-@click.option(
-    "--read_type",
-    help="Indicates if the fragments have been combined (flashed) or not (pe).",
-    default="flashed",
-    type=click.Choice(["flashed", "pe"], case_sensitive=False),
-)
 def identify(
     fragments_fn: os.PathLike,
     output: os.PathLike = "duplicated_ids.json",
@@ -121,24 +86,7 @@ def identify(
         ujson.dump(dict.fromkeys(fragments_dup), w)
 
 
-@deduplicate.command()
-@click.argument("slices_fn")
-@click.option("-d", "--duplicated_ids", help="Path to duplicated fragment ids determined by the 'identify' subcommand.")
-@click.option("-o", "--output", help="Path for outputting deduplicated slices in tsv format.")
-@click.option(
-    "--buffer",
-    help="Number of fragments to process at one time, in order to preserve memory.",
-    default=1e6,
-    type=click.INT,
-)
-@click.option("--stats_prefix", help="Output prefix for deduplication statistics")
-@click.option("--sample_name", help="Name of sample being analysed e.g. DOX_treated_1. Required for correct statistics.")
-@click.option(
-    "--read_type",
-    help="Indicates if the fragments have been combined (flashed) or not (pe). Required for correct statistics.",
-    default="flashed",
-    type=click.Choice(["flashed", "pe"], case_sensitive=False),
-)
+
 def remove(
     slices_fn: os.PathLike,
     duplicated_ids: os.PathLike,
