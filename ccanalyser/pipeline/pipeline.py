@@ -1032,7 +1032,7 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
 
         statement.append(cmd)
 
-    statement.append(f'pigz -p {P.PARAMS["pipeline_n_cores"]} {tmp}')
+    statement.append(f'cat {tmp} | pigz -p {P.PARAMS["pipeline_n_cores"]} > {outfile}')
 
     P.run(
         " && ".join(statement),
