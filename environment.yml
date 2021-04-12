@@ -10,3 +10,12 @@ dependencies:
   - natsort
   - pybedtools
   - pysam
+  - bowtie2
+  - trim-galore
+  - cooler
+  - pandas
+  - flash
+  - ucsc-bedgraphtobigwig
+  - ucsc-fetchchromsizes
+  - bedtools
+  - samtools

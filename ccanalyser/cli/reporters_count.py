@@ -42,27 +42,6 @@ def count_re_site_combinations(
 
     return counts
 
-
-@cli.command()
-@click.argument("reporters")
-@click.option("-o", "--output", help="Name of output file", default="counts.tsv.gz")
-@click.option(
-    "--remove_exclusions",
-    default=False,
-    help="Prevents analysis of fragments marked as proximity exclusions",
-    is_flag=True,
-)
-@click.option(
-    "--remove_capture",
-    default=False,
-    help="Prevents analysis of capture fragment interactions",
-    is_flag=True,
-)
-@click.option(
-    "--subsample",
-    default=0,
-    help="Subsamples reporters before analysis of interactions",
-)
 def count(
     reporters: os.PathLike,
     output: os.PathLike = 'counts.tsv',

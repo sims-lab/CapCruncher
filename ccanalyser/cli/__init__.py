@@ -6,8 +6,6 @@ import subprocess
 
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
-
-
 class UnsortedGroup(click.Group):
     def list_commands(self, ctx):
         return list(self.commands)
@@ -48,9 +46,7 @@ class LazyGroup(click.Group):
 def cli():
     """
     An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.
-
     """
-
 
 @cli.group(cls=LazyGroup, import_name='ccanalyser.cli.cli_fastq:cli')
 def fastq():
@@ -99,9 +95,6 @@ def pipeline(mode, pipeline_options, help=False):
         cmd.extend(pipeline_options)
     
     subprocess.run(cmd)
-
-
-
 
 
 
