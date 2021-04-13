@@ -11,3 +11,5 @@ ccanalyser.egg-info/
 pkgs/
 ccanalyser/tests/test/*.*
 ccanalyser/tests/stats/*.*
+_build/
+.DS_Store
