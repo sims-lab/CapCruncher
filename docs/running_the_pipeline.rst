@@ -105,7 +105,7 @@ Step 4 - Running the pipeline
 =============================
 
 After copying/linking FASTQ files into the working directory and configuring
-config.yml for the current experiment, the pipeline can be run with:
+`config.yml <https://github.com/sims-lab/capture-c/blob/master/config.yml>`_ for the current experiment, the pipeline can be run with:
 
 ::
 
