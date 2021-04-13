@@ -136,7 +136,7 @@ If you are happy with the tasks to be performed, the full pipeline run can be la
     # If not using a cluster, run in local mode.
     ccanalyser pipeline make --local -p 4
 
-    # Avoiding disconnects
+    # Avoiding network disconnections
     nohup ccanalyser pipeline make &
 
 
