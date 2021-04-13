@@ -73,10 +73,12 @@ The pipeline requires that fastq files are paired and in any of these formats:
     concatenated prior to running the pipeline; otherwise multiple separate analyses will
     be performed.
 
-* samplename_R1.fastq.gz
-* samplename_1.fastq.gz
-* samplename_R1.fastq
-* samplename_1.fastq
+Here is an example of file pairing for two samples:
+
+* samplename1_R1.fastq.gz
+* samplename1_R2.fastq.gz
+* samplename2_1.fastq
+* samplename2_2.fastq
 
 All fastq files present in the directory will be processed by the pipeline in parallel and
 original fastq files will not be modified. If new fastq files are added to a pre-run pipeline,
