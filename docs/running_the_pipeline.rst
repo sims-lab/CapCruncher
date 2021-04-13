@@ -80,8 +80,8 @@ Here is an example of file pairing for two samples:
 * samplename2_1.fastq
 * samplename2_2.fastq
 
-All fastq files present in the directory will be processed by the pipeline in parallel and
-original fastq files will not be modified. If new fastq files are added to a pre-run pipeline,
+All FASTQ files present in the directory will be processed by the pipeline in parallel and
+original FASTQ files will not be modified. If new FASTQ files are added to a pre-run pipeline,
 only the new files will be processed.
 
 
@@ -104,7 +104,7 @@ Be sure to use the absolute path for symlinks
 Step 4 - Running the pipeline
 =============================
 
-After copying/linking fastq files into the working directory and configuring
+After copying/linking FASTQ files into the working directory and configuring
 config.yml for the current experiment, the pipeline can be run with:
 
 ::
