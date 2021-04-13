@@ -70,7 +70,7 @@ The pipeline requires that fastq files are paired and in any of these formats:
 .. note::
 
     Multi-lane FASTQ files should be
-    concatenated prior to running the pipeline otherwise multiple separate analyses will
+    concatenated prior to running the pipeline; otherwise multiple separate analyses will
     be performed.
 
 * samplename_R1.fastq.gz
