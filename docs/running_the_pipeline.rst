@@ -37,7 +37,7 @@ Step 2 - Edit a copy of config.yml
 
 The configuration file `config.yml <https://github.com/sims-lab/capture-c/blob/master/config.yml>`_ enables 
 parameterisation of the pipeline run with user specific settings. Furthermore,
-it also provides paths to essential files for the pipeline run e.g. bowtie2 indicies.
+it also provides paths to essential files for the pipeline run e.g. bowtie2 indices.
 The paths supplied do not have to be in the same directory as the pipeline but it is
 recomended to copy the capture oligos used to the :term:`working directory`.
 
