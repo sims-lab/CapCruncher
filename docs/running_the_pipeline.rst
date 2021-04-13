@@ -104,8 +104,9 @@ Be sure to use the absolute path for symlinks
 Step 4 - Running the pipeline
 =============================
 
-After copying/linking FASTQ files into the working directory and configuring
-`config.yml <https://github.com/sims-lab/capture-c/blob/master/config.yml>`_ for the current experiment, the pipeline can be run with:
+After copying/linking FASTQ files into the working directory and configuring the copy of
+`config.yml <https://github.com/sims-lab/capture-c/blob/master/config.yml>`_
+in the working directory for the current experiment, the pipeline can be run with:
 
 ::
 
