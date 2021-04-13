@@ -56,33 +56,41 @@ recomended to copy the capture oligos used to the :term:`working directory`.
         # Method to use for data analysis, choose from capture | tri | tiled
         method: capture 
         
-        # Path to capture oligos used for analysis. This must be in bed format and named. 
-        capture_oligos: capture-c_oligos.bed
+        # Path to viewpoints used for analysis.
+        # This is a bed file containing the coordinates of the captured restricion fragments.
+        # The file must be in four column bed format with the name in the last column. 
+        viewpoints: PATH_TO_VIEWPOINTS
         
-        # Restriction enzyme name or recognition site
+        # Restriction enzyme name or recognition site, *not* case sensitive
+        # e.g. DpnII or dpnii or GATC
         restriction_enzyme: dpnii
         
         # Number of basepairs to exclude around each capture probe to remove re-ligations
         reporter_exclusion_zone: 1000
 
         # Genomic window size(s) to use for binning restriction fragment interaction counts
-        # into even genomic windows.
-        # Only bin sizes that are present here will be allowed to be used for heatmap generation.
+        # into even genomic windows. Only bin sizes that are present here will be allowed 
+        # to be used for heatmap generation. Currently required for all assays.
         bin_size: 2500, 5000
 
     genome:
         
-        # Name of genome. UCSC genome names are prefered.
+        # Name of genome. UCSC genome names are prefered. Custom names are accepted if chrom_sizes are provided
         name: mm9
         
         # Path to fasta file containing entire genome sequence separated by chromosome. 
-        fasta: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa
+        fasta: PATH_TO_GENOME_FASTA
 
         # Path to indicies for the specified aligner (default = bowtie2)
-        aligner_index: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/Bowtie2Index/genome
+        # Note: Do not include .Number|rev.bt2
+        # e.g. /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/Bowtie2Index/genome
+        aligner_index: PATH_TO_ALIGNER_INDICIES
 
-        # Chromosome sizes for genome. Will be determined automatically from the genome name if this is a UCSC genome.
-        chrom_sizes: 
+        # Path to chromosome sizes for genome. 
+        # If blank will be determined automatically from the genome (must be a UCSC genome)
+        # This should be a two column tsv file with columns: chromosome_name    size
+        # FAI files can also be used.
+        chrom_sizes: PATH_TO_CHROMOSOME_SIZES
 
     #############################
     # Essential cluster options #
@@ -103,6 +111,9 @@ recomended to copy the capture oligos used to the :term:`working directory`.
         # Some tasks are quite demanding on memory for a deeply sequenced experiment (32 G recomended)
         memory: 32G
 
+        # Level of gzip compression to use for output files (1-9 with 9 being the slowest but best compressed)
+        compression: 5
+
 
     ###################################
     # Optional configuration options #
@@ -111,7 +122,7 @@ recomended to copy the capture oligos used to the :term:`working directory`.
     align:
         
         # Aligner to use. Both bowtie and bowtie2 are supported but bowtie2 is prefered.
-        aligner: Bowtie2
+        aligner: bowtie2
 
         # Flag to specify index for the aligner. Leave blank if this is not present i.e. bowtie
         index_flag: -x 
@@ -121,17 +132,20 @@ recomended to copy the capture oligos used to the :term:`working directory`.
 
     analysis_optional:
         
-        # Path to blacklisted regions bed file. Must be named. Can supply any regions to be removed.
-        blacklist:
+        # Path to blacklisted regions bed file. Must be a four column named bed file.
+        # Can supply any regions to be removed.
+        blacklist: PATH_TO_BLACKLIST
 
     deduplication:
 
-        # Turns on initial removal of identical reads
+        # Turns on initial removal of identical reads from fastq file
+        # Currently can only be True. 
         pre-dedup: True 
 
     hub:
         
-        # Determines if hub is created or not. 
+        # Determines if hub is created or not.
+        # True|False 
         create: False
         
         # Url/IP of server to host bigWigs
@@ -164,7 +178,7 @@ recomended to copy the capture oligos used to the :term:`working directory`.
 
         # Path to a bed file containing coordinates for plotting a heatmap of reporters.
         # Must be named and the interval name must contain the probe name to be plotted.
-        coordinates: plot_coords.bed
+        coordinates: PATH_TO_PLOTTING_COORDINATES
 
         # Plot output format (not currently used)
         format: png
@@ -178,8 +192,9 @@ recomended to copy the capture oligos used to the :term:`working directory`.
         # Bin size(s) to use for plotting
         bin_size: 2500
 
-        # Normalisation method to use for plot. Leave blank for default based on analysis method
-        normalisation:
+        # Normalisation method to use for plot. Leave blank for default based on analysis method.
+        # Choose from: None, raw, n_interactions, n_rf_n_interactions, ice
+        normalisation: n_interactions
 
     trim:
 
@@ -189,9 +204,9 @@ recomended to copy the capture oligos used to the :term:`working directory`.
     split:
 
         # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
-        # For Tiled-C or highly enriched assays it is advised to reduce this to ~1e6 readpairs to speed up the analysis.
+        # For Tiled-C or highly enriched assays it is advised to reduce this to 1x10^6 readpairs to speed up the analysis.
         # The pipeline will cope with a high number of reads but it will run slower. 
-        n_reads: 2500000 
+        n_reads: 1000000 
 
 
 This yaml file can be edited using standard text editors e.g.:
