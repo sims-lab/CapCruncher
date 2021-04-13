@@ -150,7 +150,7 @@ Step 5 - Running the pipeline to a specified stage
 
 There are currently multiple stopping points built into the pipeline at key stages. These are:
 
-* :literal:`fastq_preprocessing` - Stops after in silico digestion of FASTQ files.
+* :literal:`fastq_preprocessing` - Stops after *in silico* digestion of FASTQ files.
 * :literal:`pre_annotation` - Stops before aligned slices are ready to be annotated.
 * :literal:`post_annotation` - Stops after aligned slices have been annotated.
 * :literal:`post_ccanalyser_analysis` - Stops after reporters have been identified and duplicate filtered.
