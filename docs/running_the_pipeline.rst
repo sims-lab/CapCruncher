@@ -98,7 +98,7 @@ Be sure to use the absolute path for symlinks
 
 ::
 
-    ln -s ABSOLUTE_PATH_TO_FASTQ/example_R1.fastq.gz
+    ln -s /ABSOLUTE_PATH_TO_FASTQ/example_R1.fastq.gz
 
 
 Step 4 - Running the pipeline
