@@ -7,7 +7,7 @@ Pre-Installation recommendations
 1. Install conda if it has not been already using the `conda install instructions <https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html#install-linux-silent>`_.
 
 2. If ccanalyser is **not** being installed through conda, first generate a new conda
-   environment using the yaml file in the `GitHub repo <https://github.com/sims-lab/capture-c/blob/master/capturec_conda_env.yml>`_:
+   environment using the yaml file in the `GitHub repository <https://github.com/sims-lab/capture-c/blob/master/ccanalyser_conda_env.yml>`_:
 
 ::
     
