@@ -140,7 +140,7 @@ If you are happy with the tasks to be performed, the full pipeline run can be la
     nohup ccanalyser pipeline make &
 
 
-See `cgatcore <https://cgat-core.readthedocs.io/en/latest/getting_started/Examples.html>`_ for additional
+See `cgat-core Read the Docs <https://cgat-core.readthedocs.io/en/latest/getting_started/Examples.html>`_ for additional
 information.
 
 
