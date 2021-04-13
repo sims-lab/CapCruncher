@@ -12,7 +12,7 @@ and the following diagram illustrates the steps performed by the pipeline:
 
 
 This section provides further details on how to run the pipeline. In essence
-the pipeline requires a working directory with correctly named fastq files
+the pipeline requires a working directory with correctly named FASTQ files
 and a :ref:`config.yml <Step 2 - Edit a copy of config.yml>` file that provides
 the pipeline configuration.  
 
