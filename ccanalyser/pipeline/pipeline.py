@@ -726,7 +726,7 @@ def annotate_make_exclusion_bed(outfile):
 
 
 @originate("ccanalyser_analysis/annotations/capture.bed")
-def annotate_sort_capture_oligos(outfile):
+def annotate_sort_viewpoints(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
 
@@ -761,7 +761,7 @@ def annotate_sort_blacklist(outfile):
 @follows(
     genome_digest,
     annotate_make_exclusion_bed,
-    annotate_sort_capture_oligos,
+    annotate_sort_viewpoints,
     annotate_sort_blacklist,
 )
 @transform(
