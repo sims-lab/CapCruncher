@@ -41,12 +41,12 @@ The package can be installed in several ways:
 1. Install from conda:
 :: 
 
-    conda install ccanalyser
+    conda install ccanalyser # do not use: not available yet
 
 2. Install from pypi:
 :: 
 
-    pip install ccanalyser
+    pip install ccanalyser # do not use: not available yet
 
 3. Install from GitHub:
 
