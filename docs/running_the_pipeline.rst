@@ -3,7 +3,7 @@ Pipeline
 ########
 
 The main feature of ccanalyser is the end-to-end data processing pipeline. 
-The pipeline has been written using the `cgat-core pipelining library <https://github.com/cgat-developers/cgat-core>`_ 
+The pipeline has been written using the `cgat-core workflow management system <https://github.com/cgat-developers/cgat-core>`_ 
 and the following diagram illustrates the steps performed by the pipeline:
 
 .. image:: images/pipeline_flow.svg
