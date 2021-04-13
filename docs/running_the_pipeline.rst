@@ -154,7 +154,7 @@ There are currently multiple stopping points built into the pipeline at key stag
 * :literal:`pre_annotation` - Stops before aligned slices are ready to be annotated.
 * :literal:`post_annotation` - Stops after aligned slices have been annotated.
 * :literal:`post_ccanalyser_analysis` - Stops after reporters have been identified and duplicate filtered.
-* :literal:`full` - Run the pipline until all required tasks are complete.
+* :literal:`full` - Run the pipeline until all required tasks are complete.
 
 To run the pipeline until one of these stopping points, use:
 
