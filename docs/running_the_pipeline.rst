@@ -126,7 +126,7 @@ The tasks to be performed can be examined with:
     # Plots a directed graph using graphviz
     ccanalyser pipeline plot
 
-If you are happy with the tasks to be performed, the full pipeline run can be started with:
+If you are happy with the tasks to be performed, the full pipeline run can be launched with:
 
 ::
 
