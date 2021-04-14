@@ -19,3 +19,6 @@ dependencies:
   - ucsc-fetchchromsizes
   - bedtools
   - samtools
+  - nbconvert
+  - fastqc
+  - multiqc
