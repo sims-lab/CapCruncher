@@ -8,8 +8,8 @@ def cli():
 
 @cli.command()
 @click.argument('union_bedgraph')
-@click.option('-n', '--capture_name', help='Name of capture probe, must be present in oligo file.', required=True)
-@click.option('-c', '--capture_oligos', help='Path to capture oligos bed file', required=True)
+@click.option('-n', '--capture_name', help='Name of capture probe, must be present in viewpoint file.', required=True)
+@click.option('-c', '--capture_viewpoints', help='Path to capture viewpoints bed file', required=True)
 @click.option('-o', '--output_prefix', help='Output prefix for pairwise statistical comparisons', default='out')
 @click.option('--design_matrix', help='Path tsv file containing sample annotations (N_SAMPLES * N_INFO_COLUMNS)', default=None)
 @click.option('--grouping_col', help='Column to use for grouping replicates', default='condition')
@@ -30,7 +30,7 @@ def differential(*args, **kwargs):
 
     Notes:
         
-     Currently both the capture oligos and the name of the probe being analysed must 
+     Currently both the capture viewpoints and the name of the probe being analysed must 
      be provided in order to correctly extract cis interactions.
  
      If a N_SAMPLE * METADATA design matrix has not been supplied, the script 
@@ -196,16 +196,16 @@ def store():
 )
 @click.option(
     "-c",
-    "--capture_oligos",
-    "capture_oligos",
-    help="Path to capture oligos file",
+    "--capture_viewpoints",
+    "capture_viewpoints",
+    help="Path to capture viewpoints file",
     required=True,
 )
 @click.option(
     "-n",
     "--capture_name",
     "capture_name",
-    help="Name of capture oligo to store",
+    help="Name of capture viewpoint to store",
     required=True,
 )
 @click.option(

@@ -714,8 +714,8 @@ def annotate_make_exclusion_bed(outfile):
     """Generates exclusion window around each capture site"""
 
     statement = """bedtools slop
-                    -i %(analysis_capture_oligos)s -g %(genome_chrom_sizes)s -b %(analysis_reporter_exclusion_zone)s
-                    | bedtools subtract -a - -b %(analysis_capture_oligos)s
+                    -i %(analysis_viewpoints)s -g %(genome_chrom_sizes)s -b %(analysis_reporter_exclusion_zone)s
+                    | bedtools subtract -a - -b %(analysis_viewpoints)s
                     | sort -k1,1 -k2,2n 
                     > %(outfile)s"""
     P.run(
@@ -726,11 +726,11 @@ def annotate_make_exclusion_bed(outfile):
 
 
 @originate("ccanalyser_analysis/annotations/capture.bed")
-def annotate_sort_capture_oligos(outfile):
+def annotate_sort_viewpoints(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
 
-    statement = """cat %(analysis_capture_oligos)s | sort -k1,1 -k2,2n > %(outfile)s"""
+    statement = """cat %(analysis_viewpoints)s | sort -k1,1 -k2,2n > %(outfile)s"""
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -761,7 +761,7 @@ def annotate_sort_blacklist(outfile):
 @follows(
     genome_digest,
     annotate_make_exclusion_bed,
-    annotate_sort_capture_oligos,
+    annotate_sort_viewpoints,
     annotate_sort_blacklist,
 )
 @transform(
@@ -1132,7 +1132,7 @@ def reporters_store_restriction_fragment(infile, outfile, sample_name, capture_n
                    -g %(genome_name)s
                    -n %(capture_name)s
                    -o %(output_prefix)s
-                   -c %(analysis_capture_oligos)s
+                   -c %(analysis_viewpoints)s
                    --suffix fragments
                    """
 
@@ -1284,26 +1284,32 @@ def pipeline_merge_stats(infiles, outfile):
 def pipeline_make_report(infile, outfile):
     """Run jupyter notebook for reporting and plotting pipeline statistics"""
 
+    # Make sure black cache is generated
+    import black
+
+    black.CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
     path_script = __file__
     path_script_dir = os.path.dirname(path_script)
     path_nb_dir = os.path.dirname(path_script_dir)
 
-    statement = """rm statistics/visualise_statistics* -f &&
-                   papermill
-                   %(path_nb_dir)s/visualise_statistics.ipynb
-                   statistics/visualise_statistics.ipynb
-                   -p directory $(pwd)/statistics/ &&
-                   jupyter nbconvert
-                   --no-input
-                   --to html
-                   statistics/visualise_statistics.ipynb
-                   statistics/visualise_statistics.html
-                   &&
-                   rm statistics/visualise_statistics.ipynb
-                   """
+    statement_clean = "rm statistics/visualise_statistics* -f"
+    
+    statement_papermill = """papermill
+                             -k python3
+                             -p directory $(pwd)/statistics/
+                             %(path_nb_dir)s/visualise_statistics.ipynb
+                             statistics/visualise_statistics.ipynb
+                            """
+    statement_nbconvert = """jupyter nbconvert
+                             --no-input
+                             --to html
+                             statistics/visualise_statistics.ipynb
+                             statistics/visualise_statistics.html
+                          """
 
     P.run(
-        statement,
+        " && ".join([statement_clean, statement_papermill, statement_nbconvert]),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
     )
@@ -1447,13 +1453,13 @@ def reporters_make_subtraction_bedgraph(infile, outfile):
         )
 
         a_mean_sub_b_mean_bdg.to_csv(
-            f"{output_prefix}/{a}_vs_{b}.subtraction.bedgraph",
+            f"{output_prefix}.{a}_vs_{b}.subtraction.bedgraph",
             sep="\t",
             index=None,
             header=False,
         )
         b_mean_sub_a_mean_bdg.to_csv(
-            f"{output_prefix}/{b}_vs_{a}.subtraction.bedgraph",
+            f"{output_prefix}.{b}_vs_{a}.subtraction.bedgraph",
             sep="\t",
             index=None,
             header=False,
@@ -1580,7 +1586,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
                     interactions differential
                     %(infile)s
                     -n %(capture_name)s
-                    -c %(analysis_capture_oligos)s
+                    -c %(analysis_viewpoints)s
                     -o %(output_prefix)s
                     > %(outfile)s
                     """
