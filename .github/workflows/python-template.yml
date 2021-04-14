@@ -29,19 +29,22 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - uses: conda-incubator/setup-miniconda@v2
       with:
+        mamba-version: "*"
+        channels: conda-forge,defaults
+        channel-priority: true
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
     - name: Install package dependencies
       run: |
-        conda env update -n test -f environment.yml
+        mamba env update -n test -f environment.yml
       shell: bash -l {0}
     - name: Install testing dependencies
       run: |
-        conda env update -n test -f testing.yml
+        mamba env update -n test -f testing.yml
       shell: bash -l {0}
     - name: Conda info
       shell: bash -l {0}
-      run: conda info
+      run: mamba info
     - name: Check which pip is used
       shell: bash -l {0}
       run: |
@@ -52,7 +55,7 @@ jobs:
         pip install -e .
     - name: Conda list
       shell: pwsh
-      run: conda list
+      run: mamba list
     - name: Test with pytest
       shell: pwsh
       run: |

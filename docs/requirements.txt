@@ -1,2 +1,16 @@
 sphinx
 sphinx-click
+joblib
+pandas
+numpy
+natsort
+cgatcore
+click
+cooler
+iced
+matplotlib
+pybedtools
+pysam
+xxhash
+ujson
+diffxpy

@@ -13,3 +13,5 @@ ccanalyser/tests/test/*.*
 ccanalyser/tests/stats/*.*
 _build/
 .DS_Store
+ccanalyser/tests/pipeline_test_run/
+

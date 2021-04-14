@@ -17,7 +17,7 @@ def fragments(
     fragment_map: os.PathLike,
     output: os.PathLike,
     capture_name: str,
-    capture_oligos: os.PathLike,
+    capture_viewpoints: os.PathLike,
     genome: str = "",
     suffix: str = "",
 ):
@@ -35,7 +35,7 @@ def fragments(
      fragment_map (os.PathLike): Path to restriction fragment .bed file, generated with genome-digest command.
      output (os.PathLike): Output file path for cooler hdf5 file.
      capture_name (str): Name of capture probe.
-     capture_oligos (os.PathLike): Path to capture oligos bed file.
+     capture_viewpoints (os.PathLike): Path to capture viewpoints bed file.
      genome (str, optional): Name of genome used for alignment e.g. hg19. Defaults to "".
      suffix (str, optional): Suffix to append to filename. Defaults to "".
     """
@@ -56,7 +56,7 @@ def fragments(
         bins=df_restriction_fragment_map,
         pixels=df_counts,
         capture_name=capture_name,
-        capture_oligos=capture_oligos,
+        capture_viewpoints=capture_viewpoints,
         assembly=genome,
         suffix=suffix,
     )

@@ -3,28 +3,67 @@
 ###################################
 
 analysis:
-    method: capture
-    capture_oligos: capture-c_oligos.bed
+    
+    # Method to use for data analysis, choose from capture | tri | tiled
+    method: capture 
+    
+    # Path to viewpoints used for analysis.
+    # This is a bed file containing the coordinates of the captured restricion fragments.
+    # The file must be in four column bed format with the name in the last column. 
+    viewpoints: PATH_TO_VIEWPOINTS
+    
+    # Restriction enzyme name or recognition site, *not* case sensitive
+    # e.g. DpnII or dpnii or GATC
     restriction_enzyme: dpnii
+    
+    # Number of basepairs to exclude around each capture probe to remove re-ligations
     reporter_exclusion_zone: 1000
+
+    # Genomic window size(s) to use for binning restriction fragment interaction counts
+    # into even genomic windows. Only bin sizes that are present here will be allowed 
+    # to be used for heatmap generation. Currently required for all assays.
     bin_size: 2500
 
 genome:
+    
+    # Name of genome. UCSC genome names are prefered. Custom names are accepted if chrom_sizes are provided
     name: mm9
-    fasta: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/WholeGenomeFasta/genome.fa
-    aligner_index: /databank/igenomes/Mus_musculus/UCSC/mm9/Sequence/Bowtie2Index/genome
-    chrom_sizes: #Will be determined automatically from the genome name if this is a UCSC genome.
+    
+    # Path to fasta file containing entire genome sequence separated by chromosome. 
+    fasta: PATH_TO_GENOME_FASTA
+
+    # Path to indicies for the specified aligner (default = bowtie2)
+    # Note: Do not include .Number|rev.bt2
+    # e.g. /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/Bowtie2Index/genome
+    aligner_index: PATH_TO_ALIGNER_INDICIES
+
+    # Path to chromosome sizes for genome. 
+    # If blank will be determined automatically from the genome (must be a UCSC genome)
+    # This should be a two column tsv file with columns: chromosome_name    size
+    # FAI files can also be used.
+    chrom_sizes: PATH_TO_CHROMOSOME_SIZES
 
 #############################
 # Essential cluster options #
 #############################
 
 pipeline:
-    n_cores: 4
-    cluster_queue: batch
+
+    # Cluster manager used. e.g. SLURM, SunGrid Engine, etc.
     cluster_queue_manager: slurm
-    compression: 5
+
+    # Name of queue to use. This will be cluster specific.
+    cluster_queue: batch
+    
+    # Maximum number of cores to use per task. (~ 4 works best)
+    n_cores: 4
+
+    # Maximum memory avalible per job.
+    # Some tasks are quite demanding on memory for a deeply sequenced experiment (32 G recomended)
     memory: 32G
+
+    # Level of gzip compression to use for output files (1-9 with 9 being the slowest but best compressed)
+    compression: 5
 
 
 ###################################
@@ -32,43 +71,90 @@ pipeline:
 ###################################
 
 align:
-    aligner: bowtie2 # Aligner to use
-    index_flag: -x # Flag to specify index for the aligner. Leave blank for none i.e. bowtie
-    options: -p 6 --very-sensitive # Aligner parameters
+    
+    # Aligner to use. Both bowtie and bowtie2 are supported but bowtie2 is prefered.
+    aligner: bowtie2
+
+    # Flag to specify index for the aligner. Leave blank if this is not present i.e. bowtie
+    index_flag: -x 
+
+    # Aligner specific options. (Take care as this will ignore pipeline_n_cores) 
+    options: -p 6 --very-sensitive
 
 analysis_optional:
-    blacklist:
+    
+    # Path to blacklisted regions bed file. Must be a four column named bed file.
+    # Can supply any regions to be removed.
+    blacklist: PATH_TO_BLACKLIST
 
 deduplication:
-    pre-dedup: True # Turns on initial removal of identical reads
+
+    # Turns on initial removal of identical reads from fastq file
+    # Currently can only be True. 
+    pre-dedup: True 
 
 hub:
+    
+    # Determines if hub is created or not.
+    # True|False 
     create: False
-    url: http://userweb.molbiol.ox.ac.uk/ # Url/IP of server to host bigWigs
-    dir: /public/asmith/capture-c/test # Location of publically accessible location on the server
-    name: capturec_test # Name for the hub (UCSC required)
-    short: capturec new pipeline # Short hub name (UCSC required)
-    long: capturec processed with the new python pipeline # Long hub name (UCSC required)
-    email: alastair.smith@ndcls.ox.ac.uk # Email address (UCSC required)
-    colors: red blue green yellow purple # Colours to use for bigWig tracks. Leave blank for random. Colours are cycled if there are more tracks than colours.
+    
+    # Url/IP of server to host bigWigs
+    url: http://userweb.molbiol.ox.ac.uk/
+    
+    # Location of publically accessible location on the server
+    dir: /public/asmith/capture-c/test 
+    
+    # Name for the hub (UCSC required)
+    name: capturec_test 
+    
+    # Short hub name (UCSC required)
+    short: capturec new pipeline 
+    
+    # Long hub name (UCSC required)
+    long: capturec processed with the new python pipeline 
+    
+    # Email address (UCSC required)
+    email: alastair.smith@ndcls.ox.ac.uk 
+    
+    # Colours to use for bigWig tracks. Leave blank for random. Colours are cycled if there are more tracks than colours.
+    colors: red blue green yellow purple 
 
 normalisation:
-    scale_factor: 1000000 # Scaling factor for normalisation.
+    
+    # Scaling factor for normalisation. (not currently used but will be added shortly)
+    scale_factor: 1000000 
 
 plot:
-    coordinates: plot_coords.bed
+
+    # Path to a bed file containing coordinates for plotting a heatmap of reporters.
+    # Must be named and the interval name must contain the probe name to be plotted.
+    coordinates: PATH_TO_PLOTTING_COORDINATES
+
+    # Plot output format (not currently used)
     format: png
+
+    # Minimum value for plotting
     vmin: 0
+
+    # Maximum value for plotting. Higher values are truncated to this value
     vmax: 1
+
+    # Bin size(s) to use for plotting
     bin_size: 2500
-    normalisation:
+
+    # Normalisation method to use for plot. Leave blank for default based on analysis method.
+    # Choose from: None, raw, n_interactions, n_rf_n_interactions, ice
+    normalisation: n_interactions
 
 trim:
-    options: --length 21 # Options passed to trim_galore
+
+    # Options passed to trim_galore
+    options: --length 21 
 
 split:
-    n_reads: 2500000 # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
 
-
-
-    
+    # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
+    # For Tiled-C or highly enriched assays it is advised to reduce this to 1x10^6 readpairs to speed up the analysis.
+    # The pipeline will cope with a high number of reads but it will run slower. 
+    n_reads: 1000000 

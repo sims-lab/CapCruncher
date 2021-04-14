@@ -39,7 +39,7 @@ The configuration file `config.yml <https://github.com/sims-lab/capture-c/blob/m
 parameterisation of the pipeline run with user specific settings. Furthermore,
 it also provides paths to essential files for the pipeline run (e.g., bowtie2 indices).
 The paths supplied do not have to be in the same directory as the pipeline but it is
-recomended to copy the capture oligos used to the :term:`working directory`.
+recomended to copy the capture viewpoints used to the :term:`working directory`.
 
 .. warning::
 

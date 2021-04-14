@@ -49,7 +49,7 @@ def plot(
     is not supplied the script will plot all probes present in the file.
 
     Heatmaps can also be normalised (--normalise) using either:
-
+     - raw: No normalisation is performed.
      - n_interactions: The number of cis interactions.
      - n_rf_n_interactions: Normalised to the number of restriction fragments making up both genomic bins
                            and by the number of cis interactions.
@@ -91,7 +91,7 @@ def plot(
                     # Extract matrix in correct format
                     ccm = CCMatrix(cooler_fn, binsize=res, capture_name=capture, remove_capture=remove_capture)
 
-                    if normalisation:
+                    if normalisation and not normalisation == 'raw':
                         matrix = ccm.get_matrix_normalised(
                             coordinates=interval_coords, normalisation_method=normalisation
                         )
