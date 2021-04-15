@@ -17,7 +17,6 @@ solution for processing data from these three assays.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
    installing.rst
    running_the_pipeline.rst
