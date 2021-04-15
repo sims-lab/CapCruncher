@@ -1530,9 +1530,8 @@ def hub_make(infiles, outfile, statistics):
 
         for key in [key_sample, key_capture]:
 
-            tracks = make_group_track(bigwigs, key, overlay=True)
-            breakpoint()
-            #trackdb.add_tracks(.values())
+            tracks_grouped = make_group_track(bigwigs, key, overlay=True)
+            trackdb.add_tracks(tracks_grouped.values())
 
         if is_on(
             P.PARAMS.get("hub_upload")
@@ -1541,7 +1540,6 @@ def hub_make(infiles, outfile, statistics):
                 hub=hub, host=P.PARAMS["hub_url"], remote_dir=P.PARAMS["hub_dir"]
             )
         else:
-
             trackhub.upload.stage_hub(hub=hub, staging=P.PARAMS["hub_dir"])
 
     else:
