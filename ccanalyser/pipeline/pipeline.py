@@ -1534,7 +1534,11 @@ def hub_make(infiles, outfile, statistics):
 
         for key in [key_sample, key_capture]:
 
-            tracks_grouped = make_group_track(bigwigs, key, overlay=True)
+            tracks_grouped = make_group_track(bigwigs, 
+                                              key, 
+                                              overlay=True,
+                                              overlay_exclude=['subtraction', '_vs_'])
+
             trackdb.add_tracks(tracks_grouped.values())
         
         trackdb.validate()
