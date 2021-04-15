@@ -195,9 +195,7 @@ def split_intervals_on_chrom(intervals: Union[str, BedTool, pd.DataFrame]) -> di
 
 
 def intersect_bins(
-    bins_1: pd.DataFrame, 
-    bins_2: pd.DataFrame,
-    **bedtools_kwargs
+    bins_1: pd.DataFrame, bins_2: pd.DataFrame, **bedtools_kwargs
 ) -> pd.DataFrame:
     """Intersects two sets of genomic intervals using bedtools intersect.
 
@@ -313,8 +311,8 @@ def make_group_track(
     for name, bws in groupby(sorted(bigwigs, key=key), key=key):
 
         bws = list(bws)
-        name_sanitized = name.replace(' ', '_')
-        
+        name_sanitized = name.replace(" ", "_")
+
         # Create a super track
         super_track = trackhub.SuperTrack(name=name_sanitized)
 
@@ -333,14 +331,14 @@ def make_group_track(
         # Generate entries for all of the tracks for this group
         for bw, color in zip(bws, get_colors(bigwigs)):
 
-            bw_base = (
-                os.path.basename(bw)
+            bw_base = os.path.basename(bw)
+            bw_sanitized = (
+                bw_base.replace(".bigWig", "")
+                .replace(".normalised.", "")
+                .replace(".subtraction.", "")
+                .replace(name, "")
             )
-            bw_sanitized = (bw_base.replace(".bigWig", "")
-                                   .replace(".normalised.", "")
-                                   .replace(name, '')
-                            )
-            
+
             track = trackhub.Track(
                 name=f"{bw_sanitized}_{name}",
                 source=bw,
