@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Capture Pipeline
-================
-
 This pipeline processes data from Capture-C/NG Capture-C/Tri-C and Tiled-C sequencing
 protocols designed to identify 3D interactions in the genome from a specified viewpoint.
 
