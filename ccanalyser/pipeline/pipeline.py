@@ -1515,7 +1515,9 @@ def hub_make(infiles, outfile, statistics):
 
     import trackhub
 
-    bigwigs = infiles
+    excluded = ['raw', ]
+
+    bigwigs = [fn for fn  in infiles if not any(e in fn for e in excluded)]
     key_sample = lambda b: os.path.basename(b).split(".")[0]
     key_capture = lambda b: b.split(".")[-2]
 
@@ -1534,6 +1536,8 @@ def hub_make(infiles, outfile, statistics):
 
             tracks_grouped = make_group_track(bigwigs, key, overlay=True)
             trackdb.add_tracks(tracks_grouped.values())
+        
+        trackdb.validate()
 
         if is_on(
             P.PARAMS.get("hub_upload")
