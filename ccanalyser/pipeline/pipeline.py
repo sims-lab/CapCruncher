@@ -1093,7 +1093,6 @@ def reporters_count(infile, outfile):
         "%(infile)s",
         "-o %(outfile)s",
         "--remove_exclusions",
-        "--remove_capture" if P.PARAMS["analysis_method"] == "tri" else "",
         "> %(outfile)s.log",
     ]
 
