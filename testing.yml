@@ -3,11 +3,5 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - cooler
-  - pip
   - pytest
   - pytest-cov
-  - ujson
-  - xopen
-  - pip:
-    - xxhash

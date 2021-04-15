@@ -4,6 +4,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - pip
   - cgatcore
   - click
   - joblib
@@ -22,3 +23,9 @@ dependencies:
   - nbconvert
   - fastqc
   - multiqc
+  - iced
+  - ipykernel
+  - papermill
+  - ujson
+  - plotly
+  - python-xxhash
