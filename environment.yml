@@ -27,3 +27,5 @@ dependencies:
   - ipykernel
   - papermill
   - ujson
+  - plotly
+  - python-xxhash
