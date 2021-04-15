@@ -1418,11 +1418,12 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
     reporters_make_union_bedgraph,
     regex(r"ccanalyser_compare/bedgraphs_union/(.*)\.normalised\.tsv"),
     r"ccanalyser_compare/bedgraphs_subtraction/\1.log",
+    extras=[r'\1']
 )
-def reporters_make_subtraction_bedgraph(infile, outfile):
+def reporters_make_subtraction_bedgraph(infile, outfile, viewpoint):
 
     df_bdg = pd.read_csv(infile, sep="\t")
-    output_prefix = outfile.replace(".log", "")
+    dir_output = os.path.dirname(outfile)
 
     # If no design matrix, make one assuming the format has been followed
     if not P.PARAMS.get("analysis_design"):
@@ -1450,13 +1451,13 @@ def reporters_make_subtraction_bedgraph(infile, outfile):
         )
 
         a_mean_sub_b_mean_bdg.to_csv(
-            f"{output_prefix}.{a}_vs_{b}.subtraction.bedgraph",
+            f"{dir_output}/{a}_vs_{b}.subtraction.{viewpoint}.bedgraph",
             sep="\t",
             index=None,
             header=False,
         )
         b_mean_sub_a_mean_bdg.to_csv(
-            f"{output_prefix}.{b}_vs_{a}.subtraction.bedgraph",
+            f"{dir_output}.{b}_vs_{a}.subtraction.{viewpoint}.bedgraph",
             sep="\t",
             index=None,
             header=False,
@@ -1518,6 +1519,7 @@ def hub_make(infiles, outfile, statistics):
 
     # Need to make an assembly hub if this is a custom genome
     if not P.PARAMS.get("genome_custom"):
+
         hub, genomes_file, genome, trackdb = trackhub.default_hub(
             hub_name=P.PARAMS["hub_name"],
             short_label=P.PARAMS.get("hub_short"),
@@ -1528,7 +1530,9 @@ def hub_make(infiles, outfile, statistics):
 
         for key in [key_sample, key_capture]:
 
-            trackdb.add_tracks(make_group_track(bigwigs, key, overlay=True).values())
+            tracks = make_group_track(bigwigs, key, overlay=True)
+            breakpoint()
+            #trackdb.add_tracks(.values())
 
         if is_on(
             P.PARAMS.get("hub_upload")
@@ -1537,6 +1541,7 @@ def hub_make(infiles, outfile, statistics):
                 hub=hub, host=P.PARAMS["hub_url"], remote_dir=P.PARAMS["hub_dir"]
             )
         else:
+
             trackhub.upload.stage_hub(hub=hub, staging=P.PARAMS["hub_dir"])
 
     else:
