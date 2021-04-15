@@ -311,7 +311,7 @@ def make_group_track(
     for name, bws in groupby(sorted(bigwigs, key=key), key=key):
 
         bws = list(bws)
-        name_sanitized = name.replace(" ", "_")
+        name_sanitized = name.replace(" ", "_").replace('.', '_')
 
         # Create a super track
         super_track = trackhub.SuperTrack(name=name_sanitized)
@@ -349,20 +349,19 @@ def make_group_track(
                 windowingFunction="maximum",
             )
 
-            track_sub = trackhub.Track(
-                name=f"{bw_sanitized}_{name}_subtrack",
-                source=bw,
-                visibility="hide",
-                color=color,
-                autoScale="on",
-                tracktype="bigWig",
-                windowingFunction="maximum",
-            )
+            if overlay:
+                overlay_track.add_subtrack(
+                    trackhub.Track(
+                    name=f"{bw_sanitized}_{name}_subtrack",
+                    source=bw,
+                    visibility="hide",
+                    color=color,
+                    autoScale="on",
+                    tracktype="bigWig",
+                    windowingFunction="maximum",
+            ))
 
             super_track.add_tracks(track)
-
-            if overlay:
-                overlay_track.add_subtrack(track_sub)
 
         if overlay:
             super_track.add_tracks(overlay_track)
