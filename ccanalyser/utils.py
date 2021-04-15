@@ -122,7 +122,7 @@ def bed_has_name(bed: Union[str, BedTool]) -> bool:
         return True
 
 
-def bed_has_duplicate_names(bed) -> bool:
+def bed_has_duplicate_names(bed: Union[str, BedTool]) -> bool:
     """Returns true if bed file has no duplicated names"""
     if isinstance(bed, str):
         bed = BedTool(bed)
@@ -171,8 +171,10 @@ def get_re_site(recognition_site: str = None) -> str:
 
 
 def hash_column(col: Iterable, hash_type=64) -> list:
-    """Convinience function to perform hashing using xxhash on an iterable.
-    Not vectorised."""
+    """
+    Convinience function to perform hashing using xxhash on an iterable.
+
+    Function is **not** vectorised."""
 
     hash_dict = {
         32: xxhash.xxh32_intdigest,
@@ -193,7 +195,9 @@ def split_intervals_on_chrom(intervals: Union[str, BedTool, pd.DataFrame]) -> di
 
 
 def intersect_bins(
-    bins_1: pd.DataFrame, bins_2: pd.DataFrame, **bedtools_kwargs
+    bins_1: pd.DataFrame, 
+    bins_2: pd.DataFrame,
+    **bedtools_kwargs
 ) -> pd.DataFrame:
     """Intersects two sets of genomic intervals using bedtools intersect.
 
@@ -310,6 +314,7 @@ def make_group_track(
 
         bws = list(bws)
         name_sanitized = trackhub.helpers.sanitize(name)
+        
         # Create a super track
         super_track = trackhub.SuperTrack(name=name_sanitized)
 
