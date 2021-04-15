@@ -24,10 +24,5 @@ solution for processing data from these three assays.
    faq_pipeline.rst
    cli.rst
    ccanalyser_module_documentation/modules.rst
+   glossary.rst
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
