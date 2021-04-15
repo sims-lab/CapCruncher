@@ -1,7 +1,7 @@
-ccanalyser.cli package
+CCanalyser CLI Modules
 ======================
 
-ccanalyser.cli.alignments\_annotate module
+alignments annotate
 ------------------------------------------
 
 .. automodule:: ccanalyser.cli.alignments_annotate
@@ -9,7 +9,7 @@ ccanalyser.cli.alignments\_annotate module
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.cli.alignments\_deduplicate module
+alignments deduplicate
 ---------------------------------------------
 
 .. automodule:: ccanalyser.cli.alignments_deduplicate
@@ -17,7 +17,7 @@ ccanalyser.cli.alignments\_deduplicate module
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.cli.alignments\_filter module
+alignments filter
 ----------------------------------------
 
 .. automodule:: ccanalyser.cli.alignments_filter
@@ -25,39 +25,7 @@ ccanalyser.cli.alignments\_filter module
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.cli.cli\_alignments module
--------------------------------------
-
-.. automodule:: ccanalyser.cli.cli_alignments
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-ccanalyser.cli.cli\_fastq module
---------------------------------
-
-.. automodule:: ccanalyser.cli.cli_fastq
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-ccanalyser.cli.cli\_genome module
----------------------------------
-
-.. automodule:: ccanalyser.cli.cli_genome
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-ccanalyser.cli.cli\_reporters module
-------------------------------------
-
-.. automodule:: ccanalyser.cli.cli_reporters
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-ccanalyser.cli.fastq\_deduplicate module
+fastq deduplicate
 ----------------------------------------
 
 .. automodule:: ccanalyser.cli.fastq_deduplicate
@@ -65,7 +33,7 @@ ccanalyser.cli.fastq\_deduplicate module
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.cli.fastq\_digest module
+fastq digest
 -----------------------------------
 
 .. automodule:: ccanalyser.cli.fastq_digest
@@ -73,7 +41,7 @@ ccanalyser.cli.fastq\_digest module
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.cli.fastq\_split module
+fastq split
 ----------------------------------
 
 .. automodule:: ccanalyser.cli.fastq_split
@@ -81,7 +49,7 @@ ccanalyser.cli.fastq\_split module
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.cli.genome\_digest module
+genome digest
 ------------------------------------
 
 .. automodule:: ccanalyser.cli.genome_digest
@@ -89,7 +57,7 @@ ccanalyser.cli.genome\_digest module
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.cli.reporters\_count module
+reporters count
 --------------------------------------
 
 .. automodule:: ccanalyser.cli.reporters_count
@@ -97,7 +65,7 @@ ccanalyser.cli.reporters\_count module
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.cli.reporters\_differential module
+reporters differential
 ---------------------------------------------
 
 .. automodule:: ccanalyser.cli.reporters_differential
@@ -105,7 +73,7 @@ ccanalyser.cli.reporters\_differential module
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.cli.reporters\_heatmap module
+reporters heatmap
 ----------------------------------------
 
 .. automodule:: ccanalyser.cli.reporters_heatmap
@@ -113,7 +81,7 @@ ccanalyser.cli.reporters\_heatmap module
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.cli.reporters\_pileup module
+reporters pileup
 ---------------------------------------
 
 .. automodule:: ccanalyser.cli.reporters_pileup
@@ -121,7 +89,7 @@ ccanalyser.cli.reporters\_pileup module
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.cli.reporters\_store module
+reporters store
 --------------------------------------
 
 .. automodule:: ccanalyser.cli.reporters_store
@@ -129,7 +97,7 @@ ccanalyser.cli.reporters\_store module
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.cli.tsv\_aggregate module
+tsv aggregate
 ------------------------------------
 
 .. automodule:: ccanalyser.cli.tsv_aggregate
@@ -137,10 +105,3 @@ ccanalyser.cli.tsv\_aggregate module
    :undoc-members:
    :show-inheritance:
 
-Module contents
----------------
-
-.. automodule:: ccanalyser.cli
-   :members:
-   :undoc-members:
-   :show-inheritance:
