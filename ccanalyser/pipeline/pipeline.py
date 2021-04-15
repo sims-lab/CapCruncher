@@ -1443,10 +1443,10 @@ def reporters_make_subtraction_bedgraph(infile, outfile):
         b_mean_sub_a_mean = b_mean - a_mean
 
         a_mean_sub_b_mean_bdg = pd.concat(
-            [df_bdg.iloc[:, :2], a_mean_sub_b_mean], axis=1
+            [df_bdg.iloc[:, :3], a_mean_sub_b_mean], axis=1
         )
         b_mean_sub_a_mean_bdg = pd.concat(
-            [df_bdg.iloc[:, :2], b_mean_sub_a_mean], axis=1
+            [df_bdg.iloc[:, :3], b_mean_sub_a_mean], axis=1
         )
 
         a_mean_sub_b_mean_bdg.to_csv(
@@ -1461,7 +1461,6 @@ def reporters_make_subtraction_bedgraph(infile, outfile):
             index=None,
             header=False,
         )
-
     touch_file(outfile)
 
 
