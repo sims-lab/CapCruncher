@@ -722,7 +722,7 @@ def annotate_make_exclusion_bed(outfile):
     )
 
 
-@originate("ccanalyser_analysis/annotations/capture.bed")
+@originate("ccanalyser_analysis/annotations/viewpoints.bed")
 def annotate_sort_viewpoints(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
@@ -774,7 +774,7 @@ def annotate_sort_blacklist(outfile):
             },
             {
                 "name": "capture",
-                "fn": "ccanalyser_analysis/annotations/capture.bed",
+                "fn": "ccanalyser_analysis/annotations/viewpoints.bed",
                 "action": "get",
                 "fraction": 0.9,
             },
@@ -792,7 +792,7 @@ def annotate_sort_blacklist(outfile):
             },
             {
                 "name": "capture_count",
-                "fn": "ccanalyser_analysis/annotations/capture.bed",
+                "fn": "ccanalyser_analysis/annotations/viewpoints.bed",
                 "action": "count",
                 "fraction": 0.9,
             },
@@ -808,15 +808,16 @@ def annotate_sort_blacklist(outfile):
 )
 def annotate_alignments(infile, outfile):
 
-    """Annotates mapped read slices.
+    """
+    Annotates mapped read slices.
 
     Slices are annotated with:
-    * capture name
-    * capture count
-    * exclusion name
-    * exclusion count
-    * blacklist count
-    * restriction fragment number
+     * capture name
+     * capture count
+     * exclusion name
+     * exclusion count
+     * blacklist count
+     * restriction fragment number
     """
 
     slices = infile[0]
