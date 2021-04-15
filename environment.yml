@@ -22,3 +22,7 @@ dependencies:
   - nbconvert
   - fastqc
   - multiqc
+  - iced
+  - ipykernel
+  - papermill
+  - ujson
