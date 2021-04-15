@@ -1430,18 +1430,19 @@ def reporters_make_subtraction_bedgraph(infile, outfile, viewpoint):
         col_dict = {col: "_".join(col.split("_")[:-1]) for col in df_bdg.columns[3:]}
         df_design = pd.Series(col_dict).to_frame("condition")
 
-    df_by_condition = df_bdg.groupby(df_design["condition"], axis=1)
+    condition_groups = df_design.groupby('condition').groups
+    
+    for a, b in itertools.combinations(condition_groups, 2):
 
-    for a, b in itertools.combinations(df_design["condition"].unique(), 2):
-
-        df_a = df_by_condition.get_group(a)
-        df_b = df_by_condition.get_group(b)
+        df_a = df_bdg.loc[:, condition_groups[a]]
+        df_b = df_bdg.loc[:, condition_groups[b]]
 
         a_mean = df_a.mean(axis=1)
         b_mean = df_b.mean(axis=1)
 
         a_mean_sub_b_mean = a_mean - b_mean
         b_mean_sub_a_mean = b_mean - a_mean
+
 
         a_mean_sub_b_mean_bdg = pd.concat(
             [df_bdg.iloc[:, :3], a_mean_sub_b_mean], axis=1
@@ -1457,11 +1458,12 @@ def reporters_make_subtraction_bedgraph(infile, outfile, viewpoint):
             header=False,
         )
         b_mean_sub_a_mean_bdg.to_csv(
-            f"{dir_output}.{b}_vs_{a}.subtraction.{viewpoint}.bedgraph",
+            f"{dir_output}/{b}_vs_{a}.subtraction.{viewpoint}.bedgraph",
             sep="\t",
             index=None,
             header=False,
         )
+    
     touch_file(outfile)
 
 
