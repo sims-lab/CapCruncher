@@ -1661,9 +1661,7 @@ def full(infiles, outfile):
 
 if __name__ == "__main__":
 
-    if (
-        "-h" in sys.argv or "--help" in sys.argv
-    ):  # If --help then just run the pipeline without setup
+    if ("-h" in sys.argv or "--help" in sys.argv):  # If --help then just run the pipeline without setup
         P.main(sys.argv)
     else:
         set_up_chromsizes()
