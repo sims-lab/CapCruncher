@@ -12,23 +12,23 @@ from natsort import natsorted, natsort_key
 from ccanalyser.utils import split_intervals_on_chrom, intersect_bins
 
 
-def get_capture_coords(oligo_file: str, oligo_name: str):
-    df_oligos = BedTool(oligo_file).to_dataframe()
-    df_oligos = df_oligos.query(f'name == "{oligo_name}"')
+def get_capture_coords(viewpoint_file: str, viewpoint_name: str):
+    df_viewpoints = BedTool(viewpoint_file).to_dataframe()
+    df_viewpoints = df_viewpoints.query(f'name == "{viewpoint_name}"')
 
     try:
-        oligo =  df_oligos.iloc[0]
+        viewpoint =  df_viewpoints.iloc[0]
     except IndexError:
-        print('Oligo name cannot be found within oligos')
-        oligo = None
+        print('Oligo name cannot be found within viewpoints')
+        viewpoint = None
     
-    return oligo
+    return viewpoint
 
 
-def get_capture_bins(bins, oligo_chrom, oligo_start, oligo_end):
+def get_capture_bins(bins, viewpoint_chrom, viewpoint_start, viewpoint_end):
 
     return bins.query(
-        f'chrom == "{oligo_chrom}" and start >= {oligo_start} and end <= {oligo_end}'
+        f'chrom == "{viewpoint_chrom}" and start >= {viewpoint_start} and end <= {viewpoint_end}'
     )["name"]
 
 
@@ -37,7 +37,7 @@ def create_cooler_cc(
     bins: pd.DataFrame,
     pixels: pd.DataFrame,
     capture_name: str,
-    capture_oligos: os.PathLike,
+    capture_viewpoints: os.PathLike,
     capture_bins: Union[int, list] = None,
     suffix=None,
     **cooler_kwargs,
@@ -50,19 +50,19 @@ def create_cooler_cc(
      bins (pd.DataFrame): DataFrame containing the genomic coordinates of all bins in the pixels table.
      pixels (pd.DataFrame): DataFrame with columns: bin1_id, bin2_id, count.
      capture_name (str): Name of capture probe to store.
-     capture_oligos (os.PathLike): Path to capture oligos used for the analysis.
-     capture_bins (Union[int, list], optional): Bins containing capture oligos. Can be determined from oligos if not supplied. Defaults to None.
+     capture_viewpoints (os.PathLike): Path to capture viewpoints used for the analysis.
+     capture_bins (Union[int, list], optional): Bins containing capture viewpoints. Can be determined from viewpoints if not supplied. Defaults to None.
      suffix (str, optional): Suffix to append before the .hdf5 file extension. Defaults to None.
 
     Raises:
-     ValueError: Capture name must exactly match the name of a supplied capture oligo.
+     ValueError: Capture name must exactly match the name of a supplied capture viewpoint.
 
     Returns:
      os.PathLike: Path of cooler hdf5 file.
     """
 
     # Gets capture coordinates
-    capture_coords = get_capture_coords(capture_oligos, capture_name)
+    capture_coords = get_capture_coords(capture_viewpoints, capture_name)
 
     # Make sure capture coordinates are returned correctly, if not, error.
     if capture_coords is None:
