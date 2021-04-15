@@ -21,10 +21,7 @@ the pipeline configuration.
 Step 1 - Create a working directory
 ===================================
 
-To run the pipeline you will need to create a :term:`working directory`
-for the pipeline run:
-
-::
+To run the pipeline you will need to create a working directory for the pipeline run::
 
    mkdir RS411_EPZ5676/
    cd RS411_EPZ5676/
@@ -38,16 +35,18 @@ Step 2 - Edit a copy of config.yml
 The configuration file `config.yml <https://github.com/sims-lab/capture-c/blob/master/config.yml>`_ enables 
 parameterisation of the pipeline run with user specific settings. Furthermore,
 it also provides paths to essential files for the pipeline run (e.g., bowtie2 indices).
-The paths supplied do not have to be in the same directory as the pipeline but it is
-recomended to copy the capture viewpoints used to the :term:`working directory`.
+The paths supplied do not have to be in the same directory as the pipeline.
 
 .. warning::
 
     The yaml file must be named **config.yml** for the pipeline to recognise it and run correctly.
 
-This yaml file can be edited using standard text editors e.g.:
+A copy of config.yml can be downloaded from GitHub using::
+    
+    wget https://raw.githubusercontent.com/sims-lab/capture-c/master/config.yml
 
-::
+
+This `yaml <https://yaml.org/spec/1.2/spec.html>`_ file can be edited using standard text editors e.g.::
 
     # To use gedit
     gedit config.yml
@@ -62,18 +61,11 @@ Step 3 -  Copy or link fastq files into the :term:`working directory`
 
 The pipeline requires that fastq files are paired and in any of these formats:
 
-.. note::
-    
-    Gziped files are handled appropriately without the need for extraction if .gz is
-    present at the end of the file name. 
-
-.. note::
-
-    Multi-lane FASTQ files should be
-    concatenated prior to running the pipeline; otherwise multiple separate analyses will
-    be performed.
-
 Here is an example of file pairing for two samples:
+
+.. note::
+
+    Multi-lane FASTQ files should be concatenated prior to running the pipeline
 
 * samplename1_R1.fastq.gz
 * samplename1_R2.fastq.gz
@@ -85,16 +77,14 @@ original FASTQ files will not be modified. If new FASTQ files are added to a pre
 only the new files will be processed.
 
 
-
-Copy:
-
-::
+Copy::
 
     cp PATH_TO_FASTQ/example_R1.fastq.gz.
 
 Symlink example:
 
-Be sure to use the absolute path for symlinks
+.. warning::
+    Be sure to use the absolute path for symlinks
 
 ::
 
@@ -162,6 +152,11 @@ To run the pipeline until one of these stopping points, use:
 
     # Run until TASK_NAME step
     ccanalyser pipeline make TASK_NAME
+
+
+Pipeline outputs
+================
+
 
 
 
