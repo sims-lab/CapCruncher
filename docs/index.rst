@@ -17,17 +17,11 @@ solution for processing data from these three assays.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
    installing.rst
    running_the_pipeline.rst
    faq_pipeline.rst
    cli.rst
    ccanalyser_module_documentation/modules.rst
+   glossary.rst
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
