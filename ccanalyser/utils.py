@@ -313,7 +313,7 @@ def make_group_track(
     for name, bws in groupby(sorted(bigwigs, key=key), key=key):
 
         bws = list(bws)
-        name_sanitized = trackhub.helpers.sanitize(name)
+        name_sanitized = name.replace(' ', '_')
         
         # Create a super track
         super_track = trackhub.SuperTrack(name=name_sanitized)
@@ -334,16 +334,19 @@ def make_group_track(
         for bw, color in zip(bws, get_colors(bigwigs)):
 
             bw_base = (
-                os.path.basename(bw).replace(".bigWig", "").replace(".normalised.", "")
+                os.path.basename(bw)
             )
-            bw_sanitized = trackhub.helpers.sanitize(bw_base)
-
+            bw_sanitized = (bw_base.replace(".bigWig", "")
+                                   .replace(".normalised.", "")
+                                   .replace(name, '')
+                            )
+            
             track = trackhub.Track(
                 name=f"{bw_sanitized}_{name}",
                 source=bw,
                 visibility="hide",
                 color=color,
-                autoScale="off",
+                autoScale="on",
                 tracktype="bigWig",
                 windowingFunction="maximum",
             )
@@ -353,7 +356,7 @@ def make_group_track(
                 source=bw,
                 visibility="hide",
                 color=color,
-                autoScale="off",
+                autoScale="on",
                 tracktype="bigWig",
                 windowingFunction="maximum",
             )
