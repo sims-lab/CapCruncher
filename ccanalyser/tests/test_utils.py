@@ -1,4 +1,5 @@
 import os
+from pybedtools.bedtool import BedTool
 import pytest
 import glob
 
@@ -7,6 +8,7 @@ import glob
 dir_test = os.path.realpath(os.path.dirname(__file__))
 dir_test_run = os.path.join(dir_test, 'pipeline_test_run')
 dir_package = os.path.dirname(dir_test)
+dir_data = os.path.join(dir_package, "data")
 
 def test_is_on():
 
@@ -38,3 +40,28 @@ def test_get_re_site():
 
     with pytest.raises(ValueError):
         get_re_site('XXXXXX')
+
+def test_format_coordinates():
+    from ccanalyser.utils import format_coordinates
+
+    bed = format_coordinates('chr1:1000-2000')
+    assert isinstance(bed, BedTool)
+    assert len(bed) == 1
+
+    with pytest.raises(ValueError):
+        bed = format_coordinates('chrXXXXX1:1000-2000')
+    
+    with pytest.raises(ValueError):
+        bed = format_coordinates('chr1:1000:2000')
+
+    test_slices = os.path.join(dir_data, "test", "test_slices.bed")
+    bed = format_coordinates(test_slices)
+    assert isinstance(bed, BedTool)
+    assert len(bed) == 4
+
+    with pytest.raises(ValueError):
+        test_bed_bad = os.path.join(dir_data, "test", "test_capture_bad_format.bed")
+        format_coordinates(test_bed_bad)
+
+
+
