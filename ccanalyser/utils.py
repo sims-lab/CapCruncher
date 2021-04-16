@@ -80,10 +80,6 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
         
         return False
     
-    
-
-
-
 def bed_has_name(bed: Union[str, BedTool]) -> bool:
     '''Returns true if bed file has at least 4 columns'''
     if isinstance(bed, str):
