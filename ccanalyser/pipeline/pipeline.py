@@ -45,6 +45,7 @@ from cgatcore.iotools import touch_file, zap_file
 import itertools
 import warnings
 import glob
+from cgatcore.pipeline.parameters import PARAMS
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
@@ -141,6 +142,37 @@ def set_up_chromsizes():
         get_chromsizes_from_ucsc(P.PARAMS["genome_name"], "chrom_sizes.txt.tmp")
         P.PARAMS["genome_chrom_sizes"] = "chrom_sizes.txt.tmp"
 
+
+def check_user_supplied_paths():
+
+    paths_to_check = ['genome_fasta', 
+                      'genome_aligner_index',
+                      'analysis_viewpoints',
+                      ]
+
+    chrom_sizes = P.PARAMS['genome_chrom_sizes']
+    if any(ext in chrom_sizes for ext in ['.txt', '.fai', '.tsv']):
+        paths_to_check.append('genome_chrom_sizes')
+
+    if MAKE_HUB:
+        paths_to_check.append('hub_dir')
+
+    
+    for path_name in paths_to_check:
+        
+        path_supplied = P.PARAMS[path_name]
+
+        if not os.path.exists(path_supplied):
+
+            if path_name == 'genome_aligner_index':
+                indicies = glob.glob(path_supplied + '*')
+                if not len(indicies) >= 1:
+                    raise OSError(f'Supplied indicies at: {path_supplied} do not exist')
+
+            
+            else:
+                raise OSError(f'Supplied path for {path_name}: {path_supplied} does not exist')
+        
 
 ##################
 # Prepare genome #
@@ -1676,9 +1708,12 @@ if __name__ == "__main__":
 
     if ("-h" in sys.argv or "--help" in sys.argv):  # If --help then just run the pipeline without setup
         P.main(sys.argv)
+    elif not 'make' in sys.argv:
+        P.main(sys.argv)
     else:
         set_up_chromsizes()
         modify_pipeline_params_dict()
+        check_user_supplied_paths()
         P.main(sys.argv)
 
 
