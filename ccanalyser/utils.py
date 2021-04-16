@@ -14,7 +14,6 @@ import pandas as pd
 import ujson
 import xxhash
 from pybedtools import BedTool
-from cgatcore.iotools import zap_file
 import pybedtools
 
 def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
@@ -37,6 +36,9 @@ def is_on(param: str) -> bool:
     values = ["true", "t", "on", "yes", "y", "1"]
     if str(param).lower() in values:
         return True
+    else:
+        return False
+
 
 
 def is_off(param: str):
@@ -44,6 +46,8 @@ def is_off(param: str):
     values = ["", "None", "none", "F", "f"]
     if str(param).lower() in values:
         return True
+    else:
+        return False
 
 
 def is_none(param: str) -> bool:
@@ -51,6 +55,8 @@ def is_none(param: str) -> bool:
     values = ["", "none"]
     if str(param).lower() in values:
         return True
+    else:
+        return False
 
 
 def get_human_readable_number_of_bp(bp: int) -> str:
@@ -238,26 +244,6 @@ def get_timing(task_name=None) -> Callable:
     return wrapper
 
 
-class NaturalOrderGroup(click.Group):
-    """Simple class to ensure subcommand order is maintained by click."""
-
-    def __init__(self, name=None, commands=None, **attrs):
-        if commands is None:
-            commands = OrderedDict()
-        elif not isinstance(commands, OrderedDict):
-            commands = OrderedDict(commands)
-        click.Group.__init__(self, name=name, commands=commands, **attrs)
-
-    def list_commands(self, ctx):
-        return self.commands.keys()
-
-
-def zap_files(files):
-    """Runs cgatcore zap_files on all inputs"""
-    for fn in files:
-        zap_file(fn)
-
-
 def get_ucsc_color(color) -> str:
     """Converts rgb to UCSC compatable colours"""
     return ",".join([str(int(i * 255)).strip() for i in color])
@@ -376,19 +362,6 @@ def make_group_track(
     return super_tracks_dict
 
 
-class PysamFakeEntry:
-    """Testing class used to supply a pysam FastqProxy like object"""
-
-    def __init__(self, name, sequence, quality):
-        self.name = name
-        self.sequence = sequence
-        self.quality = quality
-        self.comment = ""
-
-    def __repr__(self) -> str:
-        return "|".join([self.name, self.sequence, "+", self.quality])
-
-
 def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
     """Converts a str or pd.DataFrame to a pybedtools.BedTool object"""
     if isinstance(bed, str):
@@ -465,9 +438,7 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
     return bt
 
 
-def convert_interval_to_coords(
-    interval: Union[pybedtools.Interval, dict], named=False
-) -> str:
+def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named=False) -> Tuple[str]:
     """Converts interval object to standard genomic coordinates.
 
     e.g. chr1:1000-2000
@@ -476,12 +447,22 @@ def convert_interval_to_coords(
         interval (Union[pybedtools.Interval, dict]): Interval to convert.
 
     Returns:
-        str: Genomic coordinates in the format chr:start-end
+        Tuple: Genomic coordinates in the format chr:start-end
     """
     if not named:
-        return f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}'
+        return ('Unnammed', f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
     else:
-        return (
-            interval["name"],
-            f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',
-        )
+        return (interval['name'], f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
+    
+
+class PysamFakeEntry():
+    '''Testing class used to supply a pysam FastqProxy like object'''
+    def __init__(self, name, sequence, quality):
+        self.name = name
+        self.sequence = sequence
+        self.quality = quality
+        self.comment = ''
+    
+    def __repr__(self) -> str:
+       return  '|'.join([self.name, self.sequence, '+', self.quality])
+
