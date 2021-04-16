@@ -229,14 +229,6 @@ def get_timing(task_name=None) -> Callable:
     return wrapper
 
 
-def zap_files(files):
-    '''Runs cgatcore zap_files on all inputs'''
-    from cgatcore.iotools import zap_file
-
-    for fn in files:
-        zap_file(fn)
-
-
 def get_ucsc_color(color) -> str:
     '''Converts rgb to UCSC compatable colours'''
     return ",".join([str(int(i * 255)).strip() for i in color])
