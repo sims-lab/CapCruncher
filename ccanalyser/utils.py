@@ -7,7 +7,7 @@ from collections import OrderedDict
 from datetime import timedelta
 from functools import wraps
 from itertools import cycle, groupby
-from typing import Callable, IO, Iterable, Union
+from typing import Callable, IO, Iterable, Tuple, Union, Generator
 
 import click
 import pandas as pd
@@ -17,29 +17,9 @@ from pybedtools import BedTool
 from cgatcore.iotools import zap_file
 import pybedtools
 
-
-def open_logfile(fn: str) -> IO:
-    '''Handles instances where the log file is sys.stdout'''
-
-    from xopen import xopen
-
-    if not isinstance(fn, type(sys.stdout)):
-        return xopen(fn, "w")
-    else:
-        return fn
-
-
-def merge_dictionaries(dicts: list) -> dict:
-    '''Merges multiple dictionary entries'''
-    dict_merged = dict()
-    for d in dicts:
-        dict_merged.update(d)
-    return dict_merged
-
-
-def invert_dict(d: dict) -> dict:
+def invert_dict(d: dict) -> Generator[Tuple[str, str]]:
     '''Inverts key: value pairs into value: key pairs'''
-    return {v: k for k, v in d.items()}
+    return ((v, k) for k, v in d.items())
 
 
 def is_on(param: str) -> bool:
