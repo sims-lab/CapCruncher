@@ -362,7 +362,7 @@ def make_group_track(
     return super_tracks_dict
 
 
-  def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
+def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
     """Converts a str or pd.DataFrame to a pybedtools.BedTool object"""
     if isinstance(bed, str):
         bed_conv = BedTool(bed)
