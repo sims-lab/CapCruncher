@@ -138,7 +138,9 @@ def get_re_site(recognition_site: str = None) -> str:
 
 def hash_column(col: Iterable, hash_type=64) -> list:
     '''Convinience function to perform hashing using xxhash on an iterable.
-       Not vectorised.'''
+       
+       Not vectorised.
+    '''
 
     hash_dict = {
         32: xxhash.xxh32_intdigest,
