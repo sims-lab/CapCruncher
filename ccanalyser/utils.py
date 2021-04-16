@@ -14,7 +14,6 @@ import pandas as pd
 import ujson
 import xxhash
 from pybedtools import BedTool
-from cgatcore.iotools import zap_file
 import pybedtools
 
 def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
@@ -27,6 +26,9 @@ def is_on(param: str) -> bool:
     values = ["true", "t", "on", "yes", "y", "1"]
     if str(param).lower() in values:
         return True
+    else:
+        return False
+
 
 
 def is_off(param: str):
@@ -34,6 +36,8 @@ def is_off(param: str):
     values = ["", "None", "none", "F", "f"]
     if str(param).lower() in values:
         return True
+    else:
+        return False
 
 
 def is_none(param: str) -> bool:
@@ -41,6 +45,8 @@ def is_none(param: str) -> bool:
     values = ["", "none"]
     if str(param).lower() in values:
         return True
+    else:
+        return False
 
 
 def get_human_readable_number_of_bp(bp: int) -> str:
@@ -223,20 +229,10 @@ def get_timing(task_name=None) -> Callable:
     return wrapper
 
 
-class NaturalOrderGroup(click.Group):
-    '''Simple class to ensure subcommand order is maintained by click.'''
-    def __init__(self, name=None, commands=None, **attrs):
-        if commands is None:
-            commands = OrderedDict()
-        elif not isinstance(commands, OrderedDict):
-            commands = OrderedDict(commands)
-        click.Group.__init__(self, name=name, commands=commands, **attrs)
-
-    def list_commands(self, ctx):
-        return self.commands.keys()
-
 def zap_files(files):
     '''Runs cgatcore zap_files on all inputs'''
+    from cgatcore.iotools import zap_file
+
     for fn in files:
         zap_file(fn)
 
