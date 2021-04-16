@@ -97,13 +97,13 @@ hub:
     
     # Determines if hub is created or not.
     # True|False 
-    create: False
+    create: True
     
     # Url/IP of server to host bigWigs
     url: http://userweb.molbiol.ox.ac.uk/
     
     # Location of publically accessible location on the server
-    dir: /public/asmith/capture-c/test 
+    dir: HUB_DIR 
     
     # Name for the hub (UCSC required)
     name: capturec_test 

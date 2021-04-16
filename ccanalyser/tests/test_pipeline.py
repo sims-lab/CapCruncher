@@ -42,7 +42,7 @@ def setup():
                     'PATH_TO_GENOME_FASTA': data_path_genome,
                     'PATH_TO_ALIGNER_INDICIES': data_path_bowtie2_indicies,
                     'PATH_TO_CHROMOSOME_SIZES': data_path_chromsizes,
-                    }
+                    'HUB_DIR': dir_test_run}
             
     with open(data_path_config, 'r') as config:
         with open('config.yml', 'w') as writer:
@@ -92,6 +92,7 @@ def test_pipeline_all():
     assert os.path.exists('statistics/visualise_statistics.html')
     assert os.path.exists('pipeline_complete.txt')
     assert os.path.exists('ccanalyser_analysis/bigwigs/Slc25A37-test_1.raw.Slc25A37.bigWig')
+    assert os.path.exists('capturec_test.hub.txt')
 
 
 
