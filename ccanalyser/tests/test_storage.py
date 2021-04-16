@@ -5,6 +5,7 @@ import cooler
 import pytest
 import click
 from click.testing import CliRunner
+import glob
 
 from ccanalyser.tools.storage import GenomicBinner, CoolerBinner, create_cooler_cc
 
@@ -14,6 +15,17 @@ from ccanalyser.tools.storage import GenomicBinner, CoolerBinner, create_cooler_
 dir_test = os.path.realpath(os.path.dirname(__file__))
 dir_package = os.path.dirname(dir_test)
 dir_data = os.path.join(dir_package, "data")
+
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup():
+    
+    yield
+
+    # Remove previous test files
+    for fn in glob.glob(os.path.join(dir_test, "test", "*.hdf5")):
+        os.unlink(fn)
+
 
 def test_make_cooler():
     pixels = pd.read_csv(
