@@ -1495,7 +1495,7 @@ def reporters_make_subtraction_bedgraph(infile, outfile, viewpoint):
             index=None,
             header=False,
         )
-    
+                     
     touch_file(outfile)
 
 
