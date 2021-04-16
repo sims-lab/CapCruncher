@@ -29,3 +29,5 @@ dependencies:
   - ujson
   - plotly
   - python-xxhash
+  - trackhub
+  - seaborn
