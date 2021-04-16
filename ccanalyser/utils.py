@@ -402,10 +402,10 @@ def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named
         interval (Union[pybedtools.Interval, dict]): Interval to convert.
 
     Returns:
-        str: Genomic coordinates in the format chr:start-end
+        Tuple: Genomic coordinates in the format chr:start-end
     """
     if not named:
-        return (f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',)
+        return ('Unnammed', f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
     else:
         return (interval['name'], f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
     
