@@ -27,8 +27,4 @@ def test_get_re_site():
     assert get_re_site('GATC') == 'GATC'
     assert get_re_site('dpnii') == 'GATC'
 
-    try:
-        get_re_site('XXXXXX')
-        pytest.fail()
-    except ValueError:
-        pass   
+    pytest.raises(ValueError, get_re_site('XXXXXX'))
