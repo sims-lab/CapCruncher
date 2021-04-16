@@ -319,17 +319,6 @@ def make_group_track(
     return super_tracks_dict
 
 
-class PysamFakeEntry():
-    '''Testing class used to supply a pysam FastqProxy like object'''
-    def __init__(self, name, sequence, quality):
-        self.name = name
-        self.sequence = sequence
-        self.quality = quality
-        self.comment = ''
-    
-    def __repr__(self) -> str:
-       return  '|'.join([self.name, self.sequence, '+', self.quality])
-
 def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
     '''Converts a str or pd.DataFrame to a pybedtools.BedTool object'''
     if isinstance(bed, str):
@@ -404,7 +393,7 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
 
     return bt
 
-def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named=False) -> str:
+def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named=False) -> Tuple[str]:
     """Converts interval object to standard genomic coordinates.
 
     e.g. chr1:1000-2000 
@@ -416,6 +405,18 @@ def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named
         str: Genomic coordinates in the format chr:start-end
     """
     if not named:
-        return f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}'
+        return (f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',)
     else:
         return (interval['name'], f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
+    
+
+class PysamFakeEntry():
+    '''Testing class used to supply a pysam FastqProxy like object'''
+    def __init__(self, name, sequence, quality):
+        self.name = name
+        self.sequence = sequence
+        self.quality = quality
+        self.comment = ''
+    
+    def __repr__(self) -> str:
+       return  '|'.join([self.name, self.sequence, '+', self.quality])
