@@ -469,4 +469,3 @@ class PysamFakeEntry():
     
     def __repr__(self) -> str:
        return  '|'.join([self.name, self.sequence, '+', self.quality])
-
