@@ -14,6 +14,15 @@ def test_is_on():
     assert is_on('True') == True
     assert is_on('F') == False
 
+def test_is_none():
+
+    from ccanalyser.utils import is_none
+    assert is_none('True') == False
+    assert is_none('X') == False
+    assert is_none('') == True
+    assert is_none('none') == True
+    assert is_none(None) == True
+
 def test_get_human_readable_number_of_bp():
 
     from ccanalyser.utils import get_human_readable_number_of_bp
@@ -27,4 +36,5 @@ def test_get_re_site():
     assert get_re_site('GATC') == 'GATC'
     assert get_re_site('dpnii') == 'GATC'
 
-    pytest.raises(ValueError, get_re_site('XXXXXX'))
+    with pytest.raises(ValueError):
+        get_re_site('XXXXXX')
