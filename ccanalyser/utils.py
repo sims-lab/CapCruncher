@@ -17,9 +17,9 @@ from pybedtools import BedTool
 from cgatcore.iotools import zap_file
 import pybedtools
 
-def invert_dict(d: dict) -> Generator[Tuple[str, str]]:
+def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
     '''Inverts key: value pairs into value: key pairs'''
-    return ((v, k) for k, v in d.items())
+    yield from ((v, k) for k, v in d.items())
 
 
 def is_on(param: str) -> bool:
