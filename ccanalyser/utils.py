@@ -14,7 +14,6 @@ import pandas as pd
 import ujson
 import xxhash
 from pybedtools import BedTool
-from cgatcore.iotools import zap_file
 import pybedtools
 
 def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
@@ -23,28 +22,45 @@ def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
 
 
 def is_on(param: str) -> bool:
-    '''Returns True if parameter in "on" values'''
+    """
+    Returns True if parameter in "on" values
+
+    On values:
+        - true
+        - t
+        - on
+        - yes
+        - y
+        - 1
+    """
     values = ["true", "t", "on", "yes", "y", "1"]
     if str(param).lower() in values:
         return True
+    else:
+        return False
+
 
 
 def is_off(param: str):
-    '''Returns True if parameter in "off" values'''
+    """Returns True if parameter in "off" values"""
     values = ["", "None", "none", "F", "f"]
     if str(param).lower() in values:
         return True
+    else:
+        return False
 
 
 def is_none(param: str) -> bool:
-    '''Returns True if parameter is none'''
+    """Returns True if parameter is none"""
     values = ["", "none"]
     if str(param).lower() in values:
         return True
+    else:
+        return False
 
 
 def get_human_readable_number_of_bp(bp: int) -> str:
-    '''Converts integer into human readable basepair number'''
+    """Converts integer into human readable basepair number"""
 
     if bp < 1000:
         bp = f"{bp}bp"
@@ -58,30 +74,32 @@ def get_human_readable_number_of_bp(bp: int) -> str:
 
 def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
 
-    '''Returns true if bed file can be opened and has at least 3 columns'''
+    """Returns true if bed file can be opened and has at least 3 columns"""
     try:
         bed = BedTool(bed)
         if bed.field_count(n=1) >= 3:
             return True
 
     except Exception as e:
-        
+
         if isinstance(e, FileNotFoundError):
             if verbose:
-                print('Bed file not found')
-        
+                print("Bed file not found")
+
         elif isinstance(e, IndexError):
             if verbose:
-                print('Wrong number of fields detected, check separator/ number of columns')
+                print(
+                    "Wrong number of fields detected, check separator/ number of columns"
+                )
 
         else:
             if verbose:
                 print(e)
         
         return False
-    
+
 def bed_has_name(bed: Union[str, BedTool]) -> bool:
-    '''Returns true if bed file has at least 4 columns'''
+    """Returns true if bed file has at least 4 columns"""
     if isinstance(bed, str):
         bed = BedTool(bed)
 
@@ -89,8 +107,8 @@ def bed_has_name(bed: Union[str, BedTool]) -> bool:
         return True
 
 
-def bed_has_duplicate_names(bed) -> bool:
-    '''Returns true if bed file has no duplicated names'''
+def bed_has_duplicate_names(bed: Union[str, BedTool]) -> bool:
+    """Returns true if bed file has no duplicated names"""
     if isinstance(bed, str):
         bed = BedTool(bed)
 
@@ -110,8 +128,8 @@ def get_re_site(recognition_site: str = None) -> str:
      restriction_enzyme - Name of restriction enzyme e.g. DpnII  (case insensitive)
 
     Returns:
-     recognition sequence e.g. "GATC" 
-    
+     recognition sequence e.g. "GATC"
+
     Raises:
      ValueError: Error if restriction_enzyme is not in known enzymes
 
@@ -125,22 +143,25 @@ def get_re_site(recognition_site: str = None) -> str:
         "nlaiii": "CATG",
     }
 
-    if re.match(r"[GgAaTtCc]+", recognition_site): # matches a DNA sequence
-        cutsite = recognition_site.upper() # Just uppercase convert and return
-    
+    if re.match(r"[GgAaTtCc]+", recognition_site):  # matches a DNA sequence
+        cutsite = recognition_site.upper()  # Just uppercase convert and return
+
     elif recognition_site.lower() in known_enzymes:
         cutsite = known_enzymes[recognition_site.lower()]
-    
+
     else:
         raise ValueError("No restriction site or recognised enzyme provided")
 
     return cutsite
 
+
 def hash_column(col: Iterable, hash_type=64) -> list:
-    '''Convinience function to perform hashing using xxhash on an iterable.
-       
-       Not vectorised.
-    '''
+
+    """
+    Convinience function to perform hashing using xxhash on an iterable.
+
+    Function is **not** vectorised.
+    """
 
     hash_dict = {
         32: xxhash.xxh32_intdigest,
@@ -154,20 +175,20 @@ def hash_column(col: Iterable, hash_type=64) -> list:
 
 
 def split_intervals_on_chrom(intervals: Union[str, BedTool, pd.DataFrame]) -> dict:
-    '''Creates dictionary from bed file with the chroms as keys'''
+    """Creates dictionary from bed file with the chroms as keys"""
 
     intervals = convert_bed_to_dataframe(intervals)
     return {chrom: df for chrom, df in intervals.groupby("chrom")}
 
-    
 
+def intersect_bins(
+    bins_1: pd.DataFrame, bins_2: pd.DataFrame, **bedtools_kwargs
+) -> pd.DataFrame:
+    """Intersects two sets of genomic intervals using bedtools intersect.
 
-def intersect_bins(bins_1: pd.DataFrame, bins_2: pd.DataFrame, **bedtools_kwargs) -> pd.DataFrame:
-    '''Intersects two sets of genomic intervals using bedtools intersect.
+    Formats the intersection in a clearer way than pybedtool auto names.
 
-       Formats the intersection in a clearer way than pybedtool auto names.
-    
-    '''
+    """
 
     bt1 = BedTool.from_dataframe(bins_1)
     bt2 = BedTool.from_dataframe(bins_2)
@@ -193,7 +214,7 @@ def intersect_bins(bins_1: pd.DataFrame, bins_2: pd.DataFrame, **bedtools_kwargs
 
 
 def load_json(fn) -> dict:
-    '''Convinence function to load gziped json file using xopen.'''
+    """Convinence function to load gziped json file using xopen."""
 
     from xopen import xopen
 
@@ -223,32 +244,15 @@ def get_timing(task_name=None) -> Callable:
     return wrapper
 
 
-class NaturalOrderGroup(click.Group):
-    '''Simple class to ensure subcommand order is maintained by click.'''
-    def __init__(self, name=None, commands=None, **attrs):
-        if commands is None:
-            commands = OrderedDict()
-        elif not isinstance(commands, OrderedDict):
-            commands = OrderedDict(commands)
-        click.Group.__init__(self, name=name, commands=commands, **attrs)
-
-    def list_commands(self, ctx):
-        return self.commands.keys()
-
-def zap_files(files):
-    '''Runs cgatcore zap_files on all inputs'''
-    for fn in files:
-        zap_file(fn)
-
-
 def get_ucsc_color(color) -> str:
-    '''Converts rgb to UCSC compatable colours'''
+    """Converts rgb to UCSC compatable colours"""
     return ",".join([str(int(i * 255)).strip() for i in color])
 
+
 def get_colors(items: Iterable, colors: Union[Iterable, None] = None):
-    '''Extracts the appropriate number of colours for the items
-       and formats them for UCSC.'''
-    
+    """Extracts the appropriate number of colours for the items
+    and formats them for UCSC."""
+
     import seaborn as sns
     import matplotlib
 
@@ -261,23 +265,78 @@ def get_colors(items: Iterable, colors: Union[Iterable, None] = None):
         ]
         return [color for i, color in zip(items, cycle(colors))]
 
-def make_group_track(
-    bigwigs: list, key: Union[callable, str, int], overlay=True) -> dict:
 
-    '''Generates a UCSC super track by grouping inputs by the provided key.'''
+def add_bigwigs_to_track(
+    track_collection,
+    bigwigs: list,
+    replacements: list = None,
+    suffix: str = None,
+    subtrack: bool = False,
+):
+
+    import trackhub
+
+    for bw, color in zip(bigwigs, get_colors(bigwigs)):
+
+        bw_base = os.path.basename(bw)
+        bw_sanitized = bw_base
+
+        if replacements:
+            for rep in replacements:
+                bw_sanitized = bw_sanitized.replace(rep, "")
+
+        track = trackhub.Track(
+            name=f"{bw_sanitized}{'_' + suffix if suffix else ''}",
+            source=bw,
+            visibility="hide",
+            color=color,
+            autoScale="on",
+            tracktype="bigWig",
+            windowingFunction="maximum",
+        )
+
+        if subtrack:
+            track_collection.add_subtrack(track)
+        else:
+            track_collection.add_tracks(track)
+
+
+def make_group_track(
+    bigwigs: list,
+    key: Union[callable, str, int],
+    overlay=True,
+    overlay_exclude: list = None,
+) -> dict:
+
+    """Generates a UCSC super track by grouping inputs by the provided key."""
 
     import trackhub
 
     super_tracks_dict = dict()
+    replacements = [".bigWig", ".normalised.", ".subtraction."]
+
+
     for name, bws in groupby(sorted(bigwigs, key=key), key=key):
 
         bws = list(bws)
-        name_sanitized = trackhub.helpers.sanitize(name)
+        name_sanitized = name.replace(" ", "_").replace(".", "_")
+        replacements.append(name)
+
         # Create a super track
         super_track = trackhub.SuperTrack(name=name_sanitized)
 
+        # Add tracks to the super track
+        add_bigwigs_to_track(
+            track_collection=super_track,
+            bigwigs=bws,
+            suffix=name,
+            subtrack=False,
+            replacements=replacements,
+        )
+
         # Create an overlay track
-        if overlay:
+        if overlay and not any(e in name for e in overlay_exclude):
+
             overlay_track = trackhub.AggregateTrack(
                 name=f"{name_sanitized}_overlay",
                 aggregate="transparentOverlay",
@@ -288,42 +347,14 @@ def make_group_track(
                 windowingFunction="maximum",
             )
 
-        # Generate entries for all of the tracks for this group
-        for bw, color in zip(bws, get_colors(bigwigs)):
-
-            bw_base = (
-                os.path.basename(bw)
-                .replace(".bigWig", "")
-                .replace(".normalised.", "")
-            )
-            bw_sanitized = trackhub.helpers.sanitize(bw_base)
-
-            track = trackhub.Track(
-                name=f"{bw_sanitized}_{name}",
-                source=bw,
-                visibility="hide",
-                color=color,
-                autoScale="off",
-                tracktype="bigWig",
-                windowingFunction="maximum",
+            add_bigwigs_to_track(
+                track_collection=overlay_track,
+                bigwigs=[bw for bw in bws if not any(e in bw for e in overlay_exclude)],
+                suffix=f"{name}_subtrack",
+                subtrack=True,
+                replacements=replacements,
             )
 
-            track_sub = trackhub.Track(
-                name=f"{bw_sanitized}_{name}_subtrack",
-                source=bw,
-                visibility="hide",
-                color=color,
-                autoScale="off",
-                tracktype="bigWig",
-                windowingFunction="maximum",
-            )
-
-            super_track.add_tracks(track)
-
-            if overlay:
-                overlay_track.add_subtrack(track_sub)
-
-        if overlay:
             super_track.add_tracks(overlay_track)
 
         super_tracks_dict[name] = super_track
@@ -331,41 +362,30 @@ def make_group_track(
     return super_tracks_dict
 
 
-class PysamFakeEntry():
-    '''Testing class used to supply a pysam FastqProxy like object'''
-    def __init__(self, name, sequence, quality):
-        self.name = name
-        self.sequence = sequence
-        self.quality = quality
-        self.comment = ''
-    
-    def __repr__(self) -> str:
-       return  '|'.join([self.name, self.sequence, '+', self.quality])
-
 def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
-    '''Converts a str or pd.DataFrame to a pybedtools.BedTool object'''
+    """Converts a str or pd.DataFrame to a pybedtools.BedTool object"""
     if isinstance(bed, str):
         bed_conv = BedTool(bed)
     elif isinstance(bed, pd.DataFrame):
         bed_conv = BedTool.from_dataframe(bed)
     elif isinstance(bed, BedTool):
         bed_conv = bed
-    
+
     return bed_conv
 
+
 def convert_bed_to_dataframe(bed: Union[str, BedTool, pd.DataFrame]) -> pd.DataFrame:
-    '''Converts a bed like object (including paths to bed files) to a pd.DataFrame'''
-    
+    """Converts a bed like object (including paths to bed files) to a pd.DataFrame"""
+
     if isinstance(bed, str):
         bed_conv = BedTool(bed).to_dataframe()
-    
+
     elif isinstance(bed, BedTool):
         bed_conv = bed.to_dataframe()
-    
+
     elif isinstance(bed, pd.DataFrame):
         bed_conv = bed
 
-    
     return bed_conv
 
 
@@ -392,22 +412,23 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
             coordinates_split.append("region_0")
 
         bt = BedTool(" ".join(coordinates_split), from_string=True)
-    
+
     elif pattern_bed_file.match(coordinates):
         if is_valid_bed(coordinates):
             if bed_has_name(coordinates):
                 bt = BedTool(coordinates)
             else:
                 bt = (
-                        BedTool(coordinates)
-                        .to_dataframe()
-                        .reset_index()
-                        .assign(name=lambda df: "region_" + df["index"].astype("string"))[
-                            ["chrom", "start", "end", "name"]
-                        ]
-                        .pipe(BedTool.from_dataframe))
+                    BedTool(coordinates)
+                    .to_dataframe()
+                    .reset_index()
+                    .assign(name=lambda df: "region_" + df["index"].astype("string"))[
+                        ["chrom", "start", "end", "name"]
+                    ]
+                    .pipe(BedTool.from_dataframe)
+                )
         else:
-            raise ValueError('Invalid bed file supplied.')
+            raise ValueError("Invalid bed file supplied.")
 
     else:
         raise ValueError(
@@ -416,18 +437,32 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
 
     return bt
 
-def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named=False) -> str:
+
+def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named=False) -> Tuple[str]:
     """Converts interval object to standard genomic coordinates.
 
-    e.g. chr1:1000-2000 
+    e.g. chr1:1000-2000
 
     Args:
         interval (Union[pybedtools.Interval, dict]): Interval to convert.
 
     Returns:
-        str: Genomic coordinates in the format chr:start-end
+        Tuple: Genomic coordinates in the format chr:start-end
     """
     if not named:
-        return f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}'
+        return ('Unnammed', f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
     else:
         return (interval['name'], f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
+    
+
+class PysamFakeEntry():
+    '''Testing class used to supply a pysam FastqProxy like object'''
+    def __init__(self, name, sequence, quality):
+        self.name = name
+        self.sequence = sequence
+        self.quality = quality
+        self.comment = ''
+    
+    def __repr__(self) -> str:
+       return  '|'.join([self.name, self.sequence, '+', self.quality])
+

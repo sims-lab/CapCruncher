@@ -21,3 +21,4 @@ comment:
 
 ignore:
   - "ccanalyser/pipeline/"
+  - "ccanalyser/utils.py"

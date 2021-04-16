@@ -722,7 +722,7 @@ def annotate_make_exclusion_bed(outfile):
     )
 
 
-@originate("ccanalyser_analysis/annotations/capture.bed")
+@originate("ccanalyser_analysis/annotations/viewpoints.bed")
 def annotate_sort_viewpoints(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
@@ -774,7 +774,7 @@ def annotate_sort_blacklist(outfile):
             },
             {
                 "name": "capture",
-                "fn": "ccanalyser_analysis/annotations/capture.bed",
+                "fn": "ccanalyser_analysis/annotations/viewpoints.bed",
                 "action": "get",
                 "fraction": 0.9,
             },
@@ -792,7 +792,7 @@ def annotate_sort_blacklist(outfile):
             },
             {
                 "name": "capture_count",
-                "fn": "ccanalyser_analysis/annotations/capture.bed",
+                "fn": "ccanalyser_analysis/annotations/viewpoints.bed",
                 "action": "count",
                 "fraction": 0.9,
             },
@@ -808,15 +808,16 @@ def annotate_sort_blacklist(outfile):
 )
 def annotate_alignments(infile, outfile):
 
-    """Annotates mapped read slices.
+    """
+    Annotates mapped read slices.
 
     Slices are annotated with:
-    * capture name
-    * capture count
-    * exclusion name
-    * exclusion count
-    * blacklist count
-    * restriction fragment number
+     * capture name
+     * capture count
+     * exclusion name
+     * exclusion count
+     * blacklist count
+     * restriction fragment number
     """
 
     slices = infile[0]
@@ -1093,7 +1094,6 @@ def reporters_count(infile, outfile):
         "%(infile)s",
         "-o %(outfile)s",
         "--remove_exclusions",
-        "--remove_capture" if P.PARAMS["analysis_method"] == "tri" else "",
         "> %(outfile)s.log",
     ]
 
@@ -1418,23 +1418,24 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
     reporters_make_union_bedgraph,
     regex(r"ccanalyser_compare/bedgraphs_union/(.*)\.normalised\.tsv"),
     r"ccanalyser_compare/bedgraphs_subtraction/\1.log",
+    extras=[r'\1']
 )
-def reporters_make_subtraction_bedgraph(infile, outfile):
+def reporters_make_subtraction_bedgraph(infile, outfile, viewpoint):
 
     df_bdg = pd.read_csv(infile, sep="\t")
-    output_prefix = outfile.replace(".log", "")
+    dir_output = os.path.dirname(outfile)
 
     # If no design matrix, make one assuming the format has been followed
     if not P.PARAMS.get("analysis_design"):
         col_dict = {col: "_".join(col.split("_")[:-1]) for col in df_bdg.columns[3:]}
         df_design = pd.Series(col_dict).to_frame("condition")
 
-    df_by_condition = df_bdg.groupby(df_design["condition"], axis=1)
+    condition_groups = df_design.groupby('condition').groups
+    
+    for a, b in itertools.combinations(condition_groups, 2):
 
-    for a, b in itertools.combinations(df_design["condition"].unique(), 2):
-
-        df_a = df_by_condition.get_group(a)
-        df_b = df_by_condition.get_group(b)
+        df_a = df_bdg.loc[:, condition_groups[a]]
+        df_b = df_bdg.loc[:, condition_groups[b]]
 
         a_mean = df_a.mean(axis=1)
         b_mean = df_b.mean(axis=1)
@@ -1442,26 +1443,27 @@ def reporters_make_subtraction_bedgraph(infile, outfile):
         a_mean_sub_b_mean = a_mean - b_mean
         b_mean_sub_a_mean = b_mean - a_mean
 
+
         a_mean_sub_b_mean_bdg = pd.concat(
-            [df_bdg.iloc[:, :2], a_mean_sub_b_mean], axis=1
+            [df_bdg.iloc[:, :3], a_mean_sub_b_mean], axis=1
         )
         b_mean_sub_a_mean_bdg = pd.concat(
-            [df_bdg.iloc[:, :2], b_mean_sub_a_mean], axis=1
+            [df_bdg.iloc[:, :3], b_mean_sub_a_mean], axis=1
         )
 
         a_mean_sub_b_mean_bdg.to_csv(
-            f"{output_prefix}.{a}_vs_{b}.subtraction.bedgraph",
+            f"{dir_output}/{a}_vs_{b}.subtraction.{viewpoint}.bedgraph",
             sep="\t",
             index=None,
             header=False,
         )
         b_mean_sub_a_mean_bdg.to_csv(
-            f"{output_prefix}.{b}_vs_{a}.subtraction.bedgraph",
+            f"{dir_output}/{b}_vs_{a}.subtraction.{viewpoint}.bedgraph",
             sep="\t",
             index=None,
             header=False,
         )
-
+    
     touch_file(outfile)
 
 
@@ -1513,12 +1515,15 @@ def hub_make(infiles, outfile, statistics):
 
     import trackhub
 
-    bigwigs = infiles
+    excluded = ['raw', ]
+
+    bigwigs = [fn for fn  in infiles if not any(e in fn for e in excluded)]
     key_sample = lambda b: os.path.basename(b).split(".")[0]
     key_capture = lambda b: b.split(".")[-2]
 
     # Need to make an assembly hub if this is a custom genome
     if not P.PARAMS.get("genome_custom"):
+
         hub, genomes_file, genome, trackdb = trackhub.default_hub(
             hub_name=P.PARAMS["hub_name"],
             short_label=P.PARAMS.get("hub_short"),
@@ -1529,7 +1534,14 @@ def hub_make(infiles, outfile, statistics):
 
         for key in [key_sample, key_capture]:
 
-            trackdb.add_tracks(make_group_track(bigwigs, key, overlay=True).values())
+            tracks_grouped = make_group_track(bigwigs, 
+                                              key, 
+                                              overlay=True,
+                                              overlay_exclude=['subtraction', '_vs_'])
+
+            trackdb.add_tracks(tracks_grouped.values())
+        
+        trackdb.validate()
 
         if is_on(
             P.PARAMS.get("hub_upload")
@@ -1662,9 +1674,7 @@ def full(infiles, outfile):
 
 if __name__ == "__main__":
 
-    if (
-        "-h" in sys.argv or "--help" in sys.argv
-    ):  # If --help then just run the pipeline without setup
+    if ("-h" in sys.argv or "--help" in sys.argv):  # If --help then just run the pipeline without setup
         P.main(sys.argv)
     else:
         set_up_chromsizes()
