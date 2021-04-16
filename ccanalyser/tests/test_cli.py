@@ -17,7 +17,7 @@ dir_package = os.path.dirname(dir_test)
 dir_data = os.path.join(dir_package, "data")
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def cleanup():
     
     yield
