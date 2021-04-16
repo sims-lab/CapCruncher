@@ -431,3 +431,13 @@ def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named
         return f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}'
     else:
         return (interval['name'], f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
+
+
+
+def check_paths(name: str, path: str):
+    """Checks that supplied paths exist"""
+
+    if not os.path.exists(path):
+        raise OSError(f'{name} path: {path} is incorrect')
+    
+    return True
