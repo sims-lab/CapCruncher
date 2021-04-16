@@ -16,17 +16,23 @@ dir_test = os.path.realpath(os.path.dirname(__file__))
 dir_package = os.path.dirname(dir_test)
 dir_data = os.path.join(dir_package, "data")
 
-# Remove previous test files
-for fn in glob.glob(os.path.join(dir_test, "test", "*")):
-    os.unlink(fn)
 
-for fn in glob.glob(os.path.join(dir_test, "stats", "*")):
-    os.unlink(fn)
+@pytest.fixture(scope="session", autouse=True)
+def cleanup():
+    
+    yield
+
+    # Remove previous test files
+    for fn in glob.glob(os.path.join(dir_test, "test", "*")):
+        os.unlink(fn)
+
+    for fn in glob.glob(os.path.join(dir_test, "stats", "*")):
+        os.unlink(fn)
+
 
 
 def get_fastq_n_records(fq):
     return sum(1 for l in pysam.FastxFile(fq))
-
 
 class DataDeduplicate:
     fq1 = os.path.join(dir_data, "test", "duplicated_1.fastq.gz")

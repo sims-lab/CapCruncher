@@ -7,7 +7,7 @@ from collections import OrderedDict
 from datetime import timedelta
 from functools import wraps
 from itertools import cycle, groupby
-from typing import Callable, IO, Iterable, Union
+from typing import Callable, IO, Iterable, Tuple, Union, Generator
 
 import click
 import pandas as pd
@@ -17,29 +17,9 @@ from pybedtools import BedTool
 from cgatcore.iotools import zap_file
 import pybedtools
 
-
-def open_logfile(fn: str) -> IO:
-    '''Handles instances where the log file is sys.stdout'''
-
-    from xopen import xopen
-
-    if not isinstance(fn, type(sys.stdout)):
-        return xopen(fn, "w")
-    else:
-        return fn
-
-
-def merge_dictionaries(dicts: list) -> dict:
-    '''Merges multiple dictionary entries'''
-    dict_merged = dict()
-    for d in dicts:
-        dict_merged.update(d)
-    return dict_merged
-
-
-def invert_dict(d: dict) -> dict:
+def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
     '''Inverts key: value pairs into value: key pairs'''
-    return {v: k for k, v in d.items()}
+    yield from ((v, k) for k, v in d.items())
 
 
 def is_on(param: str) -> bool:
@@ -100,10 +80,6 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
         
         return False
     
-    
-
-
-
 def bed_has_name(bed: Union[str, BedTool]) -> bool:
     '''Returns true if bed file has at least 4 columns'''
     if isinstance(bed, str):
@@ -162,7 +138,9 @@ def get_re_site(recognition_site: str = None) -> str:
 
 def hash_column(col: Iterable, hash_type=64) -> list:
     '''Convinience function to perform hashing using xxhash on an iterable.
-       Not vectorised.'''
+       
+       Not vectorised.
+    '''
 
     hash_dict = {
         32: xxhash.xxh32_intdigest,
