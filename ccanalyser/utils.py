@@ -20,7 +20,6 @@ def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
     '''Inverts key: value pairs into value: key pairs'''
     yield from ((v, k) for k, v in d.items())
 
-
 def is_on(param: str) -> bool:
     """
     Returns True if parameter in "on" values
@@ -95,7 +94,7 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
         else:
             if verbose:
                 print(e)
-        
+       
         return False
 
 def bed_has_name(bed: Union[str, BedTool]) -> bool:
@@ -156,7 +155,6 @@ def get_re_site(recognition_site: str = None) -> str:
 
 
 def hash_column(col: Iterable, hash_type=64) -> list:
-
     """
     Convinience function to perform hashing using xxhash on an iterable.
 
@@ -182,7 +180,9 @@ def split_intervals_on_chrom(intervals: Union[str, BedTool, pd.DataFrame]) -> di
 
 
 def intersect_bins(
-    bins_1: pd.DataFrame, bins_2: pd.DataFrame, **bedtools_kwargs
+    bins_1: pd.DataFrame, 
+    bins_2: pd.DataFrame,
+    **bedtools_kwargs
 ) -> pd.DataFrame:
     """Intersects two sets of genomic intervals using bedtools intersect.
 
@@ -452,6 +452,10 @@ def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named
     if not named:
         return ('Unnammed', f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
     else:
+        return (
+            interval["name"],
+            f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',
+        )
         return (interval['name'], f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
     
 
@@ -465,4 +469,3 @@ class PysamFakeEntry():
     
     def __repr__(self) -> str:
        return  '|'.join([self.name, self.sequence, '+', self.quality])
-
