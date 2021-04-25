@@ -1608,7 +1608,7 @@ def hub_write_path(outfile):
 # Identify differential interactions #
 ######################################
 
-
+@active_if(False)
 @active_if(N_SAMPLES >= 4)
 @follows(mkdir("ccanalyser_compare/differential"))
 @transform(
