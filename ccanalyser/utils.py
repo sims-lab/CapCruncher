@@ -313,7 +313,7 @@ def make_group_track(
     import trackhub
 
     super_tracks_dict = dict()
-    replacements = [".bigWig", ".normalised.", ".subtraction.", ".mean."]
+    replacements = [".bigWig", ".normalised.", ".subtraction.", ".mean.", "."]
 
 
     for name, bws in groupby(sorted(bigwigs, key=key), key=key):
