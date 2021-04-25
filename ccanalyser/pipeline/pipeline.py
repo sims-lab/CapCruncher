@@ -1457,7 +1457,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
     r"ccanalyser_compare/bedgraphs_subtraction/\1.log",
     extras=[r"\1"],
 )
-def reporters_make_subtraction_bedgraph(infile, outfile, viewpoint):
+def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
     df_bdg = pd.read_csv(infile, sep="\t")
     dir_output = os.path.dirname(outfile)
@@ -1471,20 +1471,46 @@ def reporters_make_subtraction_bedgraph(infile, outfile, viewpoint):
 
     for a, b in itertools.combinations(condition_groups, 2):
 
+        # Extract the two groups
         df_a = df_bdg.loc[:, condition_groups[a]]
         df_b = df_bdg.loc[:, condition_groups[b]]
 
+        # Get mean counts
         a_mean = df_a.mean(axis=1)
         b_mean = df_b.mean(axis=1)
 
+        # Subtractions
         a_mean_sub_b_mean = a_mean - b_mean
         b_mean_sub_a_mean = b_mean - a_mean
+
+        # Merge with coordinates
+        a_mean_bdg = pd.concat(
+            [df_bdg.iloc[:, :3], a_mean], axis=1
+        )
+        b_mean_bdg = pd.concat(
+            [df_bdg.iloc[:, :3], b_mean], axis=1
+        )
 
         a_mean_sub_b_mean_bdg = pd.concat(
             [df_bdg.iloc[:, :3], a_mean_sub_b_mean], axis=1
         )
         b_mean_sub_a_mean_bdg = pd.concat(
             [df_bdg.iloc[:, :3], b_mean_sub_a_mean], axis=1
+        )
+
+        # Output bedgraphs
+        a_mean_bdg.to_csv(
+            f"{dir_output}/{a}.mean.{viewpoint}.bedgraph",
+            sep="\t",
+            index=None,
+            header=False,
+        )
+
+        b_mean_bdg.to_csv(
+            f"{dir_output}/{b}.mean.{viewpoint}.bedgraph",
+            sep="\t",
+            index=None,
+            header=False,
         )
 
         a_mean_sub_b_mean_bdg.to_csv(
@@ -1507,7 +1533,7 @@ def reporters_make_subtraction_bedgraph(infile, outfile, viewpoint):
     mkdir("ccanalyser_analysis/bigwigs"),
     reporters_make_bedgraph,
     reporters_make_bedgraph_normalised,
-    reporters_make_subtraction_bedgraph,
+    reporters_make_comparison_bedgraph,
 )
 @transform(
     [
@@ -1702,7 +1728,7 @@ def reporters_plot_heatmap(infile, outfile):
     reporters_plot_heatmap,
     reporters_make_union_bedgraph,
     identify_differential_interactions,
-    reporters_make_subtraction_bedgraph,
+    reporters_make_comparison_bedgraph,
 )
 @originate(
     "pipeline_complete.txt",
