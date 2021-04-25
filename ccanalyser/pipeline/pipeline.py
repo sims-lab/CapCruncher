@@ -145,34 +145,35 @@ def set_up_chromsizes():
 
 def check_user_supplied_paths():
 
-    paths_to_check = ['genome_fasta', 
-                      'genome_aligner_index',
-                      'analysis_viewpoints',
-                      ]
+    paths_to_check = [
+        "genome_fasta",
+        "genome_aligner_index",
+        "analysis_viewpoints",
+    ]
 
-    chrom_sizes = P.PARAMS['genome_chrom_sizes']
-    if any(ext in chrom_sizes for ext in ['.txt', '.fai', '.tsv']):
-        paths_to_check.append('genome_chrom_sizes')
+    chrom_sizes = P.PARAMS["genome_chrom_sizes"]
+    if any(ext in chrom_sizes for ext in [".txt", ".fai", ".tsv"]):
+        paths_to_check.append("genome_chrom_sizes")
 
     if MAKE_HUB:
-        paths_to_check.append('hub_dir')
+        paths_to_check.append("hub_dir")
 
-    
     for path_name in paths_to_check:
-        
+
         path_supplied = P.PARAMS[path_name]
 
         if not os.path.exists(path_supplied):
 
-            if path_name == 'genome_aligner_index':
-                indicies = glob.glob(path_supplied + '*')
+            if path_name == "genome_aligner_index":
+                indicies = glob.glob(path_supplied + "*")
                 if not len(indicies) >= 1:
-                    raise OSError(f'Supplied indicies at: {path_supplied} do not exist')
+                    raise OSError(f"Supplied indicies at: {path_supplied} do not exist")
 
-            
             else:
-                raise OSError(f'Supplied path for {path_name}: {path_supplied} does not exist')
-        
+                raise OSError(
+                    f"Supplied path for {path_name}: {path_supplied} does not exist"
+                )
+
 
 ##################
 # Prepare genome #
@@ -1323,7 +1324,7 @@ def pipeline_make_report(infile, outfile):
     path_nb_dir = os.path.dirname(path_script_dir)
 
     statement_clean = "rm statistics/visualise_statistics* -f"
-    
+
     statement_papermill = """papermill
                              -k python3
                              -p directory $(pwd)/statistics/
@@ -1403,7 +1404,11 @@ def reporters_make_bedgraph_normalised(infile, outfiles, sample_name):
 
 
 @active_if(N_SAMPLES >= 2)
-@follows(mkdir("ccanalyser_compare/bedgraphs_union"))
+@follows(
+    mkdir("ccanalyser_compare/bedgraphs_union"),
+    reporters_make_bedgraph,
+    reporters_make_bedgraph_normalised,
+)
 @collate(
     "ccanalyser_analysis/bedgraphs/*.bedgraph",
     regex(r".*/(?:.*)\.(raw|normalised|windowed)\.(.*).bedgraph"),
@@ -1450,7 +1455,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
     reporters_make_union_bedgraph,
     regex(r"ccanalyser_compare/bedgraphs_union/(.*)\.normalised\.tsv"),
     r"ccanalyser_compare/bedgraphs_subtraction/\1.log",
-    extras=[r'\1']
+    extras=[r"\1"],
 )
 def reporters_make_subtraction_bedgraph(infile, outfile, viewpoint):
 
@@ -1462,8 +1467,8 @@ def reporters_make_subtraction_bedgraph(infile, outfile, viewpoint):
         col_dict = {col: "_".join(col.split("_")[:-1]) for col in df_bdg.columns[3:]}
         df_design = pd.Series(col_dict).to_frame("condition")
 
-    condition_groups = df_design.groupby('condition').groups
-    
+    condition_groups = df_design.groupby("condition").groups
+
     for a, b in itertools.combinations(condition_groups, 2):
 
         df_a = df_bdg.loc[:, condition_groups[a]]
@@ -1474,7 +1479,6 @@ def reporters_make_subtraction_bedgraph(infile, outfile, viewpoint):
 
         a_mean_sub_b_mean = a_mean - b_mean
         b_mean_sub_a_mean = b_mean - a_mean
-
 
         a_mean_sub_b_mean_bdg = pd.concat(
             [df_bdg.iloc[:, :3], a_mean_sub_b_mean], axis=1
@@ -1495,7 +1499,7 @@ def reporters_make_subtraction_bedgraph(infile, outfile, viewpoint):
             index=None,
             header=False,
         )
-                     
+
     touch_file(outfile)
 
 
@@ -1548,9 +1552,11 @@ def hub_make(infiles, outfile, statistics):
 
     import trackhub
 
-    excluded = ['raw', ]
+    excluded = [
+        "raw",
+    ]
 
-    bigwigs = [fn for fn  in infiles if not any(e in fn for e in excluded)]
+    bigwigs = [fn for fn in infiles if not any(e in fn for e in excluded)]
     key_sample = lambda b: os.path.basename(b).split(".")[0]
     key_capture = lambda b: b.split(".")[-2]
 
@@ -1567,13 +1573,12 @@ def hub_make(infiles, outfile, statistics):
 
         for key in [key_sample, key_capture]:
 
-            tracks_grouped = make_group_track(bigwigs, 
-                                              key, 
-                                              overlay=True,
-                                              overlay_exclude=['subtraction', '_vs_'])
+            tracks_grouped = make_group_track(
+                bigwigs, key, overlay=True, overlay_exclude=["subtraction", "_vs_"]
+            )
 
             trackdb.add_tracks(tracks_grouped.values())
-        
+
         trackdb.validate()
 
         if is_on(
@@ -1608,6 +1613,7 @@ def hub_write_path(outfile):
 ######################################
 # Identify differential interactions #
 ######################################
+
 
 @active_if(False)
 @active_if(N_SAMPLES >= 4)
@@ -1691,15 +1697,17 @@ def reporters_plot_heatmap(infile, outfile):
     )
 
 
-@merge(
-    [hub_make, 
+@follows(
+    hub_make,
     reporters_plot_heatmap,
-    reporters_make_union_bedgraph, 
-    identify_differential_interactions, 
-    reporters_make_subtraction_bedgraph],
+    reporters_make_union_bedgraph,
+    identify_differential_interactions,
+    reporters_make_subtraction_bedgraph,
+)
+@originate(
     "pipeline_complete.txt",
 )
-def full(infiles, outfile):
+def full(outfile):
 
     if os.path.exists("chrom_sizes.txt.tmp"):
         os.unlink("chrom_sizes.txt.tmp")
@@ -1712,9 +1720,11 @@ def full(infiles, outfile):
 
 if __name__ == "__main__":
 
-    if ("-h" in sys.argv or "--help" in sys.argv):  # If --help then just run the pipeline without setup
+    if (
+        "-h" in sys.argv or "--help" in sys.argv
+    ):  # If --help then just run the pipeline without setup
         P.main(sys.argv)
-    elif not 'make' in sys.argv:
+    elif not "make" in sys.argv:
         P.main(sys.argv)
     else:
         set_up_chromsizes()
