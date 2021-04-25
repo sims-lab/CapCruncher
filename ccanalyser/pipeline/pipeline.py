@@ -1520,6 +1520,7 @@ def reporters_make_bigwig(infile, outfile):
     statement = """  cat %(infile)s
                    | sort -k1,1 -k2,2n > %(tmp)s
                    && bedGraphToBigWig %(tmp)s %(genome_chrom_sizes)s %(outfile)s
+                   && rm %(tmp)s
                 """
 
     P.run(
@@ -1692,7 +1693,8 @@ def reporters_plot_heatmap(infile, outfile):
 
 @merge(
     [hub_make, 
-    reporters_plot_heatmap, 
+    reporters_plot_heatmap,
+    reporters_make_union_bedgraph, 
     identify_differential_interactions, 
     reporters_make_subtraction_bedgraph],
     "pipeline_complete.txt",
