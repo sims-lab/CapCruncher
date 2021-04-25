@@ -1691,7 +1691,10 @@ def reporters_plot_heatmap(infile, outfile):
 
 
 @merge(
-    [hub_make, reporters_plot_heatmap, identify_differential_interactions],
+    [hub_make, 
+    reporters_plot_heatmap, 
+    identify_differential_interactions, 
+    reporters_make_subtraction_bedgraph],
     "pipeline_complete.txt",
 )
 def full(infiles, outfile):
