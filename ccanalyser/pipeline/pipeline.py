@@ -1612,7 +1612,7 @@ def hub_write_path(outfile):
 @active_if(N_SAMPLES >= 4)
 @follows(mkdir("ccanalyser_compare/differential"))
 @transform(
-    "ccanalyser_compare/bedgraphs_union/*.tsv",
+    reporters_make_union_bedgraph,
     regex(r".*/(.*)\.raw\.tsv"),
     r"ccanalyser_compare/differential/\1.log",
     extras=[r"\1"],
@@ -1624,7 +1624,8 @@ def identify_differential_interactions(infile, outfile, capture_name):
         output_prefix = outfile.replace(".log", "")
 
         statement = """ccanalyser
-                    interactions differential
+                       reporters 
+                       differential
                     %(infile)s
                     -n %(capture_name)s
                     -c %(analysis_viewpoints)s
