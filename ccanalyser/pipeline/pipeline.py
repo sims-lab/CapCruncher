@@ -1500,7 +1500,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
         # Output bedgraphs
         a_mean_bdg.to_csv(
-            f"{dir_output}/{a}.mean.{viewpoint}.bedgraph",
+            f"{dir_output}/{a}_mean.{viewpoint}.bedgraph",
             sep="\t",
             index=None,
             header=False,
@@ -1600,7 +1600,7 @@ def hub_make(infiles, outfile, statistics):
         for key in [key_sample, key_capture]:
 
             tracks_grouped = make_group_track(
-                bigwigs, key, overlay=True, overlay_exclude=["subtraction", "_vs_"]
+                bigwigs, key, overlay=True, overlay_exclude=["subtraction", "_vs_", 'mean']
             )
 
             trackdb.add_tracks(tracks_grouped.values())
