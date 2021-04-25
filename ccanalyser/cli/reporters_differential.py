@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import itertools
+import numpy as np
 
 
 def get_chromosome_from_name(df: pd.DataFrame, name: str):
@@ -77,10 +78,10 @@ def differential(union_bedgraph: os.PathLike,
     # Only with number of interactions > threshold per group in at least 2 replicates
     df_bdg_counts = (df_bdg_counts.groupby(df_design[grouping_col], axis=1)
                                   .apply(lambda df: df[(df >= threshold_count).sum(axis=1) >= 2])
-                                  .fillna(0))
+                                  .fillna(0.0))
     
     # Run differential testing
-    count_data = df_bdg_counts.transpose().values
+    count_data = df_bdg_counts.transpose().values.astype(np.float64)
     fragment_names = df_bdg_counts.index.values
 
     tests = de.test.pairwise(count_data, 
@@ -88,7 +89,8 @@ def differential(union_bedgraph: os.PathLike,
                              sample_description=df_design,
                              gene_names=fragment_names,
                              test='wald',
-                             lazy=False)
+                             lazy=False, 
+                             backend='numpy')
        
     # Go through all of the pairwise tests
     for g1, g2 in itertools.combinations(tests.groups, 2):
