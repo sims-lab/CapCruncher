@@ -89,7 +89,7 @@ def test_pipeline_all():
 
     assert completed.returncode == 0
     assert os.path.exists('statistics/visualise_statistics.html')
-    assert len(glob.glob('ccanalyser_analysis/bigwigs/Slc25A37*.bigWig')) == 12
+    assert len(glob.glob('ccanalyser_analysis/bigwigs/Slc25A37*.bigWig')) == 16
     assert os.path.exists('capturec_test.hub.txt')
 
 
