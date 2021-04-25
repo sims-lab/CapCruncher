@@ -1449,12 +1449,12 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
 
 @active_if(N_SAMPLES >= 2)
 @follows(
-    mkdir("ccanalyser_compare/bedgraphs_subtraction/"), reporters_make_union_bedgraph
+    mkdir("ccanalyser_compare/bedgraphs_comparison/"), reporters_make_union_bedgraph
 )
 @transform(
     reporters_make_union_bedgraph,
     regex(r"ccanalyser_compare/bedgraphs_union/(.*)\.normalised\.tsv"),
-    r"ccanalyser_compare/bedgraphs_subtraction/\1.log",
+    r"ccanalyser_compare/bedgraphs_comparison/\1.log",
     extras=[r"\1"],
 )
 def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
@@ -1538,7 +1538,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 @transform(
     [
         "ccanalyser_analysis/bedgraphs/*",
-        "ccanalyser_compare/bedgraphs_subtraction/*.bedgraph",
+        "ccanalyser_compare/bedgraphs_comparison/*.bedgraph",
     ],
     regex(r".*/(.*).bedgraph"),
     r"ccanalyser_analysis/bigwigs/\1.bigWig",
