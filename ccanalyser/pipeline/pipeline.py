@@ -1486,7 +1486,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
 @transform(
     reporters_make_union_bedgraph,
     regex(r"ccanalyser_compare/bedgraphs_union/(.*)\.normalised\.tsv"),
-    r"ccanalyser_compare/bedgraphs_comparison/\1.log",
+    r"ccanalyser_compare/bedgraphs_comparison/\1.completed",
     extras=[r"\1"],
 )
 def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
