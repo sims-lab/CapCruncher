@@ -577,14 +577,14 @@ def fastq_digest_combined(infile, outfile):
                    --stats_prefix %(outfile)s.stats
                    --minimum_slice_length 18
                    --compression_level %(pipeline_compression)s
-                   -p %(n_cores_digestion)s
+                   -p 1
                    --stats_prefix statistics/digestion/data/%(fn)s.flashed
                    --sample_name %(sn)s
                     """
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=str(n_cores_digestion + 2),
+        job_threads=3,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -614,7 +614,7 @@ def fastq_digest_non_combined(infiles, outfile):
                    -r %(analysis_restriction_enzyme)s
                    -o %(outfile)s
                    --minimum_slice_length 18
-                   -p %(n_cores_digestion)s
+                   -p 1
                    --compression_level %(pipeline_compression)s
                    --stats_prefix statistics/digestion/data/%(fn)s.pe
                    --sample_name %(sn)s
@@ -623,7 +623,7 @@ def fastq_digest_non_combined(infiles, outfile):
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=str(n_cores_digestion + 2),
+        job_threads=3,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
