@@ -419,6 +419,7 @@ def test_reporter_storage():
             counts,
             "-f",
             bins,
+            "-g",
             "mm9",
             '-n',
             'Slc25A37',
