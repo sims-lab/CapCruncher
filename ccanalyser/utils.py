@@ -286,7 +286,7 @@ def add_bigwigs_to_track(
                 bw_sanitized = bw_sanitized.replace(rep, "")
 
         track = trackhub.Track(
-            name=f"{bw_sanitized}{'_' + suffix if suffix else ''}",
+            name=f"{bw_sanitized.strip('_.- ')}{'_' + suffix if suffix else ''}",
             source=bw,
             visibility="hide",
             color=color,
@@ -313,7 +313,7 @@ def make_group_track(
     import trackhub
 
     super_tracks_dict = dict()
-    replacements = [".bigWig", ".normalised.", ".subtraction."]
+    replacements = [".bigWig", ".normalised.", ".subtraction.", ".mean."]
 
 
     for name, bws in groupby(sorted(bigwigs, key=key), key=key):
