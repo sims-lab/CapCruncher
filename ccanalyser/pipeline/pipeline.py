@@ -1491,8 +1491,13 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
 )
 def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
+    import numpy as np
+
     df_bdg = pd.read_csv(infile, sep="\t")
     dir_output = os.path.dirname(outfile)
+
+    summary_methods = re.split(r'[,;\s+]', P.PARAMS.get('compare_summary_methods', ['mean',]))
+    summary_functions = {method: getattr(np, method) for method in summary_methods}
 
     # If no design matrix, make one assuming the format has been followed
     if not P.PARAMS.get("analysis_design"):
@@ -1501,58 +1506,35 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
     condition_groups = df_design.groupby("condition").groups
 
-    for a, b in itertools.combinations(condition_groups, 2):
+    for a, b in itertools.permutations(condition_groups, 2):
 
         # Extract the two groups
         df_a = df_bdg.loc[:, condition_groups[a]]
         df_b = df_bdg.loc[:, condition_groups[b]]
 
-        # Get mean counts
-        a_mean = df_a.mean(axis=1)
-        b_mean = df_b.mean(axis=1)
+        for summary_method in summary_functions:
+            # Get summary counts
+            a_summary = df_a.pipe(summary_functions[summary_method], axis=1)
+            b_summary = df_b.pipe(summary_functions[summary_method], axis=1)
 
-        # Subtractions
-        a_mean_sub_b_mean = a_mean - b_mean
-        b_mean_sub_a_mean = b_mean - a_mean
+            df_a_bdg = pd.concat([df_bdg.iloc[:, :3], a_summary], axis=1)
+            df_b_bdg = pd.concat([df_bdg.iloc[:, :3], b_summary], axis=1)
+            df_subtraction_bdg = pd.concat([df_bdg.iloc[:, :3], a_summary - b_summary], axis=1)
 
-        # Merge with coordinates
-        a_mean_bdg = pd.concat([df_bdg.iloc[:, :3], a_mean], axis=1)
-        b_mean_bdg = pd.concat([df_bdg.iloc[:, :3], b_mean], axis=1)
+            df_a_bdg.to_csv(f"{dir_output}/{a}_{summary_method}.{viewpoint}.bedgraph",
+                            sep='\t',
+                            header=False,
+                            index=None)
 
-        a_mean_sub_b_mean_bdg = pd.concat(
-            [df_bdg.iloc[:, :3], a_mean_sub_b_mean], axis=1
-        )
-        b_mean_sub_a_mean_bdg = pd.concat(
-            [df_bdg.iloc[:, :3], b_mean_sub_a_mean], axis=1
-        )
-
-        # Output bedgraphs
-        a_mean_bdg.to_csv(
-            f"{dir_output}/{a}_mean.{viewpoint}.bedgraph",
-            sep="\t",
-            index=None,
-            header=False,
-        )
-
-        b_mean_bdg.to_csv(
-            f"{dir_output}/{b}.mean.{viewpoint}.bedgraph",
-            sep="\t",
-            index=None,
-            header=False,
-        )
-
-        a_mean_sub_b_mean_bdg.to_csv(
-            f"{dir_output}/{a}_vs_{b}.subtraction.{viewpoint}.bedgraph",
-            sep="\t",
-            index=None,
-            header=False,
-        )
-        b_mean_sub_a_mean_bdg.to_csv(
-            f"{dir_output}/{b}_vs_{a}.subtraction.{viewpoint}.bedgraph",
-            sep="\t",
-            index=None,
-            header=False,
-        )
+            df_b_bdg.to_csv(f"{dir_output}/{b}_{summary_method}.{viewpoint}.bedgraph",
+                            sep='\t',
+                            header=False,
+                            index=None)
+            
+            df_subtraction_bdg.to_csv(f"{dir_output}/{a}_vs_{b}.{summary_method}-subtraction.{viewpoint}.bedgraph",
+                                      sep='\t',
+                                      index=None,
+                                      header=False)
 
     touch_file(outfile)
 
