@@ -34,5 +34,6 @@ install_requires=['pandas>=1',
                   'iced',
                   'click',
                   'ujson',
-                  'xxhash']
+                  'xxhash',
+                  'diffxpy']
 )
