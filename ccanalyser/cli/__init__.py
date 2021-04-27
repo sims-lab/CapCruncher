@@ -72,7 +72,7 @@ def reporters():
 
 @cli.command(context_settings=dict(ignore_unknown_options=True))
 @click.option('-h', '--help', is_flag=True)
-@click.argument("mode", type=click.Choice(["make", "show", "clone", "touch"]))
+@click.argument("mode", type=click.Choice(["make", 'plot', "show", "clone", "touch"]))
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
 def pipeline(mode, pipeline_options, help=False):
     
