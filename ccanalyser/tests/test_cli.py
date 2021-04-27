@@ -351,11 +351,6 @@ def test_alignments_annotate():
 
     assert result.exit_code != 0
 
-
-
-
-
-
 def test_alignments_filter():
 
     bam = os.path.join(dir_data, 'test', 'Slc25A37-test_1_part0.pe.bam')
@@ -404,6 +399,38 @@ def test_reporter_count():
     )
 
     assert result.exit_code == 0
+
+
+def test_reporter_storage():
+
+    counts = os.path.join(dir_data, "test", "Slc25A37_reporter_counts.tsv.gz")
+    bins = os.path.join(dir_data, "test", "genome.digest.bed.gz")
+    viewpoints = os.path.join(dir_data, "test", "mm9_capture_oligos.bed")
+    output_prefix = os.path.join(dir_test, "test/cli_cooler")
+    output = os.path.join(dir_test, "test/cli_cooler.Slc25A37.hdf5")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "reporters",
+            "store",
+            "fragments",
+            counts,
+            "-f",
+            bins,
+            "mm9",
+            '-n',
+            'Slc25A37',
+            '-o',
+            output_prefix,
+            '-c',
+            viewpoints,
+        ],
+    )
+
+    assert result.exit_code == 0
+
 
 
 
