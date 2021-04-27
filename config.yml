@@ -161,4 +161,7 @@ split:
     # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
     # For Tiled-C or highly enriched assays it is advised to reduce this to 1x10^6 readpairs to speed up the analysis.
     # The pipeline will cope with a high number of reads but it will run slower. 
-    n_reads: 1000000 
+    n_reads: 1000000
+
+compare:
+    summary_methods: mean
