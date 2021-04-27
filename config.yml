@@ -164,4 +164,8 @@ split:
     n_reads: 1000000
 
 compare:
+    # Method(s) to summarise replicate reporter counts for between sample comparisons.
+    # These must be provided as a comma or tab separated list of summary functions
+    # Note: The function name must be a numpy function
+    # e.g.  mean, sum, median
     summary_methods: mean
