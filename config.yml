@@ -87,6 +87,10 @@ analysis_optional:
     # Can supply any regions to be removed.
     blacklist: PATH_TO_BLACKLIST
 
+    # Determines if slice annotations are erased after aligned slice filtering.
+    # Can be useful for troubleshooting errors with coordinates
+    keep_annotations: False
+
 deduplication:
 
     # Turns on initial removal of identical reads from fastq file
