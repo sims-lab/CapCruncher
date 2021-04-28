@@ -1613,7 +1613,9 @@ def hub_make(infiles, outfile, statistics):
                 bigwigs,
                 key,
                 overlay=True,
-                overlay_exclude=["subtraction", "_vs_", "mean"],
+                overlay_exclude=["subtraction", 
+                                 "_vs_", 
+                                 *re.split(r'[,;\s+]', P.PARAMS.get('compare_summary_methods', ['mean',]))],
             )
 
             trackdb.add_tracks(tracks_grouped.values())
