@@ -65,9 +65,9 @@ def identify(
 
             # Extract chrom1 + start1 + chrom(last entry) + end(last entry)
             coords_df = df["coordinates"].str.extract(
-                r"^chr(?P<chrom1>[\d|X|Y|M]+):(?P<start>\d+).*\|chr(?P<chrom2>[\d|X|Y|M]+):\d+-(?P<end>\d+)"
+                r"^chr(?P<chrom1>.*?):(?P<start>\d+).*\|chr(?P<chrom2>.*?):\d+-(?P<end>\d+)"
             )
-
+            
             # {chrom1+start1+chrom-1+end-1(hashed): id(hashed)}
             coords_hashed = hash_column(
                 coords_df["chrom1"].str.cat(coords_df.iloc[:, 1:])

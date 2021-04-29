@@ -31,3 +31,4 @@ dependencies:
   - python-xxhash
   - trackhub
   - seaborn
+  - ucsc-fatotwobit
