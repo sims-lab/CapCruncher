@@ -277,7 +277,7 @@ def add_bigwigs_to_track(
 
     for bw, color in zip(bigwigs, get_colors(bigwigs)):
 
-        name_match = re.match(r'(?P<samplename>.*?)\.(?P<normalisation>.*?)\.(?P<viewpoint>.*?)\.bigWig', bw)
+        name_match = re.match(r'.*/(?P<samplename>.*?)\.(?P<normalisation>.*?)\.(?P<viewpoint>.*?)\.bigWig', bw)
 
         track = trackhub.Track(
             name="_".join(name_match.group(1), name_match.group(3), suffix),
