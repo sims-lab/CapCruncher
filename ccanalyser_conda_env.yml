@@ -17,6 +17,7 @@ dependencies:
   - ucsc-bedgraphtobigwig
   - nodejs
   - ucsc-fetchchromsizes
+  - ucsc-fatotwobit
   - samtools
   - numpy
   - natsort
