@@ -10,6 +10,7 @@ from joblib import Parallel, delayed
 from typing import Union, Literal
 from natsort import natsorted, natsort_key
 from ccanalyser.utils import split_intervals_on_chrom, intersect_bins
+import itertools
 
 
 def get_capture_coords(viewpoint_file: str, viewpoint_name: str):
@@ -17,19 +18,22 @@ def get_capture_coords(viewpoint_file: str, viewpoint_name: str):
     df_viewpoints = df_viewpoints.query(f'name == "{viewpoint_name}"')
 
     try:
-        viewpoint =  df_viewpoints.iloc[0]
+        viewpoints = [row for index, row in df_viewpoints.iterrows()]
     except IndexError:
-        print('Oligo name cannot be found within viewpoints')
-        viewpoint = None
-    
-    return viewpoint
+        print("Oligo name cannot be found within viewpoints")
+        viewpoints = None
+
+    return viewpoints
 
 
 def get_capture_bins(bins, viewpoint_chrom, viewpoint_start, viewpoint_end):
 
-    return bins.query(
-        f'chrom == "{viewpoint_chrom}" and start >= {viewpoint_start} and end <= {viewpoint_end}'
-    )["name"]
+    return [
+        int(b)
+        for b in bins.query(
+            f'chrom == "{viewpoint_chrom}" and start >= {viewpoint_start} and end <= {viewpoint_end}'
+        )["name"]
+    ]
 
 
 def create_cooler_cc(
@@ -70,13 +74,12 @@ def create_cooler_cc(
 
     # If capture bins not provided get them using the coordinates.
     if not capture_bins:
-        capture_bins = get_capture_bins(
-            bins,
-            capture_coords["chrom"],
-            capture_coords["start"],
-            capture_coords["end"],
-        )
-        capture_bins = [int(x) for x in capture_bins]
+        capture_bins = list(itertools.chain.from_iterable(
+            [
+                get_capture_bins(bins, c["chrom"], c["start"], c["end"])
+                for c in capture_coords
+            ]
+        ))
 
     # Need to store bins as a list so make sure its not just a single int.
     elif isinstance(capture_bins, int):
@@ -89,7 +92,11 @@ def create_cooler_cc(
         capture_bins = [int(x) for x in capture_bins]
 
     # Get the number of cis interactions, required for normalisation.
-    bins_cis = bins.query(f'chrom == "{capture_coords["chrom"]}"')["name"]
+    bins_cis = (bins.loc[lambda df: df['chrom'].isin([c['chrom'] for c in capture_coords])]
+                    ["name"]
+                    .loc[lambda ser: ~ser.isin(capture_bins)]
+                )
+
     pixels_cis = pixels.loc[
         lambda df: (df["bin1_id"].isin(bins_cis)) | (df["bin2_id"].isin(bins_cis))
     ]
@@ -99,8 +106,8 @@ def create_cooler_cc(
     metadata = {
         "capture_bins": capture_bins,
         "capture_name": capture_name,
-        "capture_chrom": capture_coords['chrom'],
-        "capture_coords": f'{capture_coords["chrom"]}:{capture_coords["start"]}-{capture_coords["end"]}',
+        "capture_chrom": [c['chrom'] for c in capture_coords],
+        "capture_coords": [f'{c["chrom"]}:{c["start"]}-{c["end"]}' for c in capture_coords],
         "n_cis_interactions": int(n_cis_interactions),
     }
 
@@ -133,17 +140,18 @@ class GenomicBinner:
      chromsizes (pd.Series): Series indexed by chromosome name containg chromosome sizes in bp
      fragments (pd.DataFrame): DataFrame containing bins to convert to equal genomic intervals
      binsize (int): Genomic bin size
-     min_overlap (float): Minimum degree of intersection to define an overlap. 
+     min_overlap (float): Minimum degree of intersection to define an overlap.
      n_cores (int): Number of cores to use for bin intersection.
 
     """
+
     def __init__(
         self,
         chromsizes: Union[os.PathLike, pd.DataFrame, pd.Series],
         fragments: pd.DataFrame,
         binsize: int = 5000,
         n_cores: int = 8,
-        method: Literal['midpoint', 'overlap'] = 'midpoint',
+        method: Literal["midpoint", "overlap"] = "midpoint",
         min_overlap: float = 0.2,
     ):
         """
@@ -153,11 +161,11 @@ class GenomicBinner:
          binsize (int, optional): Genomic window size. Defaults to 5000.
          n_cores (int, optional): Number of cores to use for bin intersection.. Defaults to 8.
          min_overlap (float, optional): Minimum degree of intersection to define an overlap.Only used for "overlap" method. Defaults to 0.2.
-        """    
+        """
 
-        if not method in ['midpoint', 'overlap']:
+        if not method in ["midpoint", "overlap"]:
             raise ValueError('Method should be either "midpoint" or "overlap"')
-                
+
         self.method = method
         self.chromsizes = self._format_chromsizes(chromsizes)
         self.fragments = self._format_fragments(fragments)
@@ -183,14 +191,14 @@ class GenomicBinner:
 
         _chromsizes = pd.Series(dtype=np.int64)
         if isinstance(chromsizes, str):
-            _chromsizes = (pd.read_csv(chromsizes, 
-                                       sep="\t", 
-                                       header=None,
-                                       names=['chrom', 'size'],
-                                       usecols=[0, 1],
-                                       index_col=0)
-                            ['size']
-                            .sort_index(key=natsort_key))
+            _chromsizes = pd.read_csv(
+                chromsizes,
+                sep="\t",
+                header=None,
+                names=["chrom", "size"],
+                usecols=[0, 1],
+                index_col=0,
+            )["size"].sort_index(key=natsort_key)
 
         elif isinstance(chromsizes, pd.DataFrame):
             if chromsizes.index.astype(str).str.contains("^chr.*"):
@@ -218,7 +226,7 @@ class GenomicBinner:
         return _df
 
     def _format_fragments(self, fragments):
-        
+
         # Read the fragments
         if isinstance(fragments, str):
             _fragments = pd.read_csv(
@@ -231,21 +239,19 @@ class GenomicBinner:
         elif isinstance(fragments, pd.DataFrame):
             _fragments = fragments
 
-            if not 'name' in _fragments.columns:
-                _fragments = (_fragments.reset_index()
-                                        .rename(columns={'index':'name'})
-                                        [['chrom', 'start', 'end', 'name']]
-                            )
+            if not "name" in _fragments.columns:
+                _fragments = _fragments.reset_index().rename(columns={"index": "name"})[
+                    ["chrom", "start", "end", "name"]
+                ]
 
         # Adjust fragments based on method
-        if self.method == 'midpoint':
-            lengths = _fragments['end'] - fragments['start']
-            midpoint = _fragments['start']  + (lengths // 2)
+        if self.method == "midpoint":
+            lengths = _fragments["end"] - fragments["start"]
+            midpoint = _fragments["start"] + (lengths // 2)
 
-            _fragments['start'] = midpoint
-            _fragments['end'] = midpoint + 1
-        
-        
+            _fragments["start"] = midpoint
+            _fragments["end"] = midpoint + 1
+
         return self._natsort_dataframe(_fragments, "chrom")
 
     def _get_bin_conversion_table(self) -> pd.DataFrame:
@@ -264,7 +270,7 @@ class GenomicBinner:
                 bins_genomic_by_chrom[chrom],
                 loj=True,
                 sorted=True,
-                f=self.min_overlap if self.method == 'overlap' else 1e-9,
+                f=self.min_overlap if self.method == "overlap" else 1e-9,
             )
             for chrom in natsorted(shared_chroms)
         )
@@ -299,7 +305,7 @@ class GenomicBinner:
         Returns:
          pd.DataFrame: Conversion table containing coordinates and ids of intersecting bins.
         """
-        
+
         if self._bin_conversion_table is not None:
             return self._bin_conversion_table
         else:
@@ -309,16 +315,17 @@ class GenomicBinner:
 
 class CoolerBinner:
     """Bins a cooler file into equal genomic intervals.
-       
-       Attributes:
-        cooler: (cooler.Cooler): Cooler instance to bin.
-        binner (ccanalyser.storeage.GenomicBinner): Binner class to generate bin conversion tables
-        binsize (int): Genomic bin size
-        scale_factor (int): Scaling factor for normalising interaction counts.
-        n_cis_interactions (int): Number of cis interactions with the capture bins.
-        n_cores (int): Number of cores to use for binning.
-        
+
+    Attributes:
+     cooler: (cooler.Cooler): Cooler instance to bin.
+     binner (ccanalyser.storeage.GenomicBinner): Binner class to generate bin conversion tables
+     binsize (int): Genomic bin size
+     scale_factor (int): Scaling factor for normalising interaction counts.
+     n_cis_interactions (int): Number of cis interactions with the capture bins.
+     n_cores (int): Number of cores to use for binning.
+
     """
+
     def __init__(
         self,
         cooler_fn: os.PathLike,
@@ -331,11 +338,10 @@ class CoolerBinner:
          cooler_fn (os.PathLike): Path to cooler to bin. A cooler group can be specified with FN_PATH.hdf5::/PATH_TO_GROUP.
          binsize (int, optional): Genomic binsize. Defaults to None.
          n_cores (int, optional): Number of cores to use for binning. Defaults to 8.
-         binner (ccanalyser.storage.GenomicBinner, optional): Binner object to produce conversion tables. 
+         binner (ccanalyser.storage.GenomicBinner, optional): Binner object to produce conversion tables.
                                                                  Can be initialised and provided so that binning is not repeated.
                                                                  Defaults to None.
-        """        
-        
+        """
 
         self.cooler = cooler.Cooler(cooler_fn)
         self.bins_fragments = self.cooler.bins()[:]
@@ -349,12 +355,11 @@ class CoolerBinner:
         self.binsize = self.binner.binsize
         self.n_cores = n_cores
 
-
         self._bin_conversion_table = None
         self._pixel_conversion_table = None
         self._pixels = None
 
-        self.n_cis_interactions = self.cooler.info['metadata']['n_cis_interactions']
+        self.n_cis_interactions = self.cooler.info["metadata"]["n_cis_interactions"]
 
     def _get_pixel_conversion_table(self):
 
@@ -390,7 +395,7 @@ class CoolerBinner:
 
         df_pixels.columns = ["bin1_id", "bin2_id", "count"]
 
-        #Swap bins over if not correct
+        # Swap bins over if not correct
         df_pixels["bin1_id_corrected"] = np.where(
             df_pixels["bin1_id"] > df_pixels["bin2_id"],
             df_pixels["bin2_id"],
@@ -401,7 +406,7 @@ class CoolerBinner:
             df_pixels["bin1_id"],
             df_pixels["bin2_id"],
         )
-        #df_pixels = df_pixels.loc[lambda df: df["bin1_id"] != df["bin2_id"]]
+        # df_pixels = df_pixels.loc[lambda df: df["bin1_id"] != df["bin2_id"]]
         df_pixels = df_pixels.loc[
             :, ["bin1_id_corrected", "bin2_id_corrected", "count"]
         ].rename(columns=lambda col: col.replace("_corrected", ""))
@@ -412,8 +417,8 @@ class CoolerBinner:
     def bins(self) -> pd.DataFrame:
         """
         Returns:
-         pd.DataFrame: Even genomic bins of a specified binsize. 
-        """        
+         pd.DataFrame: Even genomic bins of a specified binsize.
+        """
         return self.binner.bins
 
     @property
@@ -431,9 +436,9 @@ class CoolerBinner:
          pd.DataFrame: Capture bins converted to the new even genomic bin format.
         """
         capture_frags = self.cooler.info["metadata"]["capture_bins"]
-        return (self.bin_conversion_table.loc[lambda df: df["name_fragment"].isin(capture_frags)]
-                    ["name_bin"]
-                    .values)
+        return self.bin_conversion_table.loc[
+            lambda df: df["name_fragment"].isin(capture_frags)
+        ]["name_bin"].values
 
     @property
     def pixel_conversion_table(self):
@@ -459,7 +464,6 @@ class CoolerBinner:
             self._pixels = self._get_pixels()
             return self._pixels
 
-    
     def normalise_pixels(
         self,
         n_fragment_correction: bool = True,
@@ -477,9 +481,8 @@ class CoolerBinner:
          n_interaction_correction (bool, optional): Updates the pixels DataFrame with counts corrected for the number of
                                                     cis interactions. Defaults to True.
          scale_factor (int, optional): Scaling factor for n_interaction_correction. Defaults to 1e6.
-        """    
-    
-            
+        """
+
         if n_fragment_correction:
             df_nrf = (
                 self.bin_conversion_table.groupby("name_bin").size().to_frame("n_rf")
