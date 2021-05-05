@@ -952,7 +952,8 @@ def alignments_filter(infiles, outfile):
                    --stats_prefix %(stats_prefix)s
                    --sample_name %(sample_name)s
                    --read_type %(sample_read_type)s
-                   > %(outfile)s 2>&1"""
+                   > %(output_log_file)s
+                """
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
