@@ -463,15 +463,18 @@ def test_reporter_storage():
 
     assert result.exit_code == 0
 
-    breakpoint()
     runner = CliRunner()
+    clrs = glob.glob(os.path.join(dir_test, "test", "cli*.hdf5"))
+
+
     result = runner.invoke(
         cli,
         [
             "reporters",
             "store",
             "merge",
-            " ".join(glob.glob(os.path.join(dir_test, "test", "cli*.hdf5"))),
+            *clrs,
+            '-o',
             os.path.join(dir_test, "test", "cli_cooler_merged.hdf5"),
         ],
     )
