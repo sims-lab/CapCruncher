@@ -99,6 +99,8 @@ def bins(
     if conversion_tables:
         with open(conversion_tables, 'rb') as r:
             genomic_binner_objs = pickle.load(r)
+    else:
+        genomic_binner_objs = None
 
     for binsize in binsizes:
 
