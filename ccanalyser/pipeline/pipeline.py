@@ -293,7 +293,7 @@ def fastq_split(infiles, outfile):
     """
 
     infiles = " ".join(infiles)
-    output_prefix = outfile.replace(".log", "")
+    output_prefix = outfile.replace(".completed", "")
 
     statement = """ccanalyser fastq split
                 %(infiles)s
