@@ -102,7 +102,7 @@ def bins(
 
     for binsize in binsizes:
 
-        if binsize in genomic_binner_objs:
+        if genomic_binner_objs and (binsize in genomic_binner_objs):
             cb = CoolerBinner(cooler_fn, binsize=binsize, n_cores=n_cores, binner=genomic_binner_objs[binsize])
         else:
             cb = CoolerBinner(cooler_fn, binsize=binsize, n_cores=n_cores)
