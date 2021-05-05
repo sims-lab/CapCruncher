@@ -1618,7 +1618,6 @@ def hub_make(infiles, outfile, statistics):
             long_label=P.PARAMS.get("hub_long"),
             email=P.PARAMS["hub_email"],
             genome=P.PARAMS["genome_name"],
-            descriptionUrl=statistics,
         )
 
         
