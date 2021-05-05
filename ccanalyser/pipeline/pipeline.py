@@ -45,7 +45,7 @@ from cgatcore.iotools import touch_file, zap_file
 import itertools
 import warnings
 import glob
-from cgatcore.pipeline.parameters import PARAMS
+import shutil
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
@@ -162,9 +162,6 @@ def check_user_supplied_paths():
     chrom_sizes = P.PARAMS["genome_chrom_sizes"]
     if any(ext in chrom_sizes for ext in [".txt", ".fai", ".tsv"]):
         paths_to_check.append("genome_chrom_sizes")
-
-    if MAKE_HUB:
-        paths_to_check.append("hub_dir")
 
     for path_name in paths_to_check:
 
@@ -1639,10 +1636,19 @@ def hub_make(infiles, outfile, statistics):
 
         trackdb.validate()
 
-        if P.PARAMS.get("hub_upload"):  # If the hub need to be uploaded to a server
+
+         # If the hub need to be uploaded to a server
+        if P.PARAMS.get("hub_upload", False): 
             trackhub.upload.upload_hub(
                 hub=hub, host=P.PARAMS["hub_url"], remote_dir=P.PARAMS["hub_dir"]
             )
+        
+        # If need to copy rather than symlink
+        elif not P.PARAMS.get('hub_symlink', False):
+            trackhub.upload.stage_hub(hub=hub, staging='hub_tmp_dir')
+            shutil.copytree('hub_tmp_dir', P.PARAMS['hub_dir'], dirs_exist_ok=True, symlinks=False)
+
+        # If ok to just symlink 
         else:
             trackhub.upload.stage_hub(hub=hub, staging=P.PARAMS["hub_dir"])
 
