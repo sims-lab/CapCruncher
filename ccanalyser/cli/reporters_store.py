@@ -127,7 +127,7 @@ def merge(coolers: Tuple, output: os.PathLike):
     with h5py.File(output, "w") as dest:
 
         for clr in coolers:
-            re_fn = re.match("(.*/)?(.*)\.(.*)\.(.*)?\.hdf5", clr)
+            re_fn = re.match(r"(.*/)?(.*)\.(.*)\.(.*)?\.hdf5", clr)
             assert re_fn, f'{clr} file name not in correct format! Use format PATH_TO_HDF5/SAMPLE.VIEWPOINT.FRAGMENT|BINSIZE.hdf5'
             sample = re_fn.group(2)
             capture = re_fn.group(3)
