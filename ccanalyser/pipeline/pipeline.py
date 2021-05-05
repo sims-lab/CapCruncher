@@ -1590,7 +1590,6 @@ def reporters_make_bigwig(infile, outfile):
 # UCSC hub generation #
 #######################
 
-
 @active_if(MAKE_HUB)
 @merge(
     reporters_make_bigwig,
@@ -1604,9 +1603,7 @@ def hub_make(infiles, outfile, statistics):
 
     import trackhub
 
-    excluded = [
-        "raw",
-    ]
+    excluded = ["raw",]
 
     bigwigs = [fn for fn in infiles if not any(e in fn for e in excluded)]
     key_sample = lambda b: os.path.basename(b).split(".")[0]
@@ -1634,8 +1631,8 @@ def hub_make(infiles, outfile, statistics):
 
             trackdb.add_tracks(tracks_grouped.values())
 
+        # Validate that the trackdb is ok
         trackdb.validate()
-
 
          # If the hub need to be uploaded to a server
         if P.PARAMS.get("hub_upload", False): 
@@ -1647,6 +1644,7 @@ def hub_make(infiles, outfile, statistics):
         elif not P.PARAMS.get('hub_symlink', False):
             trackhub.upload.stage_hub(hub=hub, staging='hub_tmp_dir')
             shutil.copytree('hub_tmp_dir', P.PARAMS['hub_dir'], dirs_exist_ok=True, symlinks=False)
+            shutil.rmtree('hub_tmp_dir')
 
         # If ok to just symlink 
         else:
