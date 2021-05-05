@@ -19,7 +19,7 @@ dir_data = os.path.join(dir_package, "data")
 
 @pytest.fixture(scope="session", autouse=True)
 def cleanup():
-    
+
     yield
 
     # Remove previous test files
@@ -30,9 +30,9 @@ def cleanup():
         os.unlink(fn)
 
 
-
 def get_fastq_n_records(fq):
     return sum(1 for l in pysam.FastxFile(fq))
+
 
 class DataDeduplicate:
     fq1 = os.path.join(dir_data, "test", "duplicated_1.fastq.gz")
@@ -48,7 +48,7 @@ data_dd = DataDeduplicate
 
 def test_cli_runs():
     """Test checks that the cli is functional and the help option works"""
-    
+
     runner = CliRunner()
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
@@ -58,15 +58,13 @@ def test_genome_digest():
 
     test_fa = os.path.join(dir_data, "test", "test.fa")
     test_output = os.path.join(dir_test, "test", "test_digest_genome.bed")
-    test_output_stats = os.path.join(
-        dir_test, "stats", "test_digest_genome.bed"
-    )
+    test_output_stats = os.path.join(dir_test, "stats", "test_digest_genome.bed")
 
     runner = CliRunner()
     result = runner.invoke(
         cli,
         [
-            "genome",  
+            "genome",
             "digest",
             test_fa,
             "-r",
@@ -75,7 +73,7 @@ def test_genome_digest():
             test_output,
             "-l",
             test_output_stats,
-            '--sort'
+            "--sort",
         ],
     )
 
@@ -96,7 +94,15 @@ def test_deduplicate_parse():
     runner = CliRunner()
     result = runner.invoke(
         cli,
-        ["fastq",  "deduplicate", "parse", data_dd.fq1, data_dd.fq2, "-o", output_parsed],
+        [
+            "fastq",
+            "deduplicate",
+            "parse",
+            data_dd.fq1,
+            data_dd.fq2,
+            "-o",
+            output_parsed,
+        ],
     )
 
     # Check that the script exits successfully
@@ -119,7 +125,7 @@ def test_fastq_deduplicate_identification():
     result = runner.invoke(
         cli,
         [
-            "fastq", 
+            "fastq",
             "deduplicate",
             "identify",
             data_dd.result_parsed,
@@ -151,7 +157,7 @@ def test_fastq_deduplicate_removal():
     result = runner.invoke(
         cli,
         [
-            "fastq", 
+            "fastq",
             "deduplicate",
             "remove",
             "-d",
@@ -251,7 +257,7 @@ def test_fastq_digest():
 
 def test_alignments_annotate():
 
-    test_output = os.path.join(dir_test, 'test' ,"test_annotate.tsv")
+    test_output = os.path.join(dir_test, "test", "test_annotate.tsv")
     test_bed = os.path.join(dir_data, "test", "test_slices.bed")
     test_capture = os.path.join(dir_data, "test", "test_capture.bed")
     test_exclusion = os.path.join(dir_data, "test", "test_exclusions.bed")
@@ -301,7 +307,7 @@ def test_alignments_annotate():
     result = runner.invoke(
         cli,
         [
-            "alignments", 
+            "alignments",
             "annotate",
             test_bed,
             "-b",
@@ -330,20 +336,19 @@ def test_alignments_annotate():
             "rf",
             "-o",
             test_output,
-            '--invalid_bed_action',
-            'ignore'
+            "--invalid_bed_action",
+            "ignore",
         ],
     )
 
     assert result.exit_code == 0
-
 
     # Test with bad path
     runner = CliRunner()
     result = runner.invoke(
         cli,
         [
-            "alignments", 
+            "alignments",
             "annotate",
             "XXXXXXXXXXXX",
         ],
@@ -351,12 +356,15 @@ def test_alignments_annotate():
 
     assert result.exit_code != 0
 
+
 def test_alignments_filter():
 
-    bam = os.path.join(dir_data, 'test', 'Slc25A37-test_1_part0.pe.bam')
-    annotations = os.path.join(dir_data, 'test', 'Slc25A37-test_1_part0.pe.annotations.tsv')
-    output_prefix = os.path.join(dir_test, 'test', 'test_filtering_cli')
-    stats_prefix = os.path.join(dir_test, 'stats', 'test_filtering_cli')
+    bam = os.path.join(dir_data, "test", "Slc25A37-test_1_part0.pe.bam")
+    annotations = os.path.join(
+        dir_data, "test", "Slc25A37-test_1_part0.pe.annotations.tsv"
+    )
+    output_prefix = os.path.join(dir_test, "test", "test_filtering_cli")
+    stats_prefix = os.path.join(dir_test, "stats", "test_filtering_cli")
 
     runner = CliRunner()
     result = runner.invoke(
@@ -366,10 +374,10 @@ def test_alignments_filter():
             "filter",
             "capture",
             "-b",
-             bam,
+            bam,
             "-a",
             annotations,
-            '-o',
+            "-o",
             output_prefix,
             "--stats_prefix",
             stats_prefix,
@@ -377,15 +385,15 @@ def test_alignments_filter():
     )
 
     assert result.exit_code == 0
-    
-    df_slices = pd.read_csv(f'{output_prefix}.Slc25A37.slices.tsv', sep='\t')
+
+    df_slices = pd.read_csv(f"{output_prefix}.Slc25A37.slices.tsv", sep="\t")
     assert df_slices.shape[0] == 1062
 
 
 def test_reporter_count():
 
-    reporters = os.path.join(dir_data, 'test', 'Slc25A37_reporters.tsv.gz')
-    output = os.path.join(dir_test, 'test', 'test_reporter_counts.tsv')
+    reporters = os.path.join(dir_data, "test", "Slc25A37_reporters.tsv.gz")
+    output = os.path.join(dir_test, "test", "test_reporter_counts.tsv")
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -393,7 +401,7 @@ def test_reporter_count():
             "reporters",
             "count",
             reporters,
-            '-o',
+            "-o",
             output,
         ],
     )
@@ -407,7 +415,7 @@ def test_reporter_storage():
     bins = os.path.join(dir_data, "test", "genome.digest.bed.gz")
     viewpoints = os.path.join(dir_data, "test", "mm9_capture_oligos.bed")
     output_prefix = os.path.join(dir_test, "test/cli_cooler")
-    output = os.path.join(dir_test, "test/cli_cooler.Slc25A37.hdf5")
+    output = os.path.join(dir_test, "test/cli_cooler.Slc25A37.fragments.hdf5")
 
     runner = CliRunner()
     result = runner.invoke(
@@ -421,23 +429,54 @@ def test_reporter_storage():
             bins,
             "-g",
             "mm9",
-            '-n',
-            'Slc25A37',
-            '-o',
+            "-n",
+            "Slc25A37",
+            "-o",
             output_prefix,
-            '-c',
+            "-c",
             viewpoints,
+            "--suffix",
+            "fragments",
+        ],
+    )
+
+    infile = output
+    output_prefix = os.path.join(dir_test, "test", "cli_cooler_binned.hdf5")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "reporters",
+            "store",
+            "bins",
+            output,
+            "-b",
+            "2500",
+            "-o",
+            output_prefix,
+            "--normalise",
+            "-p",
+            "4",
         ],
     )
 
     assert result.exit_code == 0
 
+    runner = CliRunner()
+    clrs = glob.glob(os.path.join(dir_test, "test", "cli*.hdf5"))
 
 
+    result = runner.invoke(
+        cli,
+        [
+            "reporters",
+            "store",
+            "merge",
+            *clrs,
+            '-o',
+            os.path.join(dir_test, "test", "cli_cooler_merged.hdf5"),
+        ],
+    )
 
-
-
-
-
-
-
+    assert result.exit_code == 0

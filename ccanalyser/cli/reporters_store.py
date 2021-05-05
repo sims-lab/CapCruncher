@@ -99,10 +99,12 @@ def bins(
     if conversion_tables:
         with open(conversion_tables, 'rb') as r:
             genomic_binner_objs = pickle.load(r)
+    else:
+        genomic_binner_objs = None
 
     for binsize in binsizes:
 
-        if binsize in genomic_binner_objs:
+        if genomic_binner_objs and (binsize in genomic_binner_objs):
             cb = CoolerBinner(cooler_fn, binsize=binsize, n_cores=n_cores, binner=genomic_binner_objs[binsize])
         else:
             cb = CoolerBinner(cooler_fn, binsize=binsize, n_cores=n_cores)
@@ -125,10 +127,11 @@ def merge(coolers: Tuple, output: os.PathLike):
     with h5py.File(output, "w") as dest:
 
         for clr in coolers:
-            re_fn = re.match("(.*)\.(.*)\.(.*)?\.hdf5", clr)
-            sample = re_fn.group(1)
-            capture = re_fn.group(2)
-            resolution = re_fn.group(3)
+            re_fn = re.match(r"(.*/)?(.*)\.(.*)\.(.*)?\.hdf5", clr)
+            assert re_fn, f'{clr} file name not in correct format! Use format PATH_TO_HDF5/SAMPLE.VIEWPOINT.FRAGMENT|BINSIZE.hdf5'
+            sample = re_fn.group(2)
+            capture = re_fn.group(3)
+            resolution = re_fn.group(4)
 
             with h5py.File(clr, "r") as src:
 
