@@ -1654,22 +1654,6 @@ def hub_make(infiles, outfile, statistics):
         raise NotImplementedError("Custom genome not yet supported")
 
 
-@active_if(P.PARAMS.get("hub_url"))
-@follows(hub_make)
-@originate("hub_url.txt")
-def hub_write_path(outfile):
-    """Convinence task to write hub url to use for adding custom hub to UCSC genome browser"""
-
-    with open(outfile, "w") as w:
-        url = P.PARAMS["hub_url"].rstrip("/")
-        name_dir = P.PARAMS["hub_dir"].strip("/")
-        name_hubtxt = P.PARAMS["hub_name"] + ".hub.txt"
-
-        path_hubtxt = f"{url}/{name_dir}/{name_hubtxt}"
-
-        w.write(path_hubtxt)
-
-
 ######################################
 # Identify differential interactions #
 ######################################
