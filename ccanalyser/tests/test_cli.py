@@ -432,7 +432,7 @@ def test_reporter_storage():
 
 
     infile = output
-    output_prefix = 'test/cli_cooler_binned.hdf5'
+    output_prefix = os.path.join(dir_test, 'test', 'cli_cooler_binned.hdf5')
 
 
 
