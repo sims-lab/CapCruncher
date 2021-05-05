@@ -430,6 +430,30 @@ def test_reporter_storage():
         ],
     )
 
+
+    infile = output
+    output_prefix = 'test/cli_cooler_binned.hdf5'
+
+
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "reporters",
+            "store",
+            "bins",
+            output,
+            "-b",
+            "2500",
+            '-o',
+            output_prefix,
+            '--normalise',
+            '-p',
+            '4',
+        ],
+    )
+
     assert result.exit_code == 0
 
 
