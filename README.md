@@ -2,6 +2,7 @@
 
 [![Documentation Status](https://readthedocs.org/projects/ccanalyser/badge/?version=latest)](https://ccanalyser.readthedocs.io/en/latest/?badge=latest)
 [![codecov](https://codecov.io/gh/sims-lab/capture-c/branch/master/graph/badge.svg?token=RHIGNMGX09)](https://codecov.io/gh/sims-lab/capture-c)
+![CI](https://github.com/sims-lab/capture-c/actions/workflows/python-template.yml/badge.svg)
 
 ## Analysis software for Capture-C, Tri-C and Tiled-C data.
 
