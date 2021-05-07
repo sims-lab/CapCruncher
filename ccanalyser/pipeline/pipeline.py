@@ -1521,12 +1521,12 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
             df_b_bdg = pd.concat([df_bdg.iloc[:, :3], b_summary], axis=1)
             df_subtraction_bdg = pd.concat([df_bdg.iloc[:, :3], a_summary - b_summary], axis=1)
 
-            df_a_bdg.to_csv(f"{dir_output}/{a}_{summary_method}.{viewpoint}.bedgraph",
+            df_a_bdg.to_csv(f"{dir_output}/{a}.{summary_method}.{viewpoint}.bedgraph",
                             sep='\t',
                             header=False,
                             index=None)
 
-            df_b_bdg.to_csv(f"{dir_output}/{b}_{summary_method}.{viewpoint}.bedgraph",
+            df_b_bdg.to_csv(f"{dir_output}/{b}.{summary_method}.{viewpoint}.bedgraph",
                             sep='\t',
                             header=False,
                             index=None)
