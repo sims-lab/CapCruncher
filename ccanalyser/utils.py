@@ -269,7 +269,6 @@ def get_colors(items: Iterable, colors: Union[Iterable, None] = None):
 def add_bigwigs_to_track(
     track_collection,
     bigwigs: list,
-    replacements: list = None,
     suffix: str = None,
     subtrack: bool = False,
 ):
@@ -278,15 +277,10 @@ def add_bigwigs_to_track(
 
     for bw, color in zip(bigwigs, get_colors(bigwigs)):
 
-        bw_base = os.path.basename(bw)
-        bw_sanitized = bw_base
-
-        if replacements:
-            for rep in replacements:
-                bw_sanitized = bw_sanitized.replace(rep, "")
+        name_match = re.match(r'.*/(?P<samplename>.*?)\.(?P<normalisation>.*?)\.(?P<viewpoint>.*?)\.bigWig', bw)
 
         track = trackhub.Track(
-            name=f"{bw_sanitized.strip('_.- ')}{'_' + suffix if suffix else ''}",
+            name="_".join([name_match.group(1), name_match.group(3), suffix]),
             source=bw,
             visibility="hide",
             color=color,
@@ -313,32 +307,28 @@ def make_group_track(
     import trackhub
 
     super_tracks_dict = dict()
-    replacements = [".bigWig", ".normalised.", ".subtraction.", ".mean."]
-
-
     for name, bws in groupby(sorted(bigwigs, key=key), key=key):
 
         bws = list(bws)
-        name_sanitized = name.replace(" ", "_").replace(".", "_")
-        replacements.append(name)
+        name_corrected = (name.replace('.', '_')
+                              .replace(' ', '_'))
 
         # Create a super track
-        super_track = trackhub.SuperTrack(name=name_sanitized)
+        super_track = trackhub.SuperTrack(name=name_corrected)
 
         # Add tracks to the super track
         add_bigwigs_to_track(
             track_collection=super_track,
             bigwigs=bws,
-            suffix=name,
+            suffix=name_corrected,
             subtrack=False,
-            replacements=replacements,
         )
 
         # Create an overlay track
         if overlay and not any(e in name for e in overlay_exclude):
 
             overlay_track = trackhub.AggregateTrack(
-                name=f"{name_sanitized}_overlay",
+                name=f"{name_corrected}_overlay",
                 aggregate="transparentOverlay",
                 visibility="full",
                 tracktype="bigWig",
@@ -350,9 +340,8 @@ def make_group_track(
             add_bigwigs_to_track(
                 track_collection=overlay_track,
                 bigwigs=[bw for bw in bws if not any(e in bw for e in overlay_exclude)],
-                suffix=f"{name}_subtrack",
+                suffix=f"{name_corrected}_subtrack",
                 subtrack=True,
-                replacements=replacements,
             )
 
             super_track.add_tracks(overlay_track)

@@ -161,4 +161,11 @@ split:
     # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
     # For Tiled-C or highly enriched assays it is advised to reduce this to 1x10^6 readpairs to speed up the analysis.
     # The pipeline will cope with a high number of reads but it will run slower. 
-    n_reads: 1000000 
+    n_reads: 1000000
+
+compare:
+    # Method(s) to summarise replicate reporter counts for between sample comparisons.
+    # These must be provided as a comma or tab separated list of summary functions
+    # Note: The function name must be a numpy function
+    # e.g.  mean, sum, median
+    summary_methods: mean
