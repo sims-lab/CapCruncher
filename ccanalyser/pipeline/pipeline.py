@@ -1600,14 +1600,17 @@ def hub_make(infiles, outfile, statistics):
         .assign(basename=lambda df: df["fn"].apply(os.path.basename))
     )
     attributes = df_bigwigs["basename"].str.extract(
-        r"(?P<samplename>.*?)\.(?P<normalisation>.*?)\.(?P<viewpoint>.*?)\.(?P<filetype>.*)"
+        r"(?P<samplename>.*?)\.(?P<method>.*?)\.(?P<viewpoint>.*?)\.(?P<filetype>.*)"
     )
     df_bigwigs = df_bigwigs.join(attributes).sort_values(
-        ["samplename", "normalisation", "viewpoint"]
+        ["samplename", "method", "viewpoint"]
     )
 
     # Create a hub
-    hub = trackhub.Hub(P.PARAMS["hub_name"], email=P.PARAMS["hub_email"])
+    hub = trackhub.Hub(hub=P.PARAMS["hub_name"],
+                       short_label=P.PARAMS.get('hub_short', P.PARAMS['hub_name']),
+                       long_label=P.PARAMS.get('hub_long', P.PARAMS['hub_name']),
+                       email=P.PARAMS["hub_email"])
 
     ## Need to make an assembly hub if this is a custom genome
     if P.PARAMS.get("genome_custom"):
