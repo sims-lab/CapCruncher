@@ -45,7 +45,7 @@ from cgatcore.iotools import touch_file, zap_file
 import itertools
 import warnings
 import glob
-from cgatcore.pipeline.parameters import PARAMS
+import shutil
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
@@ -162,9 +162,6 @@ def check_user_supplied_paths():
     chrom_sizes = P.PARAMS["genome_chrom_sizes"]
     if any(ext in chrom_sizes for ext in [".txt", ".fai", ".tsv"]):
         paths_to_check.append("genome_chrom_sizes")
-
-    if MAKE_HUB:
-        paths_to_check.append("hub_dir")
 
     for path_name in paths_to_check:
 
@@ -1575,7 +1572,6 @@ def reporters_make_bigwig(infile, outfile):
 # UCSC hub generation #
 #######################
 
-
 @active_if(MAKE_HUB)
 @merge(
     reporters_make_bigwig,
@@ -1589,9 +1585,7 @@ def hub_make(infiles, outfile, statistics):
 
     import trackhub
 
-    excluded = [
-        "raw",
-    ]
+    excluded = ["raw",]
 
     bigwigs = [fn for fn in infiles if not any(e in fn for e in excluded)]
     key_sample = lambda b: os.path.basename(b).split(".")[0]
@@ -1608,6 +1602,8 @@ def hub_make(infiles, outfile, statistics):
             genome=P.PARAMS["genome_name"],
         )
 
+        
+
         for key in [key_sample, key_capture]:
 
             tracks_grouped = make_group_track(
@@ -1621,33 +1617,27 @@ def hub_make(infiles, outfile, statistics):
 
             trackdb.add_tracks(tracks_grouped.values())
 
+        # Validate that the trackdb is ok
         trackdb.validate()
 
-        if P.PARAMS.get("hub_upload"):  # If the hub need to be uploaded to a server
+         # If the hub need to be uploaded to a server
+        if P.PARAMS.get("hub_upload", False): 
             trackhub.upload.upload_hub(
                 hub=hub, host=P.PARAMS["hub_url"], remote_dir=P.PARAMS["hub_dir"]
             )
+        
+        # If need to copy rather than symlink
+        elif not P.PARAMS.get('hub_symlink', False):
+            trackhub.upload.stage_hub(hub=hub, staging='hub_tmp_dir')
+            shutil.copytree('hub_tmp_dir', P.PARAMS['hub_dir'], dirs_exist_ok=True, symlinks=False)
+            shutil.rmtree('hub_tmp_dir')
+
+        # If ok to just symlink 
         else:
             trackhub.upload.stage_hub(hub=hub, staging=P.PARAMS["hub_dir"])
 
     else:
         raise NotImplementedError("Custom genome not yet supported")
-
-
-@active_if(P.PARAMS.get("hub_url"))
-@follows(hub_make)
-@originate("hub_url.txt")
-def hub_write_path(outfile):
-    """Convinence task to write hub url to use for adding custom hub to UCSC genome browser"""
-
-    with open(outfile, "w") as w:
-        url = P.PARAMS["hub_url"].rstrip("/")
-        name_dir = P.PARAMS["hub_dir"].strip("/")
-        name_hubtxt = P.PARAMS["hub_name"] + ".hub.txt"
-
-        path_hubtxt = f"{url}/{name_dir}/{name_hubtxt}"
-
-        w.write(path_hubtxt)
 
 
 ######################################
