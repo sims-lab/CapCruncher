@@ -1498,7 +1498,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
     df_bdg = pd.read_csv(infile, sep="\t")
     dir_output = os.path.dirname(outfile)
 
-    summary_methods = re.split(r'[,;\s+]', P.PARAMS.get('compare_summary_methods', 'mean'))
+    summary_methods = re.split(r'[,;\s+]', P.PARAMS.get('compare_summary_methods', ['mean',]))
     summary_functions = {method: getattr(np, method) for method in summary_methods}
 
     # If no design matrix, make one assuming the format has been followed
