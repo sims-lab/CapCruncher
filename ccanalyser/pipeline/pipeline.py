@@ -760,7 +760,9 @@ def annotate_make_exclusion_bed(outfile):
 
     """Generates exclusion window around each capture site"""
 
-    assert is_valid_bed(P.PARAMS['analysis_viewpoints']), "Viewpoints bed file is not a valid bed file"
+    assert is_valid_bed(
+        P.PARAMS["analysis_viewpoints"]
+    ), "Viewpoints bed file is not a valid bed file"
     statement = """bedtools slop
                     -i %(analysis_viewpoints)s -g %(genome_chrom_sizes)s -b %(analysis_reporter_exclusion_zone)s
                     | bedtools subtract -a - -b %(analysis_viewpoints)s
@@ -777,10 +779,12 @@ def annotate_make_exclusion_bed(outfile):
 def annotate_sort_viewpoints(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
-    
-    assert is_valid_bed(P.PARAMS['analysis_viewpoints']), "Viewpoints bed file is not a valid bed file"
+
+    assert is_valid_bed(
+        P.PARAMS["analysis_viewpoints"]
+    ), "Viewpoints bed file is not a valid bed file"
     statement = """cat %(analysis_viewpoints)s | sort -k1,1 -k2,2n > %(outfile)s"""
-    
+
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -878,7 +882,7 @@ def annotate_alignments(infile, outfile):
     flags = {"name": "-n", "fn": "-b", "action": "-a", "fraction": "-f"}
 
     cmd_args = []
-    for args in infile[1]: # infile[1] == arguments for annotation
+    for args in infile[1]:  # infile[1] == arguments for annotation
         for arg_name, arg in args.items():
             cmd_args.append(f'{flags.get(arg_name)} {arg if arg else "-"}')
 
@@ -934,7 +938,7 @@ def alignments_filter(infiles, outfile):
     sample_read_type = sample.group(3)
 
     output_prefix = outfile.replace(".completed", "")
-    output_log_file = f'{output_prefix}.log'
+    output_log_file = f"{output_prefix}.log"
     stats_prefix = (
         f"statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
     )
@@ -962,7 +966,7 @@ def alignments_filter(infiles, outfile):
     touch_file(outfile)
 
     # Zero annotations
-    if not P.PARAMS.get('analysis_optional_keep_annotations', False):
+    if not P.PARAMS.get("analysis_optional_keep_annotations", False):
         zap_file(annotations)
 
 
@@ -977,7 +981,7 @@ def alignments_filter(infiles, outfile):
 )
 def reporters_collate(infiles, outfile, *grouping_args):
 
-    """Concatenates identified reporters """
+    """Concatenates identified reporters"""
 
     statement = []
     for ii, fn in enumerate(infiles):
@@ -1590,6 +1594,7 @@ def reporters_make_bigwig(infile, outfile):
 # UCSC hub generation #
 #######################
 
+
 @active_if(MAKE_HUB)
 @merge(
     reporters_make_bigwig,
@@ -1603,57 +1608,137 @@ def hub_make(infiles, outfile, statistics):
 
     import trackhub
 
-    excluded = ["raw",]
+    excluded = [".raw."]
 
+    # Create a dataframe with bigwig attributes and paths
     bigwigs = [fn for fn in infiles if not any(e in fn for e in excluded)]
-    key_sample = lambda b: os.path.basename(b).split(".")[0]
-    key_capture = lambda b: b.split(".")[-2]
+    df_bigwigs = (
+        pd.Series(bigwigs)
+        .to_frame("fn")
+        .assign(basename=lambda df: df["fn"].apply(os.path.basename))
+    )
+    attributes = df_bigwigs["basename"].str.extract(
+        r"(?P<samplename>.*?)\.(?P<normalisation>.*?)\.(?P<viewpoint>.*?)\.(?P<filetype>.*)"
+    )
+    df_bigwigs = df_bigwigs.join(attributes).sort_values(
+        ["samplename", "normalisation", "viewpoint"]
+    )
 
-    # Need to make an assembly hub if this is a custom genome
-    if not P.PARAMS.get("genome_custom"):
+    # Create a hub
+    hub = trackhub.Hub(P.PARAMS["hub_name"], email=P.PARAMS["hub_email"])
 
-        hub, genomes_file, genome, trackdb = trackhub.default_hub(
-            hub_name=P.PARAMS["hub_name"],
-            short_label=P.PARAMS.get("hub_short"),
-            long_label=P.PARAMS.get("hub_long"),
-            email=P.PARAMS["hub_email"],
+    ## Need to make an assembly hub if this is a custom genome
+    if P.PARAMS.get("genome_custom"):
+        genome = trackhub.Assembly(
             genome=P.PARAMS["genome_name"],
+            twobit_file=P.PARAMS["genome_twobit"],
+            organism=P.PARAMS["genome_organism"],
+            defaultPos=P.PARAMS.get("hub_default_position", "chr1:1000-2000"),
+        )
+    else:
+        genome = trackhub.Genome(P.PARAMS["genome_name"])
+
+    # Create genomes file
+    genomes_file = trackhub.GenomesFile()
+    
+    # Create trackdb
+    trackdb = trackhub.TrackDb()
+
+    # Add these to the hub
+    hub.add_genomes_file(genomes_file)
+    genome.add_trackdb(trackdb)
+    genomes_file.add_genome(genome)
+
+    # Need to add tracks to the hub but specify group
+    group_definitions = dict()
+
+    # Columns to use for generating groups
+    group_columns = ["samplename", "viewpoint", "method"]
+
+    # Order of fields to use for the output name. Allows a track to be unique but grouped multiple ways
+    field_orders = {
+        "samplename": ("samplename", "method", "viewpoint"),
+        "method": ("samplename", "viewpoint"),
+        "viewpoint": ("viewpoint", "samplename", "method"),
+    }
+
+    # Iterate each supplied grouping column
+    for col in group_columns:
+
+        # Group by the given column
+        for group_name, group_df in df_bigwigs.groupby(col):
+
+            # Add to the group definition file
+            group_definitions[group_name] = trackhub.groups.GroupDefinition(
+                name=group_name, priority=1, default_is_closed=False
+            )
+
+            # Create overlay track if grouping by any other colulmn but the method
+            if not col == "method":
+                track_overlay = trackhub.AggregateTrack(
+                    name=f"{group_name}_overlay",
+                    aggregate="transparentOverlay",
+                    visibility="full",
+                    tracktype="bigWig",
+                    maxHeightPixels="8:80:128",
+                    showSubtrackColorOnUi="on",
+                    windowingFunction="maximum",
+                )
+
+            # For each track generate the correct name and add to the trackdb
+            for bigwig in group_df.itertuples():
+                track_name = "_".join(
+                    [getattr(bigwig, field) for field in field_orders[col]]
+                )
+
+                # Add track to trackdb file
+                trackdb.add_tracks(
+                    trackhub.Track(
+                        name=track_name,
+                        source=bigwig.fn,
+                        autoScale="on",
+                        tracktype="bigWig",
+                        windowingFunction="maximum",
+                        group=group_name,
+                    )
+                )
+
+                # Add track to overlay if it is normalised
+                if bigwig.method == "normalised":
+                    
+                    track_overlay.add_subtrack(
+                        trackhub.Track(
+                            name=f"{track_name}_subtrack",
+                            source=bigwig.fn,
+                            autoScale="on",
+                            tracktype="bigWig",
+                            windowingFunction="maximum",
+                            group=group_name,
+                        )
+                    )
+
+            trackdb.add_tracks(track_overlay)
+
+    # Validate that the trackdb is ok
+    trackdb.validate()
+
+    # If the hub need to be uploaded to a server
+    if P.PARAMS.get("hub_upload", False):
+        trackhub.upload.upload_hub(
+            hub=hub, host=P.PARAMS["hub_url"], remote_dir=P.PARAMS["hub_dir"]
         )
 
-        
+    # If need to copy rather than symlink
+    elif not P.PARAMS.get("hub_symlink", False):
+        trackhub.upload.stage_hub(hub=hub, staging="hub_tmp_dir")
+        shutil.copytree(
+            "hub_tmp_dir", P.PARAMS["hub_dir"], dirs_exist_ok=True, symlinks=False
+        )
+        shutil.rmtree("hub_tmp_dir")
 
-        for key in [key_sample, key_capture]:
-
-            tracks_grouped = make_group_track(
-                bigwigs,
-                key,
-                overlay=True,
-                overlay_exclude=["subtraction", "_vs_", "mean"],
-            )
-
-            trackdb.add_tracks(tracks_grouped.values())
-
-        # Validate that the trackdb is ok
-        trackdb.validate()
-
-         # If the hub need to be uploaded to a server
-        if P.PARAMS.get("hub_upload", False): 
-            trackhub.upload.upload_hub(
-                hub=hub, host=P.PARAMS["hub_url"], remote_dir=P.PARAMS["hub_dir"]
-            )
-        
-        # If need to copy rather than symlink
-        elif not P.PARAMS.get('hub_symlink', False):
-            trackhub.upload.stage_hub(hub=hub, staging='hub_tmp_dir')
-            shutil.copytree('hub_tmp_dir', P.PARAMS['hub_dir'], dirs_exist_ok=True, symlinks=False)
-            shutil.rmtree('hub_tmp_dir')
-
-        # If ok to just symlink 
-        else:
-            trackhub.upload.stage_hub(hub=hub, staging=P.PARAMS["hub_dir"])
-
+    # If ok to just symlink
     else:
-        raise NotImplementedError("Custom genome not yet supported")
+        trackhub.upload.stage_hub(hub=hub, staging=P.PARAMS["hub_dir"])
 
 
 ######################################
@@ -1693,7 +1778,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
 
     else:
         print("Not enough replicates for differential testing")
-    
+
     touch_file(outfile)
 
 
