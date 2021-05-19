@@ -36,6 +36,7 @@ Optional:
 """
 
 from collections import defaultdict
+from math import inf
 import os
 import re
 import sys
@@ -1595,23 +1596,43 @@ def reporters_make_bigwig(infile, outfile):
 #######################
 
 
+@mkdir("ccanalyser_analysis/viewpoints/")
+@transform(
+    annotate_sort_viewpoints,
+    regex(r".*/(.*).bed"),
+    r"ccanalyser_analysis/viewpoints/\1.bigBed",
+)
+def viewpoints_to_bigbed(infile, outfile):
+
+    statement = """bedToBigBed %(infile)s %(genome_chrom_sizes)s %(outfile)s"""
+
+    P.run(
+        statement,
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
+    )
+
+
 @active_if(MAKE_HUB)
 @merge(
-    reporters_make_bigwig,
+    [reporters_make_bigwig, viewpoints_to_bigbed, pipeline_make_report],
     os.path.join(
         P.PARAMS.get("hub_dir", ""), P.PARAMS.get("hub_name", "") + ".hub.txt"
     ),
-    extras=[pipeline_make_report],
 )
-def hub_make(infiles, outfile, statistics):
+def hub_make(infiles, outfile):
     """Creates a ucsc hub from the pipeline output"""
+
 
     import trackhub
     import seaborn as sns
     from ccanalyser.utils import categorise_tracks
 
+    # Extract statistics
+    stats_report = [fn for fn in infiles if fn.endswith(".html")][0]
+
     # Create a dataframe with bigwig attributes and paths
-    bigwigs = infiles
+    bigwigs = [fn for fn in infiles if fn.endswith(".bigWig")]
     df_bigwigs = (
         pd.Series(bigwigs)
         .to_frame("fn")
@@ -1685,7 +1706,7 @@ def hub_make(infiles, outfile, statistics):
         name="summary_method",
         label="Summary_Method",
         mapping={
-            n.split('-')[0]: n.split('-')[0].capitalize()
+            n.split("-")[0]: n.split("-")[0].capitalize()
             for n in unique_comparison_methods
         },
     )
@@ -1694,7 +1715,10 @@ def hub_make(infiles, outfile, statistics):
     colors = sns.color_palette("hls", len(unique_samples))
     color_mapping = dict(zip(unique_samples, colors))
 
-    # Add tracks to hub
+    #####################
+    # Add tracks to hub #
+    #####################
+
     for category_name, df in df_bigwigs.groupby("track_categories"):
 
         composite = trackhub.CompositeTrack(
@@ -1708,7 +1732,12 @@ def hub_make(infiles, outfile, statistics):
             allButtonPair="off",
         )
 
+        # Only add a group if this is an assembly hub
+        if groups_file:
+            composite.add_params(group=P.PARAMS["hub_name"])
+
         composite.add_subgroups([subgroup_vp, subgroup_sample, subgroup_method])
+        #composite.add_params(html=os.path.basename(stats_report))
 
         for bw in df.itertuples():
             t = trackhub.Track(
@@ -1720,7 +1749,7 @@ def hub_make(infiles, outfile, statistics):
                 subgroups={
                     "viewpoint": bw.viewpoint.lower(),
                     "samplename": bw.samplename.lower(),
-                    "summary_method": bw.method.split('-')[0],
+                    "summary_method": bw.method.split("-")[0],
                 },
                 color=",".join(
                     [str(int(x * 255)) for x in color_mapping[bw.samplename]]
@@ -1735,25 +1764,50 @@ def hub_make(infiles, outfile, statistics):
 
         trackdb.add_tracks(composite)
 
-    # Stage hub
+    # Add viewpoints to hub
+    for bb in [fn for fn in infiles if fn.endswith(".bigBed")]:
 
-    # If the hub need to be uploaded to a server
-    if P.PARAMS.get("hub_upload", False):
-        trackhub.upload.upload_hub(
-            hub=hub, host=P.PARAMS["hub_url"], remote_dir=P.PARAMS["hub_dir"]
+        t = trackhub.Track(
+            name=os.path.basename(bb).replace(".bigBed", "").capitalize(),
+            source=bb,
+            tracktype="bigBed",
         )
 
+        if genomes_file:
+            t.add_params(group=P.PARAMS["hub_name"])
+
+        trackdb.add_tracks(t)
+
+    #############
+    # Stage hub #
+    #############
+
     # If need to copy rather than symlink
-    elif not P.PARAMS.get("hub_symlink", False):
+    if not P.PARAMS.get("hub_symlink", False):
+
+        # Stage the hub
         trackhub.upload.stage_hub(hub=hub, staging="hub_tmp_dir")
+
+        # Copy to the new location
         shutil.copytree(
             "hub_tmp_dir", P.PARAMS["hub_dir"], dirs_exist_ok=True, symlinks=False
         )
+
+        # Delete the staged hub
         shutil.rmtree("hub_tmp_dir")
 
     # If ok to just symlink
     else:
+        # Use trackhub's default staging
         trackhub.upload.stage_hub(hub=hub, staging=P.PARAMS["hub_dir"])
+
+    # Finally copy the stats report to the correct location
+    shutil.copy(
+        stats_report,
+        os.path.join(
+            P.PARAMS["hub_dir"], P.PARAMS["genome_name"], os.path.basename(stats_report)
+        ),
+    )
 
 
 ######################################
