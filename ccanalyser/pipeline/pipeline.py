@@ -71,7 +71,7 @@ from ccanalyser.tools.statistics import (
     extract_trimming_stats,
 )
 
-from ccanalyser.utils import is_on, is_none, is_valid_bed, make_group_track
+from ccanalyser.utils import is_on, is_none, is_valid_bed
 
 
 ##############################
