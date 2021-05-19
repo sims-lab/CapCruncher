@@ -18,6 +18,7 @@ dependencies:
   - nodejs
   - ucsc-fetchchromsizes
   - ucsc-fatotwobit
+  - ucsc-bedtobigbed
   - samtools
   - numpy
   - natsort
