@@ -256,8 +256,15 @@ def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
     return bed_conv
 
 
-def categorise_tracks(ser: pd.Series):
+def categorise_tracks(ser: pd.Series) -> list:
+    """Gets a series for grouping tracks together 
 
+    Args:
+        ser (pd.Series): File names to map
+
+    Returns:
+        list: Mapping for grouping.
+    """
     mapping = {
         "summary": "Replicate_Summary",
         "subtraction": "Sample_Comparison",
