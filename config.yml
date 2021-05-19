@@ -43,6 +43,16 @@ genome:
     # FAI files can also be used.
     chrom_sizes: PATH_TO_CHROMOSOME_SIZES
 
+    # Determines if this is a custom genome. Only needed for UCSC hub generation.
+    custom: False
+
+    # Organism name. Only needed for UCSC hub using a custom genome.
+    organism: ORGANISM
+
+    # Path to twobit file for genome. Only needed for UCSC hub using a custom genome.
+    twobit: PATH_TO_TWOBIT_FILE
+
+
 #############################
 # Essential cluster options #
 #############################
@@ -109,21 +119,18 @@ hub:
     # Location of publically accessible location on the server
     dir: HUB_DIR 
     
-    # Name for the hub (UCSC required)
+    # Name for the hub
     name: capturec_test 
     
-    # Short hub name (UCSC required)
+    # Short hub name
     short: capturec new pipeline 
     
-    # Long hub name (UCSC required)
+    # Long hub name
     long: capturec processed with the new python pipeline 
     
     # Email address (UCSC required)
-    email: alastair.smith@ndcls.ox.ac.uk 
-    
-    # Colours to use for bigWig tracks. Leave blank for random. Colours are cycled if there are more tracks than colours.
-    colors: red blue green yellow purple 
-
+    email: alastair.smith@ndcls.ox.ac.uk
+ 
 normalisation:
     
     # Scaling factor for normalisation. (not currently used but will be added shortly)
