@@ -1685,7 +1685,7 @@ def hub_make(infiles, outfile, statistics):
         name="replicate_summary_method",
         label="Replicate_Summary_Method",
         mapping={
-            n.lower(): n.replace("-summary", "").capitalize()
+            n.lower(): n.replace("-summary", "").replace('-subtraction', '').capitalize()
             for n in unique_comparison_methods
         },
     )
@@ -1700,7 +1700,7 @@ def hub_make(infiles, outfile, statistics):
         composite = trackhub.CompositeTrack(
             name=category_name,
             short_label=category_name,
-            dimensions="dimensionX=samplename dimensionY=viewpoint dimensionA=replicate_summary_method",
+            dimensions="dimX=samplename dimY=viewpoint dimA=replicate_summary_method",
             sortOrder="samplename=+ viewpoint=+",
             tracktype="bigWig",
             visibility="hide",
@@ -1708,7 +1708,7 @@ def hub_make(infiles, outfile, statistics):
             allButtonPair="off",
         )
 
-        composite.add_subgroups([subgroup_vp, subgroup_sample])
+        composite.add_subgroups([subgroup_vp, subgroup_sample, subgroup_method])
 
         for bw in df.itertuples():
             t = trackhub.Track(
