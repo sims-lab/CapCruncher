@@ -1520,8 +1520,8 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
         for summary_method in summary_functions:
             # Get summary counts
-            a_summary = df_a.pipe(summary_functions[summary_method], axis=1)
-            b_summary = df_b.pipe(summary_functions[summary_method], axis=1)
+            a_summary = pd.Series(df_a.pipe(summary_functions[summary_method], axis=1), name=summary_method)
+            b_summary = pd.Series(df_b.pipe(summary_functions[summary_method], axis=1), name=summary_method)
 
             df_a_bdg = pd.concat([df_bdg.iloc[:, :3], a_summary], axis=1)
             df_b_bdg = pd.concat([df_bdg.iloc[:, :3], b_summary], axis=1)
