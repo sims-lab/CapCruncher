@@ -1498,7 +1498,11 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
     df_bdg = pd.read_csv(infile, sep="\t")
     dir_output = os.path.dirname(outfile)
 
-    summary_methods = re.split(r'[,;\s+]', P.PARAMS.get('compare_summary_methods', ['mean',]))
+    summary_methods = [
+        m
+        for m in re.split(r"[,;\s+]", P.PARAMS.get("compare_summary_methods", "mean,"))
+        if m
+    ]
     summary_functions = {method: getattr(np, method) for method in summary_methods}
 
     # If no design matrix, make one assuming the format has been followed
@@ -1521,22 +1525,30 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
             df_a_bdg = pd.concat([df_bdg.iloc[:, :3], a_summary], axis=1)
             df_b_bdg = pd.concat([df_bdg.iloc[:, :3], b_summary], axis=1)
-            df_subtraction_bdg = pd.concat([df_bdg.iloc[:, :3], a_summary - b_summary], axis=1)
+            df_subtraction_bdg = pd.concat(
+                [df_bdg.iloc[:, :3], a_summary - b_summary], axis=1
+            )
 
-            df_a_bdg.to_csv(f"{dir_output}/{a}.{summary_method}.{viewpoint}.bedgraph",
-                            sep='\t',
-                            header=False,
-                            index=None)
+            df_a_bdg.to_csv(
+                f"{dir_output}/{a}.{summary_method}-summary.{viewpoint}.bedgraph",
+                sep="\t",
+                header=False,
+                index=None,
+            )
 
-            df_b_bdg.to_csv(f"{dir_output}/{b}.{summary_method}.{viewpoint}.bedgraph",
-                            sep='\t',
-                            header=False,
-                            index=None)
-            
-            df_subtraction_bdg.to_csv(f"{dir_output}/{a}_vs_{b}.{summary_method}-subtraction.{viewpoint}.bedgraph",
-                                      sep='\t',
-                                      index=None,
-                                      header=False)
+            df_b_bdg.to_csv(
+                f"{dir_output}/{b}.{summary_method}-summary.{viewpoint}.bedgraph",
+                sep="\t",
+                header=False,
+                index=None,
+            )
+
+            df_subtraction_bdg.to_csv(
+                f"{dir_output}/{a}_vs_{b}.{summary_method}-subtraction.{viewpoint}.bedgraph",
+                sep="\t",
+                index=None,
+                header=False,
+            )
 
     touch_file(outfile)
 
@@ -1589,11 +1601,11 @@ def hub_make(infiles, outfile, statistics):
     """Creates a ucsc hub from the pipeline output"""
 
     import trackhub
-
-    excluded = [".raw."]
+    import seaborn as sns
+    from ccanalyser.utils import categorise_tracks
 
     # Create a dataframe with bigwig attributes and paths
-    bigwigs = [fn for fn in infiles if not any(e in fn for e in excluded)]
+    bigwigs = infiles
     df_bigwigs = (
         pd.Series(bigwigs)
         .to_frame("fn")
@@ -1602,15 +1614,19 @@ def hub_make(infiles, outfile, statistics):
     attributes = df_bigwigs["basename"].str.extract(
         r"(?P<samplename>.*?)\.(?P<method>.*?)\.(?P<viewpoint>.*?)\.(?P<filetype>.*)"
     )
-    df_bigwigs = df_bigwigs.join(attributes).sort_values(
-        ["samplename", "method", "viewpoint"]
+    df_bigwigs = (
+        df_bigwigs.join(attributes)
+        .assign(track_categories=lambda df: categorise_tracks(df["method"]))
+        .sort_values(["samplename", "method", "viewpoint"])
     )
 
     # Create a hub
-    hub = trackhub.Hub(hub=P.PARAMS["hub_name"],
-                       short_label=P.PARAMS.get('hub_short', P.PARAMS['hub_name']),
-                       long_label=P.PARAMS.get('hub_long', P.PARAMS['hub_name']),
-                       email=P.PARAMS["hub_email"])
+    hub = trackhub.Hub(
+        hub=P.PARAMS["hub_name"],
+        short_label=P.PARAMS.get("hub_short", P.PARAMS["hub_name"]),
+        long_label=P.PARAMS.get("hub_long", P.PARAMS["hub_name"]),
+        email=P.PARAMS["hub_email"],
+    )
 
     ## Need to make an assembly hub if this is a custom genome
     if P.PARAMS.get("genome_custom"):
@@ -1620,12 +1636,23 @@ def hub_make(infiles, outfile, statistics):
             organism=P.PARAMS["genome_organism"],
             defaultPos=P.PARAMS.get("hub_default_position", "chr1:1000-2000"),
         )
+        groups_file = trackhub.GroupsFile(
+            [
+                trackhub.GroupDefinition(
+                    name=P.PARAMS["hub_name"], priority=1, default_is_closed=False
+                ),
+            ]
+        )
+        genome.add_groups(groups_file)
+
     else:
         genome = trackhub.Genome(P.PARAMS["genome_name"])
+        groups_file = None
+
 
     # Create genomes file
     genomes_file = trackhub.GenomesFile()
-    
+
     # Create trackdb
     trackdb = trackhub.TrackDb()
 
@@ -1634,79 +1661,59 @@ def hub_make(infiles, outfile, statistics):
     genome.add_trackdb(trackdb)
     genomes_file.add_genome(genome)
 
+    # Extract groups for generating composite tracks
+    unique_samples = df_bigwigs["samplename"].unique()
+    unique_viewpoints = df_bigwigs["viewpoint"].unique()
+    subgroup_vp = trackhub.SubGroupDefinition(
+        name="viewpoint",
+        label="Viewpoint",
+        mapping={n.lower(): n for n in unique_viewpoints},
+    )
+    subgroup_sample = trackhub.SubGroupDefinition(
+        name="samplename",
+        label="Sample_name",
+        mapping={n.lower(): n.capitalize() for n in unique_samples},
+    )
 
-    # Need to add tracks to the hub but specify group
-    group_definitions = dict()
+    # Generate a color mapping based on sample names
+    colors = sns.color_palette("hls", len(unique_samples))
+    color_mapping = dict(zip(unique_samples, colors))
 
-    # Columns to use for generating groups
-    group_columns = ["samplename", "viewpoint", "method"]
-
-    # Order of fields to use for the output name. Allows a track to be unique but grouped multiple ways
-    field_orders = {
-        "samplename": ("samplename", "method", "viewpoint"),
-        "method": ("samplename", "viewpoint"),
-        "viewpoint": ("viewpoint", "samplename", "method"),
-    }
-
-    # Iterate each supplied grouping column
-    for col in group_columns:
-
-        # Group by the given column
-        for group_name, group_df in df_bigwigs.groupby(col):
-
-            # Add to the group definition file
-            group_definitions[group_name] = trackhub.groups.GroupDefinition(
-                name=group_name, priority=1, default_is_closed=False
-            )
-
-            # Create overlay track if grouping by any other colulmn but the method
-            if not col == "method":
-                track_overlay = trackhub.AggregateTrack(
-                    name=f"{group_name}_overlay",
-                    aggregate="transparentOverlay",
-                    visibility="full",
-                    tracktype="bigWig",
-                    maxHeightPixels="8:80:128",
-                    showSubtrackColorOnUi="on",
-                    windowingFunction="maximum",
-                )
-
-            # For each track generate the correct name and add to the trackdb
-            for bigwig in group_df.itertuples():
-                track_name = "_".join(
-                    [getattr(bigwig, field) for field in field_orders[col]]
-                )
-
-                # Add track to trackdb file
-                trackdb.add_tracks(
-                    trackhub.Track(
-                        name=track_name,
-                        source=bigwig.fn,
-                        autoScale="on",
-                        tracktype="bigWig",
-                        windowingFunction="maximum",
-                        group=group_name,
-                    )
-                )
-
-                # Add track to overlay if it is normalised
-                if bigwig.method == "normalised":
-                    
-                    track_overlay.add_subtrack(
-                        trackhub.Track(
-                            name=f"{track_name}_subtrack",
-                            source=bigwig.fn,
-                            autoScale="on",
-                            tracktype="bigWig",
-                            windowingFunction="maximum",
-                            group=group_name,
+    # Add tracks to hub
+    for category_name, df in df_bigwigs.groupby('track_categories'):
+        
+        composite = trackhub.CompositeTrack(
+                            name=category_name,
+                            short_label=category_name,
+                            dimensions='dimensionX=samplename dimensionY=viewpoint',
+                            sortOrder='samplename=+ viewpoint=+',
+                            tracktype='bigWig',
+                            visibility='hide',
+                            dragAndDrop='subTracks',
+                            allButtonPair='off',
                         )
-                    )
 
-            trackdb.add_tracks(track_overlay)
+        composite.add_subgroups([subgroup_vp, subgroup_sample])
+        
+        for bw in df.itertuples():
+            t = trackhub.Track(name=f'{bw.samplename}_{bw.viewpoint}_{bw.method.replace("-summary", "")}', 
+                        source=bw.fn, 
+                        autoScale='off',
+                        tracktype='bigWig',
+                        windowingFunction='maximum', 
+                        subgroups={'viewpoint': bw.viewpoint.lower(), 'samplename':bw.samplename.lower()},
+                        color=','.join([str(int(x*255)) for x in color_mapping[bw.samplename]]))
+            
+            # Only add a group if this is an assembly hub
+            if groups_file:
+                t.add_params(group=P.PARAMS['hub_name'])
+            
+            composite.add_subtrack(t)
+        
+        trackdb.add_tracks(composite)
 
-    # Validate that the trackdb is ok
-    trackdb.validate()
+
+    # Stage hub
 
     # If the hub need to be uploaded to a server
     if P.PARAMS.get("hub_upload", False):
@@ -1876,4 +1883,3 @@ if __name__ == "__main__":
 #         job_queue=P.PARAMS["pipeline_cluster_queue"],
 #         job_condaenv=P.PARAMS["conda_env"],
 #     )
-
