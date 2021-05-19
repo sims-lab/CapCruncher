@@ -1682,10 +1682,10 @@ def hub_make(infiles, outfile, statistics):
         mapping={n.lower(): n.capitalize() for n in unique_samples},
     )
     subgroup_method = trackhub.SubGroupDefinition(
-        name="replicate_summary_method",
-        label="Replicate_Summary_Method",
+        name="summary_method",
+        label="Summary_Method",
         mapping={
-            n.lower(): n.replace("-summary", "").replace('-subtraction', '').capitalize()
+            n.split('-')[0]: n.split('-')[0].capitalize()
             for n in unique_comparison_methods
         },
     )
@@ -1700,8 +1700,8 @@ def hub_make(infiles, outfile, statistics):
         composite = trackhub.CompositeTrack(
             name=category_name,
             short_label=category_name,
-            dimensions="dimX=samplename dimY=viewpoint dimA=replicate_summary_method",
-            sortOrder="samplename=+ viewpoint=+",
+            dimensions="dimX=samplename dimY=viewpoint dimA=summary_method",
+            sortOrder="samplename=+ viewpoint=+ summary_method=+",
             tracktype="bigWig",
             visibility="hide",
             dragAndDrop="subTracks",
@@ -1720,7 +1720,7 @@ def hub_make(infiles, outfile, statistics):
                 subgroups={
                     "viewpoint": bw.viewpoint.lower(),
                     "samplename": bw.samplename.lower(),
-                    "replicate_summary_method": bw.method.lower(),
+                    "summary_method": bw.method.split('-')[0],
                 },
                 color=",".join(
                     [str(int(x * 255)) for x in color_mapping[bw.samplename]]
