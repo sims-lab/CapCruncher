@@ -16,9 +16,11 @@ import xxhash
 from pybedtools import BedTool
 import pybedtools
 
+
 def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
-    '''Inverts key: value pairs into value: key pairs'''
+    """Inverts key: value pairs into value: key pairs"""
     yield from ((v, k) for k, v in d.items())
+
 
 def is_on(param: str) -> bool:
     """
@@ -37,7 +39,6 @@ def is_on(param: str) -> bool:
         return True
     else:
         return False
-
 
 
 def is_off(param: str):
@@ -94,8 +95,9 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
         else:
             if verbose:
                 print(e)
-       
+
         return False
+
 
 def bed_has_name(bed: Union[str, BedTool]) -> bool:
     """Returns true if bed file has at least 4 columns"""
@@ -180,9 +182,7 @@ def split_intervals_on_chrom(intervals: Union[str, BedTool, pd.DataFrame]) -> di
 
 
 def intersect_bins(
-    bins_1: pd.DataFrame, 
-    bins_2: pd.DataFrame,
-    **bedtools_kwargs
+    bins_1: pd.DataFrame, bins_2: pd.DataFrame, **bedtools_kwargs
 ) -> pd.DataFrame:
     """Intersects two sets of genomic intervals using bedtools intersect.
 
@@ -243,6 +243,7 @@ def get_timing(task_name=None) -> Callable:
 
     return wrapper
 
+
 def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
     """Converts a str or pd.DataFrame to a pybedtools.BedTool object"""
     if isinstance(bed, str):
@@ -253,6 +254,23 @@ def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
         bed_conv = bed
 
     return bed_conv
+
+
+def categorise_tracks(ser: pd.Series):
+
+    mapping = {
+        "summary": "Replicate_Summary",
+        "subtraction": "Sample_Comparison",
+        "normalised": "Samples_Normalised",
+        "raw": "Samples_Unormalised",
+    }
+    categories = []
+    for index, value in ser.iteritems():
+        for key in mapping:
+            if key in value:
+                categories.append(mapping[key])
+
+    return categories
 
 
 def convert_bed_to_dataframe(bed: Union[str, BedTool, pd.DataFrame]) -> pd.DataFrame:
@@ -319,7 +337,9 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
     return bt
 
 
-def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named=False) -> Tuple[str]:
+def convert_interval_to_coords(
+    interval: Union[pybedtools.Interval, dict], named=False
+) -> Tuple[str]:
     """Converts interval object to standard genomic coordinates.
 
     e.g. chr1:1000-2000
@@ -331,22 +351,29 @@ def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named
         Tuple: Genomic coordinates in the format chr:start-end
     """
     if not named:
-        return ('Unnammed', f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
+        return (
+            "Unnammed",
+            f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',
+        )
     else:
         return (
             interval["name"],
             f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',
         )
-        return (interval['name'], f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
-    
+        return (
+            interval["name"],
+            f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',
+        )
 
-class PysamFakeEntry():
-    '''Testing class used to supply a pysam FastqProxy like object'''
+
+class PysamFakeEntry:
+    """Testing class used to supply a pysam FastqProxy like object"""
+
     def __init__(self, name, sequence, quality):
         self.name = name
         self.sequence = sequence
         self.quality = quality
-        self.comment = ''
-    
+        self.comment = ""
+
     def __repr__(self) -> str:
-       return  '|'.join([self.name, self.sequence, '+', self.quality])
+        return "|".join([self.name, self.sequence, "+", self.quality])
