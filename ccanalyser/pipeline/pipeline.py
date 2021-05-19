@@ -1520,8 +1520,14 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
         for summary_method in summary_functions:
             # Get summary counts
-            a_summary = pd.Series(df_a.pipe(summary_functions[summary_method], axis=1), name=summary_method)
-            b_summary = pd.Series(df_b.pipe(summary_functions[summary_method], axis=1), name=summary_method)
+            a_summary = pd.Series(
+                df_a.pipe(summary_functions[summary_method], axis=1),
+                name=summary_method,
+            )
+            b_summary = pd.Series(
+                df_b.pipe(summary_functions[summary_method], axis=1),
+                name=summary_method,
+            )
 
             df_a_bdg = pd.concat([df_bdg.iloc[:, :3], a_summary], axis=1)
             df_b_bdg = pd.concat([df_bdg.iloc[:, :3], b_summary], axis=1)
@@ -1649,7 +1655,6 @@ def hub_make(infiles, outfile, statistics):
         genome = trackhub.Genome(P.PARAMS["genome_name"])
         groups_file = None
 
-
     # Create genomes file
     genomes_file = trackhub.GenomesFile()
 
@@ -1664,6 +1669,8 @@ def hub_make(infiles, outfile, statistics):
     # Extract groups for generating composite tracks
     unique_samples = df_bigwigs["samplename"].unique()
     unique_viewpoints = df_bigwigs["viewpoint"].unique()
+    unique_comparison_methods = df_bigwigs["method"].unique()
+
     subgroup_vp = trackhub.SubGroupDefinition(
         name="viewpoint",
         label="Viewpoint",
@@ -1674,44 +1681,59 @@ def hub_make(infiles, outfile, statistics):
         label="Sample_name",
         mapping={n.lower(): n.capitalize() for n in unique_samples},
     )
+    subgroup_method = trackhub.SubGroupDefinition(
+        name="replicate_summary_method",
+        label="Replicate_Summary_Method",
+        mapping={
+            n.lower(): n.replace("-summary", "").capitalize()
+            for n in unique_comparison_methods
+        },
+    )
 
     # Generate a color mapping based on sample names
     colors = sns.color_palette("hls", len(unique_samples))
     color_mapping = dict(zip(unique_samples, colors))
 
     # Add tracks to hub
-    for category_name, df in df_bigwigs.groupby('track_categories'):
-        
+    for category_name, df in df_bigwigs.groupby("track_categories"):
+
         composite = trackhub.CompositeTrack(
-                            name=category_name,
-                            short_label=category_name,
-                            dimensions='dimensionX=samplename dimensionY=viewpoint',
-                            sortOrder='samplename=+ viewpoint=+',
-                            tracktype='bigWig',
-                            visibility='hide',
-                            dragAndDrop='subTracks',
-                            allButtonPair='off',
-                        )
+            name=category_name,
+            short_label=category_name,
+            dimensions="dimensionX=samplename dimensionY=viewpoint dimensionA=replicate_summary_method",
+            sortOrder="samplename=+ viewpoint=+",
+            tracktype="bigWig",
+            visibility="hide",
+            dragAndDrop="subTracks",
+            allButtonPair="off",
+        )
 
         composite.add_subgroups([subgroup_vp, subgroup_sample])
-        
+
         for bw in df.itertuples():
-            t = trackhub.Track(name=f'{bw.samplename}_{bw.viewpoint}_{bw.method.replace("-summary", "")}', 
-                        source=bw.fn, 
-                        autoScale='off',
-                        tracktype='bigWig',
-                        windowingFunction='maximum', 
-                        subgroups={'viewpoint': bw.viewpoint.lower(), 'samplename':bw.samplename.lower()},
-                        color=','.join([str(int(x*255)) for x in color_mapping[bw.samplename]]))
-            
+            t = trackhub.Track(
+                name=f'{bw.samplename}_{bw.viewpoint}_{bw.method.replace("-summary", "")}',
+                source=bw.fn,
+                autoScale="off",
+                tracktype="bigWig",
+                windowingFunction="maximum",
+                subgroups={
+                    "viewpoint": bw.viewpoint.lower(),
+                    "samplename": bw.samplename.lower(),
+                    "replicate_summary_method": bw.method.lower(),
+                },
+                color=",".join(
+                    [str(int(x * 255)) for x in color_mapping[bw.samplename]]
+                ),
+            )
+
             # Only add a group if this is an assembly hub
             if groups_file:
-                t.add_params(group=P.PARAMS['hub_name'])
-            
-            composite.add_subtrack(t)
-        
-        trackdb.add_tracks(composite)
+                t.add_params(group=P.PARAMS["hub_name"])
 
+            composite.add_subtrack(t)
+
+        trackdb.add_tracks(composite)
 
     # Stage hub
 
