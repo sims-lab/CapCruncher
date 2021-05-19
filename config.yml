@@ -46,7 +46,7 @@ genome:
     # Determines if this is a custom genome. Only needed for UCSC hub generation.
     custom: False
 
-    # Organism name. Only needed for UCSC hub using a custom genome.
+    # Organism name e.g. Mus Musculus. Only needed for UCSC hub using a custom genome.
     organism: ORGANISM
 
     # Path to twobit file for genome. Only needed for UCSC hub using a custom genome.
