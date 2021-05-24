@@ -16,9 +16,11 @@ import xxhash
 from pybedtools import BedTool
 import pybedtools
 
+
 def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
-    '''Inverts key: value pairs into value: key pairs'''
+    """Inverts key: value pairs into value: key pairs"""
     yield from ((v, k) for k, v in d.items())
+
 
 def is_on(param: str) -> bool:
     """
@@ -37,7 +39,6 @@ def is_on(param: str) -> bool:
         return True
     else:
         return False
-
 
 
 def is_off(param: str):
@@ -94,8 +95,9 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
         else:
             if verbose:
                 print(e)
-       
+
         return False
+
 
 def bed_has_name(bed: Union[str, BedTool]) -> bool:
     """Returns true if bed file has at least 4 columns"""
@@ -180,9 +182,7 @@ def split_intervals_on_chrom(intervals: Union[str, BedTool, pd.DataFrame]) -> di
 
 
 def intersect_bins(
-    bins_1: pd.DataFrame, 
-    bins_2: pd.DataFrame,
-    **bedtools_kwargs
+    bins_1: pd.DataFrame, bins_2: pd.DataFrame, **bedtools_kwargs
 ) -> pd.DataFrame:
     """Intersects two sets of genomic intervals using bedtools intersect.
 
@@ -244,124 +244,6 @@ def get_timing(task_name=None) -> Callable:
     return wrapper
 
 
-def get_ucsc_color(color) -> str:
-    """Converts rgb to UCSC compatable colours"""
-    return ",".join([str(int(i * 255)).strip() for i in color])
-
-
-def get_colors(items: Iterable, colors: Union[Iterable, None] = None):
-    """Extracts the appropriate number of colours for the items
-    and formats them for UCSC."""
-
-    import seaborn as sns
-    import matplotlib
-
-    if not colors:
-        colors = sns.color_palette("rainbow", len(items))
-        return [get_ucsc_color(color) for color in colors]
-    else:
-        colors = [
-            matplotlib.colors.to_rgb(color) for color in re.split(r"\s|,|;", colors)
-        ]
-        return [color for i, color in zip(items, cycle(colors))]
-
-
-def add_bigwigs_to_track(
-    track_collection,
-    bigwigs: list,
-    replacements: list = None,
-    suffix: str = None,
-    subtrack: bool = False,
-):
-
-    import trackhub
-
-    for bw, color in zip(bigwigs, get_colors(bigwigs)):
-
-        bw_base = os.path.basename(bw)
-        bw_sanitized = bw_base
-
-        if replacements:
-            for rep in replacements:
-                bw_sanitized = bw_sanitized.replace(rep, "")
-
-        track = trackhub.Track(
-            name=f"{bw_sanitized.strip('_.- ')}{'_' + suffix if suffix else ''}",
-            source=bw,
-            visibility="hide",
-            color=color,
-            autoScale="on",
-            tracktype="bigWig",
-            windowingFunction="maximum",
-        )
-
-        if subtrack:
-            track_collection.add_subtrack(track)
-        else:
-            track_collection.add_tracks(track)
-
-
-def make_group_track(
-    bigwigs: list,
-    key: Union[callable, str, int],
-    overlay=True,
-    overlay_exclude: list = None,
-) -> dict:
-
-    """Generates a UCSC super track by grouping inputs by the provided key."""
-
-    import trackhub
-
-    super_tracks_dict = dict()
-    replacements = [".bigWig", ".normalised.", ".subtraction.", ".mean."]
-
-
-    for name, bws in groupby(sorted(bigwigs, key=key), key=key):
-
-        bws = list(bws)
-        name_sanitized = name.replace(" ", "_").replace(".", "_")
-        replacements.append(name)
-
-        # Create a super track
-        super_track = trackhub.SuperTrack(name=name_sanitized)
-
-        # Add tracks to the super track
-        add_bigwigs_to_track(
-            track_collection=super_track,
-            bigwigs=bws,
-            suffix=name,
-            subtrack=False,
-            replacements=replacements,
-        )
-
-        # Create an overlay track
-        if overlay and not any(e in name for e in overlay_exclude):
-
-            overlay_track = trackhub.AggregateTrack(
-                name=f"{name_sanitized}_overlay",
-                aggregate="transparentOverlay",
-                visibility="full",
-                tracktype="bigWig",
-                maxHeightPixels="8:80:128",
-                showSubtrackColorOnUi="on",
-                windowingFunction="maximum",
-            )
-
-            add_bigwigs_to_track(
-                track_collection=overlay_track,
-                bigwigs=[bw for bw in bws if not any(e in bw for e in overlay_exclude)],
-                suffix=f"{name}_subtrack",
-                subtrack=True,
-                replacements=replacements,
-            )
-
-            super_track.add_tracks(overlay_track)
-
-        super_tracks_dict[name] = super_track
-
-    return super_tracks_dict
-
-
 def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
     """Converts a str or pd.DataFrame to a pybedtools.BedTool object"""
     if isinstance(bed, str):
@@ -372,6 +254,30 @@ def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
         bed_conv = bed
 
     return bed_conv
+
+
+def categorise_tracks(ser: pd.Series) -> list:
+    """Gets a series for grouping tracks together 
+
+    Args:
+        ser (pd.Series): File names to map
+
+    Returns:
+        list: Mapping for grouping.
+    """
+    mapping = {
+        "summary": "Replicate_Summary",
+        "subtraction": "Sample_Comparison",
+        "normalised": "Samples_Normalised",
+        "raw": "Samples_Unormalised",
+    }
+    categories = []
+    for index, value in ser.iteritems():
+        for key in mapping:
+            if key in value:
+                categories.append(mapping[key])
+
+    return categories
 
 
 def convert_bed_to_dataframe(bed: Union[str, BedTool, pd.DataFrame]) -> pd.DataFrame:
@@ -438,7 +344,9 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
     return bt
 
 
-def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named=False) -> Tuple[str]:
+def convert_interval_to_coords(
+    interval: Union[pybedtools.Interval, dict], named=False
+) -> Tuple[str]:
     """Converts interval object to standard genomic coordinates.
 
     e.g. chr1:1000-2000
@@ -450,22 +358,29 @@ def convert_interval_to_coords(interval: Union[pybedtools.Interval, dict], named
         Tuple: Genomic coordinates in the format chr:start-end
     """
     if not named:
-        return ('Unnammed', f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
+        return (
+            "Unnammed",
+            f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',
+        )
     else:
         return (
             interval["name"],
             f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',
         )
-        return (interval['name'], f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}')
-    
+        return (
+            interval["name"],
+            f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',
+        )
 
-class PysamFakeEntry():
-    '''Testing class used to supply a pysam FastqProxy like object'''
+
+class PysamFakeEntry:
+    """Testing class used to supply a pysam FastqProxy like object"""
+
     def __init__(self, name, sequence, quality):
         self.name = name
         self.sequence = sequence
         self.quality = quality
-        self.comment = ''
-    
+        self.comment = ""
+
     def __repr__(self) -> str:
-       return  '|'.join([self.name, self.sequence, '+', self.quality])
+        return "|".join([self.name, self.sequence, "+", self.quality])

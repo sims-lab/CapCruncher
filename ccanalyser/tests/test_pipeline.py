@@ -86,7 +86,7 @@ def test_pipeline_all():
 
     cmd = f'python {dir_pipeline}/pipeline.py make --local -p 4'
     completed = subprocess.run(cmd.split())
-
+    
     assert completed.returncode == 0
     assert os.path.exists('statistics/visualise_statistics.html')
     assert len(glob.glob('ccanalyser_analysis/bigwigs/Slc25A37*.bigWig')) == 16
