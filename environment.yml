@@ -32,3 +32,4 @@ dependencies:
   - trackhub
   - seaborn
   - ucsc-fatotwobit
+  - ucsc-bedtobigbed
