@@ -27,7 +27,8 @@ def cleanup():
     for fn in glob.glob(os.path.join(dir_test, "test", "*.hdf5")):
         os.unlink(fn)
     
-    os.unlink(os.path.join(dir_test, "test", 'genome_binner.pkl'))
+    if os.path.exists(os.path.join(dir_test, "test", 'genome_binner.pkl')):
+        os.unlink(os.path.join(dir_test, "test", 'genome_binner.pkl'))
 
 
 
