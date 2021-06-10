@@ -86,12 +86,12 @@ P.get_parameters("config.yml")
 N_SAMPLES = len(
     {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) for fn in glob.glob("*.fastq*")}
 )
-
 # Has valid plotting coordinate bed file
 VALID_PLOT_COORDINATES = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
-
 # Create a UCSC hub or not
 MAKE_HUB = is_on(P.PARAMS.get("hub_create"))
+# Turns on FASTQ deduplication
+FASTQ_DEUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
 
 
 ##############################
@@ -274,7 +274,7 @@ def fastq_qc(infile, outfile):
 
 
 @follows(mkdir("statistics"))
-@merge(fastq_qc, "statistics/fastqc_report.html")
+@merge(fastq_qc, "ccanalyser_statistics/fastqc_report.html")
 def fastq_multiqc(infile, outfile):
     """Collate fastqc reports into single report using multiqc"""
 
@@ -333,7 +333,8 @@ def fastq_split(infiles, outfile):
     touch_file(outfile)
 
 
-@active_if(P.PARAMS.get("deduplication_pre-dedup", False))
+
+@active_if(FASTQ_DEUPLICATE)
 @follows(
     mkdir("ccanalyser_preprocessing/deduplicated"),
     mkdir("ccanalyser_preprocessing/deduplicated/deduplicated_ids"),
@@ -353,7 +354,7 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
     Runs :ref:`ccanalyser fastq deduplicate parse <CLI Documentation>`
 
     """
-
+    
     fq1, fq2 = [os.path.abspath(fn) for fn in infiles]
 
     statement = """ccanalyser fastq deduplicate parse
@@ -367,7 +368,6 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
         job_memory="6G",
         job_condaenv=P.PARAMS["conda_env"],
     )
-
 
 @collate(
     fastq_duplicates_parse,
@@ -400,11 +400,10 @@ def fastq_duplicates_identify(infiles, outfile):
         zap_file(fn)
 
 
-@active_if(P.PARAMS.get("deduplication_pre-dedup", False))
 @follows(
     fastq_duplicates_parse,
     fastq_duplicates_identify,
-    mkdir("statistics/deduplication/data/"),
+    mkdir("ccanalyser_statistics/deduplication/data/"),
 )
 @collate(
     "ccanalyser_preprocessing/split/*.fastq*",
@@ -424,16 +423,27 @@ def fastq_duplicates_remove(infiles, outfile):
     dd_ids = (
         f"ccanalyser_preprocessing/deduplicated/deduplicated_ids/{sample_name}.json.gz"
     )
-    stats_prefix = f"statistics/deduplication/data/{sample_name}_{sample_part}"
+    stats_prefix = f"ccanalyser_statistics/deduplication/data/{sample_name}{sample_part}"
     output_prefix = outfile.replace(".completed", "")
 
-    statement = """ccanalyser fastq deduplicate remove
-                            %(fq1)s %(fq2)s
-                            -d %(dd_ids)s
-                            -o %(output_prefix)s
-                            --sample_name %(sample_name)s
-                            --stats_prefix %(stats_prefix)s
-                            """
+    if FASTQ_DEUPLICATE:
+        statement = """ccanalyser fastq deduplicate remove
+                                %(fq1)s %(fq2)s
+                                -d %(dd_ids)s
+                                -o %(output_prefix)s
+                                --sample_name %(sample_name)s
+                                --stats_prefix %(stats_prefix)s
+                                """
+    else:
+        statement = """ln -s $(pwd)/%(fq1)s %(output_prefix)s_1.fastq &&
+                       ln -s $(pwd)/%(fq2)s %(output_prefix)s_2.fastq &&
+                       lc=$(cat %(fq1)s | wc -l);
+                       logfile=%(stats_prefix)s.deduplication.csv;
+                       echo "stat,stat_type,read_type,read_number,stage,sample" > $logfile;
+                       echo -e $(($lc / 4)),reads_total,pe,0,deduplication,%(sample_name)s >> $logfile;
+                       echo -e $(($lc / 4)),reads_unique,pe,0,deduplication,%(sample_name)s >> $logfile;
+                       echo -e 0,reads_removed,pe,0,deduplication,%(sample_name)s >> $logfile
+                    """
 
     P.run(
         statement,
@@ -446,14 +456,15 @@ def fastq_duplicates_remove(infiles, outfile):
     touch_file(outfile)
 
     # Replace infiles with empty files
-    for fn in infiles:
-        zap_file(fn)
+    if FASTQ_DEUPLICATE:
+        for fn in infiles:
+            zap_file(fn)
 
 
 @follows(fastq_duplicates_remove)
 @merge(
-    "statistics/deduplication/data/*.csv",
-    "statistics/deduplication/deduplication.reads.csv",
+    "ccanalyser_statistics/deduplication/data/*.csv",
+    "ccanalyser_statistics/deduplication/deduplication.reads.csv",
 )
 def stats_deduplication_collate(infiles, outfile):
 
@@ -474,7 +485,7 @@ def stats_deduplication_collate(infiles, outfile):
 @follows(
     mkdir("ccanalyser_preprocessing/trimmed"),
     fastq_duplicates_remove,
-    mkdir("statistics/trimming/data/"),
+    mkdir("ccanalyser_statistics/trimming/data/"),
 )
 @collate(
     "ccanalyser_preprocessing/deduplicated/*.fastq*",
@@ -498,8 +509,8 @@ def fastq_trim(infiles, outfile):
                    -o %(outdir)s
                    %(fq1)s
                    %(fq2)s
-                   && mv ccanalyser_preprocessing/trimmed/%(fq1_basename)s_trimming_report.txt statistics/trimming/data
-                   && mv ccanalyser_preprocessing/trimmed/%(fq2_basename)s_trimming_report.txt statistics/trimming/data
+                   && mv ccanalyser_preprocessing/trimmed/%(fq1_basename)s_trimming_report.txt ccanalyser_statistics/trimming/data
+                   && mv ccanalyser_preprocessing/trimmed/%(fq2_basename)s_trimming_report.txt ccanalyser_statistics/trimming/data
                    """
     P.run(
         statement,
@@ -517,7 +528,7 @@ def fastq_trim(infiles, outfile):
 
 
 @follows(fastq_trim)
-@merge("statistics/trimming/data/*.txt", r"statistics/trimming/trimming.summary.csv")
+@merge("ccanalyser_statistics/trimming/data/*.txt", r"ccanalyser_statistics/trimming/trimming.summary.csv")
 def stats_trim_collate(infiles, outfile):
 
     """Extracts and collates adapter trimming statistics from trim_galore output"""
@@ -539,7 +550,7 @@ def stats_trim_collate(infiles, outfile):
         )
     )
 
-    df_trimming_stats.to_csv("statistics/trimming/trimming.summary.csv", index=False)
+    df_trimming_stats.to_csv("ccanalyser_statistics/trimming/trimming.summary.csv", index=False)
 
 
 @follows(fastq_trim, mkdir("ccanalyser_preprocessing/flashed"))
@@ -573,7 +584,7 @@ def fastq_flash(infiles, outfile):
 @follows(
     mkdir("ccanalyser_preprocessing/digested"),
     fastq_flash,
-    mkdir("statistics/digestion/data"),
+    mkdir("ccanalyser_statistics/digestion/data"),
 )
 @transform(
     "ccanalyser_preprocessing/flashed/*.fastq.gz",
@@ -598,7 +609,7 @@ def fastq_digest_combined(infile, outfile):
                    --minimum_slice_length 18
                    --compression_level %(pipeline_compression)s
                    -p 1
-                   --stats_prefix statistics/digestion/data/%(fn)s.flashed
+                   --stats_prefix ccanalyser_statistics/digestion/data/%(fn)s.flashed
                    --sample_name %(sn)s
                     """
     P.run(
@@ -611,7 +622,7 @@ def fastq_digest_combined(infile, outfile):
     zap_file(infile)
 
 
-@follows(fastq_flash, mkdir("statistics/digestion"))
+@follows(fastq_flash, mkdir("ccanalyser_statistics/digestion"))
 @collate(
     "ccanalyser_preprocessing/flashed/*.fastq.gz",
     regex(r"ccanalyser_preprocessing/flashed/(.*).notCombined_[12].fastq.gz"),
@@ -636,7 +647,7 @@ def fastq_digest_non_combined(infiles, outfile):
                    --minimum_slice_length 18
                    -p 1
                    --compression_level %(pipeline_compression)s
-                   --stats_prefix statistics/digestion/data/%(fn)s.pe
+                   --stats_prefix ccanalyser_statistics/digestion/data/%(fn)s.pe
                    --sample_name %(sn)s
                    """
 
@@ -652,7 +663,7 @@ def fastq_digest_non_combined(infiles, outfile):
 
 
 @follows(fastq_digest_combined, fastq_digest_non_combined)
-@merge("statistics/digestion/data/*", "statistics/digestion/digestion.reads.csv")
+@merge("ccanalyser_statistics/digestion/data/*", "ccanalyser_statistics/digestion/digestion.reads.csv")
 def stats_digestion_collate(infiles, outfile):
 
     """Aggregates in silico digestion statistics from fastq file partitions."""
@@ -943,7 +954,7 @@ def post_annotation():
     post_annotation,
     annotate_alignments,
     mkdir("ccanalyser_analysis/reporters/unfiltered/"),
-    mkdir("statistics/reporters/data"),
+    mkdir("ccanalyser_statistics/reporters/data"),
 )
 @transform(
     fastq_alignment,
@@ -963,7 +974,7 @@ def alignments_filter(infiles, outfile):
     output_prefix = outfile.replace(".completed", "")
     output_log_file = f"{output_prefix}.log"
     stats_prefix = (
-        f"statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
+        f"ccanalyser_statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
     )
 
     statement = """ccanalyser
@@ -1073,7 +1084,7 @@ def alignments_deduplicate_slices(
 
     slices, duplicated_ids = infile
     stats_prefix = (
-        f"statistics/reporters/data/{sample_name}_{read_type}_{capture_oligo}"
+        f"ccanalyser_statistics/reporters/data/{sample_name}_{read_type}_{capture_oligo}"
     )
 
     statement = """ccanalyser alignments deduplicate
@@ -1128,7 +1139,7 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
 
 
 @follows(alignments_deduplicate_collate)
-@merge("statistics/reporters/data/*", "statistics/reporters/reporters.reads.csv")
+@merge("ccanalyser_statistics/reporters/data/*", "ccanalyser_statistics/reporters/reporters.reads.csv")
 def stats_alignment_filtering_collate(infiles, outfile):
 
     """'Combination of all reporter identification and filtering statistics"""
@@ -1345,7 +1356,7 @@ def reporters_store_merged(infiles, outfile, sample_name):
         stats_digestion_collate,
         stats_alignment_filtering_collate,
     ],
-    "statistics/run_statistics.csv",
+    "ccanalyser_statistics/run_statistics.csv",
 )
 def pipeline_merge_stats(infiles, outfile):
 
@@ -1363,7 +1374,7 @@ def pipeline_merge_stats(infiles, outfile):
 
 @merge(
     [pipeline_merge_stats],
-    "statistics/visualise_statistics.html",
+    "ccanalyser_statistics/visualise_statistics.html",
 )
 def pipeline_make_report(infile, outfile):
     """Run jupyter notebook for reporting and plotting pipeline statistics"""
@@ -1372,19 +1383,19 @@ def pipeline_make_report(infile, outfile):
     path_script_dir = os.path.dirname(path_script)
     path_nb_dir = os.path.dirname(path_script_dir)
 
-    statement_clean = "rm statistics/visualise_statistics* -f"
+    statement_clean = "rm ccanalyser_statistics/visualise_statistics* -f"
 
     statement_papermill = """papermill
                              -k python3
-                             -p directory $(pwd)/statistics/
+                             -p directory $(pwd)/ccanalyser_statistics/
                              %(path_nb_dir)s/visualise_statistics.ipynb
-                             statistics/visualise_statistics.ipynb
+                             ccanalyser_statistics/visualise_statistics.ipynb
                             """
     statement_nbconvert = """jupyter nbconvert
                              --no-input
                              --to html
-                             statistics/visualise_statistics.ipynb
-                             statistics/visualise_statistics.html
+                             ccanalyser_statistics/visualise_statistics.ipynb
+                             ccanalyser_statistics/visualise_statistics.html
                           """
 
     P.run(

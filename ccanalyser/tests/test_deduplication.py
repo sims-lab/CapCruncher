@@ -27,7 +27,7 @@ test_data = [(PysamFakeEntry('1_1', 'AAAA', '\\\\'), PysamFakeEntry('1_2', 'TTTT
              (PysamFakeEntry('3_1', 'TTTT', '\\\\'), PysamFakeEntry('3_2', 'AAAA', '\\\\')),
             ]
 
-test_data_dedup = [(PysamFakeEntry('2_1', 'AAAA', '\\\\'), PysamFakeEntry('2_2', 'TTTT', '\\\\')),
+test_data_dedup = [(PysamFakeEntry('1_1', 'AAAA', '\\\\'), PysamFakeEntry('1_2', 'TTTT', '\\\\')),
                    (PysamFakeEntry('3_1', 'TTTT', '\\\\'), PysamFakeEntry('3_2', 'AAAA', '\\\\')),
             ]
 
@@ -97,7 +97,7 @@ def test_fastq_removal():
 
     with open(test_duplicates_path) as r:
         duplicates = ujson.load(r)
-        duplicates_set = set(duplicates)
+        duplicates_set = {int(k) for k in duplicates}
 
 
     rdrp = ReadDuplicateRemovalProcess(inq=inq, 
@@ -113,7 +113,6 @@ def test_fastq_removal():
 
     rdrp.join()
     rdrp.terminate()
-
 
     # Correct number of duplicates removed
     assert len(result)  == len(test_data_dedup)
