@@ -1346,11 +1346,6 @@ def pipeline_merge_stats(infiles, outfile):
 def pipeline_make_report(infile, outfile):
     """Run jupyter notebook for reporting and plotting pipeline statistics"""
 
-    # Make sure black cache is generated
-    import black
-
-    black.CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
     path_script = __file__
     path_script_dir = os.path.dirname(path_script)
     path_nb_dir = os.path.dirname(path_script_dir)
