@@ -99,6 +99,28 @@ MAKE_HUB = is_on(P.PARAMS.get("hub_create"))
 ##############################
 
 
+def check_config():
+    """
+    Checks that all essential configuration has been provided.
+    """
+
+    if not os.path.exists("config.yml"):
+        raise OSError("Configuration file: config.yml. Not present in working directory")
+
+    essential_keys = [
+        "analysis_method",
+        "analysis_viewpoints",
+        "analysis_restriction_enzyme",
+        "genome_name",
+        "genome_fasta",
+        "genome_aligner_index",
+    ]
+
+    for key in essential_keys:
+        if not key in P.PARAMS:
+            raise ValueError(f'No value provided for {key} in config.yml. Please correct this and re-run.')
+
+
 def modify_pipeline_params_dict():
 
     """
@@ -1618,7 +1640,6 @@ def viewpoints_to_bigbed(infile, outfile):
 def hub_make(infiles, outfile):
     """Creates a ucsc hub from the pipeline output"""
 
-
     import trackhub
     import seaborn as sns
     from ccanalyser.utils import categorise_tracks
@@ -1732,7 +1753,7 @@ def hub_make(infiles, outfile):
             composite.add_params(group=P.PARAMS["hub_name"])
 
         composite.add_subgroups([subgroup_vp, subgroup_sample, subgroup_method])
-        #composite.add_params(html=os.path.basename(stats_report))
+        # composite.add_params(html=os.path.basename(stats_report))
 
         for bw in df.itertuples():
             t = trackhub.Track(
@@ -1925,6 +1946,7 @@ if __name__ == "__main__":
     elif not "make" in sys.argv:
         P.main(sys.argv)
     else:
+        check_config()
         set_up_chromsizes()
         modify_pipeline_params_dict()
         check_user_supplied_paths()
