@@ -89,7 +89,7 @@ def identify(input_files: Tuple, output: os.PathLike = "duplicates.json"):
     np.random.shuffle(input_files)
 
     sequences_dedup = set() 
-    reads_duplicated = set()
+    reads_duplicated = list()
 
     for ii, fn in enumerate(tqdm.tqdm(input_files)): 
         
@@ -99,7 +99,7 @@ def identify(input_files: Tuple, output: os.PathLike = "duplicates.json"):
             if not sequence_hash in sequences_dedup:
                 sequences_dedup.add(sequence_hash)
             else:
-                reads_duplicated.add(name_hash)
+                reads_duplicated.append(name_hash)
 
     del sequences_dedup
 
@@ -140,7 +140,9 @@ def remove(
     
     """
 
-    duplicated_ids = set(load_json(duplicated_ids))
+    with xopen(duplicated_ids, 'r') as r:
+        duplicated_ids = {int(k) for k in ujson.load(r)}
+
     inputq = SimpleQueue()  # Reads are placed into this queue for deduplication
     writeq = SimpleQueue()  # Deduplicated reads are placed into the queue for writing
     statq = SimpleQueue()  # Statistics are sent on this queue for processing
