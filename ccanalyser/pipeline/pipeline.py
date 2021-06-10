@@ -36,6 +36,7 @@ Optional:
 """
 
 from collections import defaultdict
+from math import inf
 import os
 import re
 import sys
@@ -45,7 +46,7 @@ from cgatcore.iotools import touch_file, zap_file
 import itertools
 import warnings
 import glob
-from cgatcore.pipeline.parameters import PARAMS
+import shutil
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
@@ -71,7 +72,7 @@ from ccanalyser.tools.statistics import (
     extract_trimming_stats,
 )
 
-from ccanalyser.utils import is_on, is_none, is_valid_bed, make_group_track
+from ccanalyser.utils import is_on, is_none, is_valid_bed
 
 
 ##############################
@@ -162,9 +163,6 @@ def check_user_supplied_paths():
     chrom_sizes = P.PARAMS["genome_chrom_sizes"]
     if any(ext in chrom_sizes for ext in [".txt", ".fai", ".tsv"]):
         paths_to_check.append("genome_chrom_sizes")
-
-    if MAKE_HUB:
-        paths_to_check.append("hub_dir")
 
     for path_name in paths_to_check:
 
@@ -293,7 +291,7 @@ def fastq_split(infiles, outfile):
     """
 
     infiles = " ".join(infiles)
-    output_prefix = outfile.replace(".log", "")
+    output_prefix = outfile.replace(".completed", "")
 
     statement = """ccanalyser fastq split
                 %(infiles)s
@@ -763,7 +761,9 @@ def annotate_make_exclusion_bed(outfile):
 
     """Generates exclusion window around each capture site"""
 
-    assert is_valid_bed(P.PARAMS['analysis_viewpoints']), "Viewpoints bed file is not a valid bed file"
+    assert is_valid_bed(
+        P.PARAMS["analysis_viewpoints"]
+    ), "Viewpoints bed file is not a valid bed file"
     statement = """bedtools slop
                     -i %(analysis_viewpoints)s -g %(genome_chrom_sizes)s -b %(analysis_reporter_exclusion_zone)s
                     | bedtools subtract -a - -b %(analysis_viewpoints)s
@@ -780,10 +780,12 @@ def annotate_make_exclusion_bed(outfile):
 def annotate_sort_viewpoints(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
-    
-    assert is_valid_bed(P.PARAMS['analysis_viewpoints']), "Viewpoints bed file is not a valid bed file"
+
+    assert is_valid_bed(
+        P.PARAMS["analysis_viewpoints"]
+    ), "Viewpoints bed file is not a valid bed file"
     statement = """cat %(analysis_viewpoints)s | sort -k1,1 -k2,2n > %(outfile)s"""
-    
+
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -881,7 +883,7 @@ def annotate_alignments(infile, outfile):
     flags = {"name": "-n", "fn": "-b", "action": "-a", "fraction": "-f"}
 
     cmd_args = []
-    for args in infile[1]: # infile[1] == arguments for annotation
+    for args in infile[1]:  # infile[1] == arguments for annotation
         for arg_name, arg in args.items():
             cmd_args.append(f'{flags.get(arg_name)} {arg if arg else "-"}')
 
@@ -937,7 +939,7 @@ def alignments_filter(infiles, outfile):
     sample_read_type = sample.group(3)
 
     output_prefix = outfile.replace(".completed", "")
-    output_log_file = f'{output_prefix}.log'
+    output_log_file = f"{output_prefix}.log"
     stats_prefix = (
         f"statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
     )
@@ -952,7 +954,8 @@ def alignments_filter(infiles, outfile):
                    --stats_prefix %(stats_prefix)s
                    --sample_name %(sample_name)s
                    --read_type %(sample_read_type)s
-                   > %(outfile)s 2>&1"""
+                   > %(output_log_file)s
+                """
     P.run(
         statement,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -964,7 +967,7 @@ def alignments_filter(infiles, outfile):
     touch_file(outfile)
 
     # Zero annotations
-    if not P.PARAMS.get('analysis_optional_keep_annotations', False):
+    if not P.PARAMS.get("analysis_optional_keep_annotations", False):
         zap_file(annotations)
 
 
@@ -979,7 +982,7 @@ def alignments_filter(infiles, outfile):
 )
 def reporters_collate(infiles, outfile, *grouping_args):
 
-    """Concatenates identified reporters """
+    """Concatenates identified reporters"""
 
     statement = []
     for ii, fn in enumerate(infiles):
@@ -1486,13 +1489,22 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
 @transform(
     reporters_make_union_bedgraph,
     regex(r"ccanalyser_compare/bedgraphs_union/(.*)\.normalised\.tsv"),
-    r"ccanalyser_compare/bedgraphs_comparison/\1.log",
+    r"ccanalyser_compare/bedgraphs_comparison/\1.completed",
     extras=[r"\1"],
 )
 def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
+    import numpy as np
+
     df_bdg = pd.read_csv(infile, sep="\t")
     dir_output = os.path.dirname(outfile)
+
+    summary_methods = [
+        m
+        for m in re.split(r"[,;\s+]", P.PARAMS.get("compare_summary_methods", "mean,"))
+        if m
+    ]
+    summary_functions = {method: getattr(np, method) for method in summary_methods}
 
     # If no design matrix, make one assuming the format has been followed
     if not P.PARAMS.get("analysis_design"):
@@ -1501,58 +1513,49 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
     condition_groups = df_design.groupby("condition").groups
 
-    for a, b in itertools.combinations(condition_groups, 2):
+    for a, b in itertools.permutations(condition_groups, 2):
 
         # Extract the two groups
         df_a = df_bdg.loc[:, condition_groups[a]]
         df_b = df_bdg.loc[:, condition_groups[b]]
 
-        # Get mean counts
-        a_mean = df_a.mean(axis=1)
-        b_mean = df_b.mean(axis=1)
+        for summary_method in summary_functions:
+            # Get summary counts
+            a_summary = pd.Series(
+                df_a.pipe(summary_functions[summary_method], axis=1),
+                name=summary_method,
+            )
+            b_summary = pd.Series(
+                df_b.pipe(summary_functions[summary_method], axis=1),
+                name=summary_method,
+            )
 
-        # Subtractions
-        a_mean_sub_b_mean = a_mean - b_mean
-        b_mean_sub_a_mean = b_mean - a_mean
+            df_a_bdg = pd.concat([df_bdg.iloc[:, :3], a_summary], axis=1)
+            df_b_bdg = pd.concat([df_bdg.iloc[:, :3], b_summary], axis=1)
+            df_subtraction_bdg = pd.concat(
+                [df_bdg.iloc[:, :3], a_summary - b_summary], axis=1
+            )
 
-        # Merge with coordinates
-        a_mean_bdg = pd.concat([df_bdg.iloc[:, :3], a_mean], axis=1)
-        b_mean_bdg = pd.concat([df_bdg.iloc[:, :3], b_mean], axis=1)
+            df_a_bdg.to_csv(
+                f"{dir_output}/{a}.{summary_method}-summary.{viewpoint}.bedgraph",
+                sep="\t",
+                header=False,
+                index=None,
+            )
 
-        a_mean_sub_b_mean_bdg = pd.concat(
-            [df_bdg.iloc[:, :3], a_mean_sub_b_mean], axis=1
-        )
-        b_mean_sub_a_mean_bdg = pd.concat(
-            [df_bdg.iloc[:, :3], b_mean_sub_a_mean], axis=1
-        )
+            df_b_bdg.to_csv(
+                f"{dir_output}/{b}.{summary_method}-summary.{viewpoint}.bedgraph",
+                sep="\t",
+                header=False,
+                index=None,
+            )
 
-        # Output bedgraphs
-        a_mean_bdg.to_csv(
-            f"{dir_output}/{a}_mean.{viewpoint}.bedgraph",
-            sep="\t",
-            index=None,
-            header=False,
-        )
-
-        b_mean_bdg.to_csv(
-            f"{dir_output}/{b}.mean.{viewpoint}.bedgraph",
-            sep="\t",
-            index=None,
-            header=False,
-        )
-
-        a_mean_sub_b_mean_bdg.to_csv(
-            f"{dir_output}/{a}_vs_{b}.subtraction.{viewpoint}.bedgraph",
-            sep="\t",
-            index=None,
-            header=False,
-        )
-        b_mean_sub_a_mean_bdg.to_csv(
-            f"{dir_output}/{b}_vs_{a}.subtraction.{viewpoint}.bedgraph",
-            sep="\t",
-            index=None,
-            header=False,
-        )
+            df_subtraction_bdg.to_csv(
+                f"{dir_output}/{a}_vs_{b}.{summary_method}-subtraction.{viewpoint}.bedgraph",
+                sep="\t",
+                index=None,
+                header=False,
+            )
 
     touch_file(outfile)
 
@@ -1593,76 +1596,218 @@ def reporters_make_bigwig(infile, outfile):
 #######################
 
 
+@mkdir("ccanalyser_analysis/viewpoints/")
+@transform(
+    annotate_sort_viewpoints,
+    regex(r".*/(.*).bed"),
+    r"ccanalyser_analysis/viewpoints/\1.bigBed",
+)
+def viewpoints_to_bigbed(infile, outfile):
+
+    statement = """bedToBigBed %(infile)s %(genome_chrom_sizes)s %(outfile)s"""
+
+    P.run(
+        statement,
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
+    )
+
+
 @active_if(MAKE_HUB)
 @merge(
-    reporters_make_bigwig,
+    [reporters_make_bigwig, viewpoints_to_bigbed, pipeline_make_report],
     os.path.join(
         P.PARAMS.get("hub_dir", ""), P.PARAMS.get("hub_name", "") + ".hub.txt"
     ),
-    extras=[pipeline_make_report],
 )
-def hub_make(infiles, outfile, statistics):
+def hub_make(infiles, outfile):
     """Creates a ucsc hub from the pipeline output"""
 
+
     import trackhub
+    import seaborn as sns
+    from ccanalyser.utils import categorise_tracks
 
-    excluded = [
-        "raw",
-    ]
+    # Extract statistics
+    stats_report = [fn for fn in infiles if fn.endswith(".html")][0]
 
-    bigwigs = [fn for fn in infiles if not any(e in fn for e in excluded)]
-    key_sample = lambda b: os.path.basename(b).split(".")[0]
-    key_capture = lambda b: b.split(".")[-2]
+    # Create a dataframe with bigwig attributes and paths
+    bigwigs = [fn for fn in infiles if fn.endswith(".bigWig")]
+    df_bigwigs = (
+        pd.Series(bigwigs)
+        .to_frame("fn")
+        .assign(basename=lambda df: df["fn"].apply(os.path.basename))
+    )
+    attributes = df_bigwigs["basename"].str.extract(
+        r"(?P<samplename>.*?)\.(?P<method>.*?)\.(?P<viewpoint>.*?)\.(?P<filetype>.*)"
+    )
+    df_bigwigs = (
+        df_bigwigs.join(attributes)
+        .assign(track_categories=lambda df: categorise_tracks(df["method"]))
+        .sort_values(["samplename", "method", "viewpoint"])
+    )
 
-    # Need to make an assembly hub if this is a custom genome
-    if not P.PARAMS.get("genome_custom"):
+    # Create a hub
+    hub = trackhub.Hub(
+        hub=P.PARAMS["hub_name"],
+        short_label=P.PARAMS.get("hub_short", P.PARAMS["hub_name"]),
+        long_label=P.PARAMS.get("hub_long", P.PARAMS["hub_name"]),
+        email=P.PARAMS["hub_email"],
+    )
 
-        hub, genomes_file, genome, trackdb = trackhub.default_hub(
-            hub_name=P.PARAMS["hub_name"],
-            short_label=P.PARAMS.get("hub_short"),
-            long_label=P.PARAMS.get("hub_long"),
-            email=P.PARAMS["hub_email"],
+    ## Need to make an assembly hub if this is a custom genome
+    if P.PARAMS.get("genome_custom"):
+        genome = trackhub.Assembly(
             genome=P.PARAMS["genome_name"],
+            twobit_file=P.PARAMS["genome_twobit"],
+            organism=P.PARAMS["genome_organism"],
+            defaultPos=P.PARAMS.get("hub_default_position", "chr1:1000-2000"),
         )
-
-        for key in [key_sample, key_capture]:
-
-            tracks_grouped = make_group_track(
-                bigwigs,
-                key,
-                overlay=True,
-                overlay_exclude=["subtraction", "_vs_", "mean"],
-            )
-
-            trackdb.add_tracks(tracks_grouped.values())
-
-        trackdb.validate()
-
-        if P.PARAMS.get("hub_upload"):  # If the hub need to be uploaded to a server
-            trackhub.upload.upload_hub(
-                hub=hub, host=P.PARAMS["hub_url"], remote_dir=P.PARAMS["hub_dir"]
-            )
-        else:
-            trackhub.upload.stage_hub(hub=hub, staging=P.PARAMS["hub_dir"])
+        groups_file = trackhub.GroupsFile(
+            [
+                trackhub.GroupDefinition(
+                    name=P.PARAMS["hub_name"], priority=1, default_is_closed=False
+                ),
+            ]
+        )
+        genome.add_groups(groups_file)
 
     else:
-        raise NotImplementedError("Custom genome not yet supported")
+        genome = trackhub.Genome(P.PARAMS["genome_name"])
+        groups_file = None
 
+    # Create genomes file
+    genomes_file = trackhub.GenomesFile()
 
-@active_if(P.PARAMS.get("hub_url"))
-@follows(hub_make)
-@originate("hub_url.txt")
-def hub_write_path(outfile):
-    """Convinence task to write hub url to use for adding custom hub to UCSC genome browser"""
+    # Create trackdb
+    trackdb = trackhub.TrackDb()
 
-    with open(outfile, "w") as w:
-        url = P.PARAMS["hub_url"].rstrip("/")
-        name_dir = P.PARAMS["hub_dir"].strip("/")
-        name_hubtxt = P.PARAMS["hub_name"] + ".hub.txt"
+    # Add these to the hub
+    hub.add_genomes_file(genomes_file)
+    genome.add_trackdb(trackdb)
+    genomes_file.add_genome(genome)
 
-        path_hubtxt = f"{url}/{name_dir}/{name_hubtxt}"
+    # Extract groups for generating composite tracks
+    unique_samples = df_bigwigs["samplename"].unique()
+    unique_viewpoints = df_bigwigs["viewpoint"].unique()
+    unique_comparison_methods = df_bigwigs["method"].unique()
 
-        w.write(path_hubtxt)
+    subgroup_vp = trackhub.SubGroupDefinition(
+        name="viewpoint",
+        label="Viewpoint",
+        mapping={n.lower(): n for n in unique_viewpoints},
+    )
+    subgroup_sample = trackhub.SubGroupDefinition(
+        name="samplename",
+        label="Sample_name",
+        mapping={n.lower(): n.capitalize() for n in unique_samples},
+    )
+    subgroup_method = trackhub.SubGroupDefinition(
+        name="summary_method",
+        label="Summary_Method",
+        mapping={
+            n.split("-")[0]: n.split("-")[0].capitalize()
+            for n in unique_comparison_methods
+        },
+    )
+
+    # Generate a color mapping based on sample names
+    colors = sns.color_palette("hls", len(unique_samples))
+    color_mapping = dict(zip(unique_samples, colors))
+
+    #####################
+    # Add tracks to hub #
+    #####################
+
+    for category_name, df in df_bigwigs.groupby("track_categories"):
+
+        composite = trackhub.CompositeTrack(
+            name=category_name,
+            short_label=category_name,
+            dimensions="dimX=samplename dimY=viewpoint dimA=summary_method",
+            sortOrder="samplename=+ viewpoint=+ summary_method=+",
+            tracktype="bigWig",
+            visibility="hide",
+            dragAndDrop="subTracks",
+            allButtonPair="off",
+        )
+
+        # Only add a group if this is an assembly hub
+        if groups_file:
+            composite.add_params(group=P.PARAMS["hub_name"])
+
+        composite.add_subgroups([subgroup_vp, subgroup_sample, subgroup_method])
+        #composite.add_params(html=os.path.basename(stats_report))
+
+        for bw in df.itertuples():
+            t = trackhub.Track(
+                name=f'{bw.samplename}_{bw.viewpoint}_{bw.method.replace("-summary", "")}',
+                source=bw.fn,
+                autoScale="off",
+                tracktype="bigWig",
+                windowingFunction="maximum",
+                subgroups={
+                    "viewpoint": bw.viewpoint.lower(),
+                    "samplename": bw.samplename.lower(),
+                    "summary_method": bw.method.split("-")[0],
+                },
+                color=",".join(
+                    [str(int(x * 255)) for x in color_mapping[bw.samplename]]
+                ),
+            )
+
+            # Only add a group if this is an assembly hub
+            if groups_file:
+                t.add_params(group=P.PARAMS["hub_name"])
+
+            composite.add_subtrack(t)
+
+        trackdb.add_tracks(composite)
+
+    # Add viewpoints to hub
+    for bb in [fn for fn in infiles if fn.endswith(".bigBed")]:
+
+        t = trackhub.Track(
+            name=os.path.basename(bb).replace(".bigBed", "").capitalize(),
+            source=bb,
+            tracktype="bigBed",
+        )
+
+        if genomes_file:
+            t.add_params(group=P.PARAMS["hub_name"])
+
+        trackdb.add_tracks(t)
+
+    #############
+    # Stage hub #
+    #############
+
+    # If need to copy rather than symlink
+    if not P.PARAMS.get("hub_symlink", False):
+
+        # Stage the hub
+        trackhub.upload.stage_hub(hub=hub, staging="hub_tmp_dir")
+
+        # Copy to the new location
+        shutil.copytree(
+            "hub_tmp_dir", P.PARAMS["hub_dir"], dirs_exist_ok=True, symlinks=False
+        )
+
+        # Delete the staged hub
+        shutil.rmtree("hub_tmp_dir")
+
+    # If ok to just symlink
+    else:
+        # Use trackhub's default staging
+        trackhub.upload.stage_hub(hub=hub, staging=P.PARAMS["hub_dir"])
+
+    # Finally copy the stats report to the correct location
+    shutil.copy(
+        stats_report,
+        os.path.join(
+            P.PARAMS["hub_dir"], P.PARAMS["genome_name"], os.path.basename(stats_report)
+        ),
+    )
 
 
 ######################################
@@ -1702,7 +1847,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
 
     else:
         print("Not enough replicates for differential testing")
-    
+
     touch_file(outfile)
 
 
