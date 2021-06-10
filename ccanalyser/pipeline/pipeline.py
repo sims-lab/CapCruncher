@@ -401,7 +401,7 @@ def fastq_duplicates_remove(infiles, outfile):
     dd_ids = (
         f"ccanalyser_preprocessing/deduplicated/deduplicated_ids/{sample_name}.json.gz"
     )
-    stats_prefix = f"ccanalyser_statistics/deduplication/data/{sample_name}_{sample_part}"
+    stats_prefix = f"ccanalyser_statistics/deduplication/data/{sample_name}{sample_part}"
     output_prefix = outfile.replace(".completed", "")
 
     if FASTQ_DEUPLICATE:
@@ -413,13 +413,13 @@ def fastq_duplicates_remove(infiles, outfile):
                                 --stats_prefix %(stats_prefix)s
                                 """
     else:
-        statement = """ln -s $(pwd)/%(fq1)s %(out1)s &&
-                       ln -s $(pwd)/%(fq2)s %(out2)s &&
+        statement = """ln -s $(pwd)/%(fq1)s %(output_prefix)s_1.fastq &&
+                       ln -s $(pwd)/%(fq2)s %(output_prefix)s_2.fastq &&
                        lc=$(cat %(fq1)s | wc -l);
                        logfile=%(stats_prefix)s.deduplication.csv;
                        echo "stat,stat_type,read_type,read_number,stage,sample" > $logfile;
                        echo -e $(($lc / 4)),reads_total,pe,0,deduplication,%(sample_name)s >> $logfile;
-                       echo -e $(($lc / 4)),reads_unique,pe,0,deduplication,%(sample_name)s >> $logfile
+                       echo -e $(($lc / 4)),reads_unique,pe,0,deduplication,%(sample_name)s >> $logfile;
                        echo -e 0,reads_removed,pe,0,deduplication,%(sample_name)s >> $logfile
                     """
 
