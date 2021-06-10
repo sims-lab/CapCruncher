@@ -213,14 +213,16 @@ def intersect_bins(
     return df_intersect
 
 
-def load_json(fn) -> dict:
+def load_json(fn, dtype: str = "int") -> dict:
     """Convinence function to load gziped json file using xopen."""
 
     from xopen import xopen
 
     with xopen(fn) as r:
         d = ujson.load(r)
-        return d
+    
+    return {int(k): int(v) for k, v in d.items()}
+
 
 
 def get_timing(task_name=None) -> Callable:
