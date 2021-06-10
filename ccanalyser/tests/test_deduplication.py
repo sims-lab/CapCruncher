@@ -114,7 +114,6 @@ def test_fastq_removal():
     rdrp.join()
     rdrp.terminate()
 
-    breakpoint()
     # Correct number of duplicates removed
     assert len(result)  == len(test_data_dedup)
     
