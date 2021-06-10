@@ -161,7 +161,7 @@ def set_up_chromsizes():
 
     assert P.PARAMS.get("genome_name"), "Genome name has not been provided."
 
-    if P.PARAMS["genome_chrom_sizes"]:
+    if P.PARAMS["genome_chrom_sizes"] and os.path.exists(P.PARAMS["genome_chrom_sizes"]):
         pass
 
     elif os.path.exists("chrom_sizes.txt.tmp"):
