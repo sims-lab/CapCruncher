@@ -136,9 +136,7 @@ class ReadDuplicateRemovalProcess(Process):
 
                 hash_id = hash_function("".join([r.name for r in read_glob]))
 
-                # hash_id = "".join([r.name for r in read_glob])
-
-                if not str(hash_id) in duplicated_ids:
+                if not hash_id in duplicated_ids:
                     reads_unique.append(read_glob)
 
             self.outq.put(reads_unique)
