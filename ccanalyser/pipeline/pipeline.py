@@ -1353,6 +1353,7 @@ def reporters_store_merged(infiles, outfile, sample_name):
 @merge(
     [
         stats_deduplication_collate,
+        stats_trim_collate,
         stats_digestion_collate,
         stats_alignment_filtering_collate,
     ],
