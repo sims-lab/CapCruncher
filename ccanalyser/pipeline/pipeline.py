@@ -1928,6 +1928,7 @@ def reporters_plot_heatmap(infile, outfile):
 
 
 @follows(
+    pipeline_make_report,
     hub_make,
     reporters_plot_heatmap,
     reporters_make_union_bedgraph,
