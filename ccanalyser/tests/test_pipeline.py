@@ -84,7 +84,7 @@ def test_pipeline_post_ccanalyser_analysis():
 
 def test_pipeline_all():
 
-    cmd = f'python {dir_pipeline}/pipeline.py make --local -p 4'
+    cmd = f'python {dir_pipeline}/pipeline.py make full --local -p 4'
     completed = subprocess.run(cmd.split())
     
     assert completed.returncode == 0
