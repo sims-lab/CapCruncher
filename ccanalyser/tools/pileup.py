@@ -128,7 +128,7 @@ class CoolerBedGraph:
         """        
 
         df_bdg = self.bedgraph
-        df_bdg["count"] = (df_bdg["count"] / scale_factor) * self._n_cis_interactions
+        df_bdg["count"] = (self._n_cis_interaction / scale_factor) * df_bdg["count"]
         return df_bdg
 
     def to_file(self, fn: os.PathLike, normalise: bool = False, **normalise_kwargs):
