@@ -128,7 +128,7 @@ class CoolerBedGraph:
         """        
 
         df_bdg = self.bedgraph
-        df_bdg["count"] = (self._n_cis_interaction / scale_factor) * df_bdg["count"]
+        df_bdg["count"] = (self._n_cis_interactions / scale_factor) * df_bdg["count"]
         return df_bdg
 
     def to_file(self, fn: os.PathLike, normalise: bool = False, **normalise_kwargs):
@@ -203,7 +203,7 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
             .drop(columns=["capture", "name_fragment"])
             .assign(
                 count_overfrac_norm=lambda df: df["count"] * df["overlap_fraction"],
-                count_overfrac_n_interact_norm=lambda df: (self._n_cis_interaction / scale_factor) * df["count_overfrac_norm"]
+                count_overfrac_n_interact_norm=lambda df: (self._n_cis_interactions / scale_factor) * df["count_overfrac_norm"]
                 ),
             )
 
