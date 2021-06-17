@@ -121,7 +121,9 @@ def remove(
         os.unlink(output)
 
     df_slices = pd.read_csv(slices_fn, sep="\t", chunksize=buffer)
-    ids_duplicated = {int(x) for x in load_json(duplicated_ids)}
+
+    with xopen.xopen(duplicated_ids, 'r') as r:
+        ids_duplicated = {int(x) for x in ujson.load(r)}
 
     n_reads_total = 0
     n_reads_unique = 0

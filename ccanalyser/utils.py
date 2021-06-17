@@ -213,14 +213,16 @@ def intersect_bins(
     return df_intersect
 
 
-def load_json(fn) -> dict:
+def load_json(fn, dtype: str = "int") -> dict:
     """Convinence function to load gziped json file using xopen."""
 
     from xopen import xopen
 
     with xopen(fn) as r:
         d = ujson.load(r)
-        return d
+    
+    return {int(k): int(v) for k, v in d.items()}
+
 
 
 def get_timing(task_name=None) -> Callable:
@@ -266,10 +268,10 @@ def categorise_tracks(ser: pd.Series) -> list:
         list: Mapping for grouping.
     """
     mapping = {
-        "summary": "Replicate_Summary",
-        "subtraction": "Sample_Comparison",
-        "normalised": "Samples_Normalised",
-        "raw": "Samples_Unormalised",
+        "raw": "Replicates",
+        "normalised": "Replicates_Scaled",
+        "summary": "Samples_Summarised",
+        "subtraction": "Samples_Compared",
     }
     categories = []
     for index, value in ser.iteritems():

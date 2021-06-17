@@ -84,11 +84,11 @@ def test_pipeline_post_ccanalyser_analysis():
 
 def test_pipeline_all():
 
-    cmd = f'python {dir_pipeline}/pipeline.py make --local -p 4'
+    cmd = f'python {dir_pipeline}/pipeline.py make full --local -p 4'
     completed = subprocess.run(cmd.split())
     
     assert completed.returncode == 0
-    assert os.path.exists('statistics/visualise_statistics.html')
+    assert os.path.exists('ccanalyser_statistics/visualise_statistics.html')
     assert len(glob.glob('ccanalyser_analysis/bigwigs/Slc25A37*.bigWig')) == 16
     assert os.path.exists('capturec_test.hub.txt')
 

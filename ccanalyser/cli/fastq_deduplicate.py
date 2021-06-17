@@ -18,6 +18,7 @@ from ccanalyser.tools.io import FastqReaderProcess, FastqWriterProcess
 from ccanalyser.tools.statistics import DeduplicationStatistics
 from ccanalyser.utils import invert_dict, load_json
 from xopen import xopen
+import tqdm
 
 def parse(input_files: Tuple, output: os.PathLike = "out.json", read_buffer: int = 1e5):
     """
@@ -82,18 +83,28 @@ def identify(input_files: Tuple, output: os.PathLike = "duplicates.json"):
     dedup_sequences = dict()
     read_ids = set()
 
-    np.random.shuffle(np.array(input_files))
-    for fn in input_files:
-        d = load_json(fn)  # {READ_NAME_HASH: SEQUENCE_HASH}
-        read_ids.update(d)
-        dedup_sequences.update(invert_dict(d))  # {SEQUENCE_HASH: READ_NAME_HASH}
+    
 
-    duplicated_ids = read_ids - set(dedup_sequences.values())
-    del read_ids
-    del dedup_sequences
+    input_files = np.array(input_files)
+    np.random.shuffle(input_files)
+
+    sequences_dedup = set() 
+    reads_duplicated = list()
+
+    for ii, fn in enumerate(tqdm.tqdm(input_files)): 
+        
+        fastq_hashed_dict = load_json(fn)
+        for name_hash, sequence_hash in fastq_hashed_dict.items():
+            
+            if not sequence_hash in sequences_dedup:
+                sequences_dedup.add(sequence_hash)
+            else:
+                reads_duplicated.append(name_hash)
+
+    del sequences_dedup
 
     with xopen(output, "w") as w:
-        duplicated_ids_dict = dict.fromkeys(duplicated_ids)
+        duplicated_ids_dict = dict.fromkeys(reads_duplicated)
         ujson.dump(duplicated_ids_dict, w)
 
 
@@ -129,7 +140,9 @@ def remove(
     
     """
 
-    duplicated_ids = set(load_json(duplicated_ids))
+    with xopen(duplicated_ids, 'r') as r:
+        duplicated_ids = {int(k) for k in ujson.load(r)}
+
     inputq = SimpleQueue()  # Reads are placed into this queue for deduplication
     writeq = SimpleQueue()  # Deduplicated reads are placed into the queue for writing
     statq = SimpleQueue()  # Statistics are sent on this queue for processing
