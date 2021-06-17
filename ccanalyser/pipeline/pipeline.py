@@ -1908,14 +1908,14 @@ def hub_make(infiles, outfile):
     )
     subgroup_sample = trackhub.SubGroupDefinition(
         name="samplename",
-        label="Sample_name",
-        mapping={n.lower(): n.capitalize() for n in unique_samples},
+        label="Sample_Name",
+        mapping={n.lower(): n for n in unique_samples},
     )
     subgroup_method = trackhub.SubGroupDefinition(
         name="summary_method",
         label="Summary_Method",
         mapping={
-            n.split("-")[0]: n.split("-")[0].capitalize()
+            n.split("-")[0]: n.split("-")[0]
             for n in unique_comparison_methods
         },
     )
