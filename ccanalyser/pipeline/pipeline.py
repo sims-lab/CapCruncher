@@ -1908,14 +1908,14 @@ def hub_make(infiles, outfile):
     )
     subgroup_sample = trackhub.SubGroupDefinition(
         name="samplename",
-        label="Sample_name",
-        mapping={n.lower(): n.capitalize() for n in unique_samples},
+        label="Sample_Name",
+        mapping={n.lower(): n for n in unique_samples},
     )
     subgroup_method = trackhub.SubGroupDefinition(
         name="summary_method",
         label="Summary_Method",
         mapping={
-            n.split("-")[0]: n.split("-")[0].capitalize()
+            n.split("-")[0]: n.split("-")[0]
             for n in unique_comparison_methods
         },
     )
@@ -1991,32 +1991,34 @@ def hub_make(infiles, outfile):
     # Stage hub #
     #############
 
-    # If need to copy rather than symlink
-    if not P.PARAMS.get("hub_symlink", False):
+    staging_tmp_dir = "hub_tmp_dir"
+    
+    # Stage the hub
+    trackhub.upload.stage_hub(hub=hub, staging=staging_tmp_dir)
 
-        # Stage the hub
-        trackhub.upload.stage_hub(hub=hub, staging="hub_tmp_dir")
+    # Edit the hub.txt file to include the stats report as descriptionUrl
+    with open(os.path.join(staging_tmp_dir, f'{P.PARAMS["hub_name"]}.hub.txt'), 'a') as hubtxt:
+        hubtxt.write(f'descriptionUrl {P.PARAMS["genome_name"]}/{os.path.basename(stats_report)}\n')
 
-        # Copy to the new location
-        shutil.copytree(
-            "hub_tmp_dir", P.PARAMS["hub_dir"], dirs_exist_ok=True, symlinks=False
-        )
+    # Copy to the new location
+    shutil.copytree(
+        "hub_tmp_dir",
+        P.PARAMS["hub_dir"],
+        dirs_exist_ok=True,
+        symlinks=P.PARAMS.get("hub_symlink", False),
+    )
 
-        # Delete the staged hub
-        shutil.rmtree("hub_tmp_dir")
+    # Delete the staged hub
+    shutil.rmtree("hub_tmp_dir")
 
-    # If ok to just symlink
-    else:
-        # Use trackhub's default staging
-        trackhub.upload.stage_hub(hub=hub, staging=P.PARAMS["hub_dir"])
-
-    # Finally copy the stats report to the correct location
+    # Copy the stats report to the correct location
     shutil.copy(
         stats_report,
         os.path.join(
             P.PARAMS["hub_dir"], P.PARAMS["genome_name"], os.path.basename(stats_report)
         ),
     )
+
 
 
 ######################################
