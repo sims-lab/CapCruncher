@@ -1998,6 +1998,7 @@ def hub_make(infiles, outfile):
 
     # Edit the hub.txt file to include the stats report as descriptionUrl
     with open(os.path.join(staging_tmp_dir, f'{P.PARAMS["hub_name"]}.hub.txt'), 'a') as hubtxt:
+        hubtxt.write('\n')
         hubtxt.write(f'descriptionUrl {P.PARAMS["genome_name"]}/{os.path.basename(stats_report)}\n')
 
     # Copy to the new location
