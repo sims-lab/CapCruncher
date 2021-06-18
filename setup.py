@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
 name='ccanalyser',
-version='0.0.1',
+version='0.1.0a',
 author='asmith, dsims',
 author_email='alastair.smith@ndcls.ox.ac.uk',
 packages=find_packages(),
