@@ -1,7 +1,7 @@
 import click
 import os
 from functools import cached_property
-from importlib import import_module
+from importlib import import_module, metadata
 import subprocess
 
 
@@ -43,6 +43,7 @@ class LazyGroup(click.Group):
         return self._impl.get_params(ctx)
 
 @click.group(cls=UnsortedGroup)
+@click.version_option(metadata.version(distribution_name='ccanalyser'))
 def cli():
     """
     An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.
@@ -72,9 +73,10 @@ def reporters():
 
 @cli.command(context_settings=dict(ignore_unknown_options=True))
 @click.option('-h', '--help', is_flag=True)
+@click.version_option(metadata.version(distribution_name='ccanalyser'))
 @click.argument("mode", type=click.Choice(["make", 'plot', "show", "clone", "touch"]))
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
-def pipeline(mode, pipeline_options, help=False):
+def pipeline(mode, pipeline_options, help=False, version=False):
     
     '''Runs the data processing pipeline'''
     
