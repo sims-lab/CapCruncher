@@ -8,7 +8,7 @@ from click.testing import CliRunner
 import glob
 
 from capcruncher.tools.storage import GenomicBinner, CoolerBinner, create_cooler_cc
-from capcruncher.cli import cli
+from capcruncher.cli import cli, reporters_store
 
 
 # Pre-run setup
@@ -44,12 +44,12 @@ def test_make_cooler():
     )
     oligos = os.path.join(dir_data, "test", "mm9_capture_oligos.bed")
     output_prefix = os.path.join(dir_test, "test/cooler")
-    outfile = os.path.join(dir_test, "test/cooler.Slc25A37.hdf5")
+    outfile = os.path.join(dir_test, "test/cooler.Slc25A37.fragments.hdf5")
 
     if os.path.exists(outfile):
         os.unlink(outfile)
 
-    create_cooler_cc(output_prefix, bins, pixels, "Slc25A37", oligos)
+    create_cooler_cc(output_prefix, bins, pixels, "Slc25A37", oligos, suffix='fragments')
 
     assert os.path.exists(outfile)
 
@@ -61,7 +61,7 @@ def test_make_cooler():
 
 def test_binning():
   
-    cooler_fn = os.path.join(dir_test, "test", "cooler.Slc25A37.hdf5")
+    cooler_fn = os.path.join(dir_test, "test", "cooler.Slc25A37.fragments.hdf5")
     outfile = os.path.join(dir_test, "test", "cooler.binned")
     cb = CoolerBinner(cooler_fn, binsize=2500, n_cores=8)
     cb.to_cooler(outfile, normalise=False, scale_factor=1e6)
@@ -88,16 +88,28 @@ def test_make_bin_conversion():
     binners_dict[1000000] = gb
 
 
-
     with open(os.path.join(dir_test, "test", "genome_binner.pkl"), "wb") as w:
         pickle.dump(binners_dict, w)
+    
+def test_merging():
+
+    clr_1 = os.path.join(dir_test, "test", "cooler.binned.Slc25A37.2500.hdf5")
+    clr_2 = os.path.join(dir_test, "test/cooler.Slc25A37.fragments.hdf5")
+
+    import capcruncher.cli.reporters_store
+
+    outfile = os.path.join(dir_test, "test", "merged.hdf5")
+    reporters_store.merge([clr_1, clr_2], outfile)
+
+    assert os.path.exists(outfile)
+
 
 
 def test_binning_with_conversion_table():
 
     import pickle
 
-    cooler_fn = os.path.join(dir_test, "test", "cooler.Slc25A37.hdf5")
+    cooler_fn = os.path.join(dir_test, "test", "cooler.Slc25A37.fragments.hdf5")
     outfile = os.path.join(dir_test, "test", "cooler.gb.binned")
 
     with open(os.path.join(dir_test, "test", "genome_binner.pkl"), "rb") as r:
@@ -110,7 +122,7 @@ def test_binning_with_conversion_table():
 
 def test_binning_cli_conversion_table():
     
-    infile = os.path.join(dir_test, "test", "cooler.Slc25A37.hdf5")
+    infile = os.path.join(dir_test, "test", "cooler.Slc25A37.fragments.hdf5")
     output_prefix = os.path.join(dir_test, "test", "cli_cooler_binned.hdf5")
 
     runner = CliRunner()
