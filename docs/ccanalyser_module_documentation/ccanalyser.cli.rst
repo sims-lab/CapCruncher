@@ -1,10 +1,10 @@
-CCanalyser CLI Modules
+CapCruncher CLI Modules
 ======================
 
 alignments annotate
 ------------------------------------------
 
-.. automodule:: ccanalyser.cli.alignments_annotate
+.. automodule:: capcruncher.cli.alignments_annotate
    :members:
    :undoc-members:
    :show-inheritance:
@@ -12,7 +12,7 @@ alignments annotate
 alignments deduplicate
 ---------------------------------------------
 
-.. automodule:: ccanalyser.cli.alignments_deduplicate
+.. automodule:: capcruncher.cli.alignments_deduplicate
    :members:
    :undoc-members:
    :show-inheritance:
@@ -20,7 +20,7 @@ alignments deduplicate
 alignments filter
 ----------------------------------------
 
-.. automodule:: ccanalyser.cli.alignments_filter
+.. automodule:: capcruncher.cli.alignments_filter
    :members:
    :undoc-members:
    :show-inheritance:
@@ -28,7 +28,7 @@ alignments filter
 fastq deduplicate
 ----------------------------------------
 
-.. automodule:: ccanalyser.cli.fastq_deduplicate
+.. automodule:: capcruncher.cli.fastq_deduplicate
    :members:
    :undoc-members:
    :show-inheritance:
@@ -36,7 +36,7 @@ fastq deduplicate
 fastq digest
 -----------------------------------
 
-.. automodule:: ccanalyser.cli.fastq_digest
+.. automodule:: capcruncher.cli.fastq_digest
    :members:
    :undoc-members:
    :show-inheritance:
@@ -44,7 +44,7 @@ fastq digest
 fastq split
 ----------------------------------
 
-.. automodule:: ccanalyser.cli.fastq_split
+.. automodule:: capcruncher.cli.fastq_split
    :members:
    :undoc-members:
    :show-inheritance:
@@ -52,7 +52,7 @@ fastq split
 genome digest
 ------------------------------------
 
-.. automodule:: ccanalyser.cli.genome_digest
+.. automodule:: capcruncher.cli.genome_digest
    :members:
    :undoc-members:
    :show-inheritance:
@@ -60,7 +60,7 @@ genome digest
 reporters count
 --------------------------------------
 
-.. automodule:: ccanalyser.cli.reporters_count
+.. automodule:: capcruncher.cli.reporters_count
    :members:
    :undoc-members:
    :show-inheritance:
@@ -68,7 +68,7 @@ reporters count
 reporters differential
 ---------------------------------------------
 
-.. automodule:: ccanalyser.cli.reporters_differential
+.. automodule:: capcruncher.cli.reporters_differential
    :members:
    :undoc-members:
    :show-inheritance:
@@ -76,7 +76,7 @@ reporters differential
 reporters heatmap
 ----------------------------------------
 
-.. automodule:: ccanalyser.cli.reporters_heatmap
+.. automodule:: capcruncher.cli.reporters_heatmap
    :members:
    :undoc-members:
    :show-inheritance:
@@ -84,7 +84,7 @@ reporters heatmap
 reporters pileup
 ---------------------------------------
 
-.. automodule:: ccanalyser.cli.reporters_pileup
+.. automodule:: capcruncher.cli.reporters_pileup
    :members:
    :undoc-members:
    :show-inheritance:
@@ -92,7 +92,7 @@ reporters pileup
 reporters store
 --------------------------------------
 
-.. automodule:: ccanalyser.cli.reporters_store
+.. automodule:: capcruncher.cli.reporters_store
    :members:
    :undoc-members:
    :show-inheritance:
@@ -100,7 +100,7 @@ reporters store
 tsv aggregate
 ------------------------------------
 
-.. automodule:: ccanalyser.cli.tsv_aggregate
+.. automodule:: capcruncher.cli.tsv_aggregate
    :members:
    :undoc-members:
    :show-inheritance:

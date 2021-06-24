@@ -1,7 +1,7 @@
 Utilities
 =========
 
-.. automodule:: ccanalyser.utils
+.. automodule:: capcruncher.utils
    :members:
    :undoc-members:
    :show-inheritance:

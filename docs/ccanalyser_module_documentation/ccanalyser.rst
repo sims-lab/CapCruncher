@@ -1,10 +1,10 @@
-CCanalyser Modules
+CapCruncher Modules
 ==================
 
 .. toctree::
    :maxdepth: 4
 
-   ccanalyser.cli
-   ccanalyser.pipeline
-   ccanalyser.tools
-   ccanalyser.utils
+   capcruncher.cli
+   capcruncher.pipeline
+   capcruncher.tools
+   capcruncher.utils

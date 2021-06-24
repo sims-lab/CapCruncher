@@ -1,7 +1,7 @@
 Pipeline
 ===========================
 
-.. automodule:: ccanalyser.pipeline.pipeline
+.. automodule:: capcruncher.pipeline.pipeline
    :members:
    :undoc-members:
    :show-inheritance:

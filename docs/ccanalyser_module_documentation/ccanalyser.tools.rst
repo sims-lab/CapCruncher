@@ -1,74 +1,74 @@
-CCanalyser tools
+CapCruncher tools
 ================
 
-ccanalyser.tools.annotate module
+capcruncher.tools.annotate module
 --------------------------------
 
-.. automodule:: ccanalyser.tools.annotate
+.. automodule:: capcruncher.tools.annotate
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.tools.deduplicate module
+capcruncher.tools.deduplicate module
 -----------------------------------
 
-.. automodule:: ccanalyser.tools.deduplicate
+.. automodule:: capcruncher.tools.deduplicate
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.tools.digest module
+capcruncher.tools.digest module
 ------------------------------
 
-.. automodule:: ccanalyser.tools.digest
+.. automodule:: capcruncher.tools.digest
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.tools.filter module
+capcruncher.tools.filter module
 ------------------------------
 
-.. automodule:: ccanalyser.tools.filter
+.. automodule:: capcruncher.tools.filter
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.tools.io module
+capcruncher.tools.io module
 --------------------------
 
-.. automodule:: ccanalyser.tools.io
+.. automodule:: capcruncher.tools.io
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.tools.pileup module
+capcruncher.tools.pileup module
 ------------------------------
 
-.. automodule:: ccanalyser.tools.pileup
+.. automodule:: capcruncher.tools.pileup
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.tools.plotting module
+capcruncher.tools.plotting module
 --------------------------------
 
-.. automodule:: ccanalyser.tools.plotting
+.. automodule:: capcruncher.tools.plotting
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.tools.statistics module
+capcruncher.tools.statistics module
 ----------------------------------
 
-.. automodule:: ccanalyser.tools.statistics
+.. automodule:: capcruncher.tools.statistics
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccanalyser.tools.storage module
+capcruncher.tools.storage module
 -------------------------------
 
-.. automodule:: ccanalyser.tools.storage
+.. automodule:: capcruncher.tools.storage
    :members:
    :undoc-members:
    :show-inheritance:
