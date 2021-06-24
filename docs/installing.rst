@@ -7,10 +7,11 @@ Pre-Installation recommendations
 1. Install conda if it has not been already using the `conda install instructions <https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html#install-linux-silent>`_.
 
 2. If capcruncher is **not** being installed through conda, first generate a new conda
-   environment using the yaml file in the `GitHub repository <https://github.com/sims-lab/capture-c/blob/master/capcruncher_conda_env.yml>`_:
+   environment using the yaml file in the `GitHub repository <https://github.com/sims-lab/CapCruncher/blob/master/environment.yml>`_:
 
 ::
     
+    wget https://raw.githubusercontent.com/sims-lab/CapCruncher/master/environment.yml
     conda env create -f environment.yml
     conda activate cc
 
