@@ -3,6 +3,7 @@ import os
 from functools import cached_property
 from importlib import import_module, metadata
 import subprocess
+import warnings
 
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
@@ -95,6 +96,12 @@ def pipeline(mode, pipeline_options, help=False, version=False):
     
     if pipeline_options:
         cmd.extend(pipeline_options)
+    
+    # Implicitly deal with the missing --local option 
+    if not os.path.exists(os.environ.get('DRMAA_LIBRARY_PATH', '')) and not '--local' in pipeline_options:
+        warnings.warn('DRMAA_LIBRARY_PATH is incorrect. Implicitly using --local with 4 cores')
+        cmd.append('--local')
+        cmd.append('-p 4')
     
     subprocess.run(cmd)
 
