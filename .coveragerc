@@ -1,6 +1,6 @@
 [run]
 branch = True
-source = ccanalyser
+source = capcruncher
 
 [report]
 exclude_lines =

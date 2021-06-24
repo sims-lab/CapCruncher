@@ -2,7 +2,7 @@
 Pipeline
 ########
 
-The main feature of ccanalyser is the end-to-end data processing pipeline. 
+The main feature of capcruncher is the end-to-end data processing pipeline. 
 The pipeline has been written using the `cgat-core workflow management system <https://github.com/cgat-developers/cgat-core>`_ 
 and the following diagram illustrates the steps performed by the pipeline:
 
@@ -100,7 +100,7 @@ in the working directory for the current experiment, the pipeline can be run wit
 
 ::
 
-    ccanalyser pipeline
+    capcruncher pipeline
 
 
 There are several options to visualise which tasks will be performed by the pipeline
@@ -111,23 +111,23 @@ The tasks to be performed can be examined with:
 ::
     
     # Shows the tasks to be performed
-    ccanalyser pipeline show 
+    capcruncher pipeline show 
 
     # Plots a directed graph using graphviz
-    ccanalyser pipeline plot
+    capcruncher pipeline plot
 
 If you are happy with the tasks to be performed, the full pipeline run can be launched with:
 
 ::
 
     # If using all default settings and using a cluster
-    ccanalyser pipeline make
+    capcruncher pipeline make
 
     # If not using a cluster, run in local mode.
-    ccanalyser pipeline make --local -p 4
+    capcruncher pipeline make --local -p 4
 
     # Avoiding network disconnections
-    nohup ccanalyser pipeline make &
+    nohup capcruncher pipeline make &
 
 
 See `cgat-core Read the Docs <https://cgat-core.readthedocs.io/en/latest/getting_started/Examples.html>`_ for additional
@@ -143,7 +143,7 @@ There are currently multiple stopping points built into the pipeline at key stag
 * :literal:`fastq_preprocessing` - Stops after *in silico* digestion of FASTQ files.
 * :literal:`pre_annotation` - Stops before aligned slices are ready to be annotated.
 * :literal:`post_annotation` - Stops after aligned slices have been annotated.
-* :literal:`post_ccanalyser_analysis` - Stops after reporters have been identified and duplicate filtered.
+* :literal:`post_capcruncher_analysis` - Stops after reporters have been identified and duplicate filtered.
 * :literal:`full` - Run the pipeline until all required tasks are complete.
 
 To run the pipeline until one of these stopping points, use:
@@ -151,7 +151,7 @@ To run the pipeline until one of these stopping points, use:
 ::
 
     # Run until TASK_NAME step
-    ccanalyser pipeline make TASK_NAME
+    capcruncher pipeline make TASK_NAME
 
 
 Pipeline outputs

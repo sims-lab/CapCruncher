@@ -1,5 +1,5 @@
 include README.txt LICENSE MANIFEST.in setup.py
 include tests
-include ccanalyser/data/*
-recursive-include ccanalyser *.py *.ipynb
+include capcruncher/data/*
+recursive-include capcruncher *.py *.ipynb
 exclude .git
