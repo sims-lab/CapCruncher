@@ -6,15 +6,16 @@ Pre-Installation recommendations
 
 1. Install conda if it has not been already using the `conda install instructions <https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html#install-linux-silent>`_.
 
-2. If ccanalyser is **not** being installed through conda, first generate a new conda
-   environment using the yaml file in the `GitHub repository <https://github.com/sims-lab/capture-c/blob/master/ccanalyser_conda_env.yml>`_:
+2. If capcruncher is **not** being installed through conda, first generate a new conda
+   environment using the yaml file in the `GitHub repository <https://github.com/sims-lab/CapCruncher/blob/master/environment.yml>`_:
 
 ::
     
-    conda env create -f ccanalyser_conda_env.yml
+    wget https://raw.githubusercontent.com/sims-lab/CapCruncher/master/environment.yml
+    conda env create -f environment.yml
     conda activate cc
 
-3. If you intend to use a cluster e.g. SunGrid engine/SLURM add the path to the DRMAA interface to your .bashrc:
+1. If you intend to use a cluster e.g. SunGrid engine/SLURM add the path to the DRMAA interface to your .bashrc:
 
 :: 
 
@@ -41,12 +42,12 @@ The package can be installed in several ways:
 1. Install from conda:
 :: 
 
-    conda install ccanalyser # do not use: not available yet
+    conda install capcruncher # do not use: not available yet
 
 2. Install from pypi:
 :: 
 
-    pip install ccanalyser # do not use: not available yet
+    pip install capcruncher # do not use: not available yet
 
 3. Install from GitHub:
 

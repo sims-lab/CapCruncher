@@ -1,12 +1,12 @@
 from setuptools import setup, find_packages
 
 setup(
-name='ccanalyser',
+name='capcruncher',
 version='0.1.0a',
 author='asmith, dsims',
 author_email='alastair.smith@ndcls.ox.ac.uk',
 packages=find_packages(),
-entry_points={'console_scripts': ['ccanalyser = ccanalyser.cli:cli',]},
+entry_points={'console_scripts': ['capcruncher = capcruncher.cli:cli',]},
 include_package_data=True,
 url='https://github.com/sims-lab/capture-c.git',
 license='LICENSE',

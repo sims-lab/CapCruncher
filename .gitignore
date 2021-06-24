@@ -7,11 +7,11 @@
 docs/_build/
 dist/
 build/
-ccanalyser.egg-info/
+capcruncher.egg-info/
 pkgs/
-ccanalyser/tests/test/*.*
-ccanalyser/tests/stats/*.*
+capcruncher/tests/test/*.*
+capcruncher/tests/stats/*.*
 _build/
 .DS_Store
-ccanalyser/tests/pipeline_test_run/
+capcruncher/tests/pipeline_test_run/
 

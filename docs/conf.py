@@ -15,15 +15,15 @@ import sys
 import sphinx_rtd_theme
 
 sys.path.append(os.path.abspath('../'))
-sys.path.append(os.path.abspath('../ccanalyser/'))
-sys.path.append(os.path.abspath('../ccanalyser/tools/'))
-#sys.path.append(os.path.abspath('../ccanalyser/'))
+sys.path.append(os.path.abspath('../capcruncher/'))
+sys.path.append(os.path.abspath('../capcruncher/tools/'))
+#sys.path.append(os.path.abspath('../capcruncher/'))
 #sys.path.append(os.path.abspath('./ext'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'ccanalyser'
+project = 'capcruncher'
 copyright = '2020, asmith, dsims'
 author = 'asmith, dsims'
 

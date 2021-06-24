@@ -20,6 +20,7 @@ comment:
   require_changes: no
 
 ignore:
-  - "ccanalyser/pipeline/"
-  - "ccanalyser/utils.py"
+  - "capcruncher/pipeline/"
+  - "capcruncher/utils.py"
   - "setup.py"
+  - "capcruncher/cli/__init__.py"

@@ -1,6 +1,6 @@
 
 from sphinxcontrib.napoleon import GoogleDocstring
-from ccanalyser.cli import cli
+from capcruncher.cli import cli
 import traceback
 import warnings
 

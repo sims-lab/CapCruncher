@@ -1,8 +1,8 @@
 CLI Documentation
 #################
 
-.. click:: ccanalyser.cli:cli
-   :prog: ccanalyser
+.. click:: capcruncher.cli:cli
+   :prog: capcruncher
    :nested: full
 
 
