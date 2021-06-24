@@ -11,10 +11,10 @@ Pre-Installation recommendations
 
 ::
     
-    conda env create -f capcruncher_conda_env.yml
+    conda env create -f environment.yml
     conda activate cc
 
-3. If you intend to use a cluster e.g. SunGrid engine/SLURM add the path to the DRMAA interface to your .bashrc:
+1. If you intend to use a cluster e.g. SunGrid engine/SLURM add the path to the DRMAA interface to your .bashrc:
 
 :: 
 
