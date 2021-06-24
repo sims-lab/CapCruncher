@@ -55,7 +55,12 @@ def setup():
     yield
 
     os.chdir(dir_root)
-    shutil.rmtree(dir_test_run) 
+    shutil.rmtree(dir_test_run)
+
+def test_pipeline_handles_no_drmaa():
+    cmd = f'capcruncher pipeline make annotate_sort_viewpoints'
+    completed = subprocess.run(cmd.split())
+    assert completed.returncode == 0
 
 def test_pipeline_fastq_preprocessing():
 
