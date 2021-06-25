@@ -87,7 +87,8 @@ P.get_parameters("config.yml")
 # Determines the number of samples being processed
 N_SAMPLES = len(
     {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) 
-    for fn in glob.glob("*.fastq*")}
+    for fn in glob.glob("*.fastq*")
+    }
 )
 
 # Turns on FASTQ deduplication
@@ -147,7 +148,7 @@ def modify_pipeline_params_dict():
     """
 
     # Fix cgat-core bugs
-    P.PARAMS["cluster_queue_manager"] = P.PARAMS.get("pipeline_cluster_queue_manager")
+    P.PARAMS["cluster_queue_manager"] = P.PARAMS.get("pipeline_cluster_queue_manager", "slurm")
     P.PARAMS["conda_env"] = P.PARAMS.get(
         "conda_env", os.path.basename(os.environ["CONDA_PREFIX"])
     )
