@@ -94,6 +94,20 @@ cgatcore_defaults_override["conda_env"] = P.PARAMS.get(
 # Load parameters into P.PARAMS
 P.get_parameters("config.yml", user=False, defaults=cgatcore_defaults_override)
 
+
+# Convert entries to the correct python type
+for key in P.PARAMS:
+    if is_none(P.PARAMS[key]):
+        P.PARAMS[key] = None
+    elif is_on(P.PARAMS):
+        P.PARAMS[key] = True
+
+
+######################
+#   Set-up constants #
+######################
+
+
 # Determines the number of samples being processed
 N_SAMPLES = len(
     {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) for fn in glob.glob("*.fastq*")}
@@ -142,26 +156,6 @@ def check_config():
             raise ValueError(
                 f"No value provided for {key} in config.yml. Please correct this and re-run."
             )
-
-
-def modify_pipeline_params_dict():
-
-    """
-    Modifies P.PARAMS dictionary.
-
-    * Selects the correct conda enviroment
-    * Ensures the correct queue manager is selected.
-    * Corrects the name of a UCSC hub by removing spaces and incorrect characters.
-
-    """
-
-    # Convert entries to the correct python type
-    for key in P.PARAMS:
-        if is_none(P.PARAMS[key]):
-            P.PARAMS[key] = None
-        elif is_on(P.PARAMS):
-            P.PARAMS[key] = True
-
 
 def set_up_chromsizes():
     """
@@ -2164,6 +2158,5 @@ if __name__ == "__main__":
     else:
         check_config()
         set_up_chromsizes()
-        modify_pipeline_params_dict()
         check_user_supplied_paths()
         P.main(sys.argv)
