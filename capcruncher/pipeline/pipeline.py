@@ -86,7 +86,7 @@ P.get_parameters("config.yml")
 
 
 USE_BLACKLIST = is_valid_bed(
-    P.PARAMS["analysis_optional_blacklist"]
+    P.PARAMS.get("analysis_optional_blacklist")
 )  # Determines if blacklist is used
 VALID_PLOT_COORDINATES = is_valid_bed(
     P.PARAMS.get("plot_coordinates"), verbose=False
