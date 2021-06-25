@@ -84,20 +84,24 @@ from capcruncher.utils import is_on, is_none, is_valid_bed
 # Set up global parameters dict
 P.get_parameters("config.yml")
 
-
-USE_BLACKLIST = is_valid_bed(
-    P.PARAMS.get("analysis_optional_blacklist")
-)  # Determines if blacklist is used
-VALID_PLOT_COORDINATES = is_valid_bed(
-    P.PARAMS.get("plot_coordinates"), verbose=False
-)  # Has valid plotting coordinate bed file
-FASTQ_DEDUPLICATE = P.PARAMS.get(
-    "deduplication_pre-dedup", False
-)  # Turns on FASTQ deduplication
-MAKE_HUB = is_on(P.PARAMS.get("hub_create"))  # Create a UCSC hub or not
+# Determines the number of samples being processed
 N_SAMPLES = len(
-    {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) for fn in glob.glob("*.fastq*")}
-)  # Determine the number of unique sample names
+    {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) 
+    for fn in glob.glob("*.fastq*")}
+)
+
+# Turns on FASTQ deduplication
+FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", verbose=False)
+
+# Determines if blacklist is used
+BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"))
+
+# Has valid plot coordinates for heatmaps
+HEATMAPS = is_valid_bed( P.PARAMS.get("plot_coordinates"), verbose=False)
+
+# Determines if UCSC hub is created from run.
+HUB = is_on(P.PARAMS.get("hub_create"))  
+
 
 
 ##############################
@@ -947,7 +951,7 @@ def annotate_sort_blacklist(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
 
-    if USE_BLACKLIST:
+    if BLACKLIST:
         statement = [
             "sort",
             "-k1,1",
@@ -1823,7 +1827,7 @@ def viewpoints_to_bigbed(infile, outfile):
     )
 
 
-@active_if(MAKE_HUB)
+@active_if(HUB)
 @merge(
     [reporters_make_bigwig, viewpoints_to_bigbed, pipeline_make_report],
     os.path.join(
@@ -2072,7 +2076,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
 ##################
 
 
-@active_if(VALID_PLOT_COORDINATES)
+@active_if(HEATMAPS)
 @follows(reporters_store_merged, mkdir("capcruncher_analysis/heatmaps/"))
 @transform(
     "capcruncher_analysis/reporters/*.hdf5",
