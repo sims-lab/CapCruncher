@@ -479,7 +479,7 @@ def fastq_duplicates_remove(infiles, outfile):
 
     else:
         statement = f"""ln -s $(pwd)/{infiles[0]} {output_prefix}_1.fastq &&
-                        ln -s $(pwd)/{infiles[1]} {output_prefix}s_2.fastq &&
+                        ln -s $(pwd)/{infiles[1]} {output_prefix}_2.fastq &&
                         lc=$(cat {infiles[0]} | wc -l);
                         statsfile={stats_prefix}.deduplication.csv;
                         echo "stat,stat_type,read_type,read_number,stage,sample" > $statsfile;
