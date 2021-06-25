@@ -91,7 +91,7 @@ N_SAMPLES = len(
 )
 
 # Turns on FASTQ deduplication
-FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", verbose=False)
+FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
 
 # Determines if blacklist is used
 BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"))
