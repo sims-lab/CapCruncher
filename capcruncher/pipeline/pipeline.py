@@ -94,7 +94,7 @@ N_SAMPLES = len(
 FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
 
 # Determines if blacklist is used
-BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"))
+BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbose=False)
 
 # Has valid plot coordinates for heatmaps
 HEATMAPS = is_valid_bed( P.PARAMS.get("plot_coordinates"), verbose=False)
