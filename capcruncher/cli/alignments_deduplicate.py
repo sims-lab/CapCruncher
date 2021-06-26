@@ -8,9 +8,6 @@ from capcruncher.utils import hash_column, load_json
 import ujson
 import os
 import numpy as np
-import numba
-from cykhash import isin_int64, Int64Set, Int64Set_from_buffer
-
 
 def add_to_set(set_: set, elements: Iterable):
 
