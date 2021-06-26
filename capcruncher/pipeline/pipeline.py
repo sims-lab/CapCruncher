@@ -1542,7 +1542,7 @@ def pipeline_merge_stats(infiles, outfile):
 
 @merge(
     [pipeline_merge_stats],
-    "capcruncher_statistics/run_statistics.html",
+    "capcruncher_statistics/capcruncher_statistics.html",
 )
 def pipeline_make_report(infile, outfile):
     """Run jupyter notebook for reporting and plotting pipeline statistics"""
