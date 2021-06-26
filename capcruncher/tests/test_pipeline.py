@@ -93,7 +93,7 @@ def test_pipeline_all():
     completed = subprocess.run(cmd.split())
     
     assert completed.returncode == 0
-    assert os.path.exists('capcruncher_statistics/visualise_statistics.html')
+    assert os.path.exists('capcruncher_statistics/run_statistics.html')
     assert len(glob.glob('capcruncher_analysis/bigwigs/Slc25A37*.bigWig')) == 16
     assert os.path.exists('capturec_test.hub.txt')
 
