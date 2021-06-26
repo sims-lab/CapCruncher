@@ -1,3 +1,4 @@
+from typing import Iterable
 import pandas as pd
 
 import click
@@ -6,6 +7,15 @@ from capcruncher.cli.cli_alignments import cli
 from capcruncher.utils import hash_column, load_json
 import ujson
 import os
+import numpy as np
+import numba
+from cykhash import isin_int64, Int64Set, Int64Set_from_buffer
+
+
+def add_to_set(set_: set, elements: Iterable):
+
+    for el in elements:
+        set_.add(el)
 
 
 def identify(
@@ -22,18 +32,18 @@ def identify(
     are implicitly removed if they share the same genomic coordinate hash.
 
     For non-combined reads (pe) a genomic coordinate hash is generated from the start of the first slice and
-    the end of the last slice. This is due to the decreased confidence in the quality of the centre of the fragment. 
+    the end of the last slice. This is due to the decreased confidence in the quality of the centre of the fragment.
     The coordinate hash for combined reads (flashed) is generated directly from the fragment coordinates. Only
     fragments with the exact coordinates and slice order will be considered to be duplicates.
 
-    Identified duplicate fragments are output in json format to be used by the "remove" subcommand.  
-    
+    Identified duplicate fragments are output in json format to be used by the "remove" subcommand.
+
     \f
     Args:
      fragments_fn (os.PathLike): Input fragments.tsv file to process.
      output (os.PathLike, optional): Output path to output duplicated parental read ids. Defaults to "duplicated_ids.json".
      buffer (int, optional): Number of fragments to process in memory. Defaults to 1e6.
-     read_type (str, optional): Process combined(flashed) or non-combined reads (pe). 
+     read_type (str, optional): Process combined(flashed) or non-combined reads (pe).
                                 Due to the low confidence in the quaility of pe reads, duplicates are identified by
                                 removing any fragments with matching start and end coordinates.
                                 Defaults to "flashed".
@@ -46,45 +56,38 @@ def identify(
         usecols=["parent_read", "coordinates"],
     )
 
-    coordinates_deduplicated = dict() #{coord hash: id hash}
-    fragments_all = set() # {id hash}
+    unique_coordinates = set()
+    duplicated_fragments = set()
 
-    for df in fragments:
+    for ii, df in enumerate(fragments):
 
-        df = df.sample(
-            frac=1
-        )  # Shuffles to stop fragments at the end of the sample always being removed
+        # Shuffle to stop fragments at the end of the sample always being removed
+        df = df.sample(frac=1)
 
         if read_type == "flashed":
 
-            coords_hashed = hash_column(df["coordinates"])
-            parent_read_hashed = hash_column(df["parent_read"])
+            lst_id = hash_column(df["parent_read"])
+            lst_coords = hash_column(df["coordinates"])
 
         else:
-            #TODO: Slight bug here as flashed coordinates will not be compared to pe.
-
             # Extract chrom1 + start1 + chrom(last entry) + end(last entry)
             coords_df = df["coordinates"].str.extract(
                 r"^chr(?P<chrom1>.*?):(?P<start>\d+).*\|chr(?P<chrom2>.*?):\d+-(?P<end>\d+)"
             )
-            
-            # {chrom1+start1+chrom-1+end-1(hashed): id(hashed)}
-            coords_hashed = hash_column(
-                coords_df["chrom1"].str.cat(coords_df.iloc[:, 1:])
-            )
-            parent_read_hashed = hash_column(df["parent_read"])
 
-        coordinates_deduplicated_sample = dict(zip(coords_hashed, parent_read_hashed))
-        coordinates_deduplicated.update(coordinates_deduplicated_sample) # Use dict to remove duplicated coords
-        fragments_all.update({x for x in parent_read_hashed}) # Store all ids for duplicate identification
+            lst_id = hash_column(df["parent_read"])
 
-    # Identify duplicates
-    fragments_no_dup = {x for x in coordinates_deduplicated.values()}
-    fragments_dup = fragments_all - fragments_no_dup
+            # chrom1+start1+chrom-1+end-1(hashed)
+            lst_coords = hash_column(coords_df["chrom1"].str.cat(coords_df.iloc[:, 1:]))
+
+        for id, coord in zip(lst_id, lst_coords):
+            if not coord in unique_coordinates:
+                unique_coordinates.add(coord)
+            else:
+                duplicated_fragments.add(id)
 
     with xopen.xopen(output, "w") as w:
-        ujson.dump(dict.fromkeys(fragments_dup), w)
-
+        ujson.dump(dict.fromkeys(duplicated_fragments), w)
 
 
 def remove(
@@ -100,11 +103,11 @@ def remove(
     Removes duplicated aligned fragments.
 
     Parses a tsv file containing aligned read slices and outputs only slices from unique fragments.
-    Duplicated parental read id determined by the "identify" subcommand are located within the 
+    Duplicated parental read id determined by the "identify" subcommand are located within the
     slices tsv file and removed.
 
     Outputs statistics for the number of unique slices and the number of duplicate slices identified.
-    
+
     \f
     Args:
      slices_fn (os.PathLike): Input slices.tsv file.
@@ -122,7 +125,7 @@ def remove(
 
     df_slices = pd.read_csv(slices_fn, sep="\t", chunksize=buffer)
 
-    with xopen.xopen(duplicated_ids, 'r') as r:
+    with xopen.xopen(duplicated_ids, "r") as r:
         ids_duplicated = {int(x) for x in ujson.load(r)}
 
     n_reads_total = 0
@@ -131,7 +134,7 @@ def remove(
     # Iterate slices in chunks
     for ii, df in enumerate(df_slices):
 
-        print(f'Processed {(ii + 1) * buffer} slices')
+        print(f"Processed {(ii + 1) * buffer} slices")
 
         n_reads_total += df["parent_read"].nunique()
 
