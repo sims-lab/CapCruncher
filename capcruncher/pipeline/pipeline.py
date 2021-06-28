@@ -81,23 +81,50 @@ from capcruncher.utils import is_on, is_none, is_valid_bed
 #   Set-up global parameters #
 ##############################
 
-# Set up global parameters dict
-P.get_parameters("config.yml")
+# Override cgatcore default parameters with those specified by the config file
+cgatcore_defaults_override = dict()
+cgatcore_defaults_override["cluster"] = {
+    "queue_manager": P.PARAMS.get("pipeline_cluster_queue_manager", "slurm"),
+    "queue": P.PARAMS.get("cluster_queue", "batch"),
+}
+cgatcore_defaults_override["conda_env"] = P.PARAMS.get(
+    "conda_env", os.path.basename(os.environ["CONDA_PREFIX"])
+)
+
+# Load parameters into P.PARAMS
+P.get_parameters("config.yml", user=False, defaults=cgatcore_defaults_override)
 
 
-USE_BLACKLIST = is_valid_bed(
-    P.PARAMS["analysis_optional_blacklist"]
-)  # Determines if blacklist is used
-VALID_PLOT_COORDINATES = is_valid_bed(
-    P.PARAMS.get("plot_coordinates"), verbose=False
-)  # Has valid plotting coordinate bed file
-FASTQ_DEDUPLICATE = P.PARAMS.get(
-    "deduplication_pre-dedup", False
-)  # Turns on FASTQ deduplication
-MAKE_HUB = is_on(P.PARAMS.get("hub_create"))  # Create a UCSC hub or not
+# Convert entries to the correct python type
+for key in P.PARAMS:
+    if is_none(P.PARAMS[key]):
+        P.PARAMS[key] = None
+    elif is_on(P.PARAMS):
+        P.PARAMS[key] = True
+
+
+######################
+#   Set-up constants #
+######################
+
+
+# Determines the number of samples being processed
 N_SAMPLES = len(
     {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) for fn in glob.glob("*.fastq*")}
-)  # Determine the number of unique sample names
+)
+
+# Turns on FASTQ deduplication
+FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
+
+# Determines if blacklist is used
+BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbose=False)
+
+# Has valid plot coordinates for heatmaps
+HEATMAPS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
+
+# Determines if UCSC hub is created from run.
+HUB = is_on(P.PARAMS.get("hub_create"))
+HUB_NAME = re.sub(r"[,\s+\t;:]", "_", P.PARAMS.get("hub_name", ""))
 
 
 ##############################
@@ -129,36 +156,6 @@ def check_config():
             raise ValueError(
                 f"No value provided for {key} in config.yml. Please correct this and re-run."
             )
-
-
-def modify_pipeline_params_dict():
-
-    """
-    Modifies P.PARAMS dictionary.
-
-    * Selects the correct conda enviroment
-    * Ensures the correct queue manager is selected.
-    * Corrects the name of a UCSC hub by removing spaces and incorrect characters.
-
-    """
-
-    # Fix cgat-core bugs
-    P.PARAMS["cluster_queue_manager"] = P.PARAMS.get("pipeline_cluster_queue_manager")
-    P.PARAMS["conda_env"] = P.PARAMS.get(
-        "conda_env", os.path.basename(os.environ["CONDA_PREFIX"])
-    )
-
-    # Sanitise hub name
-    if P.PARAMS["hub_name"]:
-        P.PARAMS["hub_name"] = re.sub(r"[,\s+\t;:]", "_", P.PARAMS["hub_name"])
-
-    # Convert entries to the correct python type
-    for key in P.PARAMS:
-        if is_none(P.PARAMS[key]):
-            P.PARAMS[key] = None
-        elif is_on(P.PARAMS):
-            P.PARAMS[key] = True
-
 
 def set_up_chromsizes():
     """
@@ -266,7 +263,9 @@ def genome_digest(infile, outfile):
 
 @follows(mkdir("capcruncher_preprocessing"), mkdir("capcruncher_preprocessing/fastqc"))
 @transform(
-    "*.fastq*", regex(r"(.*).fastq.*"), r"capcruncher_preprocessing/fastqc/\1_fastqc.zip"
+    "*.fastq*",
+    regex(r"(.*).fastq.*"),
+    r"capcruncher_preprocessing/fastqc/\1_fastqc.zip",
 )
 def fastq_qc(infile, outfile):
     """Runs fastqc on the input files to generate fastq statistics."""
@@ -480,7 +479,7 @@ def fastq_duplicates_remove(infiles, outfile):
 
     else:
         statement = f"""ln -s $(pwd)/{infiles[0]} {output_prefix}_1.fastq &&
-                        ln -s $(pwd)/{infiles[1]} {output_prefix}s_2.fastq &&
+                        ln -s $(pwd)/{infiles[1]} {output_prefix}_2.fastq &&
                         lc=$(cat {infiles[0]} | wc -l);
                         statsfile={stats_prefix}.deduplication.csv;
                         echo "stat,stat_type,read_type,read_number,stage,sample" > $statsfile;
@@ -947,7 +946,7 @@ def annotate_sort_blacklist(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
 
-    if USE_BLACKLIST:
+    if BLACKLIST:
         statement = [
             "sort",
             "-k1,1",
@@ -1432,7 +1431,9 @@ def generate_bin_conversion_tables(outfile):
 
 
 @active_if(P.PARAMS.get("analysis_bin_size"))
-@follows(generate_bin_conversion_tables, mkdir("capcruncher_analysis/reporters/binned/"))
+@follows(
+    generate_bin_conversion_tables, mkdir("capcruncher_analysis/reporters/binned/")
+)
 @transform(
     reporters_store_restriction_fragment,
     regex(r"capcruncher_analysis/reporters/fragments/(.*)\.(.*)\.fragments\.hdf5"),
@@ -1541,14 +1542,13 @@ def pipeline_merge_stats(infiles, outfile):
 
 @merge(
     [pipeline_merge_stats],
-    "capcruncher_statistics/visualise_statistics.html",
+    "capcruncher_statistics/capcruncher_statistics.html",
 )
 def pipeline_make_report(infile, outfile):
     """Run jupyter notebook for reporting and plotting pipeline statistics"""
 
-    path_script = __file__
-    path_script_dir = os.path.dirname(path_script)
-    path_nb_dir = os.path.dirname(path_script_dir)
+    path_pipeline = __file__
+    path_pipeline_dir = os.path.dirname(path_pipeline)
 
     statement_clean = " ".join(["rm", outfile.replace(".html", "*"), "-f"])
 
@@ -1560,7 +1560,7 @@ def pipeline_make_report(infile, outfile):
             "-p",
             "directory",
             "$(pwd)/capcruncher_statistics/",
-            f"{path_nb_dir}/visualise_statistics.ipynb",
+            f"{path_pipeline_dir}/statistics.ipynb",
             outfile.replace(".html", ".ipynb"),
         ]
     )
@@ -1823,7 +1823,7 @@ def viewpoints_to_bigbed(infile, outfile):
     )
 
 
-@active_if(MAKE_HUB)
+@active_if(HUB)
 @merge(
     [reporters_make_bigwig, viewpoints_to_bigbed, pipeline_make_report],
     os.path.join(
@@ -1858,9 +1858,9 @@ def hub_make(infiles, outfile):
 
     # Create a hub
     hub = trackhub.Hub(
-        hub=P.PARAMS["hub_name"],
-        short_label=P.PARAMS.get("hub_short", P.PARAMS["hub_name"]),
-        long_label=P.PARAMS.get("hub_long", P.PARAMS["hub_name"]),
+        hub=HUB_NAME,
+        short_label=P.PARAMS.get("hub_short", HUB_NAME),
+        long_label=P.PARAMS.get("hub_long", HUB_NAME),
         email=P.PARAMS["hub_email"],
     )
 
@@ -1875,7 +1875,7 @@ def hub_make(infiles, outfile):
         groups_file = trackhub.GroupsFile(
             [
                 trackhub.GroupDefinition(
-                    name=P.PARAMS["hub_name"], priority=1, default_is_closed=False
+                    name=HUB_NAME, priority=1, default_is_closed=False
                 ),
             ]
         )
@@ -1914,10 +1914,7 @@ def hub_make(infiles, outfile):
     subgroup_method = trackhub.SubGroupDefinition(
         name="summary_method",
         label="Summary_Method",
-        mapping={
-            n.split("-")[0]: n.split("-")[0]
-            for n in unique_comparison_methods
-        },
+        mapping={n.split("-")[0]: n.split("-")[0] for n in unique_comparison_methods},
     )
 
     # Generate a color mapping based on sample names
@@ -1943,7 +1940,7 @@ def hub_make(infiles, outfile):
 
         # Only add a group if this is an assembly hub
         if groups_file:
-            composite.add_params(group=P.PARAMS["hub_name"])
+            composite.add_params(group=HUB_NAME)
 
         composite.add_subgroups([subgroup_vp, subgroup_sample, subgroup_method])
         # composite.add_params(html=os.path.basename(stats_report))
@@ -1967,7 +1964,7 @@ def hub_make(infiles, outfile):
 
             # Only add a group if this is an assembly hub
             if groups_file:
-                t.add_params(group=P.PARAMS["hub_name"])
+                t.add_params(group=HUB_NAME)
 
             composite.add_subtrack(t)
 
@@ -1983,7 +1980,7 @@ def hub_make(infiles, outfile):
         )
 
         if genomes_file:
-            t.add_params(group=P.PARAMS["hub_name"])
+            t.add_params(group=HUB_NAME)
 
         trackdb.add_tracks(t)
 
@@ -1992,14 +1989,16 @@ def hub_make(infiles, outfile):
     #############
 
     staging_tmp_dir = "hub_tmp_dir"
-    
+
     # Stage the hub
     trackhub.upload.stage_hub(hub=hub, staging=staging_tmp_dir)
 
     # Edit the hub.txt file to include the stats report as descriptionUrl
-    with open(os.path.join(staging_tmp_dir, f'{P.PARAMS["hub_name"]}.hub.txt'), 'a') as hubtxt:
-        hubtxt.write('\n')
-        hubtxt.write(f'descriptionUrl {P.PARAMS["genome_name"]}/{os.path.basename(stats_report)}\n')
+    with open(os.path.join(staging_tmp_dir, f"{HUB_NAME}.hub.txt"), "a") as hubtxt:
+        hubtxt.write("\n")
+        hubtxt.write(
+            f'descriptionUrl {P.PARAMS["genome_name"]}/{os.path.basename(stats_report)}\n'
+        )
 
     # Copy to the new location
     shutil.copytree(
@@ -2019,7 +2018,6 @@ def hub_make(infiles, outfile):
             P.PARAMS["hub_dir"], P.PARAMS["genome_name"], os.path.basename(stats_report)
         ),
     )
-
 
 
 ######################################
@@ -2072,7 +2070,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
 ##################
 
 
-@active_if(VALID_PLOT_COORDINATES)
+@active_if(HEATMAPS)
 @follows(reporters_store_merged, mkdir("capcruncher_analysis/heatmaps/"))
 @transform(
     "capcruncher_analysis/reporters/*.hdf5",
@@ -2159,6 +2157,5 @@ if __name__ == "__main__":
     else:
         check_config()
         set_up_chromsizes()
-        modify_pipeline_params_dict()
         check_user_supplied_paths()
         P.main(sys.argv)
