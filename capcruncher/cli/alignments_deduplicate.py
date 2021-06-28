@@ -9,12 +9,6 @@ import ujson
 import os
 import numpy as np
 
-def add_to_set(set_: set, elements: Iterable):
-
-    for el in elements:
-        set_.add(el)
-
-
 def identify(
     fragments_fn: os.PathLike,
     output: os.PathLike = "duplicated_ids.json",
