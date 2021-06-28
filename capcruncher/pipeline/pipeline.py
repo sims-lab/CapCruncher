@@ -1542,14 +1542,13 @@ def pipeline_merge_stats(infiles, outfile):
 
 @merge(
     [pipeline_merge_stats],
-    "capcruncher_statistics/visualise_statistics.html",
+    "capcruncher_statistics/capcruncher_statistics.html",
 )
 def pipeline_make_report(infile, outfile):
     """Run jupyter notebook for reporting and plotting pipeline statistics"""
 
-    path_script = __file__
-    path_script_dir = os.path.dirname(path_script)
-    path_nb_dir = os.path.dirname(path_script_dir)
+    path_pipeline = __file__
+    path_pipeline_dir = os.path.dirname(path_pipeline)
 
     statement_clean = " ".join(["rm", outfile.replace(".html", "*"), "-f"])
 
@@ -1561,7 +1560,7 @@ def pipeline_make_report(infile, outfile):
             "-p",
             "directory",
             "$(pwd)/capcruncher_statistics/",
-            f"{path_nb_dir}/visualise_statistics.ipynb",
+            f"{path_pipeline_dir}/statistics.ipynb",
             outfile.replace(".html", ".ipynb"),
         ]
     )
