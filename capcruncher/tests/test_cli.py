@@ -390,6 +390,55 @@ def test_alignments_filter():
     assert df_slices.shape[0] == 1062
 
 
+def test_reporter_deduplicate_identify():
+    
+    reporters_duplicated = os.path.join(dir_data, "test", "reporters_duplicated.tsv")
+    reporters_duplicated_ids = os.path.join(dir_test, "test", "reporters_deduplicated.json")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "alignments",
+            "deduplicate",
+            "identify",
+            reporters_duplicated,
+            '--read_type',
+            'flashed',
+            "-o",
+            reporters_duplicated_ids
+        ],
+    )
+
+    assert result.exit_code == 0
+    with xopen.xopen(reporters_duplicated_ids, "r") as r:
+        ids_duplicated = {int(x) for x in ujson.load(r)}
+    assert len(ids_duplicated) == 2
+
+    result = runner.invoke(
+        cli,
+        [
+            "alignments",
+            "deduplicate",
+            "identify",
+            reporters_duplicated,
+            '--read_type',
+            'pe',
+            "-o",
+            reporters_duplicated_ids
+        ],
+    )
+    
+    assert result.exit_code == 0
+    with xopen.xopen(reporters_duplicated_ids, "r") as r:
+        ids_duplicated = {int(x) for x in ujson.load(r)}
+    assert len(ids_duplicated) == 2
+
+
+
+
+
+
 def test_reporter_count():
 
     reporters = os.path.join(dir_data, "test", "Slc25A37_reporters.tsv.gz")
