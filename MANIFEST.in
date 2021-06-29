@@ -1,5 +1,7 @@
 include README.txt LICENSE MANIFEST.in setup.py
-include tests
-include capcruncher/data/*
 recursive-include capcruncher *.py *.ipynb
+recursive-exclude *.pyc
 exclude .git
+exclude .github
+exclude .pytest_cache
+exclude .vscode
