@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="capcruncher",
-    version="0.1.0a1",
+    version="0.1.0a2",
     author="Alastair Smith",
     author_email="alastair.smith@ndcls.ox.ac.uk",
     packages=find_packages(),
