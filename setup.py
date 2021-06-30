@@ -40,8 +40,8 @@ setup(
         "click",
         "ujson",
         "xxhash",
-        "diffxpy",
     ],
+    extras_require={"stats": ["diffxpy", ]},
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Environment :: Console",
