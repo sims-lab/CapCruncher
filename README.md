@@ -3,6 +3,7 @@
 [![Documentation Status](https://readthedocs.org/projects/capcruncher/badge/?version=latest)](https://capcruncher.readthedocs.io/en/latest/?badge=latest)
 [![codecov](https://codecov.io/gh/sims-lab/CapCruncher/branch/master/graph/badge.svg?token=RHIGNMGX09)](https://codecov.io/gh/sims-lab/CapCruncher)
 ![CI](https://github.com/sims-lab/capture-c/actions/workflows/python-template.yml/badge.svg)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/capcruncher/badges/installer/conda.svg)](https://conda.anaconda.org/bioconda)
 
 ## Analysis software for Capture-C, Tri-C and Tiled-C data.
 
