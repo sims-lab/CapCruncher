@@ -469,13 +469,13 @@ class CCSliceFilter(SliceFilter):
                 unique_exclusions=("exclusion", "nunique"),
                 exclusion_count=("exclusion_count", "sum"),
                 unique_restriction_fragments=("restriction_fragment", "nunique"),
-                blacklisted_slices=("blacklist", "sum"),
+                blacklist=("blacklist", "sum"),
                 coordinates=("coordinates", "|".join),
             )
         )
 
-        df["capture"] = df["capture"] - 1  # nunique identifies '.' as a capture site
-        df["exclusion"] = df["exclusion"] - 1  # as above
+        df["unique_capture_sites"] = df["unique_capture_sites"] - 1  # nunique identifies '.' as a capture site
+        df["unique_exclusions"] = df["unique_exclusions"] - 1  # as above
 
         # Add the number of reporters to the dataframe.
         # Only consider a reporter if at least one capture slice is present
