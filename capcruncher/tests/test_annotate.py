@@ -63,7 +63,7 @@ def test_bed_intersection_bad_format():
             bed2=test_capture,
             intersection_name="capture",
             intersection_method="count",
-            n_cores=1)
+            )
         
         intersection = bi.intersection
 
@@ -78,7 +78,6 @@ def test_bed_intersection_bad_format():
         bed2=test_capture,
         intersection_name="capture",
         intersection_method="count",
-        n_cores=1,
         invalid_bed_action="ignore")
     
     intersection = bi.intersection
@@ -100,7 +99,6 @@ def test_bed_intersection_blank():
         bed2=test_capture,
         intersection_name="capture",
         intersection_method="count",
-        n_cores=1,
         invalid_bed_action="ignore")
     
     intersection = bi.intersection
