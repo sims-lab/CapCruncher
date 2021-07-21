@@ -26,7 +26,6 @@ def test_bed_intersection_correct():
         bed2=test_capture,
         intersection_name="capture",
         intersection_method="count",
-        n_cores=1,
     )
 
     intersection = bi.intersection
@@ -41,7 +40,6 @@ def test_bed_intersection_correct():
         bed2=test_capture,
         intersection_name="capture",
         intersection_method="get",
-        n_cores=1,
     )
 
     intersection = bi.intersection
