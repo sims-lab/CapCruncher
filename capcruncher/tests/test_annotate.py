@@ -17,12 +17,12 @@ def test_bed_intersection_correct():
     test_slices = os.path.join(dir_data, "test", "test_slices.bed")
     test_capture = os.path.join(dir_data, "test", "test_capture.bed")
 
-    bt_slices = BedTool(test_slices)
+    bt_slices = BedTool(test_slices).sort()
     df_slices = bt_slices.to_dataframe()
 
     # Test "count" method
     bi = BedIntersection(
-        bed1=test_slices,
+        bed1=bt_slices,
         bed2=test_capture,
         intersection_name="capture",
         intersection_method="count",
@@ -36,7 +36,7 @@ def test_bed_intersection_correct():
 
     # Test "get" method
     bi = BedIntersection(
-        bed1=test_slices,
+        bed1=bt_slices,
         bed2=test_capture,
         intersection_name="capture",
         intersection_method="get",
