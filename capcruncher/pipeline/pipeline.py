@@ -292,7 +292,6 @@ def fastq_qc(infile, outfile):
     )
 
 
-@follows(mkdir("statistics"))
 @merge(fastq_qc, "capcruncher_statistics/fastqc_report.html")
 def fastq_multiqc(infile, outfile):
     """Collate fastqc reports into single report using multiqc"""
@@ -1050,7 +1049,7 @@ def annotate_alignments(infile, outfile):
             "--invalid_bed_action",
             "ignore",
             "-p",
-            "1",
+            str(P.PARAMS['pipeline_n_cores']),
         ]
     )
 
