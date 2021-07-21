@@ -84,9 +84,6 @@ class BedIntersection:
     def _intersections_get(self, a, b):
         return a.intersect(b, loj=True, f=self.min_frac, sorted=True).to_dataframe()
 
-    def _extract_series(self, intersection):
-        return intersection.to_dataframe().iloc[:, -1]
-
     def _format_invalid_intersection(self, bed):
         return (
                 convert_bed_to_dataframe(bed)
@@ -102,7 +99,7 @@ class BedIntersection:
         if all([self.bed1_valid, self.bed2_valid]):
 
             a = convert_to_bedtool(self.bed1)
-            b = convert_to_bedtool(self.bed2)
+            b = convert_to_bedtool(self.bed2).sort()
     
             _intersection = self._intersection_method(a, b)
             
@@ -118,4 +115,4 @@ class BedIntersection:
                 f"Slices valid: {self.bed1_valid}\n {self.intersection_name} .bed file valid: {self.bed2_valid}"
             )     
 
-        return ser
+        return ser.sort_index()
