@@ -1049,7 +1049,7 @@ def annotate_alignments(infile, outfile):
             "--invalid_bed_action",
             "ignore",
             "-p",
-            "1",
+            str(P.PARAMS['pipeline_n_cores']),
         ]
     )
 
