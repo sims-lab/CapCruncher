@@ -91,42 +91,6 @@ class BedIntersection:
     def _extract_series(self, intersection):
         return intersection.to_dataframe().iloc[:, -1]
 
-    def _intersect_by_chrom(
-        self, a: Union[BedTool, pd.DataFrame], b: Union[BedTool, pd.DataFrame]
-    ):
-        
-        from joblib import Parallel, delayed
-
-        a_by_chrom = split_intervals_on_chrom(a)
-        b_by_chrom = split_intervals_on_chrom(b)
-
-        a_chroms, b_chroms = set(a_by_chrom), set(b_by_chrom)
-
-        intersection_required = []
-        not_intersected = []
-        for chrom in a_chroms:
-
-            a_chrom = a_by_chrom[chrom]
-
-            if chrom in b_chroms:
-                b_chrom = b_by_chrom[chrom]
-
-                a_chrom_bed = convert_to_bedtool(a_chrom)
-                b_chrom_bed = convert_to_bedtool(b_chrom)
-
-                intersection_required.append(
-                    delayed(self._intersection_method)(a_chrom_bed, b_chrom_bed)
-                )
-            else:
-                not_intersected.append(a_chrom)
-
-        intersections = Parallel(n_jobs=self.n_cores)(intersection_required)
-
-        return pd.concat([*intersections, *not_intersected], ignore_index=True).fillna(
-            self._intersection_na
-        )
-    
-
     def _format_invalid_intersection(self, bed):
         return (
                 convert_bed_to_dataframe(bed)
@@ -140,6 +104,10 @@ class BedIntersection:
         '''Intersects the two bed files and returns a pd.Series.'''
 
         if all([self.bed1_valid, self.bed2_valid]):
+
+            print(self.intersection_name)
+            print(f"bed 1 is {self.bed1_valid}")
+            print(f'bed 2 is {self.bed2_valid}')
 
             a = convert_to_bedtool(self.bed1)
             b = convert_to_bedtool(self.bed2)
