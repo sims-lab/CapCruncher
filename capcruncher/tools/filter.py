@@ -10,9 +10,9 @@ class SliceFilter:
     Perform slice filtering (inplace) and reporter identification.
 
     The SliceFilter classes e.g. CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
-    perform all of the filtering (inplace) and reporter identification whilst also 
+    perform all of the filtering (inplace) and reporter identification whilst also
     providing statistics of the numbers of slices/reads removed at each stage.
-    
+
     Attributes:
      slices (pd.DataFrame): Annotated slices dataframe.
      fragments (pd.DataFrame): Slices dataframe aggregated by parental read.
@@ -51,7 +51,7 @@ class SliceFilter:
          - exclusion_count: Number of excluded regions overlapping slice (e.g. 1)
          - blacklist: Read present in excluded region (e.g. 0)
          - coordinates: Genome coordinates (e.g. chr1:1000-2000)
-        
+
         Filtering to be performed can be left as the default (all start with 'remove')
         or a custom filtering order can be supplied with a yaml file. This must have the format:
 
@@ -63,7 +63,7 @@ class SliceFilter:
              - FILTER 1
 
 
-        *All* filters present in the file must be defined within the SliceFilter class. 
+        *All* filters present in the file must be defined within the SliceFilter class.
 
 
         Args:
@@ -71,7 +71,7 @@ class SliceFilter:
          filter_stages (dict, optional): Dictionary defining order of slice filtering. Defaults to None.
          sample_name (str, optional): Name of sample being processed e.g. DOX-treated_1. Defaults to "".
          read_type (str, optional): Combined (flashed) or not-combined (pe). Defaults to "".
- 
+
         Raises:
          ValueError: Filter stages must be provided. This is done automatically by all subclasses
          AttributeError: All filters must be defined in the SliceFilter.
@@ -111,39 +111,42 @@ class SliceFilter:
         for col in columns_required:
             if not col in df.columns:
                 raise KeyError(f'Required column "{col}" not in slices dataframe')
-        
+
         return True
-    
-    
+
     def _extract_filter_stages(self, filter_stages) -> dict:
-        '''
+        """
         Extracts filter stages from a supplied dictionary or yaml file
-        
+
         Checks that the filters provided are within the dictionary supplied.
-        '''
-        
+        """
+
         if isinstance(filter_stages, dict):
             filters = filter_stages
-        
-        elif os.path.exists(filter_stages) and ('.yaml' in filter_stages or '.yml' in filter_stages):
-            
+
+        elif os.path.exists(filter_stages) and (
+            ".yaml" in filter_stages or ".yml" in filter_stages
+        ):
+
             import yaml
-            
-            with open(filter_stages, 'r') as f:
-                filters = yaml.safe_load(f)    
-        
+
+            with open(filter_stages, "r") as f:
+                filters = yaml.safe_load(f)
+
         else:
-            raise ValueError('Provide either a path to a .yaml file or a python dictionary')
-        
-        
+            raise ValueError(
+                "Provide either a path to a .yaml file or a python dictionary"
+            )
+
         all_filters = itertools.chain.from_iterable(filters.values())
-        
+
         for filt in all_filters:
             if not filt in self.filters:
-                raise AttributeError(f'Required filter: {filt} not present. Check for correct spelling and format.')
-        
-        return filters
+                raise AttributeError(
+                    f"Required filter: {filt} not present. Check for correct spelling and format."
+                )
 
+        return filters
 
     @property
     def filters(self) -> list:
@@ -152,14 +155,13 @@ class SliceFilter:
         Returns:
             list: All filters present in the class.
         """
-        filters = [attr for attr in dir(self) if 'remove_' in attr]
-        
+        filters = [attr for attr in dir(self) if "remove_" in attr]
+
         # There is at least one filter not indicated by remove
         # Need to append to the filter list.
-        filters.append('get_unfiltered_slices')
-        
-        return filters
+        filters.append("get_unfiltered_slices")
 
+        return filters
 
     @property
     def slice_stats(self) -> pd.DataFrame:
@@ -196,13 +198,17 @@ class SliceFilter:
         Returns:
          pd.DataFrame: Statistics of the slices/fragments removed aggregated by read id.
         """
-        return (self.filter_stats.rename(columns={"stage": "stat_type", "unique_fragments": "stat",})
-                                 [["stat_type", "stat"]]
-                                 .assign(stage="ccanalysis",
-                                         read_type=self.read_type,
-                                         sample=self.sample_name,
-                                         read_number=0,)
-                )
+        return self.filter_stats.rename(
+            columns={
+                "stage": "stat_type",
+                "unique_fragments": "stat",
+            }
+        )[["stat_type", "stat"]].assign(
+            stage="ccanalysis",
+            read_type=self.read_type,
+            sample=self.sample_name,
+            read_number=0,
+        )
 
     @property
     def fragments(self) -> pd.DataFrame:
@@ -233,10 +239,10 @@ class SliceFilter:
     def filter_slices(self, output_slices=False, output_location="."):
         """
         Performs slice filtering.
-        
-        Filters are applied to the slices dataframe in the order specified by 
-        filter_stages. Filtering stats aggregated at the slice and fragment level 
-        are also printed. 
+
+        Filters are applied to the slices dataframe in the order specified by
+        filter_stages. Filtering stats aggregated at the slice and fragment level
+        are also printed.
 
         Args:
          output_slices (bool, optional): Determines if slices are to be output to a specified location after each filtering step.
@@ -262,7 +268,7 @@ class SliceFilter:
 
     def get_unfiltered_slices(self):
         """
-        Does not modify slices.        
+        Does not modify slices.
         """
         self.slices = self.slices
 
@@ -284,13 +290,15 @@ class SliceFilter:
     def remove_duplicate_re_frags(self):
         """
         Prevent the same restriction fragment being counted more than once (Uncommon).
-        
+
         Example:
 
          --RE_FRAG1--\----Capture----\---RE_FRAG1----
 
         """
-        self.slices = self.slices.drop_duplicates(subset=["parent_read", "restriction_fragment"])
+        self.slices = self.slices.drop_duplicates(
+            subset=["parent_read", "restriction_fragment"]
+        )
 
     def remove_slices_without_re_frag_assigned(self):
         """Removes slices if restriction_fragment column is N/A"""
@@ -304,12 +312,12 @@ class SliceFilter:
         (Common).
 
         Example:
-        
+
          | Frag 1:  chr1:1000-1250 chr1:1500-1750
          | Frag 2:  chr1:1000-1250 chr1:1500-1750
          | Frag 3:  chr1:1050-1275 chr1:1600-1755
          | Frag 4:  chr1:1500-1750 chr1:1000-1250
- 
+
          Frag 2 removed. Frag 1,3,4 retained
 
 
@@ -327,8 +335,8 @@ class SliceFilter:
         """
         Removes PCR duplicates from non-flashed (PE) fragments (Common).
 
-        Sequence quality is often lower at the 3' end of reads leading to variance 
-        in mapping coordinates.  PCR duplicates are removed by checking that the 
+        Sequence quality is often lower at the 3' end of reads leading to variance
+        in mapping coordinates.  PCR duplicates are removed by checking that the
         fragment start and end are not duplicated in the dataframe.
 
         """
@@ -375,9 +383,9 @@ class CCSliceFilter(SliceFilter):
     Perform Capture-C slice filtering (inplace) and reporter identification.
 
     SliceFilter tuned specifically for Capture-C data. This class has addtional methods
-    to remove common artifacts in Capture-C data i.e. multi-capture fragments, 
+    to remove common artifacts in Capture-C data i.e. multi-capture fragments,
     non-reporter fragments, multi-capture reporters. The default filter order is as follows:
-     
+
      - remove_unmapped_slices
      - remove_orphan_slices
      - remove_multi_capture_fragments
@@ -445,28 +453,27 @@ class CCSliceFilter(SliceFilter):
 
         Returns:
          pd.DataFrame: Slices aggregated by parental read name.
-        
+
         """
 
         df = (
             self.slices.sort_values(["parent_read", "chrom", "start"])
             .groupby("parent_read", as_index=False, sort=False)
             .agg(
-                {
-                    "slice": "nunique",
-                    "pe": "first",
-                    "mapped": "sum",
-                    "multimapped": "sum",
-                    "capture": "nunique",
-                    "capture_count": "sum",
-                    "exclusion": "nunique",
-                    "exclusion_count": "sum",
-                    "restriction_fragment": "nunique",
-                    "blacklist": "sum",
-                    "coordinates": "|".join,
-                }
+                unique_slices=("slice", "nunique"),
+                pe=("pe", "first"),
+                mapped=("mapped", "sum"),
+                multimapped=("multimapped", "sum"),
+                unique_capture_sites=("capture", "nunique"),
+                capture_count=("capture_count", "sum"),
+                unique_exclusions=("exclusion", "nunique"),
+                exclusion_count=("exclusion_count", "sum"),
+                unique_restriction_fragments=("restriction_fragment", "nunique"),
+                blacklisted_slices=("blacklist", "sum"),
+                coordinates=("coordinates", "|".join),
             )
         )
+
         df["capture"] = df["capture"] - 1  # nunique identifies '.' as a capture site
         df["exclusion"] = df["exclusion"] - 1  # as above
 
@@ -480,16 +487,6 @@ class CCSliceFilter(SliceFilter):
             0,
         )
 
-        # Rename for clarity
-        df = df.rename(
-            columns={
-                "capture": "unique_capture_sites",
-                "exclusion": "unique_exclusion_sites",
-                "restriction_fragment": "unique_restriction_fragments",
-                "slice": "unique_slices",
-                "blacklist": "blacklisted_slices",
-            }
-        )
         return df
 
     @property
@@ -574,7 +571,7 @@ class CCSliceFilter(SliceFilter):
 
         Returns:
          pd.DataFrame: Capture slices
-         
+
         """
         return self.slices.query('~(capture == ".")')
 
@@ -589,7 +586,7 @@ class CCSliceFilter(SliceFilter):
         Merges captures and reporters sharing the same parental id.
 
         Capture slices and reporter slices with the same parental read id are
-        merged together. The prefixes 'capture' and 'reporter' are used to 
+        merged together. The prefixes 'capture' and 'reporter' are used to
         identify slices marked as either captures or reporters.
 
         Returns:
@@ -657,10 +654,10 @@ class CCSliceFilter(SliceFilter):
     def remove_multi_capture_fragments(self):
         """
         Removes double capture fragments.
-        
+
         All slices (i.e. the entire fragment) are removed if more than
         one capture probe is present i.e. a double capture (V. Common)
-        
+
         """
         frags_capture = self.fragments.query("0 < unique_capture_sites < 2")
         self.slices = self.slices[
@@ -707,9 +704,9 @@ class TriCSliceFilter(CCSliceFilter):
     Perform Tri-C slice filtering (inplace) and reporter identification.
 
     SliceFilter tuned specifically for Tri-C data. Whilst the vast majority of filters
-    are inherited from CCSliceFilter, this class has addtional methods for Tri-C analysis 
+    are inherited from CCSliceFilter, this class has addtional methods for Tri-C analysis
     i.e. remove_slices_with_one_reporter. The default filtering order is:
-     
+
      - remove_unmapped_slices
      - remove_slices_without_re_frag_assigned
      - remove_orphan_slices
@@ -733,7 +730,6 @@ class TriCSliceFilter(CCSliceFilter):
      slice_stats (pd.DataFrame): Provides slice level statistics.
      read_stats (pd.DataFrame): Provides statistics of slice filtering at the parental read level.
      filter_stats (pd.DataFrame): Provides statistics of read filtering."""
-
 
     def __init__(self, slices, filter_stages=None, **sample_kwargs):
 
@@ -781,12 +777,12 @@ class TiledCSliceFilter(SliceFilter):
 
     SliceFilter tuned specifically for Tiled-C data. This class has addtional methods
     to remove common artifacts in Tiled-C data i.e. non-capture fragments,
-    multi-capture (with different tiled regions) fragments. 
+    multi-capture (with different tiled regions) fragments.
     A reporter is defined differently in a Tiled-C analysis as a reporter slice can also
     be a capture slice.
 
     The default filter order is as follows:
-     
+
      - remove_unmapped_slices
      - remove_orphan_slices
      - remove_blacklisted_slices
@@ -809,7 +805,7 @@ class TiledCSliceFilter(SliceFilter):
      read_stats (pd.DataFrame): Provides statistics of slice filtering at the parental read level.
      filter_stats (pd.DataFrame): Provides statistics of read filtering.
 
-     """
+    """
 
     def __init__(self, slices, filter_stages=None, **sample_kwargs):
 
@@ -894,11 +890,11 @@ class TiledCSliceFilter(SliceFilter):
         """
         Extracts reporter cis/trans statistics from slices.
 
-        Unlike Capture-C/Tri-C reporter slice can also be capture slices as 
+        Unlike Capture-C/Tri-C reporter slice can also be capture slices as
         all slices within the capture region are considered as reporters. To extract
-        cis/trans statistics, one capture slice in each fragment is considered to be 
+        cis/trans statistics, one capture slice in each fragment is considered to be
         the "primary capture" this then enables merging of this "primary capture" with
-        the other reporters both inside and outside of the tiled region. 
+        the other reporters both inside and outside of the tiled region.
 
         Returns:
          pd.DataFrame: Reporter cis/trans statistics
