@@ -38,8 +38,6 @@ class BedIntersection:
         intersection_name: str = "count",
         intersection_method: str = "count",
         intersection_min_frac: float = 1e-9,
-        intersection_split_chrom: bool = True, 
-        n_cores: int = 1,
         invalid_bed_action="error",
         
     ):
@@ -77,8 +75,6 @@ class BedIntersection:
         self.min_frac = intersection_min_frac
 
         # Other options
-        self.intersection_split_chrom = intersection_split_chrom
-        self.n_cores = n_cores
         self.invalid_bed_action = invalid_bed_action
 
     def _intersections_count(self, a, b):
@@ -105,17 +101,10 @@ class BedIntersection:
 
         if all([self.bed1_valid, self.bed2_valid]):
 
-            print(self.intersection_name)
-            print(f"bed 1 is {self.bed1_valid}")
-            print(f'bed 2 is {self.bed2_valid}')
-
             a = convert_to_bedtool(self.bed1)
             b = convert_to_bedtool(self.bed2)
-            
-            if self.intersection_split_chrom:
-                _intersection = self._intersect_by_chrom(a, b)
-            else:
-                _intersection = self._intersection_method(a, b)
+    
+            _intersection = self._intersection_method(a, b)
             
             ser = _intersection.set_index("name").iloc[:, -1]
             ser.name = self.intersection_name
