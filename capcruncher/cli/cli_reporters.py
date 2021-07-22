@@ -124,7 +124,7 @@ def count(*args, **kwargs):
     from capcruncher.cli.reporters_count import count
     count(*args, **kwargs)
 
-@cli.command()
+@cli.group()
 def plot(*args, **kwargs):
     """
     Generates plots for the outputs produced by CapCruncher.
@@ -153,18 +153,7 @@ def plot_reporters(*args, **kwargs):
     Generates a plot for the genomic region specified using the suplied configuration file.
     """
     from capcruncher.cli.reporters_plot import plot_reporters
-
-
-
-
-
-
-
-
-
-
-
-
+    plot_reporters(*args, **kwargs)
 
 
 @cli.group()
