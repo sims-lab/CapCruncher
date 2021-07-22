@@ -429,7 +429,7 @@ class ScaleBar(Track):
 
         ax.text(
             (x0 + (scale_distance / 2)),
-            y_midpoint - 0.1,
+            y_midpoint - 0.2,
             scale_distance_human_readable,
             ha="center",
             va="center",
