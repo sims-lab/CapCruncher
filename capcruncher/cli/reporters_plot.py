@@ -3,16 +3,15 @@ import sys
 from collections import namedtuple
 import pandas as pd
 import yaml
-import glob
 
-import click
 import coolbox.api as cb
 from capcruncher.tools.plotting import (
     ScaleBar,
     SimpleBed,
     CCBigWig,
     CCBigWigCollection,
-    CCMatrix,)
+    CCMatrix,
+)
 
 
 def make_template(
@@ -109,9 +108,7 @@ def make_template(
         yaml.dump(tracks_for_output, w)
 
 
-def plot(config: os.PathLike, output_prefix: str):
-
-    region = "chr16:53951-278829"
+def plot_reporters(region:str, config: os.PathLike, output: str):
 
     track_type_to_track_class_mapping = {
         "bigWig": CCBigWig,
@@ -121,8 +118,7 @@ def plot(config: os.PathLike, output_prefix: str):
         "genes": cb.BED,
     }
 
-    template = "template.yml"
-    with open(template, "r") as r:
+    with open(config, "r") as r:
         tracks = yaml.load(r)
 
     # Perform the plotting
@@ -140,4 +136,4 @@ def plot(config: os.PathLike, output_prefix: str):
         frame.add_track(cb.Spacer())
 
     figure = frame.plot(region)
-    figure.savefig("plotting.png")
+    figure.savefig(output)
