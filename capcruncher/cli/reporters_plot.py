@@ -12,16 +12,10 @@ from capcruncher.tools.plotting import (
     SimpleBed,
     CCBigWig,
     CCBigWigCollection,
-    CCMatrix,
-)
-from capcruncher.cli.cli_reporters import cli
+    CCMatrix,)
 
 
-@cli.command()
-@click.argument("files", nargs=-1)
-@click.option("-o", "--output_prefix", default="template")
-@click.option("-d", "--design_matrix")
-def generate_plotting_template(
+def make_template(
     files: list, output_prefix: str, design_matrix=None, analysis_method="tiled"
 ):
 
@@ -115,9 +109,7 @@ def generate_plotting_template(
         yaml.dump(tracks_for_output, w)
 
 
-@cli.command()
-def plot2():
-    # def plot2(config: os.PathLike, output_prefix: str):
+def plot(config: os.PathLike, output_prefix: str):
 
     region = "chr16:53951-278829"
 
