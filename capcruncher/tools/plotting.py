@@ -147,7 +147,6 @@ class CCBigWig(cb.BigWig):
         else:
             self.plot_fragments(ax, gr, **kwargs)
 
-
 class CCBigWigCollection(Track):
 
     DEFAULT_PROPERTIES = {
