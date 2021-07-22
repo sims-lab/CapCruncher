@@ -78,6 +78,10 @@ def alignments():
 def reporters():
     """Reporter counting, storing, comparison, pileups and heatmaps."""
 
+@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_utilities:cli")
+def utilities():
+    """Contains miscellaneous functions"""
+
 
 @cli.command(context_settings=dict(ignore_unknown_options=True))
 @click.option("-h", "--help", is_flag=True)
