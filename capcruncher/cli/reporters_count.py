@@ -6,6 +6,7 @@ import xopen
 from capcruncher.cli.cli_reporters import cli
 import click
 import os
+from tqdm import tqdm
 
 
 def count_re_site_combinations(
@@ -28,10 +29,7 @@ def count_re_site_combinations(
 
 
     # For each set of ligated fragments
-    for ii, (group_name, frag) in enumerate(groups):
-
-        if (ii % 10000 == 0) and (ii > 0):
-            print(f"Processed {ii} fragments")
+    for ii, (group_name, frag) in enumerate(tqdm(groups)):
 
         for rf1, rf2 in combinations(frag[column], 2):  # Get fragment combinations
             #TODO: Notice a high amount of multicaptures (same oligo) not being removed.
@@ -74,14 +72,17 @@ def count(
         writer.write(header.encode())
 
         # Open reporter tsv file as a chunked reader (these files can get very large)
-        df_reporters_iterator = pd.read_csv(reporters, sep="\t", chunksize=2e6)
+        chunksize = 2e6
+        df_reporters_iterator = pd.read_csv(reporters, sep="\t", chunksize=chunksize)
 
-        ligated_rf_counts = {}
+        ligated_rf_counts = defaultdict(int)
         for ii, df_reporters in enumerate(df_reporters_iterator):
 
+            print(f'Processing chunk #{ii+1} of {chunksize} slices')
+
             if remove_exclusions:
+                print('Removing exclusions')
                 # Must only remove exclusions if they are relevant for the capture being examined
-                print("Removing all excluded regions")
                 df_capture = df_reporters.query('capture != "."')
 
                 # Finds excluded reporters
@@ -114,11 +115,12 @@ def count(
 
             # Remove the capture site
             if remove_capture:
+                print('Removing viewpoints')
                 df_reporters = df_reporters.query('capture != "."')
 
             # Subsample at the fragment level
             if subsample:
-
+                print('Subsampling data')
                 if isinstance(subsample, float):
                     subsample_options = {"frac": subsample}
                 elif isinstance(subsample, int):
@@ -130,16 +132,16 @@ def count(
                         df_reporters["parent_read"].sample(**subsample_options)
                     )
                 ]
-                print("Subsampled fragments")
 
-            print("Grouping at the fragment level")
+            print('Grouping into fragments')
             fragments = df_reporters.groupby("parent_read")
 
-            print("Started counting")
+            print('Counting')
             ligated_rf_counts = count_re_site_combinations(
                 fragments, column="restriction_fragment", counts=ligated_rf_counts
             )
 
-            for (rf1, rf2), count in ligated_rf_counts.items():
-                line = "\t".join([str(rf1), str(rf2), str(count)]) + "\n"
-                writer.write(line.encode())
+
+        for (rf1, rf2), count in ligated_rf_counts.items():
+            line = "\t".join([str(rf1), str(rf2), str(count)]) + "\n"
+            writer.write(line.encode())
