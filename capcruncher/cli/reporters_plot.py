@@ -1,8 +1,10 @@
 import os
 import sys
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
+import matplotlib
 import pandas as pd
 import yaml
+import seaborn as sns
 
 import coolbox.api as cb
 from capcruncher.tools.plotting import (
@@ -54,18 +56,24 @@ def make_template(
     genes = namedtuple(
         "genes",
         field_names=["file", "type", "style", "gene_style", "color", "display"],
-        defaults=["gene", "gene", "normal", "bed_rgb", "stacked"],
+        defaults=["genes", "gene", "normal", "bed_rgb", "stacked"],
     )
 
     extensions_to_track_mapping = {
+        "genes.bed": genes,
         ".bed": bed,
         ".bigWig": bw,
         ".hdf5": heatmap,
-        "genes.bed": genes,
     }
 
-    tracks = dict()
+    tracks = OrderedDict()
     processed_files = set()
+
+    # Find any gene specifiers as these need to go first
+    for fn in files:
+        if "genes.bed" in fn:
+            tracks[os.path.basename(fn)] = genes(file=fn)
+            processed_files.add(fn)
 
     # Deal with any files that need to be grouped together to form a summary dataframe
     if design_matrix:
@@ -83,10 +91,14 @@ def make_template(
         df_fnames = df_fnames.set_index("samplename")
         df_fnames = df_fnames.join(df_design["condition"])
 
-        for (condition, viewpoint), df in df_fnames.groupby(["condition", "viewpoint"]):
+        colors = [matplotlib.colors.to_hex(c) for c in sns.palettes.hls_palette(n_colors=12)]
+
+        for ((condition, viewpoint), df), color in zip(
+            df_fnames.groupby(["condition", "viewpoint"]), colors
+        ):
             fnames = df["fn"].to_list()
             processed_files.update(fnames)
-            tracks[f"{condition}_{viewpoint}"] = bwc(file=fnames)
+            tracks[f"{condition}_{viewpoint}"] = bwc(file=fnames, color=color)
 
     # Deal with the rest of the files
     for fn in files:
@@ -105,10 +117,10 @@ def make_template(
 
     tracks_for_output = {k: v._asdict() for k, v in tracks.items()}
     with open(f"{output_prefix}.yml", "w") as w:
-        yaml.dump(tracks_for_output, w)
+        yaml.dump(tracks_for_output, w, sort_keys=False)
 
 
-def plot_reporters(region:str, config: os.PathLike, output: str):
+def plot_reporters(region: str, config: os.PathLike, output: str):
 
     track_type_to_track_class_mapping = {
         "bigWig": CCBigWig,
@@ -130,7 +142,12 @@ def plot_reporters(region:str, config: os.PathLike, output: str):
         track_type = track_details["type"]
         track_class = track_type_to_track_class_mapping[track_type]
 
-        track = track_class(**track_details, title=track_name)
+        if track_class is cb.BED:
+            # Don't give the bed file a title
+            track = track_class(**track_details, title=" ")
+        else:
+            track = track_class(**track_details, title=track_name)
+
 
         frame.add_track(track)
         frame.add_track(cb.Spacer())
