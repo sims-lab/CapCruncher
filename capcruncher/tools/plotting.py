@@ -28,16 +28,17 @@ class CCMatrix(cb.Cool):
         self.remove_viewpoint = remove_viewpoint
         self.properties = dict()
         self.properties.update(kwargs)
+        self.properties["name"] = f"CCMatrix.{self.properties.get('title')}"
 
         if not self._cooler_store_has_binsize:
             raise ValueError(
-                f"Capture probe {capture_name} or resolution {binsize} not found in supplied file."
+                f"Viewpoint {viewpoint} or resolution {binsize} not found in supplied file."
             )
 
-        self.cooler_obj = cooler.Cooler(
-            f"{cooler_fn}::{capture_name}/resolutions/{binsize}"
+        self.cooler = cooler.Cooler(
+            f"{file}::{viewpoint}/resolutions/{binsize}"
         )
-        self.capture_bins = self.cooler_obj.info["metadata"]["capture_bins"]
+        self.capture_bins = self.cooler.info["metadata"]["capture_bins"]
 
     def _cooler_store_has_binsize(self):
         clrs = cooler.fileops.list_coolers(self.file)
@@ -47,9 +48,9 @@ class CCMatrix(cb.Cool):
             return True
 
     def get_matrix(self, coordinates, field="count"):
-        matrix = self.cooler_obj.matrix(field=field, balance=False).fetch(coordinates)
+        matrix = self.cooler.matrix(field=field, balance=False).fetch(coordinates)
 
-        offset = self.cooler_obj.offset(coordinates)
+        offset = self.cooler.offset(coordinates)
         capture_bins = [(bin - offset) for bin in self.capture_bins]
 
         if self.remove_viewpoint:
@@ -81,7 +82,7 @@ class CCMatrix(cb.Cool):
                 matrix, **normalisation_kwargs
             )  # Get iced matrix
             matrix_normalised = matrix_ice / int(
-                self.cooler_obj["metadata"]["n_cis_interactions"]
+                self.cooler["metadata"]["n_cis_interactions"]
             )  # Correct for number of interactions
 
         else:
