@@ -108,6 +108,9 @@ for key in P.PARAMS:
 ######################
 
 
+# Method of analysis
+ANALYSIS_METHOD = P.PARAMS.get('analysis_method', 'capture')
+
 # Determines the number of samples being processed
 N_SAMPLES = len(
     {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) for fn in glob.glob("*.fastq*")}
