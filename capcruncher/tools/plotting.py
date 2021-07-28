@@ -15,16 +15,16 @@ from coolbox.core.track import Track
 class CCMatrix(cb.Cool):
     def __init__(
         self,
-        cooler_fn: os.PathLike,
+        file: os.PathLike,
         binsize: 5000,
-        capture_name: str,
+        viewpoint: str,
         remove_viewpoint=False,
         **kwargs,
     ):
 
-        self.cooler_fn = cooler_fn
+        self.file = file
         self.binsize = binsize
-        self.capture_name = capture_name
+        self.viewpoint = viewpoint
         self.remove_viewpoint = remove_viewpoint
         self.properties = dict()
         self.properties.update(kwargs)
@@ -40,8 +40,8 @@ class CCMatrix(cb.Cool):
         self.capture_bins = self.cooler_obj.info["metadata"]["capture_bins"]
 
     def _cooler_store_has_binsize(self):
-        clrs = cooler.fileops.list_coolers(self.cooler_fn)
-        expected_path = f"{self.capture_name}/resolutions/{self.binsize}"
+        clrs = cooler.fileops.list_coolers(self.file)
+        expected_path = f"{self.viewpoint}/resolutions/{self.binsize}"
 
         if expected_path in clrs:
             return True
