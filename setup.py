@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+from setuptools_rust import Binding, RustExtension
 
 setup(
     name="capcruncher",
@@ -42,6 +43,8 @@ setup(
         "xxhash",
     ],
     extras_require={"stats": ["diffxpy", ]},
+    rust_extensions=[RustExtension("capcruncher.lib_capcruncher","Cargo.toml", debug=False, binding=Binding.PyO3)],
+    zip_safe=False,
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Environment :: Console",

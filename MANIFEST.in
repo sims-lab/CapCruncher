@@ -5,3 +5,5 @@ exclude .git
 exclude .github
 exclude .pytest_cache
 exclude .vscode
+include Cargo.toml
+recursive-include src *
