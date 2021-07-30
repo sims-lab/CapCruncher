@@ -40,7 +40,7 @@ fn fastq_remove_duplicates_py(
 }
 
 #[pymodule]
-#[pyo3(name = "lib_capcruncher")]
+#[pyo3(name = "libcapcruncher")]
 fn libcapcruncher(_py: Python, module: &PyModule) -> PyResult<()> {
 
     module.add_function(wrap_pyfunction!(fastq_parse_py, module)?)?;
