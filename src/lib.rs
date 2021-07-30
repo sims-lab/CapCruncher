@@ -1,8 +1,22 @@
 use pyo3::{prelude::*};
 use pyo3::types::{PyDict, IntoPyDict};
+use bincode;
+use std::fs::File;
+use std::io;
+use std::collections::HashMap;
 pub mod fastq_deduplication;
 
-/// Converts one or a pair of fastq files to json format (hashed).
+
+#[pyfunction]
+fn load_bincode(py: Python, path: String) -> PyResult<&PyDict>{
+    
+    let file = File::open(path)?;
+    let reader = io::BufReader::new(file);
+    let deserialised: HashMap<u64, u64> = bincode::deserialize_from(reader).expect("Error deserialising");
+    Ok(deserialised.into_py_dict(py))
+
+}
+
 #[pyfunction]
 #[pyo3(name = "fastq_parse")]
 #[pyo3(text_signature = "(fastq_files:List, output: str, /)")]
@@ -46,6 +60,7 @@ fn libcapcruncher(_py: Python, module: &PyModule) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(fastq_parse_py, module)?)?;
     module.add_function(wrap_pyfunction!(fastq_find_duplicates_py, module)?)?;
     module.add_function(wrap_pyfunction!(fastq_remove_duplicates_py, module)?)?;
+    module.add_function(wrap_pyfunction!(load_bincode, module)?)?;
 
     Ok(())
 }

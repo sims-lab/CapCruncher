@@ -9,6 +9,7 @@ import xopen
 from click.testing import CliRunner
 from capcruncher.cli import cli
 import pandas as pd
+from capcruncher import libcapcruncher
 
 
 # Pre-run setup
@@ -112,7 +113,7 @@ def test_deduplicate_parse():
         result_test = ujson.load(f)
 
     with open(data_dd.result_parsed) as f:
-        result_correct = ujson.load(f)
+        result_correct = libcapcruncher.load_bincode(f)
 
     # Check that all keys and values match between the saved file and the test
     assert result_test == result_correct
@@ -137,10 +138,10 @@ def test_fastq_deduplicate_identification():
     assert result.exit_code == 0
 
     with open(output_duplicates_test) as f:
-        result_test = ujson.load(f)
+        result_test = libcapcruncher.load_bincode(f)
 
     with open(data_dd.result_identify) as f:
-        result_correct = ujson.load(f)
+        result_correct = libcapcruncher.load_bincode(f)
 
     # Checks that the same number of duplicates are identified, some randomness in identification
     assert len(result_test) == len(result_correct)
@@ -183,7 +184,7 @@ def test_fastq_deduplicate_removal():
         result_correct = r.readlines()
 
     with open(data_dd.result_identify) as r:
-        duplicates = ujson.load(r)
+        duplicates = libcapcruncher.load_bincode(r)
 
     fq_unfilt_n_entries = get_fastq_n_records(data_dd.fq1)
     fq_dd_n_entries = get_fastq_n_records(output_removal_test)
