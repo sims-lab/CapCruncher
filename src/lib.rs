@@ -1,6 +1,5 @@
 use pyo3::{prelude::*};
 use pyo3::types::{PyDict, IntoPyDict};
-use bincode;
 use std::fs::File;
 use std::io;
 use std::collections::HashMap;
@@ -12,8 +11,10 @@ fn load_bincode(py: Python, path: String) -> PyResult<&PyDict>{
     
     let file = File::open(path)?;
     let reader = io::BufReader::new(file);
-    let deserialised: HashMap<u64, u64> = bincode::deserialize_from(reader).expect("Error deserialising");
-    Ok(deserialised.into_py_dict(py))
+    let deserialised: HashMap<u64, u64> = bincode::deserialize_from(reader).unwrap();
+    let deserialised_dict = &deserialised.into_py_dict(py);
+
+    Ok(deserialised_dict)
 
 }
 
@@ -22,7 +23,7 @@ fn load_bincode(py: Python, path: String) -> PyResult<&PyDict>{
 #[pyo3(text_signature = "(fastq_files:List, output: str, /)")]
 fn fastq_parse_py(fastq_files: Vec<String>, parsed_output: String) -> PyResult<String> {
     
-    ctrlc::set_handler(|| std::process::exit(2)).unwrap();
+    ctrlc::set_handler(|| std::process::exit(2)).unwrap_or_default();
     fastq_deduplication::parse_fastqs(fastq_files, parsed_output.clone()).unwrap();
     Ok(parsed_output.to_string())
 }
@@ -31,7 +32,7 @@ fn fastq_parse_py(fastq_files: Vec<String>, parsed_output: String) -> PyResult<S
 #[pyo3(name = "fastq_find_duplicates")]
 #[pyo3(text_signature = "(fastq_parsed_files: List, output: str, /)")]
 fn fastq_find_duplicates_py(json_input: Vec<String>, json_output: String) -> PyResult<String> {
-    ctrlc::set_handler(|| std::process::exit(2)).unwrap();
+    ctrlc::set_handler(|| std::process::exit(2)).unwrap_or_default();
     fastq_deduplication::identify_duplicates(&mut json_input.to_owned(), &json_output).unwrap();
     Ok(json_output)
 }
@@ -46,7 +47,7 @@ fn fastq_remove_duplicates_py(
     outfiles: Vec<String>,
 ) -> PyResult<&PyDict> {
     
-    ctrlc::set_handler(|| std::process::exit(2)).unwrap();
+    ctrlc::set_handler(|| std::process::exit(2)).unwrap_or_default();
     let stats = fastq_deduplication::remove_duplicates(fastq_files, duplicates, outfiles);
     Ok(stats.unwrap().into_py_dict(py))
 
