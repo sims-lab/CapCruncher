@@ -12,7 +12,7 @@ from capcruncher import libcapcruncher
 from capcruncher.tools.statistics import DeduplicationStatistics
 
 
-def parse(input_files: Tuple, output: os.PathLike = "out.json", read_buffer: int = 1e5):
+def parse(input_files: Tuple, output: os.PathLike = "out.bincode", read_buffer: int = 1e5):
     """
     Parses fastq file(s) into easy to deduplicate format.
 
