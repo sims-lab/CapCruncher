@@ -8,6 +8,7 @@ use std::error::Error;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io;
+use std::io::Write;
 use std::path::Path;
 use twox_hash::xxh3::hash64_with_seed;
 
@@ -94,7 +95,7 @@ fn hash_records(records: Vec<fastq::Record>, number_of_records: usize) -> (u64, 
         seqs.push(r.seq().to_owned());
     }
 
-    let ids_hashed = hash64_with_seed(&ids.concat().as_bytes(), 42);
+    let ids_hashed = hash64_with_seed(ids.concat().as_bytes(), 42);
     let seqs_hashed = hash64_with_seed(&seqs.concat(), 42);
     (ids_hashed, seqs_hashed)
 
@@ -109,7 +110,7 @@ pub fn parse_fastqs<P: AsRef<Path> + Debug>(
     let fastqs = FastqReaders::from_files(files);
     let outfile = output.as_ref().to_owned();
     let mut hashed_details = HashMap::new();
-    let writer = io::BufWriter::new(File::create(outfile)?);
+    let mut writer = io::BufWriter::new(File::create(outfile)?);
 
     for (ii, records) in fastqs.enumerate() {
         let (id, seq) = hash_records(records, number_of_files);
@@ -119,7 +120,8 @@ pub fn parse_fastqs<P: AsRef<Path> + Debug>(
         }
     }
 
-    bincode::serialize_into(writer, &hashed_details)?;
+    bincode::serialize_into(writer.get_ref(), &hashed_details)?;
+    writer.flush()?;
     Ok(())
 }
 
@@ -148,8 +150,10 @@ pub fn identify_duplicates<P: AsRef<Path>>(
 
     println!("Number of duplicates {}", duplicated_ids.len());
 
-    let writer = io::BufWriter::new(File::create(outfile)?);
-    bincode::serialize_into(writer, &duplicated_ids)?;
+    let mut writer = io::BufWriter::new(File::create(outfile)?);
+    bincode::serialize_into(writer.get_ref(), &duplicated_ids)?;
+    writer.flush()?;
+
 
     Ok(())
 }
