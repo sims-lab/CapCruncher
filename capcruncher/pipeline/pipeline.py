@@ -115,7 +115,7 @@ N_SAMPLES = len(
 )
 
 # Determines if the design matrix supplied does exist
-HAS_DESIGN = os.path.exists(P.PARAMS.get("analysis_design"))
+HAS_DESIGN = os.path.exists(P.PARAMS.get("analysis_design", ""))
 
 # Turns on FASTQ deduplication
 FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
@@ -2169,7 +2169,6 @@ def reporters_plot_make_templates(infile, outfile):
 @follows(
     pipeline_make_report,
     hub_make,
-    reporters_plot_heatmap,
     reporters_make_union_bedgraph,
     identify_differential_interactions,
     reporters_make_comparison_bedgraph,
