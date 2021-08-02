@@ -2114,56 +2114,56 @@ def reporters_plot_heatmaps_make_templates(infiles, outfile):
 # @merge(["capcruncher_analysis/reporters/*.hdf5", "capcruncher_analysis/bigwigs/*.bigWig"])
 
 
-@transform(
-    "capcruncher_analysis/reporters/*.hdf5",
-    regex(r"capcruncher_analysis/reporters/(.*).hdf5"),
-    r"capcruncher_plots/\1.completed",
-)
-def reporters_plot_make_templates(infile, outfile):
-    """Plots a heatmap over a specified region"""
+# @transform(
+#     "capcruncher_analysis/reporters/*.hdf5",
+#     regex(r"capcruncher_analysis/reporters/(.*).hdf5"),
+#     r"capcruncher_plots/\1.completed",
+# )
+# def reporters_plot_make_templates(infile, outfile):
+#     """Plots a heatmap over a specified region"""
 
-    if P.PARAMS.get("plot_normalisation"):
-        norm = P.PARAMS["plot_normalisation"]
-    else:
-        norm_default = {
-            "capture": "n_interactions",
-            "tri": "n_rf_n_interactions",
-            "tiled": "ice",
-        }
-        norm = norm_default[P.PARAMS["analysis_method"]]
+#     if P.PARAMS.get("plot_normalisation"):
+#         norm = P.PARAMS["plot_normalisation"]
+#     else:
+#         norm_default = {
+#             "capture": "n_interactions",
+#             "tri": "n_rf_n_interactions",
+#             "tiled": "ice",
+#         }
+#         norm = norm_default[P.PARAMS["analysis_method"]]
 
-    output_prefix = outfile.replace(".completed", "")
+#     output_prefix = outfile.replace(".completed", "")
 
-    resolutions = " -r ".join(re.split(r"[,;]\s*|\s+", str(P.PARAMS["plot_bin_size"])))
+#     resolutions = " -r ".join(re.split(r"[,;]\s*|\s+", str(P.PARAMS["plot_bin_size"])))
 
-    statement = [
-        "capcruncher",
-        "reporters",
-        "plot",
-        infile,
-        "-r",
-        resolutions,
-        "-c",
-        P.PARAMS["plot_coordinates"],
-        "--normalisation",
-        norm,
-        "--cmap",
-        P.PARAMS.get("plot_cmap", "jet"),
-        "--vmin",
-        P.PARAMS.get("plot_min", "0"),
-        "--vmax",
-        P.PARAMS.get("plot_vmax", "1"),
-        "-o",
-        output_prefix,
-    ]
+#     statement = [
+#         "capcruncher",
+#         "reporters",
+#         "plot",
+#         infile,
+#         "-r",
+#         resolutions,
+#         "-c",
+#         P.PARAMS["plot_coordinates"],
+#         "--normalisation",
+#         norm,
+#         "--cmap",
+#         P.PARAMS.get("plot_cmap", "jet"),
+#         "--vmin",
+#         P.PARAMS.get("plot_min", "0"),
+#         "--vmax",
+#         P.PARAMS.get("plot_vmax", "1"),
+#         "-o",
+#         output_prefix,
+#     ]
 
-    P.run(
-        " ".join(statement),
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
+#     P.run(
+#         " ".join(statement),
+#         job_queue=P.PARAMS["pipeline_cluster_queue"],
+#         job_condaenv=P.PARAMS["conda_env"],
+#     )
 
-    touch_file(outfile)
+#     touch_file(outfile)
 
 
 @follows(
