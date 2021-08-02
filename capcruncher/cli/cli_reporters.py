@@ -137,6 +137,7 @@ def plot(*args, **kwargs):
 @click.option("-o", "--output_prefix", default="template", help='Output prefix for template file')
 @click.option("-d", "--design_matrix", help='TSV file with the columns: sample condition')
 @click.option("-v", "--viewpoint", help='Sets the template viewpoint')
+@click.option("-b", "--binsize", help='Sets the template binsize')
 def make_template(*args, **kwargs):
     """
     Generates a template for the supplied files. This can be edited to customise the plot.

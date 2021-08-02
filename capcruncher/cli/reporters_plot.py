@@ -17,7 +17,7 @@ from capcruncher.tools.plotting import (
 
 
 def make_template(
-    files: list, output_prefix: str, design_matrix=None, analysis_method="tiled", viewpoint=None):
+    files: list, output_prefix: str, design_matrix=None, analysis_method="tiled", viewpoint=None, binsize=None):
 
     bed = namedtuple(
         "Bed", field_names=["file", "color", "type"], defaults=["black", "bed"]
