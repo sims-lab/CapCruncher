@@ -1,18 +1,26 @@
+import math
 import os
 from typing import Union
 
-import cooler
-import pandas as pd
-import numpy as np
-import iced
 import coolbox.api as cb
+import cooler
+import iced
+import matplotlib
+import matplotlib.colors as colors
+import numpy as np
+import pandas as pd
+from coolbox.api import GenomeRange
+from coolbox.core.track import Track
 from coolbox.utilities import get_coverage_stack, get_feature_stack
+from matplotlib import cm, transforms
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Polygon
 from pybedtools import BedTool
-from coolbox.core.track import Track
+from scipy.ndimage import interpolation
 
 
 class CCMatrix(cb.Cool):
+
     def __init__(
         self,
         file: os.PathLike,
@@ -21,24 +29,31 @@ class CCMatrix(cb.Cool):
         remove_viewpoint=False,
         **kwargs,
     ):
-
-        self.file = file
+        
         self.binsize = binsize
         self.viewpoint = viewpoint
         self.remove_viewpoint = remove_viewpoint
         self.properties = dict()
         self.properties.update(kwargs)
         self.properties["name"] = f"CCMatrix.{self.properties.get('title')}"
+        super(CCMatrix, self).__init__(file, **kwargs)
+        # Need to override the coolbox default if we need a cmap to be set
+        self.properties['color'] = kwargs.get('color', self.properties['color'])
+
+        # Override the defaults
+        self.properties['balance'] = 'no'
+        self.properties['transform'] = 'log10'
+        #self.properties['gaussian_sigma'] = 1
 
         if not self._cooler_store_has_binsize:
             raise ValueError(
                 f"Viewpoint {viewpoint} or resolution {binsize} not found in supplied file."
             )
 
-        self.cooler = cooler.Cooler(
-            f"{file}::{viewpoint}/resolutions/{binsize}"
-        )
+        self.cooler = cooler.Cooler(f"{file}::{viewpoint}/resolutions/{binsize}")
         self.capture_bins = self.cooler.info["metadata"]["capture_bins"]
+
+
 
     def _cooler_store_has_binsize(self):
         clrs = cooler.fileops.list_coolers(self.file)
@@ -78,6 +93,13 @@ class CCMatrix(cb.Cool):
 
         elif normalization_method == "ice":
             matrix = self.get_matrix(coordinates)  # Get raw matrix
+            matrix = iced.filter.filter_low_counts(matrix, percentage=0.04)
+            matrix_normalised = iced.normalization.ICE_normalization(
+                matrix, **normalisation_kwargs
+            )  # Get iced matrix
+
+        elif normalization_method == "icen":
+            matrix = self.get_matrix(coordinates)  # Get raw matrix
             matrix_ice = iced.normalization.ICE_normalization(
                 matrix, **normalisation_kwargs
             )  # Get iced matrix
@@ -95,9 +117,115 @@ class CCMatrix(cb.Cool):
     def fetch_data(self, gr: cb.GenomeRange, **kwargs) -> np.ndarray:
 
         norm = self.properties.get("normalization", "raw")
-        return self.get_matrix_normalised(
+        matrix =  self.get_matrix_normalised(
             f"{gr.chrom}:{gr.start}-{gr.end}", normalization_method=norm, **kwargs
         )
+        return self.fill_zero_nan(matrix)
+
+    def plot_matrix(self, gr: GenomeRange, gr2: GenomeRange = None):
+
+        # Code taken and adapted from coolbox
+        gr = GenomeRange(gr)
+
+
+        if 'JuiceBox' in self.properties["color"]:
+            cmap = CCMatrix.get_juicebox_cmaps()[self.properties['color']]
+        else:
+            cmap = cm.get_cmap(self.properties["color"])
+
+        lowest = cmap(0)
+        cmap.set_bad(lowest)
+        cmap.set_under(lowest)
+
+        ax = self.ax
+        arr = self.matrix
+        c_min, c_max = self.matrix_val_range
+
+        if self.properties['max_value'] == 'auto':
+            mask = np.tri(self.matrix.shape[0], k = -1)
+            matrix_triu = np.ma.array(self.matrix, mask = mask)         
+            c_max = np.percentile(matrix_triu, 98)
+
+        if gr2 is None and self.style == self.STYLE_TRIANGULAR:
+            # triangular style
+            scale_r = 1 / math.sqrt(2)
+            r_len = gr.end - gr.start
+            # Rotate image using Affine2D, reference:
+            #     https://stackoverflow.com/a/50920567/8500469
+
+            tr = (
+                transforms.Affine2D()
+                .translate(-gr.start, -gr.start)
+                .rotate_deg_around(0, 0, 45)
+                .scale(scale_r)
+                .translate(gr.start + r_len / 2, -r_len / 2)
+            )
+
+            img = ax.matshow(
+                arr,
+                cmap=cmap,
+                transform=tr + ax.transData,
+                extent=(gr.start, gr.end, gr.start, gr.end),
+                aspect="auto",
+                interpolation='none'
+            )
+
+        elif gr2 is None and self.style == self.STYLE_WINDOW:
+            # window style
+            # exist in HicMatBase
+            fgr = self.fetched_gr
+            scale_factor = fgr.length / gr.length
+            scale_r = scale_factor / math.sqrt(2)
+            length_dialog = gr.length * scale_factor
+            delta_x = length_dialog * (gr.start - fgr.start) / fgr.length
+            delta_x = length_dialog / 2 - delta_x
+            tr = (
+                transforms.Affine2D()
+                .translate(-gr.start, -gr.start)
+                .rotate_deg_around(0, 0, 45)
+                .scale(scale_r)
+                .translate(gr.start + delta_x, -fgr.length / 2)
+            )
+            img = ax.matshow(
+                arr,
+                cmap=cmap,
+                transform=tr + ax.transData,
+                extent=(gr.start, gr.end, gr.start, gr.end),
+                aspect="auto",
+
+            )
+        else:
+            if gr2 is None:
+                gr2 = gr
+            # matrix style
+            img = ax.matshow(
+                arr,
+                cmap=cmap,
+                extent=(gr.start, gr.end, gr2.end, gr2.start),
+                aspect="auto",
+            )
+
+        if self.norm == "log":
+            img.set_norm(colors.LogNorm(vmin=c_min, vmax=c_max))
+        else:
+            img.set_norm(colors.Normalize(vmin=c_min, vmax=c_max))
+
+        return img
+    
+    @staticmethod
+    def get_juicebox_cmaps():
+        JuiceBoxLikeColor = LinearSegmentedColormap.from_list(
+        'interaction', ['#FFFFFF', '#FFDFDF', '#FF7575', '#FF2626', '#F70000'])
+        JuiceBoxLikeColor.set_bad("white")
+        JuiceBoxLikeColor.set_under("white")
+        JuiceBoxLikeColor2 = LinearSegmentedColormap.from_list(
+            'interaction', ['#FFFFFF', '#FFDFAF', '#FF7555', '#FF2600', '#F70000'])
+        JuiceBoxLikeColor2.set_bad("white")
+        JuiceBoxLikeColor2.set_under("white")
+
+        return {
+            "JuiceBoxLike": JuiceBoxLikeColor,
+            "JuiceBoxLike2": JuiceBoxLikeColor2,}
 
 
 class CCBigWig(cb.BigWig):
@@ -147,6 +275,7 @@ class CCBigWig(cb.BigWig):
             super(CCBigWig, self).plot(ax, gr, **kwargs)
         else:
             self.plot_fragments(ax, gr, **kwargs)
+
 
 class CCBigWigCollection(Track):
 
@@ -257,7 +386,7 @@ class CCBigWigCollection(Track):
         data = self.fetch_data(gr, **kwargs)
 
         line_width = self.properties.get("line_width", 1)
-        color = self.properties.get("color", 'blue')
+        color = self.properties.get("color", "blue")
         alpha = self.properties.get("alpha", 0.2)
 
         if self.properties.get("smooth_window"):
@@ -265,7 +394,7 @@ class CCBigWigCollection(Track):
 
         else:
             scores = data["mean"]
-        
+
         ax.fill_between(
             data["bp"],
             scores - data["sem"],
