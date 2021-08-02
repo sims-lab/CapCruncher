@@ -49,6 +49,7 @@ import warnings
 import glob
 import shutil
 from cgatcore.pipeline.parameters import PARAMS
+from pybedtools.bedtool import BedTool
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
@@ -114,7 +115,7 @@ N_SAMPLES = len(
 )
 
 # Determines if the design matrix supplied does exist
-HAS_DESIGN = os.path.exists(P.PARAMS.get('analysis_design'))
+HAS_DESIGN = os.path.exists(P.PARAMS.get("analysis_design"))
 
 # Turns on FASTQ deduplication
 FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
@@ -159,6 +160,7 @@ def check_config():
             raise ValueError(
                 f"No value provided for {key} in config.yml. Please correct this and re-run."
             )
+
 
 def set_up_chromsizes():
     """
@@ -1724,7 +1726,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
         col_dict = {col: "_".join(col.split("_")[:-1]) for col in df_bdg.columns[3:]}
         df_design = pd.Series(col_dict).to_frame("condition")
     else:
-        df_design = pd.read_csv(P.PARAMS['analysis_design'], sep='\t')
+        df_design = pd.read_csv(P.PARAMS["analysis_design"], sep="\t")
 
     condition_groups = df_design.groupby("condition").groups
 
@@ -2076,13 +2078,48 @@ def identify_differential_interactions(infile, outfile, capture_name):
 
 
 @active_if(MAKE_PLOTS)
-@follows(reporters_store_merged, mkdir("capcruncher_analysis/heatmaps/"))
+@follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
+@merge(
+    "capcruncher_analysis/reporters/*.hdf5",
+    r"capcruncher_plots/templates/heatmaps.complete",
+)
+def reporters_plot_heatmaps_make_templates(infiles, outfile):
+
+    # Need to make a template for each viewpoint
+    df_viewpoints = BedTool(P.PARAMS["analysis_viewpoints"]).to_dataframe()
+
+    statements = list()
+    for viewpoint in df_viewpoints["name"].unique():
+        statements.append(" ".join([
+            "capcruncher",
+            "reporters",
+            "plot",
+            "make-template",
+            *infiles,
+            "--viewpoint",
+            viewpoint,
+            "-o",
+            outfile.replace("heatmaps.complete", f"heatmap_{viewpoint}_config.yml"),
+        ]))
+
+    P.run(statements, 
+          job_queue=P.PARAMS["pipeline_cluster_queue"],
+          job_condaenv=P.PARAMS["conda_env"],)
+        
+    touch_file(outfile)
+
+
+# @active_if(MAKE_PLOTS)
+# @follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
+# @merge(["capcruncher_analysis/reporters/*.hdf5", "capcruncher_analysis/bigwigs/*.bigWig"])
+
+
 @transform(
     "capcruncher_analysis/reporters/*.hdf5",
     regex(r"capcruncher_analysis/reporters/(.*).hdf5"),
-    r"capcruncher_analysis/heatmaps/\1.completed",
+    r"capcruncher_plots/\1.completed",
 )
-def reporters_plot_heatmap(infile, outfile):
+def reporters_plot_make_templates(infile, outfile):
     """Plots a heatmap over a specified region"""
 
     if P.PARAMS.get("plot_normalisation"):
