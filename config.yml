@@ -26,7 +26,7 @@ analysis:
     #      SAMPLE2  DMSO 
     # If this is not provided, pattern matching will be used to determine the experimental design.
     # In this case ensure that your FASTQ file names follow the pattern: SAMPLE-NAME_CONDITION_[12].fastq(.gz)
-    design_matrix: PATH_TO_TSV_FORMATTED_DESIGN_MATRIX
+    design: PATH_TO_TSV_FORMATTED_DESIGN_MATRIX
 
     # Genomic window size(s) to use for binning restriction fragment interaction counts
     # into even genomic windows. Only bin sizes that are present here will be allowed 

@@ -113,17 +113,20 @@ N_SAMPLES = len(
     {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) for fn in glob.glob("*.fastq*")}
 )
 
+# Determines if the design matrix supplied does exist
+HAS_DESIGN = os.path.exists(P.PARAMS.get('analysis_design'))
+
 # Turns on FASTQ deduplication
 FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
 
 # Determines if blacklist is used
-BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbose=False)
+HAS_BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbose=False)
 
 # Has valid plot coordinates for heatmaps
-HEATMAPS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
+MAKE_PLOTS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
 
 # Determines if UCSC hub is created from run.
-HUB = is_on(P.PARAMS.get("hub_create"))
+MAKE_HUB = is_on(P.PARAMS.get("hub_create"))
 HUB_NAME = re.sub(r"[,\s+\t;:]", "_", P.PARAMS.get("hub_name", ""))
 
 
@@ -946,7 +949,7 @@ def annotate_sort_blacklist(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
 
-    if BLACKLIST:
+    if HAS_BLACKLIST:
         statement = [
             "sort",
             "-k1,1",
@@ -1717,9 +1720,11 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
     summary_functions = {method: getattr(np, method) for method in summary_methods}
 
     # If no design matrix, make one assuming the format has been followed
-    if not P.PARAMS.get("analysis_design"):
+    if not HAS_DESIGN:
         col_dict = {col: "_".join(col.split("_")[:-1]) for col in df_bdg.columns[3:]}
         df_design = pd.Series(col_dict).to_frame("condition")
+    else:
+        df_design = pd.read_csv(P.PARAMS['analysis_design'], sep='\t')
 
     condition_groups = df_design.groupby("condition").groups
 
@@ -1823,7 +1828,7 @@ def viewpoints_to_bigbed(infile, outfile):
     )
 
 
-@active_if(HUB)
+@active_if(MAKE_HUB)
 @merge(
     [reporters_make_bigwig, viewpoints_to_bigbed, pipeline_make_report],
     os.path.join(
@@ -2070,7 +2075,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
 ##################
 
 
-@active_if(HEATMAPS)
+@active_if(MAKE_PLOTS)
 @follows(reporters_store_merged, mkdir("capcruncher_analysis/heatmaps/"))
 @transform(
     "capcruncher_analysis/reporters/*.hdf5",
