@@ -2109,7 +2109,8 @@ def reporters_plot_heatmaps_make_templates(infiles, outfile):
 
     P.run(statements, 
           job_queue=P.PARAMS["pipeline_cluster_queue"],
-          job_condaenv=P.PARAMS["conda_env"],)
+          job_condaenv=P.PARAMS["conda_env"],
+          without_cluster=True)
         
     touch_file(outfile)
 
