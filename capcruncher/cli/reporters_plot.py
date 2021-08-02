@@ -45,8 +45,8 @@ def make_template(
             "color",
         ],
         defaults=[
-            "BINSIZE",
-            viewpoint or "VIEWPOINT",
+            viewpoint if viewpoint else "VIEWPOINT",
+            binsize if binsize else "BINSIZE",
             analysis_method,
             "ice",
             False,
