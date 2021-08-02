@@ -38,19 +38,21 @@ def make_template(
         field_names=[
             "file",
             "viewpoint",
+            "binsize",
             "assay",
-            "normalisation",
+            "normalization",
             "remove_viewpoint",
             "type",
             "color",
         ],
         defaults=[
+            "BINSIZE",
             "VIEWPOINT",
             analysis_method,
             "ice",
-            "remove_viewpoint",
+            False,
             "heatmap",
-            "red",
+            "bwr",
         ],
     )
     genes = namedtuple(
@@ -91,7 +93,9 @@ def make_template(
         df_fnames = df_fnames.set_index("samplename")
         df_fnames = df_fnames.join(df_design["condition"])
 
-        colors = [matplotlib.colors.to_hex(c) for c in sns.palettes.hls_palette(n_colors=12)]
+        colors = [
+            matplotlib.colors.to_hex(c) for c in sns.palettes.hls_palette(n_colors=12)
+        ]
 
         for ((condition, viewpoint), df), color in zip(
             df_fnames.groupby(["condition", "viewpoint"]), colors
@@ -130,6 +134,9 @@ def plot_reporters(region: str, config: os.PathLike, output: str):
         "genes": cb.BED,
     }
 
+    chrom = region.split(":")[0]
+    start, end = [int(x) for x in region.split(":")[1].replace(",", "").split("-")]
+
     with open(config, "r") as r:
         tracks = yaml.load(r)
 
@@ -148,9 +155,8 @@ def plot_reporters(region: str, config: os.PathLike, output: str):
         else:
             track = track_class(**track_details, title=track_name)
 
-
         frame.add_track(track)
         frame.add_track(cb.Spacer())
 
-    figure = frame.plot(region)
+    figure = frame.plot(chrom, start, end)
     figure.savefig(output)
