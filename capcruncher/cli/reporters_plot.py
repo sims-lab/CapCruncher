@@ -17,7 +17,13 @@ from capcruncher.tools.plotting import (
 
 
 def make_template(
-    files: list, output_prefix: str, design_matrix=None, analysis_method="tiled", viewpoint=None, binsize=None):
+    files: list,
+    output_prefix: str,
+    design_matrix=None,
+    analysis_method="tiled",
+    viewpoint=None,
+    binsize=None,
+):
 
     bed = namedtuple(
         "Bed", field_names=["file", "color", "type"], defaults=["black", "bed"]
@@ -46,12 +52,12 @@ def make_template(
         ],
         defaults=[
             viewpoint if viewpoint else "VIEWPOINT",
-            binsize if binsize else "BINSIZE",
+            int(binsize) if binsize else "BINSIZE",
             analysis_method,
-            "ice",
+            "icen",
             False,
             "heatmap",
-            "bwr",
+            "jet",
         ],
     )
     genes = namedtuple(

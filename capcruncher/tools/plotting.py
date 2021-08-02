@@ -43,7 +43,6 @@ class CCMatrix(cb.Cool):
         # Override the defaults
         self.properties['balance'] = 'no'
         self.properties['transform'] = 'log10'
-        #self.properties['gaussian_sigma'] = 1
 
         if not self._cooler_store_has_binsize:
             raise ValueError(
@@ -92,19 +91,21 @@ class CCMatrix(cb.Cool):
             )
 
         elif normalization_method == "ice":
-            matrix = self.get_matrix(coordinates)  # Get raw matrix
-            matrix = iced.filter.filter_low_counts(matrix, percentage=0.04)
+            matrix = self.get_matrix(coordinates)
+            matrix = np.nan_to_num(matrix)
+            #matrix = iced.filter.filter_low_counts(matrix, percentage=0.04)
             matrix_normalised = iced.normalization.ICE_normalization(
                 matrix, **normalisation_kwargs
             )  # Get iced matrix
 
         elif normalization_method == "icen":
-            matrix = self.get_matrix(coordinates)  # Get raw matrix
+            matrix = self.get_matrix(coordinates)
+            matrix = np.nan_to_num(matrix)
             matrix_ice = iced.normalization.ICE_normalization(
                 matrix, **normalisation_kwargs
             )  # Get iced matrix
             matrix_normalised = matrix_ice / int(
-                self.cooler["metadata"]["n_cis_interactions"]
+                self.cooler.info["metadata"]["n_cis_interactions"]
             )  # Correct for number of interactions
 
         else:
@@ -114,7 +115,7 @@ class CCMatrix(cb.Cool):
 
         return matrix_normalised
 
-    def fetch_data(self, gr: cb.GenomeRange, **kwargs) -> np.ndarray:
+    def fetch_data(self, gr: cb.GenomeRange, gr2: cb.GenomeRange = None, **kwargs) -> np.ndarray:
 
         norm = self.properties.get("normalization", "raw")
         matrix =  self.get_matrix_normalised(
