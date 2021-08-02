@@ -109,6 +109,9 @@ for key in P.PARAMS:
 ######################
 
 
+# Method of analysis
+ANALYSIS_METHOD = P.PARAMS.get('analysis_method', 'capture')
+
 # Determines the number of samples being processed
 N_SAMPLES = len(
     {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) for fn in glob.glob("*.fastq*")}
@@ -297,7 +300,6 @@ def fastq_qc(infile, outfile):
     )
 
 
-@follows(mkdir("statistics"))
 @merge(fastq_qc, "capcruncher_statistics/fastqc_report.html")
 def fastq_multiqc(infile, outfile):
     """Collate fastqc reports into single report using multiqc"""
@@ -1055,7 +1057,7 @@ def annotate_alignments(infile, outfile):
             "--invalid_bed_action",
             "ignore",
             "-p",
-            "1",
+            str(P.PARAMS['pipeline_n_cores']),
         ]
     )
 
@@ -1592,7 +1594,7 @@ def pipeline_make_report(infile, outfile):
 # Reporter pileups  #
 #####################
 
-
+@active_if(ANALYSIS_METHOD == 'capture' or ANALYSIS_METHOD == 'tri')
 @follows(mkdir("capcruncher_analysis/bedgraphs"))
 @transform(
     reporters_store_merged,
@@ -1615,7 +1617,7 @@ def reporters_make_bedgraph(infile, outfile, sample_name):
 
     touch_file(outfile)
 
-
+@active_if(ANALYSIS_METHOD == 'capture' or ANALYSIS_METHOD == 'tri')
 @transform(
     reporters_store_merged,
     regex(r".*/(.*).hdf5"),
@@ -1653,6 +1655,7 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
 
 
 @active_if(N_SAMPLES >= 2)
+@active_if(ANALYSIS_METHOD == 'capture' or ANALYSIS_METHOD == 'tri')
 @follows(
     mkdir("capcruncher_compare/bedgraphs_union"),
     reporters_make_bedgraph,
@@ -1698,6 +1701,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
 
 
 @active_if(N_SAMPLES >= 2)
+@active_if(ANALYSIS_METHOD == 'capture' or ANALYSIS_METHOD == 'tri')
 @follows(
     mkdir("capcruncher_compare/bedgraphs_comparison/"), reporters_make_union_bedgraph
 )
@@ -1777,6 +1781,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
     touch_file(outfile)
 
 
+@active_if(ANALYSIS_METHOD == 'capture' or ANALYSIS_METHOD == 'tri')
 @follows(
     mkdir("capcruncher_analysis/bigwigs"),
     reporters_make_bedgraph,
@@ -1830,7 +1835,7 @@ def viewpoints_to_bigbed(infile, outfile):
     )
 
 
-@active_if(MAKE_HUB)
+@active_if(MAKE_HUB and (ANALYSIS_METHOD == 'capture' or ANALYSIS_METHOD == "tri"))
 @merge(
     [reporters_make_bigwig, viewpoints_to_bigbed, pipeline_make_report],
     os.path.join(

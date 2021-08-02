@@ -38,8 +38,6 @@ class BedIntersection:
         intersection_name: str = "count",
         intersection_method: str = "count",
         intersection_min_frac: float = 1e-9,
-        intersection_split_chrom: bool = True, 
-        n_cores: int = 1,
         invalid_bed_action="error",
         
     ):
@@ -77,8 +75,6 @@ class BedIntersection:
         self.min_frac = intersection_min_frac
 
         # Other options
-        self.intersection_split_chrom = intersection_split_chrom
-        self.n_cores = n_cores
         self.invalid_bed_action = invalid_bed_action
 
     def _intersections_count(self, a, b):
@@ -87,45 +83,6 @@ class BedIntersection:
 
     def _intersections_get(self, a, b):
         return a.intersect(b, loj=True, f=self.min_frac, sorted=True).to_dataframe()
-
-    def _extract_series(self, intersection):
-        return intersection.to_dataframe().iloc[:, -1]
-
-    def _intersect_by_chrom(
-        self, a: Union[BedTool, pd.DataFrame], b: Union[BedTool, pd.DataFrame]
-    ):
-        
-        from joblib import Parallel, delayed
-
-        a_by_chrom = split_intervals_on_chrom(a)
-        b_by_chrom = split_intervals_on_chrom(b)
-
-        a_chroms, b_chroms = set(a_by_chrom), set(b_by_chrom)
-
-        intersection_required = []
-        not_intersected = []
-        for chrom in a_chroms:
-
-            a_chrom = a_by_chrom[chrom]
-
-            if chrom in b_chroms:
-                b_chrom = b_by_chrom[chrom]
-
-                a_chrom_bed = convert_to_bedtool(a_chrom)
-                b_chrom_bed = convert_to_bedtool(b_chrom)
-
-                intersection_required.append(
-                    delayed(self._intersection_method)(a_chrom_bed, b_chrom_bed)
-                )
-            else:
-                not_intersected.append(a_chrom)
-
-        intersections = Parallel(n_jobs=self.n_cores)(intersection_required)
-
-        return pd.concat([*intersections, *not_intersected], ignore_index=True).fillna(
-            self._intersection_na
-        )
-    
 
     def _format_invalid_intersection(self, bed):
         return (
@@ -142,12 +99,9 @@ class BedIntersection:
         if all([self.bed1_valid, self.bed2_valid]):
 
             a = convert_to_bedtool(self.bed1)
-            b = convert_to_bedtool(self.bed2)
-            
-            if self.intersection_split_chrom:
-                _intersection = self._intersect_by_chrom(a, b)
-            else:
-                _intersection = self._intersection_method(a, b)
+            b = convert_to_bedtool(self.bed2).sort()
+    
+            _intersection = self._intersection_method(a, b)
             
             ser = _intersection.set_index("name").iloc[:, -1]
             ser.name = self.intersection_name
@@ -161,4 +115,4 @@ class BedIntersection:
                 f"Slices valid: {self.bed1_valid}\n {self.intersection_name} .bed file valid: {self.bed2_valid}"
             )     
 
-        return ser
+        return ser.sort_index()
