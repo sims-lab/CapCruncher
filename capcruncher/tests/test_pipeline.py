@@ -48,7 +48,7 @@ def setup():
     ## Read config and replace with correct paths
     replacements = {'PATH_TO_VIEWPOINTS': data_path_oligos,
                     'PATH_TO_GENOME_FASTA': data_path_genome,
-                    'PATH_TO_ALIGNER_INDICIES': '{indicies_dir}/chr14',
+                    'PATH_TO_ALIGNER_INDICIES': f'{indicies_dir}/chr14',
                     'PATH_TO_CHROMOSOME_SIZES': data_path_chromsizes,
                     'HUB_DIR': dir_test_run}
             
