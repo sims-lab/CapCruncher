@@ -34,12 +34,21 @@ def setup():
     ## Copy fastq file
     for fq in glob.glob(os.path.join(dir_data, 'test', 'data_for_pipeline_run', 'Slc25A37*.fastq.gz')):
         shutil.copy(fq, '.')
+    
+    # Make indicies
+    indicies_dir = os.path.join(dir_data, 'test','data_for_pipeline_run', 'bt2')
+
+
+    if not os.path.exists(indicies_dir):
+        os.mkdir(indicies_dir)
+        cmd = f"bowtie2-build {data_path_genome} {indicies_dir}/chr14 --threads 8"
+        subprocess.run(cmd.split())
         
 
     ## Read config and replace with correct paths
     replacements = {'PATH_TO_VIEWPOINTS': data_path_oligos,
                     'PATH_TO_GENOME_FASTA': data_path_genome,
-                    'PATH_TO_ALIGNER_INDICIES': data_path_bowtie2_indicies,
+                    'PATH_TO_ALIGNER_INDICIES': f'{indicies_dir}/chr14',
                     'PATH_TO_CHROMOSOME_SIZES': data_path_chromsizes,
                     'HUB_DIR': dir_test_run}
             
