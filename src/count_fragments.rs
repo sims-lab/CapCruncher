@@ -1,77 +1,129 @@
+use crate::utils;
 use itertools::Itertools;
-use polars::prelude::*;
-use std::collections::{BTreeMap};
-use std::path::{Path};
-use std::fs::File;
+use rayon::prelude::*;
+use serde::Deserialize;
+use std::collections::{BTreeMap, HashMap};
+use std::error::Error;
+use std::fmt::Debug;
 use std::io;
 use std::io::Write;
+use std::path::Path;
+use std::sync::mpsc::channel;
 
-pub fn load_dataframe(file: &str) -> Result<DataFrame> {
-    let df = CsvReader::from_path(file)?
-        .infer_schema(Some(10000))
-        .with_delimiter(b'\t')
-        .has_header(true)
-        .finish()?;
-    Ok(df)
+#[derive(Debug, Deserialize, Clone)]
+struct DigestedReadRestrictionFragments {
+    parent_read: String,
+    restriction_fragment: i64,
 }
 
-pub fn load_lazy_dataframe(file: &str) -> Result<LazyFrame> {
-    let df = LazyCsvReader::new(file.to_string())
-        .with_delimiter(b'\t')
-        .has_header(true)
-        .finish();
-    Ok(df)
+fn count_restriction_fragment_combinations_in_chunk(
+    slices: &mut Vec<DigestedReadRestrictionFragments>,
+) -> HashMap<(i64, i64), usize> {
+    let mut restriction_fragment_counts = HashMap::new();
+    slices.sort_by_key(|r| r.parent_read.clone());
+    let slices_groups = slices.iter().group_by(|r| &r.parent_read);
+
+    for (_parent_read, slice_group) in slices_groups.into_iter() {
+        let restriction_fragments = slice_group.into_iter().map(|s| s.restriction_fragment);
+
+        for comb in restriction_fragments.combinations(2) {
+            let mut f1 = comb[0];
+            let mut f2 = comb[1];
+
+            if f1 > f2 {
+                std::mem::swap(&mut f1, &mut f2)
+            }
+
+            restriction_fragment_counts
+                .entry((f1, f2))
+                .and_modify(|e| *e += 1)
+                .or_insert(1);
+        }
+    }
+    restriction_fragment_counts
 }
 
-pub fn count_fragments(df: LazyFrame) -> Result<BTreeMap<(i64, i64), usize>> {
-    
-    
-    let groupby = df.groupby("parent_read");
-    let groups = groupby.get_groups();
-    let mut fragment_counts = BTreeMap::new();
-    let restriction_fragments: Vec<_> = df
-        .column("restriction_fragment")?
-        .i64()
-        .unwrap()
-        .into_no_null_iter()
-        .collect();
+fn get_tsv_reader<P: AsRef<Path>>(path: P) -> Result<csv::Reader<Box<dyn io::Read>>, io::Error> {
+    let fh = utils::get_reader_handle(path.as_ref().to_str().expect("Not UTF-8 file name"));
+    let reader = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .delimiter(b'\t')
+        .from_reader(fh);
+    Ok(reader)
+}
 
-    for (_first_index, grouped_indicies) in groups {
-        let fragments_for_combining = grouped_indicies
-            .iter()
-            .map(|ind| restriction_fragments[*ind as usize]);
+fn get_tsv_headers<R: io::Read>(
+    reader: &mut csv::Reader<R>,
+) -> Result<csv::ByteRecord, Box<dyn Error>> {
+    let headers = reader.headers().unwrap().as_byte_record().to_owned();
+    Ok(headers)
+}
 
-        for mut fragments in fragments_for_combining.into_iter().combinations(2) {
-            
-            fragments.sort_unstable();
-            let fragment1 = fragments[0];
-            let fragment2 = fragments[1];
+pub fn count_restriction_fragment_combinations<P: AsRef<Path>>(
+    path: P,
+    chunksize: Option<usize>,
+    n_threads: Option<usize>,
+) -> Result<BTreeMap<(i64, i64), usize>, Box<dyn Error>> {
+    // Open TSV and read headers
+    let mut reader = get_tsv_reader(path)?;
+    let headers = get_tsv_headers(&mut reader)?;
 
-            let count = fragment_counts.entry((fragment1, fragment2)).or_insert(0);
-            *count += 1;
+    // Using a threadpool to process each chunk of the TSV file
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(n_threads.unwrap_or(4))
+        .build()
+        .unwrap();
+    let (tx, rx) = channel();
+
+    // Run the counting operation on chunks of the TSV
+    for chunk in &reader
+        .byte_records()
+        .chunks(chunksize.unwrap_or(2e6 as usize))
+    {
+        let mut slices_valid = chunk
+            .map(|r| r.unwrap().deserialize(Some(&headers)).unwrap())
+            .collect::<Vec<DigestedReadRestrictionFragments>>();
+
+        let tx = tx.clone();
+        pool.spawn(move || {
+            let counts = count_restriction_fragment_combinations_in_chunk(&mut slices_valid);
+            tx.send(counts).expect("Cant send data")
+        })
+    }
+
+    drop(tx);
+
+    // Aggregate the results
+    let mut restriction_fragment_counts_combined = BTreeMap::new();
+    for counts in rx.iter() {
+        for (k, v) in counts {
+            restriction_fragment_counts_combined
+                .entry(k)
+                .and_modify(|old| *old += v)
+                .or_insert(v);
         }
     }
 
-    Ok(fragment_counts)
+    Ok(restriction_fragment_counts_combined)
 }
 
-pub fn to_file<P: AsRef<Path>>(path: P, counts: BTreeMap<(i64, i64), usize>) -> std::result::Result<(), io::Error> {
+pub fn restriction_fragment_counts_to_tsv<P: AsRef<Path>>(
+    path: P,
+    counts: BTreeMap<(i64, i64), usize>,
+) -> Result<(), io::Error> {
+    let fh = utils::get_writer_handle(path.as_ref().to_str().expect("Not UTF-8 file name"));
+    let mut writer = io::BufWriter::new(fh);
 
-    let outfile = File::create(path)?;
-    let mut writer = io::BufWriter::new(outfile);
-
-    writer.write_all(b"bin1_id\tbin2_id\tcount\n")?;
-    for ((b1, b2), count) in counts.iter(){
-
-        writer.write_all(format!("{}\t{}\t{}\n", b1, b2, count).as_bytes())?;
-    
-
-    } 
+    writer
+        .write_all(b"bin1_id\tbin2_id\tcount\n")
+        .expect("Failed to write");
+    for ((bin1, bin2), count) in counts {
+        writer
+            .write_all(format!("{}\t{}\t{}\n", bin1, bin2, count).as_bytes())
+            .expect("Failed to write");
+    }
 
     Ok(())
-
-
-
-
-
 }
+
+
