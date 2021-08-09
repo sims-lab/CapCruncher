@@ -18,7 +18,7 @@ pub fn get_reader_handle(path: &str) -> Box<dyn io::Read> {
 
 pub fn get_writer_handle(path: &str) -> Box<dyn io::Write> {
     if path.ends_with(".gz") {
-        let f = File::open(path).unwrap();
+        let f = File::create(path).unwrap();
         Box::new(write::GzEncoder::new(io::BufWriter::new(f), Compression::default()))
     } else {
         Box::new(File::create(path).unwrap())
