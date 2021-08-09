@@ -42,7 +42,7 @@ class CCMatrix(cb.Cool):
 
         # Override the defaults
         self.properties['balance'] = 'no'
-        self.properties['transform'] = 'log10'
+        #self.properties['transform'] = 'log'
 
         if not self._cooler_store_has_binsize:
             raise ValueError(
@@ -106,7 +106,7 @@ class CCMatrix(cb.Cool):
             )  # Get iced matrix
             matrix_normalised = matrix_ice / int(
                 self.cooler.info["metadata"]["n_cis_interactions"]
-            )  # Correct for number of interactions
+            ) * 1e6 # Correct for number of interactions * 1e6
 
         else:
             raise ValueError(

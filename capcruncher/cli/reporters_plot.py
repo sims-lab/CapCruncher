@@ -129,7 +129,7 @@ def make_template(
         yaml.dump(tracks_for_output, w, sort_keys=False)
 
 
-def plot_reporters(region: str, config: os.PathLike, output: str):
+def plot_reporters(region: str, config: os.PathLike, output: str, x_axis=False):
 
     track_type_to_track_class_mapping = {
         "bigWig": CCBigWig,
@@ -162,6 +162,9 @@ def plot_reporters(region: str, config: os.PathLike, output: str):
 
         frame.add_track(track)
         frame.add_track(cb.Spacer())
+    
+    if x_axis:
+        frame.add_track(cb.XAxis())
 
     figure = frame.plot(chrom, start, end)
     figure.savefig(output)
