@@ -123,7 +123,7 @@ def alignments():
 def reporters():
     """Reporter counting, storing, comparison and pileups"""
 
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_fastq:cli")
+@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_plot:cli")
 def plot():
     """
     Generates plots for the outputs produced by CapCruncher
