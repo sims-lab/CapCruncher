@@ -2101,10 +2101,10 @@ def reporters_heatmaps_make_templates(infiles, outfile):
             " ".join(
                 [
                     "capcruncher",
-                    "reporters",
                     "plot",
                     "make-template",
                     *infiles,
+                    P.PARAMS.get('plot_genes') or "",
                     "-v",
                     viewpoint,
                     "-b",
@@ -2145,15 +2145,15 @@ def reporters_plot(infiles, outfile):
                     " ".join(
                         [
                             "capcruncher",
-                            "reporters",
                             "plot",
-                            "plot-reporters",
+                            "make-plot",
                             "-c",
                             viewpoint_config_files[viewpoint],
                             "-r",
                             f"{region.chrom}:{region.start}-{region.end}",
                             "-o",
                             f"{outfile.replace('plotting.complete', region.name)}.svg",
+                            "--x-axis"
                         ]
                     )
                 )
