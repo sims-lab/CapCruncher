@@ -31,6 +31,5 @@ dependencies:
   - python-xxhash
   - trackhub
   - seaborn
-  - setuptools-rust
   - ucsc-fatotwobit
   - ucsc-bedtobigbed
