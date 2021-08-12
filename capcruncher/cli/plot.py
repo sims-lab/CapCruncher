@@ -36,7 +36,14 @@ def make_template(
     )
     bwc = namedtuple(
         "BigWigCollection",
-        field_names=["file", "color", "type", "smooth_window", "min_value", "max_value"],
+        field_names=[
+            "file",
+            "color",
+            "type",
+            "smooth_window",
+            "min_value",
+            "max_value",
+        ],
         defaults=["blue", "bigWigCollection", 2001, "auto", "auto"],
     )
     heatmap = namedtuple(
@@ -50,7 +57,9 @@ def make_template(
             "remove_viewpoint",
             "type",
             "color",
-            "style"
+            "style",
+            "min_value",
+            "max_value",
         ],
         defaults=[
             viewpoint if viewpoint else "VIEWPOINT",
@@ -60,7 +69,9 @@ def make_template(
             False,
             "heatmap",
             "jet",
-            "triangular"
+            "triangular",
+            "auto",
+            "auto",
         ],
     )
     genes = namedtuple(
@@ -132,7 +143,9 @@ def make_template(
         yaml.dump(tracks_for_output, w, sort_keys=False)
 
 
-def plot_reporters(region: str, config: os.PathLike, output: str, x_axis=False, no_scale_bar=False):
+def plot_reporters(
+    region: str, config: os.PathLike, output: str, x_axis=False, no_scale_bar=False
+):
 
     track_type_to_track_class_mapping = {
         "bigWig": CCBigWig,
