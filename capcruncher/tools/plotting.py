@@ -414,8 +414,8 @@ class CCBigWigCollection(Track):
 
         # ymin, ymax = self.adjust_plot(ax, gr)
         ax.set_xlim(gr.start, gr.end)
-        ymin = round(scores.min())
-        ymax = round(scores.max() + data["sem"].max())
+        ymin = self.properties.get("min_value", round(scores.min()))
+        ymax = self.properties.get("max_value", round(scores.max() + data["sem"].max()))
         self.plot_data_range(ax, ymin, ymax, self.properties["data_range_style"], gr)
         self.plot_label()
 
