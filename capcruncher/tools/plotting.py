@@ -42,7 +42,6 @@ class CCMatrix(cb.Cool):
 
         # Override the defaults
         self.properties['balance'] = 'no'
-        #self.properties['transform'] = 'log'
 
         if not self._cooler_store_has_binsize:
             raise ValueError(
