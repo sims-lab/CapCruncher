@@ -93,7 +93,10 @@ def pipeline(mode, pipeline_options, help=False, version=False):
         cmd.append("--local")
         cmd.append("-p 4")
 
-    subprocess.run(cmd)
+    completed = subprocess.run(cmd)
+
+    if not completed.returncode == 0:
+        raise RuntimeError("CapCruncher pipeline failed. Check pipeline.log for details")
 
 
 
