@@ -129,7 +129,7 @@ def make_template(
         yaml.dump(tracks_for_output, w, sort_keys=False)
 
 
-def plot_reporters(region: str, config: os.PathLike, output: str, x_axis=False):
+def plot_reporters(region: str, config: os.PathLike, output: str, x_axis=False, no_scale_bar=False):
 
     track_type_to_track_class_mapping = {
         "bigWig": CCBigWig,
@@ -147,7 +147,12 @@ def plot_reporters(region: str, config: os.PathLike, output: str, x_axis=False):
 
     # Perform the plotting
     frame = cb.Frame()
-    frame.add_track(ScaleBar())
+
+    if not no_scale_bar:
+        frame.add_track(ScaleBar())
+    else:
+        # Just add a spacer if no scale bar
+        frame.add_track(cb.Spacer())
 
     for ii, (track_name, track_details) in enumerate(tracks.items()):
 
@@ -162,7 +167,7 @@ def plot_reporters(region: str, config: os.PathLike, output: str, x_axis=False):
 
         frame.add_track(track)
         frame.add_track(cb.Spacer())
-    
+
     if x_axis:
         frame.add_track(cb.XAxis())
 
