@@ -12,7 +12,7 @@ from capcruncher.tools.statistics import DeduplicationStatistics
 
 
 def parse(
-    input_files: Tuple, output: os.PathLike = "out.bincode", read_buffer: int = 1e5
+    input_files: Tuple, output: os.PathLike = "out.encoded", read_buffer: int = 1e5
 ):
     """
     Parses fastq file(s) into easy to deduplicate format.
@@ -71,7 +71,7 @@ def parse(
             proc.terminate()
 
 
-def identify(input_files: Tuple, output: os.PathLike = "duplicates.json"):
+def identify(input_files: Tuple, output: os.PathLike = "duplicates.encoded"):
     """
     Identifies fragments with duplicated sequences.
 
