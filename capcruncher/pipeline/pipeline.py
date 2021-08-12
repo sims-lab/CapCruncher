@@ -2095,6 +2095,9 @@ def reporters_heatmaps_make_templates(infiles, outfile):
     # Need to make a template for each viewpoint
     df_viewpoints = BedTool(P.PARAMS["analysis_viewpoints"]).to_dataframe()
 
+    genes = P.PARAMS.get('plot_genes')
+    has_genes_to_plot = os.path.exists(genes)
+
     statements = list()
     for viewpoint in df_viewpoints["name"].unique():
         statements.append(
@@ -2104,7 +2107,7 @@ def reporters_heatmaps_make_templates(infiles, outfile):
                     "plot",
                     "make-template",
                     *infiles,
-                    P.PARAMS.get('plot_genes') or "",
+                    genes if has_genes_to_plot else "",
                     "-v",
                     viewpoint,
                     "-b",
