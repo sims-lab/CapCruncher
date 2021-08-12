@@ -19,7 +19,7 @@ def make_template(*args, **kwargs):
     Generates a template for the supplied files. This can be edited to customise the plot.
     """
 
-    from capcruncher.cli.reporters_plot import make_template
+    from capcruncher.cli.plot import make_template
     make_template(*args, **kwargs)
 
 @cli.command()
@@ -31,5 +31,5 @@ def make_plot(*args, **kwargs):
     """
     Generates a plot for the genomic region specified using the suplied configuration file.
     """
-    from capcruncher.cli.reporters_plot import plot_reporters
+    from capcruncher.cli.plot import plot_reporters
     plot_reporters(*args, **kwargs)
