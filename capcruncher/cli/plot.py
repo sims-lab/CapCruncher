@@ -36,8 +36,8 @@ def make_template(
     )
     bwc = namedtuple(
         "BigWigCollection",
-        field_names=["file", "color", "type", "smooth_window"],
-        defaults=["blue", "bigWigCollection", 2001],
+        field_names=["file", "color", "type", "smooth_window", "min_value", "max_value"],
+        defaults=["blue", "bigWigCollection", 2001, "auto", "auto"],
     )
     heatmap = namedtuple(
         "Heatmap",
@@ -50,6 +50,7 @@ def make_template(
             "remove_viewpoint",
             "type",
             "color",
+            "style"
         ],
         defaults=[
             viewpoint if viewpoint else "VIEWPOINT",
@@ -59,6 +60,7 @@ def make_template(
             False,
             "heatmap",
             "jet",
+            "triangular"
         ],
     )
     genes = namedtuple(
