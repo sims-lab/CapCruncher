@@ -60,6 +60,7 @@ def make_template(
             "style",
             "min_value",
             "max_value",
+            "transform",
         ],
         defaults=[
             viewpoint if viewpoint else "VIEWPOINT",
@@ -72,6 +73,7 @@ def make_template(
             "triangular",
             "auto",
             "auto",
+            "no",
         ],
     )
     genes = namedtuple(
