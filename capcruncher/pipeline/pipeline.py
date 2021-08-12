@@ -2084,18 +2084,18 @@ def identify_differential_interactions(infile, outfile, capture_name):
 ##################
 
 
-@active_if(MAKE_PLOTS)
+@active_if(MAKE_PLOTS and (ANALYSIS_METHOD in ["tri", "tiled"]))
 @follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
 @merge(
     "capcruncher_analysis/reporters/*.hdf5",
     r"capcruncher_plots/templates/heatmaps.complete",
 )
-def reporters_heatmaps_make_templates(infiles, outfile):
+def plot_heatmaps_make_templates(infiles, outfile):
 
     # Need to make a template for each viewpoint
     df_viewpoints = BedTool(P.PARAMS["analysis_viewpoints"]).to_dataframe()
 
-    genes = P.PARAMS.get('plot_genes')
+    genes = P.PARAMS.get("plot_genes")
     has_genes_to_plot = os.path.exists(genes)
 
     statements = list()
@@ -2113,7 +2113,7 @@ def reporters_heatmaps_make_templates(infiles, outfile):
                     "-b",
                     str(P.PARAMS["analysis_bin_size"]),
                     "-o",
-                    outfile.replace("heatmaps.complete", f"heatmap_{viewpoint}"),
+                    outfile.replace("heatmaps.complete", f"{viewpoint}.heatmap.yml"),
                 ]
             )
         )
@@ -2128,38 +2128,33 @@ def reporters_heatmaps_make_templates(infiles, outfile):
     touch_file(outfile)
 
 
-@active_if(MAKE_PLOTS)
-@follows(reporters_heatmaps_make_templates)
-@merge("capcruncher_plots/templates/*.yml", "capcruncher_plots/plotting.complete")
-def reporters_plot(infiles, outfile):
+@active_if(MAKE_PLOTS and (ANALYSIS_METHOD in ["capture", "tri"]))
+@follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
+@collate(
+    "capcruncher_analysis/bigwigs/*.normalised.bigWig",
+    regex(r".*/.*?\.normalised.(.*?).bigWig"),
+    r"capcruncher_plots/templates/\1.pileup.yml",
+)
+def plot_pileups_make_templates(infiles, outfile):
 
-    df_plot_coords = BedTool(P.PARAMS["plot_coordinates"]).to_dataframe()
-    viewpoint_config_files = {
-        os.path.basename(fn).replace(".yml", "").replace("heatmap_", ''): fn
-        for fn in infiles
-    }
+    genes = P.PARAMS.get("plot_genes")
+    has_genes_to_plot = os.path.exists(genes)
 
     statements = list()
-    for region in df_plot_coords.itertuples():
+    statements.append(
+        " ".join(
+            [
+                "capcruncher",
+                "plot",
+                "make-template",
+                *infiles,
+                genes if has_genes_to_plot else "",
+                "-o",
+                outfile,
+            ]
+        )
+    )
 
-        for viewpoint in viewpoint_config_files:
-            if viewpoint in region.name:
-                statements.append(
-                    " ".join(
-                        [
-                            "capcruncher",
-                            "plot",
-                            "make-plot",
-                            "-c",
-                            viewpoint_config_files[viewpoint],
-                            "-r",
-                            f"{region.chrom}:{region.start}-{region.end}",
-                            "-o",
-                            f"{outfile.replace('plotting.complete', region.name)}.svg",
-                            "--x-axis"
-                        ]
-                    )
-                )
     P.run(
         statements,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -2170,62 +2165,47 @@ def reporters_plot(infiles, outfile):
     touch_file(outfile)
 
 
-# @active_if(MAKE_PLOTS)
-# @follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
-# @merge(["capcruncher_analysis/reporters/*.hdf5", "capcruncher_analysis/bigwigs/*.bigWig"])
+@active_if(MAKE_PLOTS)
+@follows(plot_heatmaps_make_templates, plot_pileups_make_templates)
+@transform(
+    "capcruncher_plots/templates/*.yml",
+    regex(r".*/(.*)\.(.*).yml"),
+    r"capcruncher_plots/\1.svg",
+    extras=[r"\1"],
+)
+def make_plots(infile, outfile, viewpoint):
 
+    regions_to_plot = BedTool(P.PARAMS.get("plot_coordinates"))
+    statements = []
 
-# @transform(
-#     "capcruncher_analysis/reporters/*.hdf5",
-#     regex(r"capcruncher_analysis/reporters/(.*).hdf5"),
-#     r"capcruncher_plots/\1.completed",
-# )
-# def reporters_plot_make_templates(infile, outfile):
-#     """Plots a heatmap over a specified region"""
+    for region in regions_to_plot:
+        if viewpoint in region:
 
-#     if P.PARAMS.get("plot_normalisation"):
-#         norm = P.PARAMS["plot_normalisation"]
-#     else:
-#         norm_default = {
-#             "capture": "n_interactions",
-#             "tri": "n_rf_n_interactions",
-#             "tiled": "ice",
-#         }
-#         norm = norm_default[P.PARAMS["analysis_method"]]
+            statements.append(
+                " ".join(
+                    [
+                        "capcruncher",
+                        "plot",
+                        "make-plot",
+                        "-c",
+                        infile,
+                        "-r",
+                        f"{region.chrom}:{region.start}-{region.end}",
+                        "-o",
+                        outfile,
+                        "--x-axis",
+                    ]
+                )
+            )
+    P.run(
+        statements,
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True,
+    )
 
-#     output_prefix = outfile.replace(".completed", "")
-
-#     resolutions = " -r ".join(re.split(r"[,;]\s*|\s+", str(P.PARAMS["plot_bin_size"])))
-
-#     statement = [
-#         "capcruncher",
-#         "reporters",
-#         "plot",
-#         infile,
-#         "-r",
-#         resolutions,
-#         "-c",
-#         P.PARAMS["plot_coordinates"],
-#         "--normalisation",
-#         norm,
-#         "--cmap",
-#         P.PARAMS.get("plot_cmap", "jet"),
-#         "--vmin",
-#         P.PARAMS.get("plot_min", "0"),
-#         "--vmax",
-#         P.PARAMS.get("plot_vmax", "1"),
-#         "-o",
-#         output_prefix,
-#     ]
-
-#     P.run(
-#         " ".join(statement),
-#         job_queue=P.PARAMS["pipeline_cluster_queue"],
-#         job_condaenv=P.PARAMS["conda_env"],
-#     )
-
-#     touch_file(outfile)
-
+    touch_file(outfile)
+    
 
 @follows(
     pipeline_make_report,
@@ -2233,6 +2213,7 @@ def reporters_plot(infiles, outfile):
     reporters_make_union_bedgraph,
     identify_differential_interactions,
     reporters_make_comparison_bedgraph,
+    make_plots,
 )
 @originate(
     "pipeline_complete.txt",
