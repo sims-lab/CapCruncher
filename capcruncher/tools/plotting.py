@@ -306,9 +306,6 @@ class CCBigWigCollection(Track):
         self.properties["name"] = f"BigWigCollection.{self.properties.get('title')}"
         super(CCBigWigCollection, self).__init__(**self.properties)
 
-        print(self.properties)
-
-
         self.coverages = []
 
         # load features from global feature stack
@@ -415,13 +412,16 @@ class CCBigWigCollection(Track):
             zorder=1,
         )
 
-        # ymin, ymax = self.adjust_plot(ax, gr)
         
-        ymin = self.properties.get("min_value", round(scores.min()))
-        ymax = self.properties.get("max_value", round(scores.max() + data["sem"].max()))
+        min_val = self.properties.get("min_value")
+        max_val = self.properties.get("max_value")
+
+        ymin =  round(scores.min()) if min_val == "auto" else min_val
+        ymax =  round(scores.max() + data["sem"].max()) if max_val == "auto" else max_val
 
         ax.set_xlim(gr.start, gr.end)
         ax.set_ylim(ymin, ymax)
+        
 
         self.plot_data_range(ax, ymin, ymax, self.properties["data_range_style"], gr)
         self.plot_label()
@@ -626,3 +626,25 @@ class SimpleBed(cb.BED):
 
         ax.set_xlim(gr.start, gr.end)
         ax.set_ylim(0, 1)
+
+class XAxisGenomic(cb.XAxis):
+    def __init__(self, **kwargs):
+        super(XAxisGenomic, self).__init__()
+        self.properties.update(kwargs)
+    
+    def plot(self, ax, gr: GenomeRange, **kwargs):
+        self.ax = ax
+
+        ax.set_xlim(gr.start, gr.end)
+        ticks = np.linspace(gr.start, gr.end, 10)
+        labels = [f'{x:,.0f}' for x in ticks]
+
+        ax.axis["x"] = ax.new_floating_axis(0, 0.5)
+        ax.axis["x"].axis.set_ticks(ticks)
+        ax.axis["x"].axis.set_ticklabels(labels)
+        ax.axis['x'].axis.set_tick_params(which='minor', bottom='on')
+
+        ax.axis["x"].major_ticklabels.set(size=10)
+
+        if 'where' in self.properties and self.properties['where'] == 'top':
+            ax.axis["x"].set_axis_direction("top")

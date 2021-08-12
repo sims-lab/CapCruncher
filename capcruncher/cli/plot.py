@@ -13,6 +13,7 @@ from capcruncher.tools.plotting import (
     CCBigWig,
     CCBigWigCollection,
     CCMatrix,
+    XAxisGenomic,
 )
 
 
@@ -169,7 +170,7 @@ def plot_reporters(region: str, config: os.PathLike, output: str, x_axis=False, 
         frame.add_track(cb.Spacer())
 
     if x_axis:
-        frame.add_track(cb.XAxis())
+        frame.add_track(XAxisGenomic())
 
     figure = frame.plot(chrom, start, end)
     figure.savefig(output)
