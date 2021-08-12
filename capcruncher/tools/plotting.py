@@ -306,6 +306,9 @@ class CCBigWigCollection(Track):
         self.properties["name"] = f"BigWigCollection.{self.properties.get('title')}"
         super(CCBigWigCollection, self).__init__(**self.properties)
 
+        print(self.properties)
+
+
         self.coverages = []
 
         # load features from global feature stack
@@ -413,9 +416,13 @@ class CCBigWigCollection(Track):
         )
 
         # ymin, ymax = self.adjust_plot(ax, gr)
-        ax.set_xlim(gr.start, gr.end)
+        
         ymin = self.properties.get("min_value", round(scores.min()))
         ymax = self.properties.get("max_value", round(scores.max() + data["sem"].max()))
+
+        ax.set_xlim(gr.start, gr.end)
+        ax.set_ylim(ymin, ymax)
+
         self.plot_data_range(ax, ymin, ymax, self.properties["data_range_style"], gr)
         self.plot_label()
 
