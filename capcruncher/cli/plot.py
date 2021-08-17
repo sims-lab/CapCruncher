@@ -102,11 +102,14 @@ def make_template(
 
     # Deal with any files that need to be grouped together to form a summary dataframe
     if design_matrix:
+        
         # Assuming design matrix has columns: sample  condition
         df_design = pd.read_csv(design_matrix, sep="\t", index_col="sample")
         df_fnames = (
             pd.Series(files).loc[lambda ser: ser.str.contains(".bigWig")].to_frame("fn")
         )
+        
+        # Extract sample name, normalisation and viewpoint from each file name
         df_fnames["basename"] = df_fnames["fn"].apply(os.path.basename)
         df_fnames = df_fnames.join(
             df_fnames["basename"].str.extract(
@@ -116,10 +119,15 @@ def make_template(
         df_fnames = df_fnames.set_index("samplename")
         df_fnames = df_fnames.join(df_design["condition"])
 
+        # Need to ignore any subtraction bigWig files as these will interfere
+        df_fnames = df_fnames.loc[lambda df: ~df['normalisation'].str.contains("-subtraction")]
+        
+        # Get random colors for each plot
         colors = [
             matplotlib.colors.to_hex(c) for c in sns.palettes.hls_palette(n_colors=12)
         ]
 
+        # Make bigwig collection and append to template
         for ((condition, viewpoint), df), color in zip(
             df_fnames.groupby(["condition", "viewpoint"]), colors
         ):
