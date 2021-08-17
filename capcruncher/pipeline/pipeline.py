@@ -2197,7 +2197,7 @@ def make_plots(infile, outfile, viewpoint):
                         "-r",
                         coordinates,
                         "-o",
-                        f'capcruncher_plots/{viewpoint}_{coordinates}.svg',
+                        f'capcruncher_plots/{region.name}_{coordinates}.svg',
                         "--x-axis",
                     ]
                 )
