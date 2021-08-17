@@ -2170,7 +2170,7 @@ def plot_pileups_make_templates(infiles, outfile):
 @transform(
     "capcruncher_plots/templates/*.yml",
     regex(r".*/(.*)\.(.*).yml"),
-    r"capcruncher_plots/\1.svg",
+    r"capcruncher_plots/\1.complete",
     extras=[r"\1"],
 )
 def make_plots(infile, outfile, viewpoint):
@@ -2178,8 +2178,11 @@ def make_plots(infile, outfile, viewpoint):
     regions_to_plot = BedTool(P.PARAMS.get("plot_coordinates"))
     statements = []
 
+
     for region in regions_to_plot:
         if viewpoint in region:
+
+            coordinates = f"{region.chrom}:{region.start}-{region.end}"
 
             statements.append(
                 " ".join(
@@ -2190,9 +2193,9 @@ def make_plots(infile, outfile, viewpoint):
                         "-c",
                         infile,
                         "-r",
-                        f"{region.chrom}:{region.start}-{region.end}",
+                        coordinates,
                         "-o",
-                        outfile,
+                        f'{outfile}_{coordinates}.svg',
                         "--x-axis",
                     ]
                 )
