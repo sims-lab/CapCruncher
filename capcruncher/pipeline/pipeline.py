@@ -2131,8 +2131,8 @@ def plot_heatmaps_make_templates(infiles, outfile):
 @active_if(MAKE_PLOTS and (ANALYSIS_METHOD in ["capture", "tri"]))
 @follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
 @collate(
-    "capcruncher_analysis/bigwigs/*.normalised.bigWig",
-    regex(r".*/.*?\.normalised.(.*?).bigWig"),
+    "capcruncher_analysis/bigwigs/*.bigWig",
+    regex(r".*/.*?\.normalised\.(.*?)\.bigWig"),
     r"capcruncher_plots/templates/\1.pileup.yml",
 )
 def plot_pileups_make_templates(infiles, outfile):
