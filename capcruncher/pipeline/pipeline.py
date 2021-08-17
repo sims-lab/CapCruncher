@@ -2139,6 +2139,7 @@ def plot_pileups_make_templates(infiles, outfile):
 
     genes = P.PARAMS.get("plot_genes")
     has_genes_to_plot = os.path.exists(genes)
+    design_matrix = P.PARAMS.get("analysis_design")
 
     statements = list()
     statements.append(
@@ -2148,6 +2149,7 @@ def plot_pileups_make_templates(infiles, outfile):
                 "plot",
                 "make-template",
                 *infiles,
+                f"--design_matrix {design_matrix}" if design_matrix else "",
                 genes if has_genes_to_plot else "",
                 "--output_prefix",
                 outfile.replace(".yml", ""),
