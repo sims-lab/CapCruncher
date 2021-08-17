@@ -2170,7 +2170,7 @@ def plot_pileups_make_templates(infiles, outfile):
 @transform(
     "capcruncher_plots/templates/*.yml",
     regex(r".*/(.*)\.(.*).yml"),
-    r"capcruncher_plots/\1.complete",
+    r"capcruncher_plots/templates/\1.complete",
     extras=[r"\1"],
 )
 def make_plots(infile, outfile, viewpoint):
@@ -2195,7 +2195,7 @@ def make_plots(infile, outfile, viewpoint):
                         "-r",
                         coordinates,
                         "-o",
-                        f'{outfile}_{coordinates}.svg',
+                        f'capcruncher_plots/{viewpoint}_{coordinates}.svg',
                         "--x-axis",
                     ]
                 )
