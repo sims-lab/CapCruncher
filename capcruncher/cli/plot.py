@@ -61,7 +61,7 @@ def make_template(
             "min_value",
             "max_value",
             "transform",
-            "orientation"
+            "orientation",
         ],
         defaults=[
             viewpoint if viewpoint else "VIEWPOINT",
@@ -102,13 +102,13 @@ def make_template(
 
     # Deal with any files that need to be grouped together to form a summary dataframe
     if design_matrix:
-        
+
         # Assuming design matrix has columns: sample  condition
         df_design = pd.read_csv(design_matrix, sep="\t", index_col="sample")
         df_fnames = (
             pd.Series(files).loc[lambda ser: ser.str.contains(".bigWig")].to_frame("fn")
         )
-        
+
         # Extract sample name, normalisation and viewpoint from each file name
         df_fnames["basename"] = df_fnames["fn"].apply(os.path.basename)
         df_fnames = df_fnames.join(
@@ -120,8 +120,10 @@ def make_template(
         df_fnames = df_fnames.join(df_design["condition"])
 
         # Need to ignore any subtraction bigWig files as these will interfere
-        df_fnames = df_fnames.loc[lambda df: ~df['normalisation'].str.contains("-subtraction")]
-        
+        df_fnames = df_fnames.loc[
+            lambda df: ~df["normalisation"].str.contains("-subtraction")
+        ]
+
         # Get random colors for each plot
         colors = [
             matplotlib.colors.to_hex(c) for c in sns.palettes.hls_palette(n_colors=12)
@@ -182,6 +184,7 @@ def plot_reporters(
         # Just add a spacer if no scale bar
         frame.add_track(cb.Spacer())
 
+    breakpoint()
     for ii, (track_name, track_details) in enumerate(tracks.items()):
 
         track_type = track_details["type"]

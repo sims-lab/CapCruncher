@@ -2149,8 +2149,8 @@ def plot_pileups_make_templates(infiles, outfile):
                 "make-template",
                 *infiles,
                 genes if has_genes_to_plot else "",
-                "-o",
-                outfile,
+                "--output_prefix",
+                outfile.replace(".yml", ""),
             ]
         )
     )
