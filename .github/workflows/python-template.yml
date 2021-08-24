@@ -53,6 +53,7 @@ jobs:
       shell: bash -l {0}
       run: |
         pip install -e .
+        pip install -e .[plotting]
     - name: Conda list
       shell: pwsh
       run: mamba list
