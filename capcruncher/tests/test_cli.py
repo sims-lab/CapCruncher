@@ -529,3 +529,24 @@ def test_reporter_storage():
     )
 
     assert result.exit_code == 0
+
+
+
+def test_plot_make_templates():
+
+    template = os.path.join(dir_test, "test", "test_pileup_template.yml")
+    runner = CliRunner()
+    
+    result = runner.invoke(
+        cli,
+        [
+            "plot",
+            "make-template",
+            *glob.glob(os.path.join(dir_data, "test", "test_bigwigs", "*.bigWig")),
+            "-o",
+            template.replace(".yml", "")
+        ],
+    )
+    
+    assert result.exit_code == 0
+    assert os.path.exists(template)
