@@ -2180,28 +2180,32 @@ def make_plots(infile, outfile, viewpoint):
     regions_to_plot = BedTool(P.PARAMS.get("plot_coordinates"))
     statements = []
 
+    try:
+        
+        for region in regions_to_plot:
+            if viewpoint in region:
 
-    for region in regions_to_plot:
-        if viewpoint in region:
+                coordinates = f"{region.chrom}:{region.start}-{region.end}"
 
-            coordinates = f"{region.chrom}:{region.start}-{region.end}"
-
-            statements.append(
-                " ".join(
-                    [
-                        "capcruncher",
-                        "plot",
-                        "make-plot",
-                        "-c",
-                        infile,
-                        "-r",
-                        coordinates,
-                        "-o",
-                        f'capcruncher_plots/{region.name}_{coordinates}.svg',
-                        "--x-axis",
-                    ]
+                statements.append(
+                    " ".join(
+                        [
+                            "capcruncher",
+                            "plot",
+                            "make-plot",
+                            "-c",
+                            infile,
+                            "-r",
+                            coordinates,
+                            "-o",
+                            f'capcruncher_plots/{region.name}_{coordinates}.svg',
+                            "--x-axis",
+                        ]
+                    )
                 )
-            )
+    except Exception as e:
+        warnings.warn(f"Exception {e} occured while plotting {region.name}")
+
     P.run(
         statements,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
