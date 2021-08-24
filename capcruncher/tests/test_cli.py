@@ -573,6 +573,5 @@ def test_plot_make_plots():
         ],
     )
     
-    breakpoint()
     assert result.exit_code == 0
     assert os.path.exists(plot)
