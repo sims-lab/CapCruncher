@@ -50,7 +50,8 @@ def setup():
                     'PATH_TO_GENOME_FASTA': data_path_genome,
                     'PATH_TO_ALIGNER_INDICIES': f'{indicies_dir}/chr14',
                     'PATH_TO_CHROMOSOME_SIZES': data_path_chromsizes,
-                    'HUB_DIR': dir_test_run}
+                    'HUB_DIR': dir_test_run,
+                    'PATH_TO_PLOTTING_COORDINATES': os.path.join(dir_data, "test", 'data_for_pipeline_run', 'plot_coords.bed')}
             
     with open(data_path_config, 'r') as config:
         with open('config.yml', 'w') as writer:
@@ -105,6 +106,12 @@ def test_pipeline_all():
     assert os.path.exists('capcruncher_statistics/capcruncher_statistics.html')
     assert len(glob.glob('capcruncher_analysis/bigwigs/Slc25A37*.bigWig')) == 16
     assert os.path.exists('capturec_test.hub.txt')
+    assert os.path.exists("capcruncher_plots/templates/Slc25a37.pileup.yml")
+    assert os.path.exists("capcruncher_plots/Slc25A37_chr14:69878554-69933221.svg")
+
+
+
+
 
 
 
