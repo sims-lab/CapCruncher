@@ -119,6 +119,7 @@ N_SAMPLES = len(
 
 # Determines if the design matrix supplied does exist
 HAS_DESIGN = os.path.exists(P.PARAMS.get("analysis_design", ""))
+warnings.warn(f'Design matrix {P.PARAMS.get("analysis_design", "")} not found')
 
 # Turns on FASTQ deduplication
 FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
@@ -128,6 +129,7 @@ HAS_BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbos
 
 # Has valid plot coordinates for heatmaps
 MAKE_PLOTS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
+warnings.warn(f'Plotting coordinates file {P.PARAMS.get("plot_coordinates")} is not correctly formatted. Will not perform plotting.')
 
 # Determines if UCSC hub is created from run.
 MAKE_HUB = is_on(P.PARAMS.get("hub_create"))
