@@ -2149,7 +2149,7 @@ def plot_pileups_make_templates(infiles, outfile):
                 "plot",
                 "make-template",
                 *infiles,
-                f"--design_matrix {design_matrix}" if design_matrix else "",
+                f"--design_matrix {design_matrix}" if HAS_DESIGN else "",
                 genes if has_genes_to_plot else "",
                 "--output_prefix",
                 outfile.replace(".yml", ""),
