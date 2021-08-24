@@ -550,3 +550,29 @@ def test_plot_make_templates():
     
     assert result.exit_code == 0
     assert os.path.exists(template)
+
+
+def test_plot_make_plots():
+
+    template = os.path.join(dir_test, "test", "test_pileup_template.yml")
+    plot = os.path.join(dir_test, "test", "test_pileup.svg")
+
+    runner = CliRunner()
+    
+    result = runner.invoke(
+        cli,
+        [
+            "plot",
+            "make-plot",
+            "-c",
+            template,
+            "-r",
+            "chr14:69878554-69933221",
+            "-o",
+            plot
+        ],
+    )
+    
+    breakpoint()
+    assert result.exit_code == 0
+    assert os.path.exists(plot)
