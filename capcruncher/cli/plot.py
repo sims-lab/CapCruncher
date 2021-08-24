@@ -80,8 +80,8 @@ def make_template(
     )
     genes = namedtuple(
         "genes",
-        field_names=["file", "type", "style", "gene_style", "color", "display"],
-        defaults=["genes", "gene", "normal", "bed_rgb", "stacked"],
+        field_names=["file", "type", "style", "gene_style", "color", "display", "fontsize"],
+        defaults=["genes", "gene", "normal", "bed_rgb", "stacked", 7.5],
     )
 
     extensions_to_track_mapping = {
@@ -158,7 +158,7 @@ def make_template(
 
 
 def plot_reporters(
-    region: str, config: os.PathLike, output: str, x_axis=False, no_scale_bar=False
+    region: str, config: os.PathLike, output: str, x_axis=False, no_scale_bar=False,
 ):
 
     track_type_to_track_class_mapping = {
@@ -184,7 +184,6 @@ def plot_reporters(
         # Just add a spacer if no scale bar
         frame.add_track(cb.Spacer())
 
-    breakpoint()
     for ii, (track_name, track_details) in enumerate(tracks.items()):
 
         track_type = track_details["type"]
