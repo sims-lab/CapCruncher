@@ -2084,7 +2084,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
 ##################
 
 
-@active_if(MAKE_PLOTS and (ANALYSIS_METHOD in ["tri", "tiled"]))
+@active_if(ANALYSIS_METHOD in ["tri", "tiled"])
 @follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
 @merge(
     "capcruncher_analysis/reporters/*.hdf5",
@@ -2128,7 +2128,7 @@ def plot_heatmaps_make_templates(infiles, outfile):
     touch_file(outfile)
 
 
-@active_if(MAKE_PLOTS and (ANALYSIS_METHOD in ["capture", "tri"]))
+@active_if(ANALYSIS_METHOD in ["capture", "tri"])
 @follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
 @collate(
     "capcruncher_analysis/bigwigs/*.bigWig",
