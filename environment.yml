@@ -7,7 +7,7 @@ dependencies:
   - pip
   - cgatcore
   - click
-  - curl
+  - libcurl
   - joblib
   - natsort
   - pybedtools
