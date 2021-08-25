@@ -2218,7 +2218,11 @@ def make_plots(infile, outfile, viewpoint):
     )
 
     touch_file(outfile)
-    
+
+@follows(plot_heatmaps_make_templates, plot_pileups_make_templates, make_plots)
+def plotting():
+    pass
+   
 
 @follows(
     pipeline_make_report,
@@ -2226,9 +2230,7 @@ def make_plots(infile, outfile, viewpoint):
     reporters_make_union_bedgraph,
     identify_differential_interactions,
     reporters_make_comparison_bedgraph,
-    plot_pileups_make_templates,
-    plot_heatmaps_make_templates,
-    make_plots,
+    plotting
 )
 @originate(
     "pipeline_complete.txt",
