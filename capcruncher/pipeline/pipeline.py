@@ -2226,6 +2226,8 @@ def make_plots(infile, outfile, viewpoint):
     reporters_make_union_bedgraph,
     identify_differential_interactions,
     reporters_make_comparison_bedgraph,
+    plot_pileups_make_templates,
+    plot_heatmaps_make_templates,
     make_plots,
 )
 @originate(
