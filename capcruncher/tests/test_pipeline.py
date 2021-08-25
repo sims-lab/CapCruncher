@@ -52,7 +52,7 @@ def setup():
                     'PATH_TO_CHROMOSOME_SIZES': data_path_chromsizes,
                     'HUB_DIR': dir_test_run,
                     'PATH_TO_PLOTTING_COORDINATES': os.path.join(dir_data, "test", 'data_for_pipeline_run', 'plot_coords.bed')}
-            
+                
     with open(data_path_config, 'r') as config:
         with open('config.yml', 'w') as writer:
             for line in config:
@@ -67,10 +67,10 @@ def setup():
     os.chdir(dir_root)
     shutil.rmtree(dir_test_run)
 
-def test_pipeline_handles_no_drmaa():
-    cmd = f'capcruncher pipeline make annotate_sort_viewpoints'
-    completed = subprocess.run(cmd.split())
-    assert completed.returncode == 0
+# def test_pipeline_handles_no_drmaa():
+#     cmd = f'capcruncher pipeline make annotate_sort_viewpoints'
+#     completed = subprocess.run(cmd.split())
+#     assert completed.returncode == 0
 
 def test_pipeline_fastq_preprocessing():
 
@@ -101,12 +101,24 @@ def test_pipeline_all():
 
     cmd = f'python {dir_pipeline}/pipeline.py make full --local -p 4'
     completed = subprocess.run(cmd.split())
-    
+
     assert completed.returncode == 0
+
+def test_stats_exist():
+
     assert os.path.exists('capcruncher_statistics/capcruncher_statistics.html')
+
+def test_bigwigs_exist():
+
     assert len(glob.glob('capcruncher_analysis/bigwigs/Slc25A37*.bigWig')) == 16
+
+def test_hub_exists():
     assert os.path.exists('capturec_test.hub.txt')
+
+def test_plot_template_exists():
     assert os.path.exists("capcruncher_plots/templates/Slc25a37.pileup.yml")
+
+def test_plot_exists():
     assert os.path.exists("capcruncher_plots/Slc25A37_chr14:69878554-69933221.svg")
 
 
