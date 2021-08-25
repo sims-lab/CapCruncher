@@ -141,11 +141,6 @@ if not MAKE_PLOTS:
     warnings.warn(f'Plotting coordinates file {P.PARAMS.get("plot_coordinates")} is not correctly formatted. Will not perform plotting.')
 
 
-
-
-
-
-
 ##############################
 #  Pipeline set-up functions #
 ##############################
@@ -2095,9 +2090,8 @@ def identify_differential_interactions(infile, outfile, capture_name):
 # Plot reporters #
 ##################
 
-
-@active_if(ANALYSIS_METHOD in ["tri", "tiled"])
 @follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
+@active_if(ANALYSIS_METHOD in ["tri", "tiled"])
 @merge(
     "capcruncher_analysis/reporters/*.hdf5",
     r"capcruncher_plots/templates/heatmaps.complete",
@@ -2139,9 +2133,8 @@ def plot_heatmaps_make_templates(infiles, outfile):
 
     touch_file(outfile)
 
-
-@active_if(ANALYSIS_METHOD in ["capture", "tri"])
 @follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
+@active_if(ANALYSIS_METHOD in ["capture", "tri"])
 @collate(
     "capcruncher_analysis/bigwigs/*.bigWig",
     regex(r".*/.*?\.normalised\.(.*?)\.bigWig"),
@@ -2178,9 +2171,8 @@ def plot_pileups_make_templates(infiles, outfile):
 
     touch_file(outfile)
 
-
-@active_if(MAKE_PLOTS)
 @follows(plot_heatmaps_make_templates, plot_pileups_make_templates)
+@active_if(MAKE_PLOTS)
 @transform(
     "capcruncher_plots/templates/*.yml",
     regex(r".*/(.*)\.(.*).yml"),
