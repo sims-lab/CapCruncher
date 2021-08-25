@@ -2133,7 +2133,7 @@ def plot_heatmaps_make_templates(infiles, outfile):
 
     touch_file(outfile)
 
-@follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
+@follows(reporters_make_bigwig, mkdir("capcruncher_plots/templates"))
 @active_if(ANALYSIS_METHOD in ["capture", "tri"])
 @collate(
     "capcruncher_analysis/bigwigs/*.bigWig",
@@ -2172,7 +2172,7 @@ def plot_pileups_make_templates(infiles, outfile):
     touch_file(outfile)
 
 @follows(plot_heatmaps_make_templates, plot_pileups_make_templates)
-@active_if(MAKE_PLOTS)
+#@active_if(MAKE_PLOTS)
 @transform(
     "capcruncher_plots/templates/*.yml",
     regex(r".*/(.*)\.(.*).yml"),
@@ -2181,10 +2181,10 @@ def plot_pileups_make_templates(infiles, outfile):
 )
 def make_plots(infile, outfile, viewpoint):
 
-    regions_to_plot = BedTool(P.PARAMS.get("plot_coordinates"))
-    statements = []
-
     try:
+        
+        regions_to_plot = BedTool(P.PARAMS.get("plot_coordinates"))
+        statements = []
         
         for region in regions_to_plot:
             if viewpoint in region:
