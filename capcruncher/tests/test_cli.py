@@ -575,3 +575,23 @@ def test_plot_make_plots():
     
     assert result.exit_code == 0
     assert os.path.exists(plot)
+
+
+
+def test_gtf_to_bed():
+
+
+    gtf = os.path.join(dir_data, "test", "mm9_chr14.gtf")
+    bed = gtf.replace(".gtf", ".bed")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "utilities",
+            "gtf-to-bed12",
+            gtf,
+            "-o",
+            bed,
+        ],
+    )
