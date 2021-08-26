@@ -51,7 +51,9 @@ def setup():
                     'PATH_TO_ALIGNER_INDICIES': f'{indicies_dir}/chr14',
                     'PATH_TO_CHROMOSOME_SIZES': data_path_chromsizes,
                     'HUB_DIR': dir_test_run,
-                    'PATH_TO_PLOTTING_COORDINATES': os.path.join(dir_data, "test", 'data_for_pipeline_run', 'plot_coords.bed')}
+                    'PATH_TO_PLOTTING_COORDINATES': os.path.join(dir_data, "test", 'data_for_pipeline_run', 'plot_coords.bed'),
+                    'PATH_TO_TSV_FORMATTED_DESIGN_MATRIX': os.path.join(dir_data, "test", 'data_for_pipeline_run', 'design_matrix.tsv'),
+                    'PATH_TO_GENES_IN_BED12_FORMAT': os.path.join(dir_data, "test", 'data_for_pipeline_run', 'mm9_chr14_genes.bed')}
                 
     with open(data_path_config, 'r') as config:
         with open('config.yml', 'w') as writer:

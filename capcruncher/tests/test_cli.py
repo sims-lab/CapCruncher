@@ -543,6 +543,11 @@ def test_plot_make_templates():
             "plot",
             "make-template",
             *glob.glob(os.path.join(dir_data, "test", "test_bigwigs", "*.bigWig")),
+            os.path.join(dir_data, "test", "mm9_chr14_genes.bed"),
+            "-b",
+            "5000",
+            "-d",
+            os.path.join(dir_data, "test", "design_matrix.tsv"),
             "-o",
             template.replace(".yml", "")
         ],

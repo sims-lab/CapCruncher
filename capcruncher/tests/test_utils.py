@@ -2,6 +2,7 @@ import os
 from pybedtools.bedtool import BedTool
 import pytest
 import glob
+import click
 
 
 # Pre-run setup
@@ -62,6 +63,3 @@ def test_format_coordinates():
     with pytest.raises(ValueError):
         test_bed_bad = os.path.join(dir_data, "test", "test_capture_bad_format.bed")
         format_coordinates(test_bed_bad)
-
-
-
