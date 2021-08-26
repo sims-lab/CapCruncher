@@ -569,7 +569,8 @@ def test_plot_make_plots():
             "-r",
             "chr14:69878554-69933221",
             "-o",
-            plot
+            plot,
+            "--xaxis",
         ],
     )
     
