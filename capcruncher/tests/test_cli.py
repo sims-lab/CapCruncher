@@ -582,7 +582,7 @@ def test_gtf_to_bed():
 
 
     gtf = os.path.join(dir_data, "test", "mm9_chr14.gtf")
-    bed = gtf.replace(".gtf", ".bed")
+    bed = os.path.join(dir_test, "test", "mm9_chr14.bed")
 
     runner = CliRunner()
     result = runner.invoke(
@@ -595,3 +595,6 @@ def test_gtf_to_bed():
             bed,
         ],
     )
+
+    assert result.exit_code == 0
+    assert os.path.exists(bed)
