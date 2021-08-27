@@ -138,7 +138,9 @@ if not HAS_DESIGN:
     warnings.warn(f'Design matrix {P.PARAMS.get("analysis_design", "")} not found')
 
 if not MAKE_PLOTS:
-    warnings.warn(f'Plotting coordinates file {P.PARAMS.get("plot_coordinates")} is not correctly formatted. Will not perform plotting.')
+    warnings.warn(
+        f'Plotting coordinates file {P.PARAMS.get("plot_coordinates")} is not correctly formatted. Will not perform plotting.'
+    )
 
 
 ##############################
@@ -1734,26 +1736,27 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
     ]
     summary_functions = {method: getattr(np, method) for method in summary_methods}
 
-   
     if not HAS_DESIGN:
         # Need to generate a design matrix if one does not exist
         samples = df_bdg.columns[3:]
         condition = ["_".join(sample.split("_")[:-1]) for sample in samples]
         df_design = pd.DataFrame()
-        df_design['samples'] = samples
-        df_design['condition'] = condition
+        df_design["sample"] = samples
+        df_design["condition"] = condition
     else:
         df_design = pd.read_csv(P.PARAMS["analysis_design"], sep="\t")
 
+    samples_grouped_by_condition = (
+        df_design.set_index("sample").groupby("condition").groups
+    )  # {GROUP_NAME: [Location]}
 
-    
-    samples_grouped_by_condition = df_design.groupby("condition").groups # {GROUP_NAME: [Location]}
-
-    for group_a, group_b in itertools.permutations(samples_grouped_by_condition.keys(), 2):
+    for group_a, group_b in itertools.permutations(
+        samples_grouped_by_condition.keys(), 2
+    ):
 
         # Extract the two groups
-        df_a = df_bdg.iloc[:, samples_grouped_by_condition[group_a]]
-        df_b = df_bdg.iloc[:, samples_grouped_by_condition[group_a]]
+        df_a = df_bdg.loc[:, samples_grouped_by_condition[group_a]]
+        df_b = df_bdg.loc[:, samples_grouped_by_condition[group_a]]
 
         for summary_method in summary_functions:
             # Get summary counts
@@ -2096,6 +2099,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
 # Plot reporters #
 ##################
 
+
 @follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
 @active_if(ANALYSIS_METHOD in ["tri", "tiled"])
 @merge(
@@ -2139,6 +2143,7 @@ def plot_heatmaps_make_templates(infiles, outfile):
 
     touch_file(outfile)
 
+
 @follows(reporters_make_bigwig, mkdir("capcruncher_plots/templates"))
 @active_if(ANALYSIS_METHOD in ["capture", "tri"])
 @collate(
@@ -2177,8 +2182,9 @@ def plot_pileups_make_templates(infiles, outfile):
 
     touch_file(outfile)
 
+
 @follows(plot_heatmaps_make_templates, plot_pileups_make_templates)
-#@active_if(MAKE_PLOTS)
+# @active_if(MAKE_PLOTS)
 @transform(
     "capcruncher_plots/templates/*.yml",
     regex(r".*/(.*)\.(.*).yml"),
@@ -2188,10 +2194,10 @@ def plot_pileups_make_templates(infiles, outfile):
 def make_plots(infile, outfile, viewpoint):
 
     try:
-        
+
         regions_to_plot = BedTool(P.PARAMS.get("plot_coordinates"))
         statements = []
-        
+
         for region in regions_to_plot:
             if viewpoint in region:
 
@@ -2208,7 +2214,7 @@ def make_plots(infile, outfile, viewpoint):
                             "-r",
                             coordinates,
                             "-o",
-                            f'capcruncher_plots/{region.name}_{coordinates}.svg',
+                            f"capcruncher_plots/{region.name}_{coordinates}.svg",
                             "--x-axis",
                         ]
                     )
@@ -2225,10 +2231,11 @@ def make_plots(infile, outfile, viewpoint):
 
     touch_file(outfile)
 
+
 @follows(plot_heatmaps_make_templates, plot_pileups_make_templates, make_plots)
 def plotting():
     pass
-   
+
 
 @follows(
     pipeline_make_report,
@@ -2236,7 +2243,7 @@ def plotting():
     reporters_make_union_bedgraph,
     identify_differential_interactions,
     reporters_make_comparison_bedgraph,
-    plotting
+    plotting,
 )
 @originate(
     "pipeline_complete.txt",
