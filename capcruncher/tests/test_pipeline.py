@@ -103,7 +103,6 @@ def test_pipeline_all():
 
     cmd = f'python {dir_pipeline}/pipeline.py make full --local -p 4'
     completed = subprocess.run(cmd.split())
-
     assert completed.returncode == 0
 
 def test_stats_exist():
@@ -112,7 +111,7 @@ def test_stats_exist():
 
 def test_bigwigs_exist():
 
-    assert len(glob.glob('capcruncher_analysis/bigwigs/Slc25A37*.bigWig')) == 16
+    assert len(glob.glob('capcruncher_analysis/bigwigs/*.bigWig')) == 16
 
 def test_hub_exists():
     assert os.path.exists('capturec_test.hub.txt')
