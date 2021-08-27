@@ -1761,7 +1761,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
         # Extract the two groups
         df_a = df_bdg.loc[:, samples_grouped_by_condition[group_a]]
-        df_b = df_bdg.loc[:, samples_grouped_by_condition[group_a]]
+        df_b = df_bdg.loc[:, samples_grouped_by_condition[group_b]]
 
         for summary_method in summary_functions:
             # Get summary counts
