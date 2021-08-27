@@ -1734,20 +1734,26 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
     ]
     summary_functions = {method: getattr(np, method) for method in summary_methods}
 
-    # If no design matrix, make one assuming the format has been followed
+   
     if not HAS_DESIGN:
-        col_dict = {col: "_".join(col.split("_")[:-1]) for col in df_bdg.columns[3:]}
-        df_design = pd.Series(col_dict).to_frame("condition")
+        # Need to generate a design matrix if one does not exist
+        samples = df_bdg.columns[3:]
+        condition = ["_".join(sample.split("_")[:-1]) for sample in samples]
+        df_design = pd.DataFrame()
+        df_design['samples'] = samples
+        df_design['condition'] = condition
     else:
         df_design = pd.read_csv(P.PARAMS["analysis_design"], sep="\t")
 
-    condition_groups = df_design.groupby("condition").groups
 
-    for a, b in itertools.permutations(condition_groups, 2):
+    
+    samples_grouped_by_condition = df_design.groupby("condition").groups # {GROUP_NAME: [Location]}
+
+    for group_a, group_b in itertools.permutations(samples_grouped_by_condition.keys(), 2):
 
         # Extract the two groups
-        df_a = df_bdg.query(f"condition == {a}")
-        df_b = df_bdg.query(f"condition == {b}")
+        df_a = df_bdg.iloc[:, samples_grouped_by_condition[group_a]]
+        df_b = df_bdg.iloc[:, samples_grouped_by_condition[group_a]]
 
         for summary_method in summary_functions:
             # Get summary counts
