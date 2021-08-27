@@ -55,30 +55,6 @@ def cli():
     """
 
 
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_fastq:cli")
-def fastq():
-    """
-    Fastq splitting, deduplication and digestion.
-    """
-
-
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_genome:cli")
-def genome():
-    """
-    Genome wide methods digestion.
-    """
-
-
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_alignments:cli")
-def alignments():
-    """Alignment annotation, identification and deduplication."""
-
-
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_reporters:cli")
-def reporters():
-    """Reporter counting, storing, comparison, pileups and heatmaps."""
-
-
 @cli.command(context_settings=dict(ignore_unknown_options=True))
 @click.option("-h", "--help", is_flag=True)
 @click.version_option(metadata.version(distribution_name="capcruncher"))
@@ -117,4 +93,43 @@ def pipeline(mode, pipeline_options, help=False, version=False):
         cmd.append("--local")
         cmd.append("-p 4")
 
-    subprocess.run(cmd)
+    completed = subprocess.run(cmd)
+
+    if not completed.returncode == 0:
+        raise RuntimeError("CapCruncher pipeline failed. Check pipeline.log for details")
+
+
+
+@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_fastq:cli")
+def fastq():
+    """
+    Fastq splitting, deduplication and digestion.
+    """
+
+
+@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_genome:cli")
+def genome():
+    """
+    Genome wide methods digestion.
+    """
+
+
+@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_alignments:cli")
+def alignments():
+    """Alignment annotation, identification and deduplication."""
+
+
+@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_reporters:cli")
+def reporters():
+    """Reporter counting, storing, comparison and pileups"""
+
+@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_plot:cli")
+def plot():
+    """
+    Generates plots for the outputs produced by CapCruncher
+    """
+
+@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_utilities:cli")
+def utilities():
+    """Contains miscellaneous functions"""
+
