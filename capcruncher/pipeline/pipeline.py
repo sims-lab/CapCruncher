@@ -1769,28 +1769,32 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
                 name=summary_method,
             )
 
+            # Merge counts with coordinates
             df_a_bdg = pd.concat([df_bdg.iloc[:, :3], a_summary], axis=1)
             df_b_bdg = pd.concat([df_bdg.iloc[:, :3], b_summary], axis=1)
+
+            # Run subtraction
             df_subtraction_bdg = pd.concat(
                 [df_bdg.iloc[:, :3], a_summary - b_summary], axis=1
             )
 
+            # Output bedgraphs
             df_a_bdg.to_csv(
-                f"{dir_output}/{a}.{summary_method}-summary.{viewpoint}.bedgraph",
+                f"{dir_output}/{group_a}.{summary_method}-summary.{viewpoint}.bedgraph",
                 sep="\t",
                 header=False,
                 index=None,
             )
 
             df_b_bdg.to_csv(
-                f"{dir_output}/{b}.{summary_method}-summary.{viewpoint}.bedgraph",
+                f"{dir_output}/{group_b}.{summary_method}-summary.{viewpoint}.bedgraph",
                 sep="\t",
                 header=False,
                 index=None,
             )
 
             df_subtraction_bdg.to_csv(
-                f"{dir_output}/{a}_vs_{b}.{summary_method}-subtraction.{viewpoint}.bedgraph",
+                f"{dir_output}/{group_a}_vs_{group_b}.{summary_method}-subtraction.{viewpoint}.bedgraph",
                 sep="\t",
                 index=None,
                 header=False,
