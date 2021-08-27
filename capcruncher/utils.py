@@ -218,9 +218,8 @@ def load_json(fn, dtype: str = "int") -> dict:
 
     with xopen(fn) as r:
         d = ujson.load(r)
-    
-    return {int(k): int(v) for k, v in d.items()}
 
+    return {int(k): int(v) for k, v in d.items()}
 
 
 def get_timing(task_name=None) -> Callable:
@@ -257,7 +256,7 @@ def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
 
 
 def categorise_tracks(ser: pd.Series) -> list:
-    """Gets a series for grouping tracks together 
+    """Gets a series for grouping tracks together
 
     Args:
         ser (pd.Series): File names to map
@@ -367,10 +366,39 @@ def convert_interval_to_coords(
             interval["name"],
             f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',
         )
-        return (
-            interval["name"],
-            f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',
-        )
+
+
+def gtf_line_to_bed12_line(df):
+    df = df.sort_values(["seqname", "start"])
+    geneid = df["geneid"].iloc[0]
+    exons = df.query('feature == "exon"')
+    chrom = df["seqname"].iloc[0]
+    start = str(df["start"].min())
+    end = str(df["end"].max())
+    strand = df["strand"].iloc[0]
+    thick_start = start if strand == "+" else end
+    thick_end = thick_start
+    color = "0,0,0"
+    block_count = str(exons.shape[0])
+    block_sizes = ",".join((exons["end"] - exons["start"]).values.astype(str))
+    block_starts = ",".join((exons["start"] - int(start)).astype(str))
+
+    return "\t".join(
+        [
+            chrom,
+            start,
+            end,
+            geneid,
+            "0",
+            strand,
+            thick_start,
+            thick_end,
+            color,
+            block_count,
+            block_sizes,
+            block_starts,
+        ]
+    )
 
 
 class PysamFakeEntry:

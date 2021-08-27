@@ -41,7 +41,7 @@ setup(
         "ujson",
         "xxhash",
     ],
-    extras_require={"stats": ["diffxpy", ]},
+    extras_require={"stats": ["diffxpy"], "plotting": ["coolbox",]},
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Environment :: Console",

@@ -529,3 +529,78 @@ def test_reporter_storage():
     )
 
     assert result.exit_code == 0
+
+
+
+def test_plot_make_templates():
+
+    template = os.path.join(dir_test, "test", "test_pileup_template.yml")
+    runner = CliRunner()
+    
+    result = runner.invoke(
+        cli,
+        [
+            "plot",
+            "make-template",
+            *glob.glob(os.path.join(dir_data, "test", "test_bigwigs", "*.bigWig")),
+            os.path.join(dir_data, "test", "mm9_chr14_genes.bed"),
+            "-b",
+            "5000",
+            "-d",
+            os.path.join(dir_data, "test", "design_matrix.tsv"),
+            "-o",
+            template.replace(".yml", "")
+        ],
+    )
+    
+    assert result.exit_code == 0
+    assert os.path.exists(template)
+
+
+def test_plot_make_plots():
+
+    template = os.path.join(dir_test, "test", "test_pileup_template.yml")
+    plot = os.path.join(dir_test, "test", "test_pileup.svg")
+
+    runner = CliRunner()
+    
+    result = runner.invoke(
+        cli,
+        [
+            "plot",
+            "make-plot",
+            "-c",
+            template,
+            "-r",
+            "chr14:69878554-69933221",
+            "-o",
+            plot,
+            "--x-axis",
+        ],
+    )
+    
+    assert result.exit_code == 0
+    assert os.path.exists(plot)
+
+
+
+def test_gtf_to_bed():
+
+
+    gtf = os.path.join(dir_data, "test", "mm9_chr14.gtf")
+    bed = os.path.join(dir_test, "test", "mm9_chr14.bed")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "utilities",
+            "gtf-to-bed12",
+            gtf,
+            "-o",
+            bed,
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert os.path.exists(bed)

@@ -2,7 +2,7 @@ import click
 
 @click.group()
 def cli():
-    """Contains methods for interaction counting, storing, bedgraph generation, comparisons and plotting.
+    """Contains methods for interaction counting, storing, bedgraph generation, comparisons.
     """
 
 
@@ -124,55 +124,6 @@ def count(*args, **kwargs):
     from capcruncher.cli.reporters_count import count
     count(*args, **kwargs)
 
-@cli.command()
-@click.argument("cooler_fn", required=True)
-@click.option(
-    "-c",
-    "--coordinates",
-    help="Coordinates in the format chr1:1000-2000 or a path to a .bed file with coordinates",
-)
-@click.option(
-    "-r",
-    "--resolution",
-    help="Resolution at which to plot. Must be present within the cooler file.",
-    required=True,
-    multiple=True,
-)
-@click.option(
-    "-n",
-    "--capture_names",
-    multiple=True,
-    help="Capture names to plot. If not supplied will plot all",
-)
-@click.option(
-    "--normalisation",
-    help="Normalisation method for heatmap",
-    default="n_interactions",
-    type=click.Choice(["n_interactions", "n_rf_n_interactions", "ice"]),
-)
-@click.option("--cmap", help="Colour map to use for plotting", default="jet")
-@click.option("--vmax", help="Vmax for plotting", default=0, type=click.FLOAT)
-@click.option("--vmin", help="Vmin for plotting", default=0, type=click.FLOAT)
-@click.option("-o", "--output_prefix", help="Output prefix for plot", default="")
-@click.option("--remove_capture", help='Removes the capture probe bins from the matrix', is_flag=True, default=False)
-def plot(*args, **kwargs):
-    """
-    Plots a heatmap of reporter interactions.
-
-    Parses a HDF5 file containg the result of a capture experiment (binned into even genomic windows)
-    and plots a heatmap of interactions over a specified genomic range. If a capture probe name 
-    is not supplied the script will plot all probes present in the file.
-
-    Heatmaps can also be normalised (--normalise) using either:
-
-     - n_interactions: The number of cis interactions.
-     - n_rf_n_interactions: Normalised to the number of restriction fragments making up both genomic bins
-                           and by the number of cis interactions.
-     - ice: `ICE normalisation <https://www.nature.com/articles/nmeth.2148>`_ followed by number of cis interactions
-             correction.  
-    """
-    from capcruncher.cli.reporters_heatmap import plot
-    plot(*args, **kwargs)
 
 @cli.group()
 def store():
@@ -301,3 +252,6 @@ def store_merge(*args, **kwargs):
     """
     from capcruncher.cli.reporters_store import merge
     merge(*args, **kwargs)
+
+
+
