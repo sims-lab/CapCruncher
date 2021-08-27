@@ -127,7 +127,12 @@ FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
 HAS_BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbose=False)
 
 # Has valid plot coordinates for heatmaps
-MAKE_PLOTS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
+try:
+    import coolbox
+    MAKE_PLOTS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
+except ImportError as e:
+    warnings.warn("Plotting capabilities not installed. For plotting please run: pip install capcruncher[plotting]")
+    MAKE_PLOTS = False
 
 # Determines if UCSC hub is created from run.
 MAKE_HUB = is_on(P.PARAMS.get("hub_create"))
@@ -2105,7 +2110,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
 
 
 @follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
-@active_if(ANALYSIS_METHOD in ["tri", "tiled"])
+@active_if(ANALYSIS_METHOD in ["tri", "tiled"] and MAKE_PLOTS)
 @merge(
     "capcruncher_analysis/reporters/*.hdf5",
     r"capcruncher_plots/templates/heatmaps.complete",
@@ -2149,7 +2154,7 @@ def plot_heatmaps_make_templates(infiles, outfile):
 
 
 @follows(reporters_make_bigwig, mkdir("capcruncher_plots/templates"))
-@active_if(ANALYSIS_METHOD in ["capture", "tri"])
+@active_if(ANALYSIS_METHOD in ["capture", "tri"] and MAKE_PLOTS)
 @collate(
     "capcruncher_analysis/bigwigs/*.bigWig",
     regex(r".*/.*?\.normalised\.(.*?)\.bigWig"),
@@ -2188,7 +2193,7 @@ def plot_pileups_make_templates(infiles, outfile):
 
 
 @follows(plot_heatmaps_make_templates, plot_pileups_make_templates)
-# @active_if(MAKE_PLOTS)
+@active_if(MAKE_PLOTS)
 @transform(
     "capcruncher_plots/templates/*.yml",
     regex(r".*/(.*)\.(.*).yml"),
