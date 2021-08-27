@@ -1746,8 +1746,8 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
     for a, b in itertools.permutations(condition_groups, 2):
 
         # Extract the two groups
-        df_a = df_bdg.loc[:, condition_groups[a]]
-        df_b = df_bdg.loc[:, condition_groups[b]]
+        df_a = df_bdg.query(f"condition == {a}")
+        df_b = df_bdg.query(f"condition == {b}")
 
         for summary_method in summary_functions:
             # Get summary counts
