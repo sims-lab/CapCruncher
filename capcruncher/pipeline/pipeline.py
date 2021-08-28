@@ -1659,6 +1659,8 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
         "-o",
         output_prefix,
         "--normalise",
+        "--scale_factor",
+        str(P.PARAMS.get("normalisation_scale_factor", 1000000))
     ]
 
     P.run(
