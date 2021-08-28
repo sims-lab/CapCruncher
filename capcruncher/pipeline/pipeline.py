@@ -1482,6 +1482,8 @@ def reporters_store_binned(infile, outfile, capture_name):
         "--conversion_tables",
         conversion_tables,
         "--normalise",
+        "--scale_factor",
+        str(P.PARAMS.get("normalisation_scale_factor", 1000000)),
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
         "-o",
@@ -1659,6 +1661,8 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
         "-o",
         output_prefix,
         "--normalise",
+        "--scale_factor",
+        str(P.PARAMS.get("normalisation_scale_factor", 1000000))
     ]
 
     P.run(
