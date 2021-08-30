@@ -1273,10 +1273,10 @@ def alignments_deduplicate_slices(
 
 
 @transform(alignments_deduplicate_slices, 
-           regex(r".*/(.*)\.(flashed|pe)\.(.*)\.slices.tsv"), 
-           r"capcruncher_statistics/reporters/data/\1_\2_\3.reporter.stats.csv",
-           extras=[r"\1", r"\2", r"\3"],)
-def alignments_deduplicate_slices_statistics(infile, outfile, sample, part, read_type):
+           regex(r".*/(.*)\.(.*)\.(flashed|pe)\.(.*)\.slices.tsv"), 
+           r"capcruncher_statistics/reporters/data/\1_\2_\3_\4.reporter.stats.csv",
+           extras=[r"\1", r"\2", r"\3", r"\4"],)
+def alignments_deduplicate_slices_statistics(infile, outfile, sample, part, read_type, viewpoint):
 
     """Task overwrites reporter statistics with de-duplicated statistics"""
 
