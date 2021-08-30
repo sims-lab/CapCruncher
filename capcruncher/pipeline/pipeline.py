@@ -1272,6 +1272,22 @@ def alignments_deduplicate_slices(
     zap_file(slices)
 
 
+@transform(alignments_deduplicate_slices, 
+           regex(r".*/(.*)\.(flashed|pe)\.(.*)\.slices.tsv"), 
+           r"capcruncher_statistics/reporters/data/\1_\2_\3.reporter.stats.csv",
+           extras=[r"\1", r"\2", r"\3"],)
+def alignments_deduplicate_slices_statistics(infile, outfile, sample, part, read_type):
+
+    """Task overwrites reporter statistics with de-duplicated statistics"""
+
+    from capcruncher.tools.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
+
+    filters = {"capture": CCSliceFilter, "tri": TriCSliceFilter, "tiled": TiledCSliceFilter}
+    slice_filterer = filters.get(P.PARAMS['analysis_method'])
+
+    reporter_statistics = slice_filterer(infile).cis_or_trans_statistics.to_csv(outfile)
+
+
 @collate(
     alignments_deduplicate_slices,
     regex(r".*/(?P<sample>.*).(?:flashed|pe).(?P<capture>.*).slices.tsv"),
@@ -1301,6 +1317,14 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
         job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
     )
+
+
+
+
+
+
+
+
 
 
 @follows(alignments_deduplicate_collate)
