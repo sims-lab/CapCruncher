@@ -129,9 +129,12 @@ HAS_BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbos
 # Has valid plot coordinates for heatmaps
 try:
     import coolbox
+
     MAKE_PLOTS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
 except ImportError as e:
-    warnings.warn("Plotting capabilities not installed. For plotting please run: pip install capcruncher[plotting]")
+    warnings.warn(
+        "Plotting capabilities not installed. For plotting please run: pip install capcruncher[plotting]"
+    )
     MAKE_PLOTS = False
 
 # Determines if UCSC hub is created from run.
@@ -1136,7 +1139,7 @@ def alignments_filter(infiles, outfile):
         sample_name,
         "--read_type",
         sample_read_type,
-        "--no-cis-and-trans-stats", # Need to have the de-duplicated versions of these.
+        "--no-cis-and-trans-stats",  # Need to have the de-duplicated versions of these.
         ">",
         output_log_file,
     ]
@@ -1159,9 +1162,7 @@ def alignments_filter(infiles, outfile):
 @follows(mkdir("capcruncher_analysis/reporters/collated"), alignments_filter)
 @collate(
     "capcruncher_analysis/reporters/identified/*.tsv",
-    regex(
-        r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(fragments).tsv"
-    ),
+    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(fragments).tsv"),
     r"capcruncher_analysis/reporters/collated/\1.\2.\3.\4.tsv",
     extras=[r"\1", r"\2", r"\3", r"\4"],
 )
@@ -1234,14 +1235,14 @@ def alignments_deduplicate_fragments(infile, outfile, read_type):
     r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.\4.slices.tsv",
     extras=[r"\1", r"\3", r"\4"],
 )
-def alignments_deduplicate_slices(
-    infile, outfile, sample_name, read_type, viewpoint
-):
+def alignments_deduplicate_slices(infile, outfile, sample_name, read_type, viewpoint):
 
     """Removes reporters with duplicate coordinates"""
 
     slices, duplicated_ids = infile
-    stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}_{viewpoint}"
+    stats_prefix = (
+        f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}_{viewpoint}"
+    )
 
     statement = [
         "capcruncher",
@@ -1273,21 +1274,35 @@ def alignments_deduplicate_slices(
     zap_file(slices)
 
 
-@transform(alignments_deduplicate_slices, 
-           regex(r".*/(.*)\.(.*)\.(flashed|pe)\.(.*)\.slices.tsv"), 
-           r"capcruncher_statistics/reporters/data/\1_\2_\3_\4.reporter.stats.csv",
-           extras=[r"\1", r"\2", r"\3", r"\4"],)
-def alignments_deduplicate_slices_statistics(infile, outfile, sample, part, read_type, viewpoint):
+@transform(
+    alignments_deduplicate_slices,
+    regex(r".*/(.*)\.(.*)\.(flashed|pe)\.(.*)\.slices.tsv"),
+    r"capcruncher_statistics/reporters/data/\1_\2_\3_\4.reporter.stats.csv",
+    extras=[r"\1", r"\2", r"\3", r"\4"],
+)
+def alignments_deduplicate_slices_statistics(
+    infile, outfile, sample, part, read_type, viewpoint
+):
 
     """Task overwrites reporter statistics with de-duplicated statistics"""
 
-    from capcruncher.tools.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
+    from capcruncher.tools.filter import (
+        CCSliceFilter,
+        TriCSliceFilter,
+        TiledCSliceFilter,
+    )
 
-    filters = {"capture": CCSliceFilter, "tri": TriCSliceFilter, "tiled": TiledCSliceFilter}
-    slice_filterer = filters.get(P.PARAMS['analysis_method'])
+    filters = {
+        "capture": CCSliceFilter,
+        "tri": TriCSliceFilter,
+        "tiled": TiledCSliceFilter,
+    }
+    slice_filterer = filters.get(P.PARAMS["analysis_method"])
 
     df_slices = pd.read_csv(infile, sep="\t")
-    reporter_statistics = slice_filterer(df_slices).cis_or_trans_stats.to_csv(outfile)
+    reporter_statistics = slice_filterer(
+        df_slices, sample_name=sample, read_type=read_type
+    ).cis_or_trans_stats.to_csv(outfile)
 
 
 @collate(
@@ -1311,7 +1326,7 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
         statement.append(cmd)
 
     statement.append(f'cat {tmp} | pigz -p {P.PARAMS["pipeline_n_cores"]} > {outfile}')
-    statement.append(f'rm -f {tmp}')
+    statement.append(f"rm -f {tmp}")
 
     P.run(
         " && ".join(statement),
@@ -1319,6 +1334,7 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
         job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
     )
+
 
 @follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
 @merge(
@@ -1680,7 +1696,7 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
         output_prefix,
         "--normalise",
         "--scale_factor",
-        str(P.PARAMS.get("normalisation_scale_factor", 1000000))
+        str(P.PARAMS.get("normalisation_scale_factor", 1000000)),
     ]
 
     P.run(
