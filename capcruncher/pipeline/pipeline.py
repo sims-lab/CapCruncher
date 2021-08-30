@@ -1290,7 +1290,7 @@ def alignments_deduplicate_slices_statistics(infile, outfile, sample, part, read
 
 @collate(
     alignments_deduplicate_slices,
-    regex(r".*/(?P<sample>.*).(?:flashed|pe).(?P<capture>.*).slices.tsv"),
+    regex(r".*/(?P<sample>.*)\.(?:.*)\.(?:flashed|pe).(?P<capture>.*).slices.tsv"),
     r"capcruncher_analysis/reporters/\1.\2.tsv.gz",
     extras=[r"\1", r"\2"],
 )
