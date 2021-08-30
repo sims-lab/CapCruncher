@@ -1228,7 +1228,7 @@ def alignments_deduplicate_fragments(infile, outfile, read_type):
 @transform(
     "capcruncher_analysis/reporters/identified/*.tsv",
     regex(
-        r".*/(?P<sample>.*)\.(?P<partition>.*)\.(?P<read_type>flashed|pe)\.(?P<viewpoint>.*)\.slices.tsv"
+        r".*/(?P<sample>.*)(?P<partition>_part\d+)\.(?P<read_type>flashed|pe)\.(?P<viewpoint>.*)\.slices.tsv"
     ),
     add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\3.\4.json.gz"),
     r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.\4.slices.tsv",
