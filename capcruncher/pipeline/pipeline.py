@@ -1191,7 +1191,7 @@ def reporters_fragments_collate(infiles, outfile, *grouping_args):
 
 @follows(alignments_filter, mkdir("capcruncher_analysis/reporters/deduplicated"))
 @transform(
-    reporters_collate,
+    reporters_fragments_collate,
     regex(r".*/(?P<sample>.*).(flashed|pe).(?P<capture>.*).fragments.tsv"),
     r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.json.gz",
     extras=[r"\2"],
@@ -1225,9 +1225,9 @@ def alignments_deduplicate_fragments(infile, outfile, read_type):
 
 @follows(alignments_deduplicate_fragments)
 @transform(
-    reporters_collate,
+    "capcruncher_analysis/reporters/identified/*.tsv",
     regex(
-        r"capcruncher_analysis/reporters/collated/(.*)\.(flashed|pe)\.(.*)\.slices.tsv"
+        r".*/(.*)\.(flashed|pe)\.(.*)\.slices.tsv"
     ),
     add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.json.gz"),
     r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.slices.tsv",
@@ -1293,6 +1293,7 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
         statement.append(cmd)
 
     statement.append(f'cat {tmp} | pigz -p {P.PARAMS["pipeline_n_cores"]} > {outfile}')
+    statement.append(f'rm -f {tmp}')
 
     P.run(
         " && ".join(statement),
