@@ -1287,7 +1287,7 @@ def alignments_deduplicate_slices_statistics(infile, outfile, sample, part, read
     slice_filterer = filters.get(P.PARAMS['analysis_method'])
 
     df_slices = pd.read_csv(infile, sep="\t")
-    reporter_statistics = slice_filterer(df_slices).cis_or_trans_statistics.to_csv(outfile)
+    reporter_statistics = slice_filterer(df_slices).cis_or_trans_stats.to_csv(outfile)
 
 
 @collate(
