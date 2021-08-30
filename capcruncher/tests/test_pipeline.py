@@ -117,10 +117,19 @@ def test_hub_exists():
     assert os.path.exists('capturec_test.hub.txt')
 
 def test_plot_template_exists():
-    assert os.path.exists("capcruncher_plots/templates/Slc25A37.pileup.yml")
+    try:
+        import coolbox
+        assert os.path.exists("capcruncher_plots/templates/Slc25A37.pileup.yml")
+    except ImportError:
+        pass
 
 def test_plot_exists():
-    assert os.path.exists("capcruncher_plots/Slc25A37_chr14:69878554-69933221.svg")
+    try:
+        import coolbox
+        assert os.path.exists("capcruncher_plots/Slc25A37_chr14:69878554-69933221.svg")
+    except ImportError:
+        pass
+
 
 
 
