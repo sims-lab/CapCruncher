@@ -118,6 +118,10 @@ def filter(
      sample_name (str, optional): Sample being processed e.g. DOX-treated_1. Defaults to "".
      read_type (str, optional): Process combined(flashed) or non-combined reads (pe) used for statistics. Defaults to "".
      gzip (bool, optional): Compress output with gzip. Defaults to False.
+     fragments (bool, optional): Enables fragments to be output. Defaults to True.
+     read_stats (bool, optional): Enables read level statistics to be output. Defaults to True.
+     slice_stats (bool, optional): Enables slice level statistics to be output. Defaults to True.
+     cis_and_trans_stats (bool, optional): Enables cis/trans statistics to be output. Defaults to True.
     """
 
     # Read bam file and merege annotations
