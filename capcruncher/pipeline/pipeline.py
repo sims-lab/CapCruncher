@@ -1104,7 +1104,7 @@ def post_annotation():
     fastq_alignment,
     regex(r"capcruncher_preprocessing/aligned/(.*).bam"),
     add_inputs(r"capcruncher_analysis/annotations/\1.annotations.tsv"),
-    r"capcruncher_analysis/reporters/identified\1.completed",
+    r"capcruncher_analysis/reporters/identified/\1.completed",
 )
 def alignments_filter(infiles, outfile):
     """Filteres slices and outputs reporter slices for each capture site"""
@@ -1157,7 +1157,7 @@ def alignments_filter(infiles, outfile):
 
 @follows(mkdir("capcruncher_analysis/reporters/collated"), alignments_filter)
 @collate(
-    "capcruncher_analysis/reporters/identified*.tsv",
+    "capcruncher_analysis/reporters/identified/*.tsv",
     regex(
         r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(fragments).tsv"
     ),
@@ -1189,7 +1189,7 @@ def reporters_fragments_collate(infiles, outfile, *grouping_args):
         zap_file(fn)
 
 
-@follows(alignments_filter, mkdir("capcruncher_analysis/reporters/deduplicated"))
+@follows(mkdir("capcruncher_analysis/reporters/deduplicated"))
 @transform(
     reporters_fragments_collate,
     regex(r".*/(?P<sample>.*).(flashed|pe).(?P<capture>.*).fragments.tsv"),
@@ -1317,15 +1317,6 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
         job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
     )
-
-
-
-
-
-
-
-
-
 
 @follows(alignments_deduplicate_collate)
 @merge(
