@@ -1319,7 +1319,7 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-@follows(alignments_deduplicate_collate)
+@follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
 @merge(
     "capcruncher_statistics/reporters/data/*",
     "capcruncher_statistics/reporters/reporters.reads.csv",
