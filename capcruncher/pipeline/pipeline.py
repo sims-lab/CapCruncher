@@ -1097,14 +1097,14 @@ def post_annotation():
 @follows(
     post_annotation,
     annotate_alignments,
-    mkdir("capcruncher_analysis/reporters/unfiltered/"),
+    mkdir("capcruncher_analysis/reporters/identified"),
     mkdir("capcruncher_statistics/reporters/data"),
 )
 @transform(
     fastq_alignment,
     regex(r"capcruncher_preprocessing/aligned/(.*).bam"),
     add_inputs(r"capcruncher_analysis/annotations/\1.annotations.tsv"),
-    r"capcruncher_analysis/reporters/unfiltered/\1.completed",
+    r"capcruncher_analysis/reporters/identified\1.completed",
 )
 def alignments_filter(infiles, outfile):
     """Filteres slices and outputs reporter slices for each capture site"""
@@ -1157,14 +1157,14 @@ def alignments_filter(infiles, outfile):
 
 @follows(mkdir("capcruncher_analysis/reporters/collated"), alignments_filter)
 @collate(
-    "capcruncher_analysis/reporters/unfiltered/*.tsv",
+    "capcruncher_analysis/reporters/identified*.tsv",
     regex(
-        r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(slices|fragments).tsv"
+        r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(fragments).tsv"
     ),
     r"capcruncher_analysis/reporters/collated/\1.\2.\3.\4.tsv",
     extras=[r"\1", r"\2", r"\3", r"\4"],
 )
-def reporters_collate(infiles, outfile, *grouping_args):
+def reporters_fragments_collate(infiles, outfile, *grouping_args):
 
     """Concatenates identified reporters"""
 
