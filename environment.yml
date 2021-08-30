@@ -11,7 +11,7 @@ dependencies:
   - natsort
   - pybedtools
   - pysam
-  - bowtie2
+  - bowtie2>=2.4.4
   - trim-galore
   - cooler
   - pandas
