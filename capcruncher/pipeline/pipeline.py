@@ -1136,6 +1136,7 @@ def alignments_filter(infiles, outfile):
         sample_name,
         "--read_type",
         sample_read_type,
+        "--no-cis-and-trans-stats", # Need to have the de-duplicated versions of these.
         ">",
         output_log_file,
     ]
