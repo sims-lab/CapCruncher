@@ -1284,7 +1284,7 @@ def alignments_deduplicate_slices_statistics(
     infile, outfile, sample, part, read_type, viewpoint
 ):
 
-    """Task overwrites reporter statistics with de-duplicated statistics"""
+    """Generates reporter statistics from de-duplicated files"""
 
     from capcruncher.tools.filter import (
         CCSliceFilter,
@@ -1300,6 +1300,7 @@ def alignments_deduplicate_slices_statistics(
     slice_filterer = filters.get(P.PARAMS["analysis_method"])
 
     df_slices = pd.read_csv(infile, sep="\t")
+    
     reporter_statistics = slice_filterer(
         df_slices, sample_name=sample, read_type=read_type
     ).cis_or_trans_stats.to_csv(outfile, index=False)
