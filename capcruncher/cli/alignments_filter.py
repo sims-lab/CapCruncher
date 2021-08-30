@@ -65,6 +65,11 @@ def filter(
     sample_name: str = "",
     read_type: str = "",
     gzip: bool = False,
+    output_fragments: bool = True,
+    output_read_stats: bool = True,
+    output_slice_stats: bool = True,
+    output_cis_and_trans_stats: bool = True,
+
 ):
     """
     Removes unwanted aligned slices and identifies reporters.
