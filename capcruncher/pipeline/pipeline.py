@@ -1227,20 +1227,20 @@ def alignments_deduplicate_fragments(infile, outfile, read_type):
 @transform(
     "capcruncher_analysis/reporters/identified/*.tsv",
     regex(
-        r".*/(.*)\.(flashed|pe)\.(.*)\.slices.tsv"
+        r".*/(?P<sample>.*)\.(?P<partition>.*)\.(?P<read_type>flashed|pe)\.(?P<viewpoint>.*)\.slices.tsv"
     ),
-    add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.json.gz"),
-    r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.slices.tsv",
-    extras=[r"\1", r"\2", r"\3"],
+    add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\3.\4.json.gz"),
+    r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.\4.slices.tsv",
+    extras=[r"\1", r"\3", r"\4"],
 )
 def alignments_deduplicate_slices(
-    infile, outfile, sample_name, read_type, capture_oligo
+    infile, outfile, sample_name, read_type, viewpoint
 ):
 
     """Removes reporters with duplicate coordinates"""
 
     slices, duplicated_ids = infile
-    stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}_{capture_oligo}"
+    stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}_{viewpoint}"
 
     statement = [
         "capcruncher",
