@@ -63,7 +63,15 @@ def collate_slice_data(fnames):
 
 def collate_cis_trans_data(fnames):
 
-    return (pd.concat([pd.read_csv(fn) for fn in fnames])
+    dframes = []
+    for fn in fnames:
+        try:
+            dframes.append(pd.read_csv(fn))
+        except pd.errors.EmptyDataError:
+            pass
+
+
+    return (pd.concat(dframes)
               .groupby(['sample', 'capture', 'read_type', 'cis/trans'])
               .sum()
               .reset_index()
