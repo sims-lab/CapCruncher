@@ -70,7 +70,6 @@ def collate_cis_trans_data(fnames):
         except pd.errors.EmptyDataError:
             pass
 
-
     return (pd.concat(dframes)
               .groupby(['sample', 'capture', 'read_type', 'cis/trans'])
               .sum()
