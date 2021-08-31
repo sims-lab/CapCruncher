@@ -970,17 +970,30 @@ def annotate_sort_blacklist(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
 
-    if HAS_BLACKLIST:
+    blacklist_file = P.PARAMS.get("analysis_optional_blacklist")
+
+    if HAS_BLACKLIST and blacklist_file.endswith('.bed'):
         statement = [
             "sort",
             "-k1,1",
             "-k2,2n",
-            P.PARAMS["analysis_optional_blacklist"],
+            blacklist_file,
             ">",
             outfile,
         ]
-    else:
+    elif HAS_BLACKLIST and blacklist_file.endswith('.bed.gz'):
+        statement = [
+            "zcat",
+            blacklist_file,
+            "|",
+            "sort",
+            "-k1,1",
+            "-k2,2n",
+            ">",
+            outfile,
+        ]
 
+    else:
         statement = ["touch", outfile]  # Make a blank file if no blacklist
 
     P.run(
