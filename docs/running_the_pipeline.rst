@@ -1,8 +1,8 @@
+************************************
+CapCruncher Data Processing Pipeline
+************************************
 
-Pipeline
-########
-
-The main feature of capcruncher is the end-to-end data processing pipeline. 
+The main feature of CapCruncher is the end-to-end data processing pipeline. 
 The pipeline has been written using the `cgat-core workflow management system <https://github.com/cgat-developers/cgat-core>`_ 
 and the following diagram illustrates the steps performed by the pipeline:
 
@@ -17,9 +17,11 @@ and a :ref:`config.yml <Step 2 - Edit a copy of config.yml>` file that provides
 the pipeline configuration.  
 
 
+Configuration
+#############
 
 Step 1 - Create a working directory
-===================================
+***********************************
 
 To run the pipeline you will need to create a working directory for the pipeline run::
 
@@ -30,16 +32,17 @@ The pipeline will be executed here and all files will be generated
 in this directory.
 
 Step 2 - Edit a copy of config.yml
-==================================
+**********************************
 
 The configuration file `config.yml <https://github.com/sims-lab/capture-c/blob/master/config.yml>`_ enables 
-parameterisation of the pipeline run with user specific settings. Furthermore,
-it also provides paths to essential files for the pipeline run (e.g., bowtie2 indices).
+parameterisation of the pipeline run with user and run specific settings. This file also provides paths 
+to essential files for the pipeline run (e.g. aligner indices).
+
 The paths supplied do not have to be in the same directory as the pipeline.
 
 .. warning::
 
-    The yaml file must be named **config.yml** for the pipeline to recognise it and run correctly.
+    The config file must be named **config.yml** to be recognised by the pipeline.
 
 A copy of config.yml can be downloaded from GitHub using::
     
@@ -55,11 +58,10 @@ This `yaml <https://yaml.org/spec/1.2/spec.html>`_ file can be edited using stan
     nano config.yml
 
 
+Step 3 -  Copy or link FASTQ files into the :term:`working directory`
+*********************************************************************
 
-Step 3 -  Copy or link fastq files into the :term:`working directory`
-=====================================================================
-
-The pipeline requires that fastq files are paired and in any of these formats:
+The pipeline requires that FASTQ files are paired and in any of these formats:
 
 Here is an example of file pairing for two samples:
 
@@ -92,7 +94,7 @@ Symlink example:
 
 
 Step 4 - Running the pipeline
-=============================
+*****************************
 
 After copying/linking FASTQ files into the working directory and configuring the copy of
 `config.yml <https://github.com/sims-lab/capture-c/blob/master/config.yml>`_
@@ -136,7 +138,7 @@ information.
 
 
 Step 5 - Running the pipeline to a specified stage
-==================================================
+**************************************************
 
 There are currently multiple stopping points built into the pipeline at key stages. These are:
 
@@ -144,6 +146,7 @@ There are currently multiple stopping points built into the pipeline at key stag
 * :literal:`pre_annotation` - Stops before aligned slices are ready to be annotated.
 * :literal:`post_annotation` - Stops after aligned slices have been annotated.
 * :literal:`post_capcruncher_analysis` - Stops after reporters have been identified and duplicate filtered.
+* :literal:`plotting` - Stops after plotting has been performed. **Requires** plotting dependencies, see :ref:`installing optional packages<Installing optional packages>`
 * :literal:`full` - Run the pipeline until all required tasks are complete.
 
 To run the pipeline until one of these stopping points, use:
@@ -153,9 +156,86 @@ To run the pipeline until one of these stopping points, use:
     # Run until TASK_NAME step
     capcruncher pipeline make TASK_NAME
 
+    # e.g. to run the full pipeline
+    capcruncher pipeline make fastq_preprocessing
 
-Pipeline outputs
-================
+
+Results
+#######
+
+The pipeline generates several key outputs:
+
+1) Statistics for the pipeline run. The *capcruncher_statistics/* folder contains all of the relevant statistics 
+   for the pipeline run, an aggregated summary of all run statistics can be found in 
+   *capcruncher_statistics/capcruncher_statistics.html*. 
+   An example can be found `here <static/capcruncher_statistics.html>`_.
+
+
+2) Reporters for each viewpoint, these can be found in the *capcruncher_anlysis/reporters* folder. Reporters are stored as:
+
+   - TSV files (gzipped) in plain text format.
+   - `Cooler format <https://cooler.readthedocs.io/en/latest/>`_ HDF5 files with all viewpoints per sample aggregated into the same file.
+    
+The Cooler format HDF5 files enable efficient genome wide queries and are compatible with tools using the Cooler ecosystem. Unlike Hi-C, Capture-C/Tri-C 
+and Tiled-C experiments can contain multiple viewpoints. To facilitate efficient access to a specific viewpoint, the HDF5 files produced by CapCruncher 
+contain a Cooler group for each viewpoint. To be compatible with tools in the cooler ecosystem the correct
+Cooler group must be specified (e.g. SAMPLENAME.hdf5::VIEWPOINT). The pre-binned matrix for each viewpoint (the bin size is specified by config.yml) 
+can be found within the resolutions group (e.g. SAMPLENAME.hdf5::VIEWPOINT/resolutions/SPECIFIED_RESOLUTION). 
+
+The Cooler package can be used to extract the reporter counts table/matrix for use in other applications::
+
+    # See which viewpoints/resolutions are present
+    cooler ls SAMPLENAME.hdf5
+
+    # Extract reporter counts stored by restriction fragment
+    cooler dump SAMPLENAME.hdf5::VIEWPOINT
+
+    # Extract reporter counts stored in genomic bins
+    cooler dump SAMPLENAME.hdf5::VIEWPOINT/resolutions/SPECIFIED_RESOLUTION
+
+    # Extract reporter counts matrix for a specific region
+    cooler dump SAMPLENAME.hdf5::VIEWPOINT -r chr1:1000-2000
+
+3) BigWig files for every viewpoint/sample combination. The BigWig files generated either contain raw reporter counts (e.g. SAMPLENAME.raw.VIEWPOINT.bigWig)
+   or are normalised (e.g. SAMPLENAME.normalised.VIEWPOINT.bigWig) by the number of cis reporters and adjusted by a scaling factor (default 1000000).
+
+4) Summary BigWig files for each viewpoint/sample combination. Replicates will be grouped together if either a design matrix is supplied e.g.
+   
+.. csv-table:: Example design matrix
+    :header: "sample", "condition"
+    :widths: 20, 20
+
+    "SAMPLE-A_1", "CONDITION_A"
+    "SAMPLE-A_2", "CONDITION_A"
+    "SAMPLE-A_3", "CONDITION_A"
+    "SAMPLE-B_1", "CONDITION_B"
+    "SAMPLE-B_2", "CONDITION_B"
+    "SAMPLE-B_3", "CONDITION_B"
+
+    Subtraction BigWigs will also be generated for every viewpoint/condition permutation.
+
+5) A UCSC hub containing:
+   
+   * BigWigs for each replicate/viewpoint combination 
+   * BigWigs for each condition/viewpoint combination
+   * Subtraction BigWigs for each condition
+   * Viewpoints used
+   * Run statistics
+  
+  The UCSC hub can be found in the directory specified by hub_dir in config.yml. To view the hub on UCSC
+  move/upload the hub to a publically accessible location and paste the address into the UCSC Genome Browser 
+  track hub “My hubs” tab. 
+
+   
+
+
+
+
+
+
+   
+
+
 
 
 

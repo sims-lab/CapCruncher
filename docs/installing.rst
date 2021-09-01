@@ -1,8 +1,10 @@
+**********
 Installing
-##########
+**********
 
-Pre-Installation recommendations
-********************************
+Recommendations prior to installation
+#####################################
+
 
 1. Install conda if it has not been already using the `conda install instructions <https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html#install-linux-silent>`_.
 
@@ -30,29 +32,44 @@ Pre-Installation recommendations
 
 
 Installation
-************
+############
 
 The package can be installed in several ways:
-
-.. note::
-
-    Currently only github installation is supported
-
 
 1. Install from conda:
 :: 
 
-    conda install capcruncher # do not use: not available yet
+    conda install capcruncher
 
 2. Install from pypi:
 :: 
 
-    pip install capcruncher # do not use: not available yet
+    pip install capcruncher
 
 3. Install from GitHub:
 
 :: 
 
-    git clone https://github.com/sims-lab/capture-c.git
-    cd capture-c
+    git clone https://github.com/sims-lab/CapCruncher.git
+    cd CapCruncher
     pip install .
+
+
+Installing optional packages
+############################
+
+To activate the plotting capabilities of the package additional dependencies are required. 
+In order to install these dependencies please run:
+
+.. note::
+    libcurl-dev must be present on your system in order to compile the plotting dependencies and
+    may require administrator privileges to install. 
+
+
+::
+
+    # Activate the CapCruncher conda environment
+    conda activate cc
+
+    # Install the plotting dependencies
+    pip install capcruncher[plotting]
