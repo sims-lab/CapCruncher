@@ -5,20 +5,18 @@ Installing
 Recommendations prior to installation
 #####################################
 
-
 1) Install conda if it has not been already using the `conda install instructions <https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html#install-linux-silent>`_.
-
+   
 2) Ensure that conda channels are correctly set up:
+   
 ::
 
     conda config --add channels defaults
     conda config --add channels bioconda
     conda config --add channels conda-forge
+
+3) If capcruncher is **not** being installed through conda, first generate a new conda environment using the yaml file in the `GitHub repository <https://github.com/sims-lab/CapCruncher/blob/master/environment.yml>`_:
    
-
-1) If capcruncher is **not** being installed through conda, first generate a new conda
-   environment using the yaml file in the `GitHub repository <https://github.com/sims-lab/CapCruncher/blob/master/environment.yml>`_:
-
 ::
     
     wget https://raw.githubusercontent.com/sims-lab/CapCruncher/master/environment.yml
@@ -44,17 +42,19 @@ Installation
 
 The package can be installed in several ways:
 
-1. Install from conda:
+1) Install from conda:
+   
 :: 
 
     conda install capcruncher
 
-2. Install from pypi:
+2) Install from pypi:
+   
 :: 
 
     pip install capcruncher
 
-3. Install from GitHub:
+3) Install from GitHub:
 
 :: 
 
@@ -79,5 +79,9 @@ In order to install these dependencies please run:
     # Activate the CapCruncher conda environment
     conda activate cc
 
-    # Install the plotting dependencies
+    # Install the plotting dependencies if using the pip/conda install method.
     pip install capcruncher[plotting]
+
+    # Install the plotting dependencies if using the GitHub install method.
+    cd PATH_TO_CAPCRUNCHER_REPOSITORY_CLONE/
+    pip install .[plotting]
