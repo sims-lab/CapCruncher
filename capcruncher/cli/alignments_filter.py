@@ -46,7 +46,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
         .drop(columns=["slice_name.1"], errors="ignore")
         .assign(
             restriction_fragment=lambda df: df["restriction_fragment"]
-            .replace(".", 0)
+            .replace(".", -1)
             .astype(int)
         )
         .reset_index()
