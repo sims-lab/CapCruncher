@@ -196,11 +196,22 @@ The Cooler package can be used to extract the reporter counts table/matrix for u
     # Extract reporter counts matrix for a specific region
     cooler dump SAMPLENAME.hdf5::VIEWPOINT -r chr1:1000-2000
 
-3) BigWig files for every viewpoint/sample combination. The BigWig files generated either contain raw reporter counts (e.g. SAMPLENAME.raw.VIEWPOINT.bigWig)
+3) BigWig files for every viewpoint/sample combination, these can be found in *capcruncher_analysis/bigwigs/*. The BigWig files generated either contain raw reporter counts (e.g. SAMPLENAME.raw.VIEWPOINT.bigWig)
    or are normalised (e.g. SAMPLENAME.normalised.VIEWPOINT.bigWig) by the number of cis reporters and adjusted by a scaling factor (default 1000000).
 
-4) Summary BigWig files for each viewpoint/sample combination. Replicates will be grouped together if either a design matrix is supplied e.g.
+4) Summary BigWig files for each viewpoint/sample combination, these can be found in *capcruncher_analysis/bigwigs/*. Replicates will be grouped together using:
    
+A) Pattern matching if a design matrix has not been supplied to config.yml
+
+.. note::
+        The "_" to separate the condition from the replicate identifier is crucial e.g.: 
+
+| CONDITION-A_REPLICATE-IDENTIFIER
+| CONDITION-B_REPLICATE-IDENTIFIER
+    
+
+B) Using a supplied design matrix e.g.:
+  
 .. csv-table:: Example design matrix
     :header: "sample", "condition"
     :widths: 20, 20
@@ -212,7 +223,8 @@ The Cooler package can be used to extract the reporter counts table/matrix for u
     "SAMPLE-B_2", "CONDITION_B"
     "SAMPLE-B_3", "CONDITION_B"
 
-    Subtraction BigWigs will also be generated for every viewpoint/condition permutation.
+
+Subtraction BigWigs will also be generated for every viewpoint/condition permutation.
 
 5) A UCSC hub containing:
    
@@ -222,9 +234,9 @@ The Cooler package can be used to extract the reporter counts table/matrix for u
    * Viewpoints used
    * Run statistics
   
-  The UCSC hub can be found in the directory specified by hub_dir in config.yml. To view the hub on UCSC
-  move/upload the hub to a publically accessible location and paste the address into the UCSC Genome Browser 
-  track hub “My hubs” tab. 
+The UCSC hub can be found in the directory specified by hub_dir in config.yml. To view the hub on UCSC
+move/upload the hub to a publically accessible location and paste the address into the UCSC Genome Browser 
+track hub “My hubs” tab. 
 
    
 
