@@ -6,9 +6,17 @@ Recommendations prior to installation
 #####################################
 
 
-1. Install conda if it has not been already using the `conda install instructions <https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html#install-linux-silent>`_.
+1) Install conda if it has not been already using the `conda install instructions <https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html#install-linux-silent>`_.
 
-2. If capcruncher is **not** being installed through conda, first generate a new conda
+2) Ensure that conda channels are correctly set up:
+::
+
+    conda config --add channels defaults
+    conda config --add channels bioconda
+    conda config --add channels conda-forge
+   
+
+1) If capcruncher is **not** being installed through conda, first generate a new conda
    environment using the yaml file in the `GitHub repository <https://github.com/sims-lab/CapCruncher/blob/master/environment.yml>`_:
 
 ::
@@ -17,7 +25,7 @@ Recommendations prior to installation
     conda env create -f environment.yml
     conda activate cc
 
-1. If you intend to use a cluster e.g. SunGrid engine/SLURM add the path to the DRMAA interface to your .bashrc:
+4) If you intend to use a cluster e.g. SunGrid engine/SLURM add the path to the DRMAA interface to your .bashrc:
 
 :: 
 
