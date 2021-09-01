@@ -129,9 +129,12 @@ HAS_BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbos
 # Has valid plot coordinates for heatmaps
 try:
     import coolbox
+
     MAKE_PLOTS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
 except ImportError as e:
-    warnings.warn("Plotting capabilities not installed. For plotting please run: pip install capcruncher[plotting]")
+    warnings.warn(
+        "Plotting capabilities not installed. For plotting please run: pip install capcruncher[plotting]"
+    )
     MAKE_PLOTS = False
 
 # Determines if UCSC hub is created from run.
@@ -967,17 +970,30 @@ def annotate_sort_blacklist(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
 
-    if HAS_BLACKLIST:
+    blacklist_file = P.PARAMS.get("analysis_optional_blacklist")
+
+    if HAS_BLACKLIST and blacklist_file.endswith('.bed'):
         statement = [
             "sort",
             "-k1,1",
             "-k2,2n",
-            P.PARAMS["analysis_optional_blacklist"],
+            blacklist_file,
             ">",
             outfile,
         ]
-    else:
+    elif HAS_BLACKLIST and blacklist_file.endswith('.bed.gz'):
+        statement = [
+            "zcat",
+            blacklist_file,
+            "|",
+            "sort",
+            "-k1,1",
+            "-k2,2n",
+            ">",
+            outfile,
+        ]
 
+    else:
         statement = ["touch", outfile]  # Make a blank file if no blacklist
 
     P.run(
@@ -1097,14 +1113,14 @@ def post_annotation():
 @follows(
     post_annotation,
     annotate_alignments,
-    mkdir("capcruncher_analysis/reporters/unfiltered/"),
+    mkdir("capcruncher_analysis/reporters/identified"),
     mkdir("capcruncher_statistics/reporters/data"),
 )
 @transform(
     fastq_alignment,
     regex(r"capcruncher_preprocessing/aligned/(.*).bam"),
     add_inputs(r"capcruncher_analysis/annotations/\1.annotations.tsv"),
-    r"capcruncher_analysis/reporters/unfiltered/\1.completed",
+    r"capcruncher_analysis/reporters/identified/\1.completed",
 )
 def alignments_filter(infiles, outfile):
     """Filteres slices and outputs reporter slices for each capture site"""
@@ -1136,6 +1152,7 @@ def alignments_filter(infiles, outfile):
         sample_name,
         "--read_type",
         sample_read_type,
+        "--no-cis-and-trans-stats",  # Need to have the de-duplicated versions of these.
         ">",
         output_log_file,
     ]
@@ -1157,14 +1174,12 @@ def alignments_filter(infiles, outfile):
 
 @follows(mkdir("capcruncher_analysis/reporters/collated"), alignments_filter)
 @collate(
-    "capcruncher_analysis/reporters/unfiltered/*.tsv",
-    regex(
-        r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(slices|fragments).tsv"
-    ),
+    "capcruncher_analysis/reporters/identified/*.tsv",
+    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(fragments).tsv"),
     r"capcruncher_analysis/reporters/collated/\1.\2.\3.\4.tsv",
     extras=[r"\1", r"\2", r"\3", r"\4"],
 )
-def reporters_collate(infiles, outfile, *grouping_args):
+def reporters_fragments_collate(infiles, outfile, *grouping_args):
 
     """Concatenates identified reporters"""
 
@@ -1189,9 +1204,9 @@ def reporters_collate(infiles, outfile, *grouping_args):
         zap_file(fn)
 
 
-@follows(alignments_filter, mkdir("capcruncher_analysis/reporters/deduplicated"))
+@follows(mkdir("capcruncher_analysis/reporters/deduplicated"))
 @transform(
-    reporters_collate,
+    reporters_fragments_collate,
     regex(r".*/(?P<sample>.*).(flashed|pe).(?P<capture>.*).fragments.tsv"),
     r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.json.gz",
     extras=[r"\2"],
@@ -1225,22 +1240,22 @@ def alignments_deduplicate_fragments(infile, outfile, read_type):
 
 @follows(alignments_deduplicate_fragments)
 @transform(
-    reporters_collate,
+    "capcruncher_analysis/reporters/identified/*.tsv",
     regex(
-        r"capcruncher_analysis/reporters/collated/(.*)\.(flashed|pe)\.(.*)\.slices.tsv"
+        r".*/(?P<sample>.*)_part(?P<partition>\d+)\.(?P<read_type>flashed|pe)\.(?P<viewpoint>.*)\.slices.tsv"
     ),
-    add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.json.gz"),
-    r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.slices.tsv",
-    extras=[r"\1", r"\2", r"\3"],
+    add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\3.\4.json.gz"),
+    r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.\4.slices.tsv",
+    extras=[r"\1", r"\2", r"\3", r"\4"],
 )
-def alignments_deduplicate_slices(
-    infile, outfile, sample_name, read_type, capture_oligo
-):
+def alignments_deduplicate_slices(infile, outfile, sample_name, part, read_type, viewpoint):
 
     """Removes reporters with duplicate coordinates"""
 
     slices, duplicated_ids = infile
-    stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}_{capture_oligo}"
+    stats_prefix = (
+        f"capcruncher_statistics/reporters/data/{sample_name}_part{part}_{read_type}_{viewpoint}"
+    )
 
     statement = [
         "capcruncher",
@@ -1272,9 +1287,41 @@ def alignments_deduplicate_slices(
     zap_file(slices)
 
 
+@transform(
+    alignments_deduplicate_slices,
+    regex(r".*/(.*)\.(.*)\.(flashed|pe)\.(.*)\.slices.tsv"),
+    r"capcruncher_statistics/reporters/data/\1_\2_\3_\4.reporter.stats.csv",
+    extras=[r"\1", r"\2", r"\3", r"\4"],
+)
+def alignments_deduplicate_slices_statistics(
+    infile, outfile, sample, part, read_type, viewpoint
+):
+
+    """Generates reporter statistics from de-duplicated files"""
+
+    from capcruncher.tools.filter import (
+        CCSliceFilter,
+        TriCSliceFilter,
+        TiledCSliceFilter,
+    )
+
+    filters = {
+        "capture": CCSliceFilter,
+        "tri": TriCSliceFilter,
+        "tiled": TiledCSliceFilter,
+    }
+    slice_filterer = filters.get(P.PARAMS["analysis_method"])
+
+    df_slices = pd.read_csv(infile, sep="\t")
+    
+    reporter_statistics = slice_filterer(
+        df_slices, sample_name=sample, read_type=read_type
+    ).cis_or_trans_stats.to_csv(outfile, index=False)
+
+
 @collate(
     alignments_deduplicate_slices,
-    regex(r".*/(?P<sample>.*).(?:flashed|pe).(?P<capture>.*).slices.tsv"),
+    regex(r".*/(?P<sample>.*)\.(?:.*)\.(?:flashed|pe).(?P<capture>.*).slices.tsv"),
     r"capcruncher_analysis/reporters/\1.\2.tsv.gz",
     extras=[r"\1", r"\2"],
 )
@@ -1293,6 +1340,7 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
         statement.append(cmd)
 
     statement.append(f'cat {tmp} | pigz -p {P.PARAMS["pipeline_n_cores"]} > {outfile}')
+    statement.append(f"rm -f {tmp}")
 
     P.run(
         " && ".join(statement),
@@ -1302,7 +1350,7 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
     )
 
 
-@follows(alignments_deduplicate_collate)
+@follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
 @merge(
     "capcruncher_statistics/reporters/data/*",
     "capcruncher_statistics/reporters/reporters.reads.csv",
@@ -1662,7 +1710,7 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
         output_prefix,
         "--normalise",
         "--scale_factor",
-        str(P.PARAMS.get("normalisation_scale_factor", 1000000))
+        str(P.PARAMS.get("normalisation_scale_factor", 1000000)),
     ]
 
     P.run(
