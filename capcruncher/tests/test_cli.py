@@ -381,6 +381,10 @@ def test_alignments_filter():
             output_prefix,
             "--stats_prefix",
             stats_prefix,
+            "--fragments",
+            "--read-stats",
+            "--slice-stats",
+            "--cis-and-trans-stats",
         ],
     )
 

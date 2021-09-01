@@ -80,6 +80,10 @@ def count(
 
             print(f'Processing chunk #{ii+1} of {chunksize} slices')
 
+            # Need to remove any restiction fragments that are not in the digested genome
+            df_reporters = df_reporters.query("restriction_fragment != -1")
+
+
             if remove_exclusions:
                 print('Removing exclusions')
                 # Must only remove exclusions if they are relevant for the capture being examined
