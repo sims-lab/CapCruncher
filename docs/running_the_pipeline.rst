@@ -178,17 +178,17 @@ Reporters for each sample aggregated by viewpoint
 
 All reporters can be found in the *capcruncher_anlysis/reporters* folder. Reporters are stored as:
 
-   - TSV files (gzipped) in plain text format.
-   - `Cooler format <https://cooler.readthedocs.io/en/latest/>`_ HDF5 files with all viewpoints per sample aggregated into the same file.
+1) TSV files (gzipped) containing all filtered reporter slices, aggregated by sample and viewpoint.
+2) `Cooler format <https://cooler.readthedocs.io/en/latest/>`_ HDF5 files with all viewpoints per sample aggregated into the same file.
   
-   .. note::
+.. note::
     The Cooler format HDF5 files enable efficient genome wide queries and are compatible with tools using the Cooler ecosystem. 
-    
+
     Unlike Hi-C, Capture-C/Tri-C and Tiled-C experiments can contain multiple viewpoints. To facilitate efficient access to a specific viewpoint, the HDF5 files produced by CapCruncher 
     contain a Cooler group for each viewpoint. 
-    
+
     To be compatible with tools in the cooler ecosystem the correct Cooler group must be specified (e.g. SAMPLENAME.hdf5::VIEWPOINT). 
-    
+
     The pre-binned matrix for each viewpoint (the bin size is specified by config.yml) 
     can be found within the resolutions group (e.g. SAMPLENAME.hdf5::VIEWPOINT/resolutions/SPECIFIED_RESOLUTION). 
 
@@ -217,16 +217,34 @@ Summary BigWig files for each viewpoint/sample combination
 Summary BigWig files can also be found in *capcruncher_analysis/bigwigs/*. Different replicate aggregations e.g. median, sum can be performed by altering the summary_methods entry within the plot section of config.yml.
 Replicates will be grouped together using:
    
-A) Pattern matching if a design matrix has not been supplied to config.yml
+Pattern matching 
+""""""""""""""""
 
-.. note::
-        The "_" to separate the condition from the replicate identifier is crucial e.g.: 
+This occurs if a design matrix has not been supplied to config.yml. In this case it is crucial that the correct sample naming scheme has been followed i.e.:
 
-| CONDITION-A_REPLICATE-IDENTIFIER
-| CONDITION-B_REPLICATE-IDENTIFIER
+| CONDITION-A_REPLICATE-IDENTIFIER_READNUMBER.fastq.gz
+| CONDITION-B_REPLICATE-IDENTIFIER_READNUMBER.fastq
+
+| e.g.
+| RS411-DMSO_1_1.fastq
+| RS411-DMSO_1_2.fastq
+| RS411-DMSO_2_1.fastq
+| RS411-DMSO_2_2.fastq
+| RS411-DMSO_3_1.fastq
+| RS411-DMSO_3_2.fastq
+| RS411-EPZ5676_1_1.fastq.gz
+| RS411-EPZ5676_1_2.fastq.gz
+| RS411-EPZ5676_2_1.fastq.gz
+| RS411-EPZ5676_2_2.fastq.gz
+| RS411-EPZ5676_3_1.fastq.gz
+| RS411-EPZ5676_3_2.fastq.gz
+
     
 
-B) Using a supplied design matrix e.g.:
+Design Matrix
+"""""""""""""
+
+Replicate aggregation can also be performed using a supplied design matrix e.g.:
   
 .. csv-table:: Example design matrix
     :header: "sample", "condition"
@@ -239,6 +257,8 @@ B) Using a supplied design matrix e.g.:
     "SAMPLE-B_2", "CONDITION_B"
     "SAMPLE-B_3", "CONDITION_B"
 
+.. note::
+    Do not include the read number or the .fastq(.gz) extension in the sample name.
 
 
 UCSC hub
