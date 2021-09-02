@@ -10,9 +10,6 @@ Common configuration problems
 
 
 
-
-
-
 Interruptions to the pipeline
 =============================
 
