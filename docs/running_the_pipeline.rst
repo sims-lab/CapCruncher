@@ -244,7 +244,7 @@ This occurs if a design matrix has not been supplied to config.yml. In this case
 Design Matrix
 """""""""""""
 
-Replicate aggregation can also be performed using a supplied design matrix e.g.:
+Replicate aggregation can also be performed using a design matrix (TSV format) supplied to config.yml (analysis_design_matrix). The design matrix should look something like this e.g.:
   
 .. csv-table:: Example design matrix
     :header: "sample", "condition"
