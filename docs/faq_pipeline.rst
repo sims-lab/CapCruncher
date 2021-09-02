@@ -1,5 +1,14 @@
-Pipeline FAQ
-############
+########################
+CapCruncher pipeline FAQ
+########################
+
+
+Common configuration problems
+=============================
+
+1) Including special characters e.g. "\\\/\*\?"  in the viewpoint name will prevent the pipeline from running to completion as the viewpoint name is appended to CapCruncher outputs, this must result in a valid file name.
+
+
 
 Interruptions to the pipeline
 =============================
@@ -30,7 +39,7 @@ A common error when running the pipeline is:
     NameError: name 'drmaa' is not defined
 
 This error occurrs because you are not connected to the cluster.
-See :ref:`Pre-Installation recommendations`  for how to add DRMAA_LIBRARY_PATH to your bashrc.
+See :ref:`Recommendations prior to installation`  for how to add DRMAA_LIBRARY_PATH to your bashrc.
 Alternatively, if you do not want to use a cluster you can run the pipeline in :ref:`local mode <Step 4 - Running the pipeline>`. 
 
 KeyError: 'missing parameter accessed'
