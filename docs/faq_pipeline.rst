@@ -1,5 +1,17 @@
-Pipeline FAQ
-############
+########################
+CapCruncher pipeline FAQ
+########################
+
+
+Common configuration problems
+=============================
+
+1) Including special characters e.g. "\\\/\*\?"  in the viewpoint name will prevent the pipeline from running to completion as the viewpoint name is appended to CapCruncher outputs, this must result in a valid file name.
+
+
+
+
+
 
 Interruptions to the pipeline
 =============================
