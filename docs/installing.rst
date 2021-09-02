@@ -23,18 +23,22 @@ Recommendations prior to installation
     conda env create -f environment.yml
     conda activate cc
 
-4) If you intend to use a cluster e.g. SunGrid engine/SLURM add the path to the DRMAA interface to your .bashrc:
+4) (Highly Recommended) If you intend to use CapCruncher with a computational cluster e.g. SunGrid engine/SLURM add the path to the `DRMAA interface <https://en.wikipedia.org/wiki/DRMAA>`_ to your .bashrc:
 
 :: 
-
-    # Access to the DRMAA library: https://en.wikipedia.org/wiki/DRMAA
-    echo "export DRMAA_LIBRARY_PATH=/<full-path>/libdrmaa.so" >> ~/.bashrc
 
     # You can get this value from your configured environment:
     env | grep DRMAA_LIBRARY_PATH
 
     # or just look for the library:
     find / -name "*libdrmaa.so"
+
+    # To insert this path into your .bashrc
+    echo "export DRMAA_LIBRARY_PATH=/<full-path>/libdrmaa.so" >> ~/.bashrc
+
+    # An example for users of the CBRG computational cluster
+    echo "export DRMAA_LIBRARY_PATH=/usr/lib64/libdrmaa.so" >> ~/.bashrc
+
 
 
 Installation
