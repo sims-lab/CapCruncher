@@ -26,5 +26,5 @@ Glossary
         A mapped slice from the same fragment as a capture slice used to report an interaction between
         two the viewpoint and another genomic region. e.g.::
             
-            ---fragment1-capture-slice-GATC--fragment1-slice2---  
+            ---capture-----GATC--reporter-----  
         
