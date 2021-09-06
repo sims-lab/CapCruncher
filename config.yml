@@ -4,61 +4,74 @@
 
 analysis:
     
-    # Method to use for data analysis, choose from capture | tri | tiled
+    # Method to use for data analysis, choose from capture | tri | tiled. 
+    # (Required)
     method: capture 
     
     # Path to viewpoints used for analysis.
     # This is a bed file containing the coordinates of the captured restricion fragments.
-    # The file must be in four column bed format with the name in the last column. 
+    # The file must be in four column bed format with the name in the last column.
+    # (Required) 
     viewpoints: PATH_TO_VIEWPOINTS
     
     # Restriction enzyme name or recognition site, *not* case sensitive
-    # e.g. DpnII or dpnii or GATC
+    # e.g. DpnII | dpnii | GATC
+    # (Required)
     restriction_enzyme: dpnii
     
     # Number of basepairs to exclude around each capture probe to remove re-ligations
+    # (Required)
     reporter_exclusion_zone: 1000
 
-    # (Optional) Path to design matrix describing the experimental design. 
+    # Path to design matrix describing the experimental design. 
     # This must have two columns: sample    condition
     # e.g. sample   condition
     #      SAMPLE1  DMSO
     #      SAMPLE2  DMSO 
     # If this is not provided, pattern matching will be used to determine the experimental design.
-    # In this case ensure that your FASTQ file names follow the pattern: SAMPLE-NAME_CONDITION_[12].fastq(.gz)
+    # In this case ensure that your FASTQ file names follow the pattern: SAMPLE-NAME-WITH-CONDITION_REPLICATE_[12].fastq(.gz).
+    # (Optional) 
     design: PATH_TO_TSV_FORMATTED_DESIGN_MATRIX
 
     # Genomic window size(s) to use for binning restriction fragment interaction counts
     # into even genomic windows. Only bin sizes that are present here will be allowed 
-    # to be used for heatmap generation. Currently required for all assays.
+    # to be used for heatmap generation.
+    # (Required, will become optional for capture mode in a later update)
     bin_size: 2500
 
 genome:
     
     # Name of genome. UCSC genome names are prefered. Custom names are accepted if chrom_sizes are provided
+    # (Required)
     name: mm9
     
     # Path to fasta file containing entire genome sequence separated by chromosome. 
+    # (Required)
     fasta: PATH_TO_GENOME_FASTA
 
     # Path to indicies for the specified aligner (default = bowtie2)
     # Note: Do not include .Number|rev.bt2
     # e.g. /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/Bowtie2Index/genome
+    # (Required)
     aligner_index: PATH_TO_ALIGNER_INDICIES
 
     # Path to chromosome sizes for genome. 
     # If blank will be determined automatically from the genome (must be a UCSC genome)
     # This should be a two column tsv file with columns: chromosome_name    size
     # FAI files can also be used.
+    # (Optional)
     chrom_sizes: PATH_TO_CHROMOSOME_SIZES
 
     # Determines if this is a custom genome. Only needed for UCSC hub generation.
+    # (Optional)
     custom: False
 
     # Organism name e.g. Mus Musculus. Only needed for UCSC hub using a custom genome.
+    # (Optional)
     organism: ORGANISM
 
     # Path to twobit file for genome. Only needed for UCSC hub using a custom genome.
+    # (Optional)
     twobit: PATH_TO_TWOBIT_FILE
 
 
@@ -69,19 +82,24 @@ genome:
 pipeline:
 
     # Cluster manager used. e.g. SLURM, SunGrid Engine, etc.
+    # (Required if using in cluster mode)
     cluster_queue_manager: slurm
 
     # Name of queue to use. This will be cluster specific.
+    # (Required if using in cluster mode)
     cluster_queue: batch
     
     # Maximum number of cores to use per task. (~ 4 works best)
+    # (Required if using in cluster mode)
     n_cores: 4
 
     # Maximum memory avalible per job.
     # Some tasks are quite demanding on memory for a deeply sequenced experiment (32 G recomended)
+    # (Required if using in cluster mode)
     memory: 32G
 
     # Level of gzip compression to use for output files (1-9 with 9 being the slowest but best compressed)
+    # (Required, only alter if enhanced compression needed.)
     compression: 5
 
 
@@ -92,87 +110,117 @@ pipeline:
 align:
     
     # Aligner to use. Both bowtie and bowtie2 are supported but bowtie2 is prefered.
+    # (Required)
     aligner: bowtie2
 
     # Flag to specify index for the aligner. Leave blank if this is not present i.e. bowtie
+    # (Required)
     index_flag: -x 
 
-    # Aligner specific options. (Take care as this will ignore pipeline_n_cores) 
+    # Aligner specific options. (Take care as this will ignore the number of cores specified earlier).
+    # (Optional)
     options: -p 6 --very-sensitive
 
 analysis_optional:
     
     # Path to blacklisted regions bed file. Must be a four column named bed file.
     # Can supply any regions to be removed.
+    # (Optional)
     blacklist: PATH_TO_BLACKLIST
 
     # Determines if slice annotations are erased after aligned slice filtering.
     # Can be useful for troubleshooting errors with coordinates
+    # (Debugging)
     keep_annotations: False
 
 deduplication:
 
     # Turns on initial removal of identical reads from fastq file
-    # Currently can only be True. 
+    # Dramatically enhances the speed of the pipeline after this step has completed.
+    # (Optional)
     pre-dedup: True 
 
 hub:
     
     # Determines if hub is created or not.
-    # True|False 
+    # True|False
+    # (Required) 
     create: True
     
     # Url/IP of server to host bigWigs
-    url: http://userweb.molbiol.ox.ac.uk/
+    # e.g. http://userweb.molbiol.ox.ac.uk/
+    # (Required for hub)
+    url: URL
     
     # Location of publically accessible location on the server
-    dir: HUB_DIR 
+    # The directory will be created if it does not exist
+    # (Required for hub)
+    dir: PATH_TO_HUB_DIRECTORY 
     
     # Name for the hub
-    name: capturec_test 
+    # (Required for hub)
+    name: HUB_NAME 
     
     # Short hub name
-    short: capturec new pipeline 
+    # (Required for hub)
+    short: SHORT_HUB_DESCRIPTION 
     
     # Long hub name
-    long: capturec processed with the new python pipeline 
+    # (Required for hub)
+    long: LONGER_HUB_DESCRIPTION 
     
-    # Email address (UCSC required)
-    email: alastair.smith@ndcls.ox.ac.uk
+    # Email address
+    # (Required for hub)
+    email: EMAIL_ADDRESS
  
 normalisation:
     
-    # Scaling factor for normalisation. (not currently used but will be added shortly)
+    # Scaling factor for normalisation.
+    # Current normalisation formula: 
+    # (REPORTER_COUNT / N_CIS_REPORTERS) * SCALE_FACTOR
+    # (Required) 
     scale_factor: 1000000 
 
 plot:
 
-    # Path to a bed file containing coordinates for plotting a heatmap of reporters.
-    # Must be named and the interval name must contain the probe name to be plotted.
+    # Path to a bed file containing coordinates for regions to plot .
+    # Must be named and the interval name must contain the viewpoint to be plotted.
+    # e.g. chr1 1000    2000    VIEWPOINT-A_PLOT-NAME
+    # (Required for plotting)
     coordinates: PATH_TO_PLOTTING_COORDINATES
 
-    # Normalisation method to use for plot. Leave blank for default based on analysis method.
-    # Choose from: None, raw, n_interactions, n_rf_n_interactions, ice
+    # Normalisation method to use for the plot. Leave blank for default based on analysis method.
+    # Choose from: 
+    # * raw - No normalisation
+    # * n_interactions - Normalised based on the number of cis interactions
+    # * n_rf_n_interactions - Normalised based on the number of cis interations and the number of restriction fragments per bin
+    # * ice - Iterative correction and eigenvector decomposition (ICE) normalisation.
+    # * icen - ICE normalisation followed by correction for the number of cis interactions.
+    # (Required for plotting)
     normalisation: n_interactions
 
     # Plot genes using a bed12 formatted file (capcruncher utilities gtf_to_bed12 can be used to generate this).
+    # (Optional)
     genes: PATH_TO_GENES_IN_BED12_FORMAT
 
 trim:
 
     # Options passed to trim_galore
+    # (Optional)
     options: --length 21 
 
 split:
 
     # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
     # For Tiled-C or highly enriched assays it is advised to reduce this to 1x10^6 readpairs to speed up the analysis.
-    # The pipeline will cope with a high number of reads but it will run slower. 
+    # The pipeline will cope with a high number of reads but it will run slower.
+    # (Optional) 
     n_reads: 1000000
 
 compare:
     # Method(s) to summarise replicate reporter counts for between sample comparisons.
     # These must be provided as a comma or tab separated list of summary functions
     # Note: The function name must be a numpy function
-    # e.g.  mean, sum, median
+    # e.g.  mean,sum,median
+    # (Optional)
     summary_methods: mean
