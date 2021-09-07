@@ -14,6 +14,7 @@ use std::sync::mpsc::channel;
 struct DigestedReadRestrictionFragments {
     parent_read: String,
     restriction_fragment: i64,
+    capture: String,
 }
 
 fn count_restriction_fragment_combinations_in_chunk(
@@ -63,6 +64,7 @@ pub fn count_restriction_fragment_combinations<P: AsRef<Path>>(
     path: P,
     chunksize: Option<usize>,
     n_threads: Option<usize>,
+    remove_viewpoint: bool,
 ) -> Result<BTreeMap<(i64, i64), usize>, Box<dyn Error>> {
     // Open TSV and read headers
     let mut reader = get_tsv_reader(path)?;
@@ -80,13 +82,24 @@ pub fn count_restriction_fragment_combinations<P: AsRef<Path>>(
         .byte_records()
         .chunks(chunksize.unwrap_or(2e6 as usize))
     {
-        let mut slices_valid = chunk
-            .map(|r| r.unwrap().deserialize(Some(&headers)).unwrap())
-            .collect::<Vec<DigestedReadRestrictionFragments>>();
-
+        let mut slices = match remove_viewpoint {
+            true => chunk
+                .map(|r| {
+                    r.unwrap()
+                        .deserialize(Some(&headers))
+                        .expect("Record does not match the expected structure")})
+                .filter(|s: &DigestedReadRestrictionFragments| s.capture != ".")
+                .collect(),
+            false => chunk
+            .map(|r| {
+                r.unwrap()
+                    .deserialize(Some(&headers))
+                    .expect("Record does not match the expected structure")})
+            .collect(),
+        };
         let tx = tx.clone();
         pool.spawn(move || {
-            let counts = count_restriction_fragment_combinations_in_chunk(&mut slices_valid);
+            let counts = count_restriction_fragment_combinations_in_chunk(&mut slices);
             tx.send(counts).expect("Cant send data")
         })
     }
@@ -125,5 +138,3 @@ pub fn restriction_fragment_counts_to_tsv<P: AsRef<Path>>(
 
     Ok(())
 }
-
-

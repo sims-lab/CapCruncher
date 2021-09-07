@@ -1,6 +1,7 @@
+use human_panic::setup_panic;
 use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
 use pyo3::types::{IntoPyDict, PyDict};
+use pyo3::wrap_pyfunction;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io;
@@ -18,7 +19,6 @@ fn load_bincode(py: Python, path: String) -> PyResult<&PyDict> {
 
     Ok(deserialised_dict)
 }
-
 
 #[pyfunction]
 #[pyo3(name = "fastq_parse")]
@@ -52,23 +52,29 @@ fn fastq_remove_duplicates_py(
     Ok(stats.unwrap().into_py_dict(py))
 }
 
-
 //Function groups all slices by the parent id and counts the occurences of each restriction fragment combination.
 #[pyfunction]
 #[pyo3(name = "count_restriction_fragment_combinations")]
-#[pyo3(text_signature = "(infile: str, outfile: str, n_threads: int, chunksize: int)")]
+#[pyo3(text_signature = "(infile: str, outfile: str, remove_viewpoint: bool, n_threads: int, chunksize: int)")]
 fn count_restriction_fragment_combinations_py(
     _py: Python,
     infile: String,
     outfile: String,
+    remove_viewpoint: bool,
     n_threads: Option<usize>,
     chunksize: Option<usize>,
 ) -> PyResult<String> {
     
     ctrlc::set_handler(|| std::process::exit(2)).unwrap_or_default();
-    let counts =
-        count_fragments::count_restriction_fragment_combinations(infile, chunksize, n_threads).expect("Error counting");
-    count_fragments::restriction_fragment_counts_to_tsv(outfile.clone(), counts).expect("Error writing counts to file");
+    
+    let counts = count_fragments::count_restriction_fragment_combinations(
+        infile,
+        chunksize,
+        n_threads,
+        remove_viewpoint,
+    ).unwrap();
+
+    count_fragments::restriction_fragment_counts_to_tsv(outfile.clone(), counts)?;
 
     Ok(outfile)
 }
@@ -80,7 +86,10 @@ fn libcapcruncher(_py: Python, module: &PyModule) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(fastq_find_duplicates_py, module)?)?;
     module.add_function(wrap_pyfunction!(fastq_remove_duplicates_py, module)?)?;
     module.add_function(wrap_pyfunction!(load_bincode, module)?)?;
-    module.add_function(wrap_pyfunction!(count_restriction_fragment_combinations_py, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        count_restriction_fragment_combinations_py,
+        module
+    )?)?;
 
     Ok(())
 }
