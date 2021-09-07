@@ -50,8 +50,13 @@ def setup():
                     'PATH_TO_GENOME_FASTA': data_path_genome,
                     'PATH_TO_ALIGNER_INDICIES': f'{indicies_dir}/chr14',
                     'PATH_TO_CHROMOSOME_SIZES': data_path_chromsizes,
-                    'HUB_DIR': dir_test_run}
-            
+                    'PATH_TO_HUB_DIRECTORY': dir_test_run,
+                    'PATH_TO_PLOTTING_COORDINATES': os.path.join(dir_data, "test", 'data_for_pipeline_run', 'plot_coords.bed'),
+                    'PATH_TO_TSV_FORMATTED_DESIGN_MATRIX': os.path.join(dir_data, "test", 'data_for_pipeline_run', 'design_matrix.tsv'),
+                    'PATH_TO_GENES_IN_BED12_FORMAT': os.path.join(dir_data, "test", 'data_for_pipeline_run', 'mm9_chr14_genes.bed'),
+                    'HUB_NAME': 'capturec_test',
+                    }
+                
     with open(data_path_config, 'r') as config:
         with open('config.yml', 'w') as writer:
             for line in config:
@@ -100,11 +105,37 @@ def test_pipeline_all():
 
     cmd = f'python {dir_pipeline}/pipeline.py make full --local -p 4'
     completed = subprocess.run(cmd.split())
-    
     assert completed.returncode == 0
+
+def test_stats_exist():
+
     assert os.path.exists('capcruncher_statistics/capcruncher_statistics.html')
-    assert len(glob.glob('capcruncher_analysis/bigwigs/Slc25A37*.bigWig')) == 16
+
+def test_bigwigs_exist():
+
+    assert len(glob.glob('capcruncher_analysis/bigwigs/*.bigWig')) == 16
+
+def test_hub_exists():
     assert os.path.exists('capturec_test.hub.txt')
+
+def test_plot_template_exists():
+    try:
+        import coolbox
+        assert os.path.exists("capcruncher_plots/templates/Slc25A37.pileup.yml")
+    except ImportError:
+        pass
+
+def test_plot_exists():
+    try:
+        import coolbox
+        assert os.path.exists("capcruncher_plots/Slc25A37_chr14:69878554-69933221.svg")
+    except ImportError:
+        pass
+
+
+
+
+
 
 
 

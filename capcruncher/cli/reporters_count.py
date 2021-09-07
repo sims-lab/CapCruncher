@@ -84,68 +84,75 @@ def count(
             ligated_rf_counts = defaultdict(int)
             for ii, df_reporters in enumerate(df_reporters_iterator):
 
-                print(f'Processing chunk #{ii+1} of {chunksize} slices')
+                # Need to remove any restiction fragments that are not in the digested genome
+                df_reporters = df_reporters.query("restriction_fragment != -1")
+
 
                 if remove_exclusions:
                     print('Removing exclusions')
                     # Must only remove exclusions if they are relevant for the capture being examined
                     df_capture = df_reporters.query('capture != "."')
 
-                    # Finds excluded reporters
-                    df_reporters_exclusions = df_reporters.query(
-                        '(capture == ".") and (exclusion_count > 0)'
-                    )
+                    if remove_exclusions:
+                        print('Removing exclusions')
+                        # Must only remove exclusions if they are relevant for the capture being examined
+                        df_capture = df_reporters.query('capture != "."')
 
-                    # Merge captures with excluded reporters and remove only exclusions
-                    # where the excluded region is the same as the capture probe.
-                    df_reporters_to_remove = (
-                        df_capture.drop_duplicates(["parent_read", "capture"])[
-                            ["parent_read", "capture"]
-                        ]
-                        .merge(
-                            df_reporters_exclusions[
-                                ["parent_read", "exclusion", "slice_name"]
-                            ],
-                            on="parent_read",
+                        # Finds excluded reporters
+                        df_reporters_exclusions = df_reporters.query(
+                            '(capture == ".") and (exclusion_count > 0)'
                         )
-                        .query("capture == exclusion")
-                    )
 
-                    df_reporters = df_reporters.loc[
-                        ~(
-                            df_reporters["slice_name"].isin(
-                                df_reporters_to_remove["slice_name"]
+                        # Merge captures with excluded reporters and remove only exclusions
+                        # where the excluded region is the same as the capture probe.
+                        df_reporters_to_remove = (
+                            df_capture.drop_duplicates(["parent_read", "capture"])[
+                                ["parent_read", "capture"]
+                            ]
+                            .merge(
+                                df_reporters_exclusions[
+                                    ["parent_read", "exclusion", "slice_name"]
+                                ],
+                                on="parent_read",
                             )
+                            .query("capture == exclusion")
                         )
-                    ]
 
-                # Remove the capture site
-                if remove_capture:
-                    print('Removing viewpoints')
-                    df_reporters = df_reporters.query('capture != "."')
+                        df_reporters = df_reporters.loc[
+                            ~(
+                                df_reporters["slice_name"].isin(
+                                    df_reporters_to_remove["slice_name"]
+                                )
+                            )
+                        ]
 
-                # Subsample at the fragment level
-                if subsample:
-                    print('Subsampling data')
-                    if isinstance(subsample, float):
-                        subsample_options = {"frac": subsample}
-                    elif isinstance(subsample, int):
-                        subsample_options = {"n": subsample}
+                    # Remove the capture site
+                    if remove_capture:
+                        print('Removing viewpoints')
+                        df_reporters = df_reporters.query('capture != "."')
 
-                    # Generate a subsample of fragments and slice these from the reporter dataframe
-                    df_reporters = df_reporters[
-                        df_reporters["parent_read"].isin(
-                            df_reporters["parent_read"].sample(**subsample_options)
-                        )
-                    ]
+                    # Subsample at the fragment level
+                    if subsample:
+                        print('Subsampling data')
+                        if isinstance(subsample, float):
+                            subsample_options = {"frac": subsample}
+                        elif isinstance(subsample, int):
+                            subsample_options = {"n": subsample}
 
-                print('Grouping into fragments')
-                fragments = df_reporters.groupby("parent_read")
+                        # Generate a subsample of fragments and slice these from the reporter dataframe
+                        df_reporters = df_reporters[
+                            df_reporters["parent_read"].isin(
+                                df_reporters["parent_read"].sample(**subsample_options)
+                            )
+                        ]
 
-                print('Counting')
-                ligated_rf_counts = count_re_site_combinations(
-                    fragments, column="restriction_fragment", counts=ligated_rf_counts
-                )
+                    print('Grouping into fragments')
+                    fragments = df_reporters.groupby("parent_read")
+
+                    print('Counting')
+                    ligated_rf_counts = count_re_site_combinations(
+                        fragments, column="restriction_fragment", counts=ligated_rf_counts
+                    )
 
 
             for (rf1, rf2), count in ligated_rf_counts.items():

@@ -46,7 +46,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
         .drop(columns=["slice_name.1"], errors="ignore")
         .assign(
             restriction_fragment=lambda df: df["restriction_fragment"]
-            .replace(".", 0)
+            .replace(".", -1)
             .astype(int)
         )
         .reset_index()
@@ -65,6 +65,11 @@ def filter(
     sample_name: str = "",
     read_type: str = "",
     gzip: bool = False,
+    fragments: bool = True,
+    read_stats: bool = True,
+    slice_stats: bool = True,
+    cis_and_trans_stats: bool = True,
+
 ):
     """
     Removes unwanted aligned slices and identifies reporters.
@@ -113,6 +118,10 @@ def filter(
      sample_name (str, optional): Sample being processed e.g. DOX-treated_1. Defaults to "".
      read_type (str, optional): Process combined(flashed) or non-combined reads (pe) used for statistics. Defaults to "".
      gzip (bool, optional): Compress output with gzip. Defaults to False.
+     fragments (bool, optional): Enables fragments to be output. Defaults to True.
+     read_stats (bool, optional): Enables read level statistics to be output. Defaults to True.
+     slice_stats (bool, optional): Enables slice level statistics to be output. Defaults to True.
+     cis_and_trans_stats (bool, optional): Enables cis/trans statistics to be output. Defaults to True.
     """
 
     # Read bam file and merege annotations
@@ -134,33 +143,37 @@ def filter(
     # Filter slices using the slice_filter
     slice_filter.filter_slices()
 
-    # Save filtering statisics
-    slice_filter.filter_stats.to_csv(f"{stats_prefix}.slice.stats.csv", index=False)
-    slice_filter.read_stats.to_csv(f"{stats_prefix}.read.stats.csv", index=False)
+    if slice_stats:
+        slice_filter.filter_stats.to_csv(f"{stats_prefix}.slice.stats.csv", index=False)
+    
+    if read_stats:
+        slice_filter.read_stats.to_csv(f"{stats_prefix}.read.stats.csv", index=False)
 
     # Save reporter stats
-    slice_filter.cis_or_trans_stats.to_csv(
-        f"{stats_prefix}.reporter.stats.csv", index=False
-    )
+    if cis_and_trans_stats:
+        slice_filter.cis_or_trans_stats.to_csv(
+            f"{stats_prefix}.reporter.stats.csv", index=False
+        )
 
     # Output slices filtered by capture site
     for capture_site, df_cap in slice_filter.slices.query('capture != "."').groupby(
         "capture"
     ):
 
-        # Extract only fragments that appear in the capture dataframe
-        output_slices = slice_filter.slices.loc[
-            lambda df: df["parent_read"].isin(df_cap["parent_read"])
-        ]
-        # Generate a new slice filterer and extract the fragments
-        output_fragments = slice_filter_type(output_slices).fragments
+        if fragments:
+            # Extract only fragments that appear in the capture dataframe
+            output_slices = slice_filter.slices.loc[
+                lambda df: df["parent_read"].isin(df_cap["parent_read"])
+            ]
+            # Generate a new slice filterer and extract the fragments
+            output_fragments = slice_filter_type(output_slices).fragments
 
-        # Output fragments and slices
-        output_fragments.sort_values("parent_read").to_csv(
-            f"{output_prefix}.{capture_site.strip()}.fragments.tsv{'.gz' if gzip else ''}",
-            sep="\t",
-            index=False,
-        )
+            # Output fragments and slices
+            output_fragments.sort_values("parent_read").to_csv(
+                f"{output_prefix}.{capture_site.strip()}.fragments.tsv{'.gz' if gzip else ''}",
+                sep="\t",
+                index=False,
+            )
 
         output_slices.sort_values("slice_name").to_csv(
             f"{output_prefix}.{capture_site.strip()}.slices.tsv{'.gz' if gzip else ''}",

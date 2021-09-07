@@ -49,6 +49,7 @@ import warnings
 import glob
 import shutil
 from cgatcore.pipeline.parameters import PARAMS
+from pybedtools.bedtool import BedTool
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
@@ -109,25 +110,45 @@ for key in P.PARAMS:
 
 
 # Method of analysis
-ANALYSIS_METHOD = P.PARAMS.get('analysis_method', 'capture')
+ANALYSIS_METHOD = P.PARAMS.get("analysis_method", "capture")
 
 # Determines the number of samples being processed
 N_SAMPLES = len(
     {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) for fn in glob.glob("*.fastq*")}
 )
 
+# Determines if the design matrix supplied does exist
+HAS_DESIGN = os.path.exists(P.PARAMS.get("analysis_design", ""))
+
 # Turns on FASTQ deduplication
 FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
 
 # Determines if blacklist is used
-BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbose=False)
+HAS_BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbose=False)
 
 # Has valid plot coordinates for heatmaps
-HEATMAPS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
+try:
+    import coolbox
+
+    MAKE_PLOTS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
+except ImportError as e:
+    warnings.warn(
+        "Plotting capabilities not installed. For plotting please run: pip install capcruncher[plotting]"
+    )
+    MAKE_PLOTS = False
 
 # Determines if UCSC hub is created from run.
-HUB = is_on(P.PARAMS.get("hub_create"))
+MAKE_HUB = is_on(P.PARAMS.get("hub_create"))
 HUB_NAME = re.sub(r"[,\s+\t;:]", "_", P.PARAMS.get("hub_name", ""))
+
+# Warn about missing parameters
+if not HAS_DESIGN:
+    warnings.warn(f'Design matrix {P.PARAMS.get("analysis_design", "")} not found')
+
+if not MAKE_PLOTS:
+    warnings.warn(
+        f'Plotting coordinates file {P.PARAMS.get("plot_coordinates")} is not correctly formatted. Will not perform plotting.'
+    )
 
 
 ##############################
@@ -159,6 +180,7 @@ def check_config():
             raise ValueError(
                 f"No value provided for {key} in config.yml. Please correct this and re-run."
             )
+
 
 def set_up_chromsizes():
     """
@@ -948,17 +970,30 @@ def annotate_sort_blacklist(outfile):
 
     """Sorts the capture oligos for bedtools intersect with --sorted option"""
 
-    if BLACKLIST:
+    blacklist_file = P.PARAMS.get("analysis_optional_blacklist")
+
+    if HAS_BLACKLIST and blacklist_file.endswith('.bed'):
         statement = [
             "sort",
             "-k1,1",
             "-k2,2n",
-            P.PARAMS["analysis_optional_blacklist"],
+            blacklist_file,
             ">",
             outfile,
         ]
-    else:
+    elif HAS_BLACKLIST and blacklist_file.endswith('.bed.gz'):
+        statement = [
+            "zcat",
+            blacklist_file,
+            "|",
+            "sort",
+            "-k1,1",
+            "-k2,2n",
+            ">",
+            outfile,
+        ]
 
+    else:
         statement = ["touch", outfile]  # Make a blank file if no blacklist
 
     P.run(
@@ -1052,7 +1087,7 @@ def annotate_alignments(infile, outfile):
             "--invalid_bed_action",
             "ignore",
             "-p",
-            str(P.PARAMS['pipeline_n_cores']),
+            str(P.PARAMS["pipeline_n_cores"]),
         ]
     )
 
@@ -1078,14 +1113,14 @@ def post_annotation():
 @follows(
     post_annotation,
     annotate_alignments,
-    mkdir("capcruncher_analysis/reporters/unfiltered/"),
+    mkdir("capcruncher_analysis/reporters/identified"),
     mkdir("capcruncher_statistics/reporters/data"),
 )
 @transform(
     fastq_alignment,
     regex(r"capcruncher_preprocessing/aligned/(.*).bam"),
     add_inputs(r"capcruncher_analysis/annotations/\1.annotations.tsv"),
-    r"capcruncher_analysis/reporters/unfiltered/\1.completed",
+    r"capcruncher_analysis/reporters/identified/\1.completed",
 )
 def alignments_filter(infiles, outfile):
     """Filteres slices and outputs reporter slices for each capture site"""
@@ -1117,6 +1152,7 @@ def alignments_filter(infiles, outfile):
         sample_name,
         "--read_type",
         sample_read_type,
+        "--no-cis-and-trans-stats",  # Need to have the de-duplicated versions of these.
         ">",
         output_log_file,
     ]
@@ -1138,14 +1174,12 @@ def alignments_filter(infiles, outfile):
 
 @follows(mkdir("capcruncher_analysis/reporters/collated"), alignments_filter)
 @collate(
-    "capcruncher_analysis/reporters/unfiltered/*.tsv",
-    regex(
-        r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(slices|fragments).tsv"
-    ),
+    "capcruncher_analysis/reporters/identified/*.tsv",
+    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(fragments).tsv"),
     r"capcruncher_analysis/reporters/collated/\1.\2.\3.\4.tsv",
     extras=[r"\1", r"\2", r"\3", r"\4"],
 )
-def reporters_collate(infiles, outfile, *grouping_args):
+def reporters_fragments_collate(infiles, outfile, *grouping_args):
 
     """Concatenates identified reporters"""
 
@@ -1170,9 +1204,9 @@ def reporters_collate(infiles, outfile, *grouping_args):
         zap_file(fn)
 
 
-@follows(alignments_filter, mkdir("capcruncher_analysis/reporters/deduplicated"))
+@follows(mkdir("capcruncher_analysis/reporters/deduplicated"))
 @transform(
-    reporters_collate,
+    reporters_fragments_collate,
     regex(r".*/(?P<sample>.*).(flashed|pe).(?P<capture>.*).fragments.tsv"),
     r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.json.gz",
     extras=[r"\2"],
@@ -1206,22 +1240,22 @@ def alignments_deduplicate_fragments(infile, outfile, read_type):
 
 @follows(alignments_deduplicate_fragments)
 @transform(
-    reporters_collate,
+    "capcruncher_analysis/reporters/identified/*.tsv",
     regex(
-        r"capcruncher_analysis/reporters/collated/(.*)\.(flashed|pe)\.(.*)\.slices.tsv"
+        r".*/(?P<sample>.*)_part(?P<partition>\d+)\.(?P<read_type>flashed|pe)\.(?P<viewpoint>.*)\.slices.tsv"
     ),
-    add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.json.gz"),
-    r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.slices.tsv",
-    extras=[r"\1", r"\2", r"\3"],
+    add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\3.\4.json.gz"),
+    r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.\4.slices.tsv",
+    extras=[r"\1", r"\2", r"\3", r"\4"],
 )
-def alignments_deduplicate_slices(
-    infile, outfile, sample_name, read_type, capture_oligo
-):
+def alignments_deduplicate_slices(infile, outfile, sample_name, part, read_type, viewpoint):
 
     """Removes reporters with duplicate coordinates"""
 
     slices, duplicated_ids = infile
-    stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}_{capture_oligo}"
+    stats_prefix = (
+        f"capcruncher_statistics/reporters/data/{sample_name}_part{part}_{read_type}_{viewpoint}"
+    )
 
     statement = [
         "capcruncher",
@@ -1253,9 +1287,41 @@ def alignments_deduplicate_slices(
     zap_file(slices)
 
 
+@transform(
+    alignments_deduplicate_slices,
+    regex(r".*/(.*)\.(.*)\.(flashed|pe)\.(.*)\.slices.tsv"),
+    r"capcruncher_statistics/reporters/data/\1_\2_\3_\4.reporter.stats.csv",
+    extras=[r"\1", r"\2", r"\3", r"\4"],
+)
+def alignments_deduplicate_slices_statistics(
+    infile, outfile, sample, part, read_type, viewpoint
+):
+
+    """Generates reporter statistics from de-duplicated files"""
+
+    from capcruncher.tools.filter import (
+        CCSliceFilter,
+        TriCSliceFilter,
+        TiledCSliceFilter,
+    )
+
+    filters = {
+        "capture": CCSliceFilter,
+        "tri": TriCSliceFilter,
+        "tiled": TiledCSliceFilter,
+    }
+    slice_filterer = filters.get(P.PARAMS["analysis_method"])
+
+    df_slices = pd.read_csv(infile, sep="\t")
+    
+    reporter_statistics = slice_filterer(
+        df_slices, sample_name=sample, read_type=read_type
+    ).cis_or_trans_stats.to_csv(outfile, index=False)
+
+
 @collate(
     alignments_deduplicate_slices,
-    regex(r".*/(?P<sample>.*).(?:flashed|pe).(?P<capture>.*).slices.tsv"),
+    regex(r".*/(?P<sample>.*)\.(?:.*)\.(?:flashed|pe).(?P<capture>.*).slices.tsv"),
     r"capcruncher_analysis/reporters/\1.\2.tsv.gz",
     extras=[r"\1", r"\2"],
 )
@@ -1274,6 +1340,7 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
         statement.append(cmd)
 
     statement.append(f'cat {tmp} | pigz -p {P.PARAMS["pipeline_n_cores"]} > {outfile}')
+    statement.append(f"rm -f {tmp}")
 
     P.run(
         " && ".join(statement),
@@ -1283,7 +1350,7 @@ def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
     )
 
 
-@follows(alignments_deduplicate_collate)
+@follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
 @merge(
     "capcruncher_statistics/reporters/data/*",
     "capcruncher_statistics/reporters/reporters.reads.csv",
@@ -1463,6 +1530,8 @@ def reporters_store_binned(infile, outfile, capture_name):
         "--conversion_tables",
         conversion_tables,
         "--normalise",
+        "--scale_factor",
+        str(P.PARAMS.get("normalisation_scale_factor", 1000000)),
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
         "-o",
@@ -1589,7 +1658,8 @@ def pipeline_make_report(infile, outfile):
 # Reporter pileups  #
 #####################
 
-@active_if(ANALYSIS_METHOD == 'capture' or ANALYSIS_METHOD == 'tri')
+
+@active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
 @follows(mkdir("capcruncher_analysis/bedgraphs"))
 @transform(
     reporters_store_merged,
@@ -1612,7 +1682,8 @@ def reporters_make_bedgraph(infile, outfile, sample_name):
 
     touch_file(outfile)
 
-@active_if(ANALYSIS_METHOD == 'capture' or ANALYSIS_METHOD == 'tri')
+
+@active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
 @transform(
     reporters_store_merged,
     regex(r".*/(.*).hdf5"),
@@ -1638,6 +1709,8 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
         "-o",
         output_prefix,
         "--normalise",
+        "--scale_factor",
+        str(P.PARAMS.get("normalisation_scale_factor", 1000000)),
     ]
 
     P.run(
@@ -1650,7 +1723,7 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
 
 
 @active_if(N_SAMPLES >= 2)
-@active_if(ANALYSIS_METHOD == 'capture' or ANALYSIS_METHOD == 'tri')
+@active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
 @follows(
     mkdir("capcruncher_compare/bedgraphs_union"),
     reporters_make_bedgraph,
@@ -1696,7 +1769,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
 
 
 @active_if(N_SAMPLES >= 2)
-@active_if(ANALYSIS_METHOD == 'capture' or ANALYSIS_METHOD == 'tri')
+@active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
 @follows(
     mkdir("capcruncher_compare/bedgraphs_comparison/"), reporters_make_union_bedgraph
 )
@@ -1720,18 +1793,27 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
     ]
     summary_functions = {method: getattr(np, method) for method in summary_methods}
 
-    # If no design matrix, make one assuming the format has been followed
-    if not P.PARAMS.get("analysis_design"):
-        col_dict = {col: "_".join(col.split("_")[:-1]) for col in df_bdg.columns[3:]}
-        df_design = pd.Series(col_dict).to_frame("condition")
+    if not HAS_DESIGN:
+        # Need to generate a design matrix if one does not exist
+        samples = df_bdg.columns[3:]
+        condition = ["_".join(sample.split("_")[:-1]) for sample in samples]
+        df_design = pd.DataFrame()
+        df_design["sample"] = samples
+        df_design["condition"] = condition
+    else:
+        df_design = pd.read_csv(P.PARAMS["analysis_design"], sep="\t")
 
-    condition_groups = df_design.groupby("condition").groups
+    samples_grouped_by_condition = (
+        df_design.set_index("sample").groupby("condition").groups
+    )  # {GROUP_NAME: [Location]}
 
-    for a, b in itertools.permutations(condition_groups, 2):
+    for group_a, group_b in itertools.permutations(
+        samples_grouped_by_condition.keys(), 2
+    ):
 
         # Extract the two groups
-        df_a = df_bdg.loc[:, condition_groups[a]]
-        df_b = df_bdg.loc[:, condition_groups[b]]
+        df_a = df_bdg.loc[:, samples_grouped_by_condition[group_a]]
+        df_b = df_bdg.loc[:, samples_grouped_by_condition[group_b]]
 
         for summary_method in summary_functions:
             # Get summary counts
@@ -1744,28 +1826,32 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
                 name=summary_method,
             )
 
+            # Merge counts with coordinates
             df_a_bdg = pd.concat([df_bdg.iloc[:, :3], a_summary], axis=1)
             df_b_bdg = pd.concat([df_bdg.iloc[:, :3], b_summary], axis=1)
+
+            # Run subtraction
             df_subtraction_bdg = pd.concat(
                 [df_bdg.iloc[:, :3], a_summary - b_summary], axis=1
             )
 
+            # Output bedgraphs
             df_a_bdg.to_csv(
-                f"{dir_output}/{a}.{summary_method}-summary.{viewpoint}.bedgraph",
+                f"{dir_output}/{group_a}.{summary_method}-summary.{viewpoint}.bedgraph",
                 sep="\t",
                 header=False,
                 index=None,
             )
 
             df_b_bdg.to_csv(
-                f"{dir_output}/{b}.{summary_method}-summary.{viewpoint}.bedgraph",
+                f"{dir_output}/{group_b}.{summary_method}-summary.{viewpoint}.bedgraph",
                 sep="\t",
                 header=False,
                 index=None,
             )
 
             df_subtraction_bdg.to_csv(
-                f"{dir_output}/{a}_vs_{b}.{summary_method}-subtraction.{viewpoint}.bedgraph",
+                f"{dir_output}/{group_a}_vs_{group_b}.{summary_method}-subtraction.{viewpoint}.bedgraph",
                 sep="\t",
                 index=None,
                 header=False,
@@ -1774,7 +1860,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
     touch_file(outfile)
 
 
-@active_if(ANALYSIS_METHOD == 'capture' or ANALYSIS_METHOD == 'tri')
+@active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
 @follows(
     mkdir("capcruncher_analysis/bigwigs"),
     reporters_make_bedgraph,
@@ -1828,7 +1914,7 @@ def viewpoints_to_bigbed(infile, outfile):
     )
 
 
-@active_if(HUB and (ANALYSIS_METHOD == 'capture' or ANALYSIS_METHOD == "tri"))
+@active_if(MAKE_HUB and (ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri"))
 @merge(
     [reporters_make_bigwig, viewpoints_to_bigbed, pipeline_make_report],
     os.path.join(
@@ -2075,67 +2161,150 @@ def identify_differential_interactions(infile, outfile, capture_name):
 ##################
 
 
-@active_if(HEATMAPS)
-@follows(reporters_store_merged, mkdir("capcruncher_analysis/heatmaps/"))
-@transform(
+@follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
+@active_if(ANALYSIS_METHOD in ["tri", "tiled"] and MAKE_PLOTS)
+@merge(
     "capcruncher_analysis/reporters/*.hdf5",
-    regex(r"capcruncher_analysis/reporters/(.*).hdf5"),
-    r"capcruncher_analysis/heatmaps/\1.completed",
+    r"capcruncher_plots/templates/heatmaps.complete",
 )
-def reporters_plot_heatmap(infile, outfile):
-    """Plots a heatmap over a specified region"""
+def plot_heatmaps_make_templates(infiles, outfile):
 
-    if P.PARAMS.get("plot_normalisation"):
-        norm = P.PARAMS["plot_normalisation"]
-    else:
-        norm_default = {
-            "capture": "n_interactions",
-            "tri": "n_rf_n_interactions",
-            "tiled": "ice",
-        }
-        norm = norm_default[P.PARAMS["analysis_method"]]
+    # Need to make a template for each viewpoint
+    df_viewpoints = BedTool(P.PARAMS["analysis_viewpoints"]).to_dataframe()
 
-    output_prefix = outfile.replace(".completed", "")
+    genes = P.PARAMS.get("plot_genes")
+    has_genes_to_plot = os.path.exists(genes)
 
-    resolutions = " -r ".join(re.split(r"[,;]\s*|\s+", str(P.PARAMS["plot_bin_size"])))
-
-    statement = [
-        "capcruncher",
-        "reporters",
-        "plot",
-        infile,
-        "-r",
-        resolutions,
-        "-c",
-        P.PARAMS["plot_coordinates"],
-        "--normalisation",
-        norm,
-        "--cmap",
-        P.PARAMS.get("plot_cmap", "jet"),
-        "--vmin",
-        P.PARAMS.get("plot_min", "0"),
-        "--vmax",
-        P.PARAMS.get("plot_vmax", "1"),
-        "-o",
-        output_prefix,
-    ]
+    statements = list()
+    for viewpoint in df_viewpoints["name"].unique():
+        statements.append(
+            " ".join(
+                [
+                    "capcruncher",
+                    "plot",
+                    "make-template",
+                    *infiles,
+                    genes if has_genes_to_plot else "",
+                    "-v",
+                    viewpoint,
+                    "-b",
+                    str(P.PARAMS["analysis_bin_size"]),
+                    "-o",
+                    outfile.replace("heatmaps.complete", f"{viewpoint}.heatmap.yml"),
+                ]
+            )
+        )
 
     P.run(
-        " ".join(statement),
+        statements,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True,
     )
 
     touch_file(outfile)
 
 
+@follows(reporters_make_bigwig, mkdir("capcruncher_plots/templates"))
+@active_if(ANALYSIS_METHOD in ["capture", "tri"] and MAKE_PLOTS)
+@collate(
+    "capcruncher_analysis/bigwigs/*.bigWig",
+    regex(r".*/.*?\.normalised\.(.*?)\.bigWig"),
+    r"capcruncher_plots/templates/\1.pileup.yml",
+)
+def plot_pileups_make_templates(infiles, outfile):
+
+    genes = P.PARAMS.get("plot_genes")
+    has_genes_to_plot = os.path.exists(genes)
+    design_matrix = P.PARAMS.get("analysis_design")
+
+    statements = list()
+    statements.append(
+        " ".join(
+            [
+                "capcruncher",
+                "plot",
+                "make-template",
+                *infiles,
+                f"--design_matrix {design_matrix}" if HAS_DESIGN else "",
+                genes if has_genes_to_plot else "",
+                "--output_prefix",
+                outfile.replace(".yml", ""),
+            ]
+        )
+    )
+
+    P.run(
+        statements,
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True,
+    )
+
+    touch_file(outfile)
+
+
+@follows(plot_heatmaps_make_templates, plot_pileups_make_templates)
+@active_if(MAKE_PLOTS)
+@transform(
+    "capcruncher_plots/templates/*.yml",
+    regex(r".*/(.*)\.(.*).yml"),
+    r"capcruncher_plots/templates/\1.complete",
+    extras=[r"\1"],
+)
+def make_plots(infile, outfile, viewpoint):
+
+    try:
+
+        regions_to_plot = BedTool(P.PARAMS.get("plot_coordinates"))
+        statements = []
+
+        for region in regions_to_plot:
+            if viewpoint in region:
+
+                coordinates = f"{region.chrom}:{region.start}-{region.end}"
+
+                statements.append(
+                    " ".join(
+                        [
+                            "capcruncher",
+                            "plot",
+                            "make-plot",
+                            "-c",
+                            infile,
+                            "-r",
+                            coordinates,
+                            "-o",
+                            f"capcruncher_plots/{region.name}_{coordinates}.svg",
+                            "--x-axis",
+                        ]
+                    )
+                )
+    except Exception as e:
+        warnings.warn(f"Exception {e} occured while plotting {region.name}")
+
+    P.run(
+        statements,
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True,
+    )
+
+    touch_file(outfile)
+
+
+@follows(plot_heatmaps_make_templates, plot_pileups_make_templates, make_plots)
+def plotting():
+    pass
+
+
 @follows(
     pipeline_make_report,
     hub_make,
-    reporters_plot_heatmap,
     reporters_make_union_bedgraph,
     identify_differential_interactions,
     reporters_make_comparison_bedgraph,
+    plotting,
 )
 @originate(
     "pipeline_complete.txt",

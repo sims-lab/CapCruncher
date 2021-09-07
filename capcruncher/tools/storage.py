@@ -74,12 +74,14 @@ def create_cooler_cc(
 
     # If capture bins not provided get them using the coordinates.
     if not capture_bins:
-        capture_bins = list(itertools.chain.from_iterable(
-            [
-                get_capture_bins(bins, c["chrom"], c["start"], c["end"])
-                for c in capture_coords
-            ]
-        ))
+        capture_bins = list(
+            itertools.chain.from_iterable(
+                [
+                    get_capture_bins(bins, c["chrom"], c["start"], c["end"])
+                    for c in capture_coords
+                ]
+            )
+        )
 
     # Need to store bins as a list so make sure its not just a single int.
     elif isinstance(capture_bins, int):
@@ -92,10 +94,9 @@ def create_cooler_cc(
         capture_bins = [int(x) for x in capture_bins]
 
     # Get the number of cis interactions, required for normalisation.
-    bins_cis = (bins.loc[lambda df: df['chrom'].isin([c['chrom'] for c in capture_coords])]
-                    ["name"]
-                    .loc[lambda ser: ~ser.isin(capture_bins)]
-                )
+    bins_cis = bins.loc[
+        lambda df: df["chrom"].isin([c["chrom"] for c in capture_coords])
+    ]["name"].loc[lambda ser: ~ser.isin(capture_bins)]
 
     pixels_cis = pixels.loc[
         lambda df: (df["bin1_id"].isin(bins_cis)) | (df["bin2_id"].isin(bins_cis))
@@ -106,8 +107,10 @@ def create_cooler_cc(
     metadata = {
         "capture_bins": capture_bins,
         "capture_name": capture_name,
-        "capture_chrom": [c['chrom'] for c in capture_coords],
-        "capture_coords": [f'{c["chrom"]}:{c["start"]}-{c["end"]}' for c in capture_coords],
+        "capture_chrom": [c["chrom"] for c in capture_coords],
+        "capture_coords": [
+            f'{c["chrom"]}:{c["start"]}-{c["end"]}' for c in capture_coords
+        ],
         "n_cis_interactions": int(n_cis_interactions),
     }
 
@@ -497,14 +500,14 @@ class CoolerBinner:
 
         if n_interaction_correction:
             self.pixels["count_n_interactions_norm"] = (
-                self.pixels["count"] / scale_factor
-            ) * self.n_cis_interactions
+                self.pixels["count"] / self.n_cis_interactions
+            ) * scale_factor
 
         if n_fragment_correction and n_interaction_correction:
 
             self.pixels["count_n_rf_n_interactions_norm"] = (
-                self.pixels["count_n_rf_norm"] / scale_factor
-            ) * self.n_cis_interactions
+                self.pixels["count_n_rf_norm"] / self.n_cis_interactions
+            ) * scale_factor
 
     def to_cooler(self, store, normalise=False, **normalise_options):
 

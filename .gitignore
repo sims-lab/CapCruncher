@@ -15,3 +15,9 @@ _build/
 .DS_Store
 capcruncher/tests/pipeline_test_run/
 
+capcruncher/data/test/data_for_pipeline_run/bt2/chr14.1.bt2
+capcruncher/data/test/data_for_pipeline_run/bt2/chr14.2.bt2
+capcruncher/data/test/data_for_pipeline_run/bt2/chr14.3.bt2
+capcruncher/data/test/data_for_pipeline_run/bt2/chr14.4.bt2
+capcruncher/data/test/data_for_pipeline_run/bt2/chr14.rev.1.bt2
+capcruncher/data/test/data_for_pipeline_run/bt2/chr14.rev.2.bt2
