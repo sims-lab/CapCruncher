@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3::wrap_pyfunction;
 use pyo3::types::{IntoPyDict, PyDict};
 use std::collections::HashMap;
 use std::fs::File;
@@ -18,9 +19,10 @@ fn load_bincode(py: Python, path: String) -> PyResult<&PyDict> {
     Ok(deserialised_dict)
 }
 
+
 #[pyfunction]
 #[pyo3(name = "fastq_parse")]
-#[pyo3(text_signature = "(fastq_files:List, output: str, /)")]
+#[pyo3(text_signature = "(fastq_files: List, output: str, /)")]
 fn fastq_parse_py(fastq_files: Vec<String>, parsed_output: String) -> PyResult<String> {
     ctrlc::set_handler(|| std::process::exit(2)).unwrap_or_default();
     fastq_deduplication::parse_fastqs(fastq_files, parsed_output.clone()).unwrap();
@@ -50,10 +52,13 @@ fn fastq_remove_duplicates_py(
     Ok(stats.unwrap().into_py_dict(py))
 }
 
+
+//Function groups all slices by the parent id and counts the occurences of each restriction fragment combination.
 #[pyfunction]
 #[pyo3(name = "count_restriction_fragment_combinations")]
+#[pyo3(text_signature = "(infile: str, outfile: str, n_threads: int, chunksize: int)")]
 fn count_restriction_fragment_combinations_py(
-    py: Python,
+    _py: Python,
     infile: String,
     outfile: String,
     n_threads: Option<usize>,
