@@ -86,6 +86,13 @@ def digest(*args, **kwargs):
 
 
 @cli.group(cls=UnsortedGroup)
+@click.option(
+    "-m",
+    "--method",
+    help="Method to use for splitting",
+    type=click.Choice(["python", "rust"]),
+    default="rust",
+)
 def deduplicate():
     """
     Identifies PCR duplicate fragments from Fastq files.

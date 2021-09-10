@@ -12,7 +12,10 @@ from capcruncher.tools.statistics import DeduplicationStatistics
 
 
 def parse(
-    input_files: Tuple, output: os.PathLike = "out.encoded", read_buffer: int = 1e5
+    input_files: Tuple,
+    output: os.PathLike = "out.encoded",
+    read_buffer: int = 1e5,
+    method="rust",
 ):
     """
     Parses fastq file(s) into easy to deduplicate format.
@@ -28,21 +31,23 @@ def parse(
      output (os.PathLike, optional): Output for parsed read identifiers and sequences. Defaults to "out.json".
      read_buffer (int, optional): Number of reads to process before outputting to file. Defaults to 1e5.
     """
-    try:
-        from capcruncher import libcapcruncher
 
-        libcapcruncher.fastq_parse(input_files, output)
+    if method == "rust":
 
-    except ImportError as e:
+        try:
+            from capcruncher import libcapcruncher
 
-        warnings.warn(
-            "Failed to import libcapcruncher, falling back to python implementation"
-        )
+            libcapcruncher.fastq_deduplication.fastq_parse(input_files, output)
+
+        except ImportError as e:
+
+            warnings.warn("Failed to import libcapcruncher, please use --method python")
+
+    else:
 
         from multiprocessing import SimpleQueue
 
-        from capcruncher.tools.deduplicate import \
-            ReadDeduplicationParserProcess
+        from capcruncher.tools.deduplicate import ReadDeduplicationParserProcess
         from capcruncher.tools.io import FastqReaderProcess
 
         # Reads are placed into this queue for deduplication
@@ -71,7 +76,9 @@ def parse(
             proc.terminate()
 
 
-def identify(input_files: Tuple, output: os.PathLike = "duplicates.encoded"):
+def identify(
+    input_files: Tuple, output: os.PathLike = "duplicates.encoded", method="rust"
+):
     """
     Identifies fragments with duplicated sequences.
 
@@ -88,15 +95,18 @@ def identify(input_files: Tuple, output: os.PathLike = "duplicates.encoded"):
      output (os.PathLike, optional): Duplicate read ids identified. Defaults to "duplicates.json".
     """
 
-    try:
-        from capcruncher import libcapcruncher
+    if method == "rust":
+        try:
+            from capcruncher import libcapcruncher
 
-        libcapcruncher.fastq_find_duplicates(input_files, output)
-    except ImportError as e:
+            libcapcruncher.fastq_deduplication.fastq_find_duplicates(
+                input_files, output
+            )
 
-        warnings.warn(
-            "Failed to import libcapcruncher, falling back to python implementation"
-        )
+        except ImportError as e:
+
+            warnings.warn("Failed to import libcapcruncher, please use --method python")
+    else:
 
         import numpy as np
         import ujson
@@ -139,6 +149,7 @@ def remove(
     compression_level: int = 5,
     sample_name: str = "",
     stats_prefix: os.PathLike = "",
+    method="rust",
 ):
     """
     Removes fragments with duplicated sequences from fastq files.
@@ -161,27 +172,33 @@ def remove(
      stats_prefix (os.PathLike, optional): Output prefix for statistics. Defaults to "".
 
     """
-    try:
-        from capcruncher import libcapcruncher
-        output_files = [f"{output_prefix}_{i+1}.fastq" for i in range(len(input_files))]
 
-        stats = libcapcruncher.fastq_remove_duplicates(
-            input_files, duplicated_ids, output_files
-        )
-        deduplication_stats = DeduplicationStatistics(
-            sample=sample_name,
-            read_type="pe",
-            reads_total=stats["total"],
-            reads_unique=stats["unique"],
-        )
+    if method == "rust":
+        try:
+            from capcruncher import libcapcruncher
 
-        deduplication_stats.df.to_csv(f"{stats_prefix}.deduplication.csv", index=False)
-    
-    except ImportError as e:
+            output_files = [
+                f"{output_prefix}_{i+1}.fastq" for i in range(len(input_files))
+            ]
 
-        warnings.warn(
-            "Failed to import libcapcruncher, falling back to python implementation"
-        )
+            stats = libcapcruncher.fastq_deduplication.fastq_remove_duplicates(
+                input_files, duplicated_ids, output_files
+            )
+            deduplication_stats = DeduplicationStatistics(
+                sample=sample_name,
+                read_type="pe",
+                reads_total=stats["total"],
+                reads_unique=stats["unique"],
+            )
+
+            deduplication_stats.df.to_csv(
+                f"{stats_prefix}.deduplication.csv", index=False
+            )
+
+        except ImportError as e:
+
+            warnings.warn("Failed to import libcapcruncher, please use --method python")
+    else:
 
         from xopen import xopen
         import ujson
@@ -190,26 +207,30 @@ def remove(
         from capcruncher.tools.io import FastqReaderProcess, FastqWriterProcess
         from collections import Counter
 
-
-        with xopen(duplicated_ids, 'r') as r:
+        with xopen(duplicated_ids, "r") as r:
             duplicated_ids = {int(k) for k in ujson.load(r)}
 
             inputq = SimpleQueue()  # Reads are placed into this queue for deduplication
-            writeq = SimpleQueue()  # Deduplicated reads are placed into the queue for writing
+            writeq = (
+                SimpleQueue()
+            )  # Deduplicated reads are placed into the queue for writing
             statq = SimpleQueue()  # Statistics are sent on this queue for processing
 
             output_files = [
-                f"{output_prefix}_{ii+1}.fastq{'.gz' if gzip else ''}" for ii in range(len(input_files))
+                f"{output_prefix}_{ii+1}.fastq{'.gz' if gzip else ''}"
+                for ii in range(len(input_files))
             ]
 
             deduplicator = [
                 ReadDuplicateRemovalProcess(
                     inq=inputq, outq=writeq, duplicated_ids=duplicated_ids, statq=statq
                 )
-                for _ in range(1) # Placeholder to enable multiple digestion processes at a later date
+                for _ in range(
+                    1
+                )  # Placeholder to enable multiple digestion processes at a later date
             ]
 
-            del duplicated_ids # Reduces memory usage before starting (likely by forking) a new process
+            del duplicated_ids  # Reduces memory usage before starting (likely by forking) a new process
 
             reader = FastqReaderProcess(
                 input_files=input_files,
@@ -247,4 +268,6 @@ def remove(
                 sample=sample_name, **stats_aggregator
             )
 
-            deduplication_stats.df.to_csv(f"{stats_prefix}.deduplication.csv", index=False)
+            deduplication_stats.df.to_csv(
+                f"{stats_prefix}.deduplication.csv", index=False
+            )
