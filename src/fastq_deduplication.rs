@@ -1,6 +1,9 @@
 use bincode;
 use bio::io::fastq;
 use flate2::{bufread, write, Compression};
+use log::{info, warn};
+use pyo3::prelude::*;
+use pyo3::types::{IntoPyDict, PyDict};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::collections::{HashMap, HashSet};
@@ -11,33 +14,8 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 use twox_hash::xxh3::hash64_with_seed;
-use pyo3::prelude::*;
-use pyo3::types::{PyDict, IntoPyDict};
 
 use crate::utils;
-
-
-
-fn get_reader_handle(path: &str) -> Box<dyn io::Read> {
-    if path.ends_with(".gz") {
-        let f = File::open(path).unwrap();
-        Box::new(bufread::GzDecoder::new(io::BufReader::new(f)))
-    } else {
-        Box::new(File::open(path).unwrap())
-    }
-}
-
-fn get_writer_handle(path: &str) -> Box<dyn io::Write> {
-    let f = File::create(path).expect("Cannot open output file");
-    if path.ends_with(".gz") {
-        Box::new(io::BufWriter::new(write::GzEncoder::new(
-            f,
-            Compression::default(),
-        )))
-    } else {
-        Box::new(io::BufWriter::new(f))
-    }
-}
 
 struct FastqReaders<R: fastq::FastqRead> {
     readers: Vec<R>,
@@ -50,16 +28,16 @@ impl<R: fastq::FastqRead> FastqReaders<R> {
 }
 
 impl FastqReaders<fastq::Reader<Box<dyn io::Read>>> {
-    pub fn from_files<P: AsRef<Path> + Debug>(paths: Vec<P>) -> Self {
+    pub fn from_files<P: AsRef<Path> + Debug>(paths: Vec<P>) -> Result<Self, io::Error> {
         let mut readers = Vec::new();
         for p in paths {
             let path_str = p.as_ref().to_str().expect("Cannot convert to string");
-            let file_handle = get_reader_handle(path_str);
+            let file_handle = utils::get_reader_handle(path_str)?;
             let reader = fastq::Reader::new(file_handle);
             readers.push(reader);
         }
 
-        FastqReaders::new(readers)
+        Ok(FastqReaders::new(readers))
     }
 }
 
@@ -118,11 +96,12 @@ pub fn parse_fastqs<P: AsRef<Path> + Debug>(
     let mut hashed_details = HashMap::new();
     let mut writer = io::BufWriter::new(File::create(outfile)?);
 
-    for (ii, records) in fastqs.enumerate() {
+    for (ii, records) in fastqs?.enumerate() {
         let (id, seq) = hash_records(records, number_of_files);
         hashed_details.insert(id, seq);
-        if ii % 10000 == 0 {
-            println!("Processed {} reads", ii);
+
+        if ii % 100000 == 0 && ii > 0 {
+            info!("Processed {} reads", ii);
         }
     }
 
@@ -154,12 +133,11 @@ pub fn identify_duplicates<P: AsRef<Path>>(
         }
     }
 
-    println!("Number of duplicates {}", duplicated_ids.len());
+    info!("Number of duplicates {}", duplicated_ids.len());
 
     let mut writer = io::BufWriter::new(File::create(outfile)?);
     bincode::serialize_into(writer.get_ref(), &duplicated_ids)?;
     writer.flush()?;
-
 
     Ok(())
 }
@@ -169,9 +147,8 @@ pub fn remove_duplicates<P: AsRef<Path> + Debug>(
     duplicates: P,
     outfiles: Vec<P>,
 ) -> Result<HashMap<String, u64>, Box<dyn Error>> {
-    
     let number_of_files = infiles.len();
-    let fastqs = FastqReaders::from_files(infiles);
+    let fastqs = FastqReaders::from_files(infiles)?;
 
     let duplicate_file = File::open(duplicates)?;
     let duplicate_reader = std::io::BufReader::new(duplicate_file);
@@ -179,7 +156,12 @@ pub fn remove_duplicates<P: AsRef<Path> + Debug>(
 
     let mut outfiles_handles: Vec<_> = outfiles
         .iter()
-        .map(|f| fastq::Writer::new(get_writer_handle(f.as_ref().to_str().unwrap())))
+        .map(|f| f.as_ref().to_str().expect("Not UTF-8 formatted path"))
+        .map(|f| 
+             fastq::Writer::new(
+                 utils::get_writer_handle(&f).expect("Can not open file")
+             )
+            )
         .collect();
 
     let mut counter_unique = 0;
@@ -187,7 +169,7 @@ pub fn remove_duplicates<P: AsRef<Path> + Debug>(
 
     for (ii, records) in fastqs.enumerate() {
         if ii % 10000 == 0 {
-            println!("{}", ii);
+            info!("{}", ii);
         }
 
         let id = records
@@ -195,7 +177,7 @@ pub fn remove_duplicates<P: AsRef<Path> + Debug>(
             .map(|r| r.id().to_owned())
             .collect::<Vec<String>>();
         let id_hashed = hash64_with_seed(id.concat().as_bytes(), 42);
-        
+
         if duplicate_ids.contains(&id_hashed) {
             counter_removed += 1;
         } else {
@@ -217,7 +199,6 @@ pub fn remove_duplicates<P: AsRef<Path> + Debug>(
 
 // Python bindings
 
-
 /// Loads a bincode formatted file into a python dictionary
 #[pyfunction]
 #[pyo3(name = "bincode_to_dict")]
@@ -225,7 +206,8 @@ pub fn remove_duplicates<P: AsRef<Path> + Debug>(
 fn load_bincode_py(py: Python, path: String) -> PyResult<&PyDict> {
     let file = utils::get_reader_handle(&path)?;
     let reader = io::BufReader::new(file);
-    let deserialised: HashMap<u64, u64> = bincode::deserialize_from(reader).expect("Failed to deserialise data");
+    let deserialised: HashMap<u64, u64> =
+        bincode::deserialize_from(reader).expect("Failed to deserialise data");
     let deserialised_dict = &deserialised.into_py_dict(py);
 
     Ok(deserialised_dict)
@@ -272,19 +254,6 @@ fn fastq_deduplication(_py: Python, module: &PyModule) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(load_bincode_py, module)?)?;
     Ok(())
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #[cfg(test)]
 mod tests_mp {
