@@ -11,6 +11,12 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 use twox_hash::xxh3::hash64_with_seed;
+use pyo3::prelude::*;
+use pyo3::types::{PyDict, IntoPyDict};
+
+use crate::utils;
+
+
 
 fn get_reader_handle(path: &str) -> Box<dyn io::Read> {
     if path.ends_with(".gz") {
@@ -208,6 +214,77 @@ pub fn remove_duplicates<P: AsRef<Path> + Debug>(
 
     Ok(stats)
 }
+
+// Python bindings
+
+
+/// Loads a bincode formatted file into a python dictionary
+#[pyfunction]
+#[pyo3(name = "bincode_to_dict")]
+#[pyo3(text_signature = "(path: str)")]
+fn load_bincode_py(py: Python, path: String) -> PyResult<&PyDict> {
+    let file = utils::get_reader_handle(&path)?;
+    let reader = io::BufReader::new(file);
+    let deserialised: HashMap<u64, u64> = bincode::deserialize_from(reader).expect("Failed to deserialise data");
+    let deserialised_dict = &deserialised.into_py_dict(py);
+
+    Ok(deserialised_dict)
+}
+
+#[pyfunction]
+#[pyo3(name = "fastq_parse")]
+#[pyo3(text_signature = "(fastq_files: List, output: str, /)")]
+fn fastq_parse_py(fastq_files: Vec<String>, parsed_output: String) -> PyResult<String> {
+    ctrlc::set_handler(|| std::process::exit(2)).unwrap_or_default();
+    parse_fastqs(fastq_files, parsed_output.clone()).unwrap();
+    Ok(parsed_output.to_string())
+}
+
+#[pyfunction]
+#[pyo3(name = "fastq_find_duplicates")]
+#[pyo3(text_signature = "(fastq_parsed_files: List, output: str, /)")]
+fn fastq_find_duplicates_py(infiles: Vec<String>, outfile: String) -> PyResult<String> {
+    ctrlc::set_handler(|| std::process::exit(2)).unwrap_or_default();
+    identify_duplicates(&mut infiles.to_owned(), &outfile).unwrap();
+    Ok(outfile)
+}
+
+#[pyfunction]
+#[pyo3(name = "fastq_remove_duplicates")]
+#[pyo3(text_signature = "(fastq_files: list, duplicates: str, outputs: str, /) -> dict")]
+fn fastq_remove_duplicates_py(
+    py: Python,
+    fastq_files: Vec<String>,
+    duplicates: String,
+    outfiles: Vec<String>,
+) -> PyResult<&PyDict> {
+    ctrlc::set_handler(|| std::process::exit(2)).unwrap_or_default();
+    let stats = remove_duplicates(fastq_files, duplicates, outfiles);
+    Ok(stats.unwrap().into_py_dict(py))
+}
+
+#[pymodule]
+#[pyo3(name = "fastq_deduplication")]
+fn fastq_deduplication(_py: Python, module: &PyModule) -> PyResult<()> {
+    module.add_function(wrap_pyfunction!(fastq_parse_py, module)?)?;
+    module.add_function(wrap_pyfunction!(fastq_find_duplicates_py, module)?)?;
+    module.add_function(wrap_pyfunction!(fastq_remove_duplicates_py, module)?)?;
+    module.add_function(wrap_pyfunction!(load_bincode_py, module)?)?;
+    Ok(())
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #[cfg(test)]
 mod tests_mp {
