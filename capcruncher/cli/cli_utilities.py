@@ -23,5 +23,11 @@ def gtf_to_bed12(gtf: str, output:str):
             w.write(gtf_line_to_bed12_line(df) + '\n')
 
 
+@cli.command()
+@click.argument('bincode_file')
+@click.option('-o', '--output', help='Output file name')
+def gtf_to_bed12(gtf: str, output:str):
+
+
 
 
