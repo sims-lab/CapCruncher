@@ -7,20 +7,20 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 
-pub fn get_reader_handle(path: &str) -> Box<dyn io::Read> {
+pub fn get_reader_handle(path: &str) -> Result<Box<dyn io::Read>, io::Error> {
     if path.ends_with(".gz") {
         let f = File::open(path).unwrap();
-        Box::new(bufread::GzDecoder::new(io::BufReader::new(f)))
+        Ok(Box::new(bufread::GzDecoder::new(io::BufReader::new(f))))
     } else {
-        Box::new(File::open(path).unwrap())
+        Ok(Box::new(File::open(path).unwrap()))
     }
 }
 
-pub fn get_writer_handle(path: &str) -> Box<dyn io::Write> {
+pub fn get_writer_handle(path: &str) -> Result<Box<dyn io::Write>, io::Error> {
     if path.ends_with(".gz") {
         let f = File::create(path).unwrap();
-        Box::new(write::GzEncoder::new(io::BufWriter::new(f), Compression::default()))
+        Ok(Box::new(write::GzEncoder::new(io::BufWriter::new(f), Compression::default())))
     } else {
-        Box::new(File::create(path).unwrap())
+        Ok(Box::new(File::create(path).unwrap()))
     }
 }
