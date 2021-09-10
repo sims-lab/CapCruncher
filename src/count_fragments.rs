@@ -45,7 +45,7 @@ fn count_restriction_fragment_combinations_in_chunk(
 }
 
 fn get_tsv_reader<P: AsRef<Path>>(path: P) -> Result<csv::Reader<Box<dyn io::Read>>, io::Error> {
-    let fh = utils::get_reader_handle(path.as_ref().to_str().expect("Not UTF-8 file name"));
+    let fh = utils::get_reader_handle(path.as_ref().to_str().expect("Not UTF-8 file name"))?;
     let reader = csv::ReaderBuilder::new()
         .has_headers(true)
         .delimiter(b'\t')
@@ -124,7 +124,7 @@ pub fn restriction_fragment_counts_to_tsv<P: AsRef<Path>>(
     path: P,
     counts: BTreeMap<(i64, i64), usize>,
 ) -> Result<(), io::Error> {
-    let fh = utils::get_writer_handle(path.as_ref().to_str().expect("Not UTF-8 file name"));
+    let fh = utils::get_writer_handle(path.as_ref().to_str().expect("Not UTF-8 file name"))?;
     let mut writer = io::BufWriter::new(fh);
 
     writer
@@ -138,3 +138,10 @@ pub fn restriction_fragment_counts_to_tsv<P: AsRef<Path>>(
 
     Ok(())
 }
+
+
+
+
+
+
+
