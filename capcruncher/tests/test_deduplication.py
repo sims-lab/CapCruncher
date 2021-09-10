@@ -35,7 +35,7 @@ test_json_path = os.path.join(dir_test, 'test','dup_parse.json')
 test_duplicates_path = os.path.join(dir_test, 'test','duplicates.json')
 
 
-def test_fastq_parsing():
+def test_fastq_parsing_py():
 
     inq = SimpleQueue()
     outq = SimpleQueue()
@@ -65,7 +65,7 @@ def test_fastq_parsing():
     assert result == result_expected
     assert len({x for x in result.values()}) == 2 
 
-def test_fastq_identify():
+def test_fastq_identify_py():
     
     runner = CliRunner()
     result = runner.invoke(
@@ -90,7 +90,7 @@ def test_fastq_identify():
 
 
     
-def test_fastq_removal():
+def test_fastq_removal_py():
 
     inq = SimpleQueue()
     outq = SimpleQueue()
