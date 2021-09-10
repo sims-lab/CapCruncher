@@ -9,6 +9,7 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 use std::sync::mpsc::channel;
+use pyo3::prelude::*;
 
 #[derive(Debug, Deserialize, Clone)]
 struct DigestedReadRestrictionFragments {
@@ -139,7 +140,44 @@ pub fn restriction_fragment_counts_to_tsv<P: AsRef<Path>>(
     Ok(())
 }
 
+// Python bindings
 
+
+
+/// Groups all slices by the parent id and counts the occurences of each restriction fragment combination.
+#[pyfunction]
+#[pyo3(name = "count_restriction_fragment_combinations")]
+#[pyo3(text_signature = "(infile: str, outfile: str, remove_viewpoint: bool, n_threads: int, chunksize: int)")]
+fn count_restriction_fragment_combinations_py(
+    _py: Python,
+    infile: String,
+    outfile: String,
+    remove_viewpoint: bool,
+    n_threads: Option<usize>,
+    chunksize: Option<usize>,
+) -> PyResult<String> {
+    
+    ctrlc::set_handler(|| std::process::exit(2)).unwrap_or_default();
+    
+    let counts = count_restriction_fragment_combinations(
+        infile,
+        chunksize,
+        n_threads,
+        remove_viewpoint,
+    ).unwrap();
+
+    restriction_fragment_counts_to_tsv(outfile.clone(), counts)?;
+
+    Ok(outfile)
+}
+
+
+#[pymodule]
+#[pyo3(name = "count_fragments")]
+fn fastq_deduplication(_py: Python, module: &PyModule) -> PyResult<()> {
+    module.add_function(wrap_pyfunction!(count_restriction_fragment_combinations_py, module)?)?;
+    Ok(())
+}
 
 
 
