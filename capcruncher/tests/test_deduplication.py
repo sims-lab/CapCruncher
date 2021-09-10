@@ -1,14 +1,8 @@
 from typing import Dict, TypedDict, Union
-import pybedtools
 from pybedtools.bedtool import BedTool
-import pysam
-import pytest
 import os
-import hashlib
 import xxhash
 import ujson
-import pickle
-import operator
 from click.testing import CliRunner
 import functools
 import pandas as pd
@@ -77,6 +71,8 @@ def test_fastq_identify_py():
                 test_json_path,
                 "-o",
                 test_duplicates_path,
+                "--method",
+                "python"
             ],
         )
 
