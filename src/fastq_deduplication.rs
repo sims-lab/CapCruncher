@@ -1,7 +1,6 @@
 use bincode;
 use bio::io::fastq;
-use flate2::{bufread, write, Compression};
-use log::{info, warn};
+use log::{info};
 use pyo3::prelude::*;
 use pyo3::types::{IntoPyDict, PyDict};
 use rand::seq::SliceRandom;

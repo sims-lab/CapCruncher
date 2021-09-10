@@ -1,10 +1,6 @@
-use human_panic::setup_panic;
 use pyo3::prelude::*;
-use pyo3::types::{IntoPyDict, PyDict};
-use pyo3::{wrap_pyfunction, wrap_pymodule};
-use std::collections::HashMap;
-use std::fs::File;
-use std::io;
+use pyo3::types::{PyDict};
+use pyo3::{wrap_pymodule};
 
 mod count_fragments;
 mod fastq_deduplication;

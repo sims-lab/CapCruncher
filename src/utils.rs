@@ -1,11 +1,6 @@
 use flate2::{bufread, write, Compression};
-use itertools::Itertools;
-use std::collections::BTreeMap;
-use std::fmt::Debug;
 use std::fs::File;
 use std::io;
-use std::io::Write;
-use std::path::Path;
 
 pub fn get_reader_handle(path: &str) -> Result<Box<dyn io::Read>, io::Error> {
     if path.ends_with(".gz") {
