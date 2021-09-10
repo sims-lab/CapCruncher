@@ -25,8 +25,17 @@ def gtf_to_bed12(gtf: str, output:str):
 
 @cli.command()
 @click.argument('bincode_file')
-@click.option('-o', '--output', help='Output file name')
-def gtf_to_bed12(gtf: str, output:str):
+@click.argument('output_file')
+def bincode_to_json(bincode_file, output_file):
+
+    from libcapcruncher.fastq_deduplication import bincode_to_dict
+    import ujson
+    import xopen
+
+    bc_dict = bincode_to_dict(bincode_file)
+
+    with xopen.xopen(output_file, 'w') as w:
+        ujson.dump(bc_dict, w)
 
 
 
