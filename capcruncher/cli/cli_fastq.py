@@ -86,13 +86,6 @@ def digest(*args, **kwargs):
 
 
 @cli.group(cls=UnsortedGroup)
-@click.option(
-    "-m",
-    "--method",
-    help="Method to use for splitting",
-    type=click.Choice(["python", "rust"]),
-    default="rust",
-)
 def deduplicate():
     """
     Identifies PCR duplicate fragments from Fastq files.
@@ -117,6 +110,13 @@ def deduplicate():
     default=1e5,
     type=click.INT,
 )
+@click.option(
+    "-m",
+    "--method",
+    help="Method to use for splitting",
+    type=click.Choice(["python", "rust"]),
+    default="rust",
+)
 def deduplicate_parse(*args, **kwargs):
 
     """
@@ -139,6 +139,13 @@ def deduplicate_parse(*args, **kwargs):
 )
 @click.option(
     "-o", "--output", help="Output file", default="duplicates.json", required=True
+)
+@click.option(
+    "-m",
+    "--method",
+    help="Method to use for splitting",
+    type=click.Choice(["python", "rust"]),
+    default="rust",
 )
 def deduplicate_identify(*args, **kwargs):
 
@@ -188,6 +195,13 @@ def deduplicate_identify(*args, **kwargs):
 )
 @click.option("--sample_name", help="Name of sample e.g. DOX_treated_1", default='sampleX')
 @click.option("--stats_prefix", help="Output prefix for stats file", default='stats')
+@click.option(
+    "-m",
+    "--method",
+    help="Method to use for splitting",
+    type=click.Choice(["python", "rust"]),
+    default="rust",
+)
 def deduplicate_remove(*args, **kwargs):
     """
     Removes fragments with duplicated sequences from fastq files.
