@@ -66,8 +66,8 @@ def count(
     """
 
     try:
-        from capcruncher import libcapcruncher
-        libcapcruncher.count_restriction_fragment_combinations(reporters, output, remove_capture, 8, int(2e6))
+        from capcruncher.libcapcruncher import count_fragments
+        count_fragments.count_restriction_fragment_combinations(reporters, output, remove_capture, 8, int(2e6))
     
     except ImportError as e:
 
