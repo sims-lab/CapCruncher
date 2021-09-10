@@ -102,7 +102,7 @@ def deduplicate():
     "-o",
     "--output",
     help="File to store hashed sequence identifiers",
-    default="out.json",
+    default="out.encoded",
 )
 @click.option(
     "--read_buffer",
@@ -138,7 +138,7 @@ def deduplicate_parse(*args, **kwargs):
     nargs=-1,
 )
 @click.option(
-    "-o", "--output", help="Output file", default="duplicates.json", required=True
+    "-o", "--output", help="Output file", default="duplicates.encoded", required=True
 )
 @click.option(
     "-m",
