@@ -1,5 +1,6 @@
 use crate::utils;
 use itertools::Itertools;
+use pyo3::prelude::*;
 use rayon::prelude::*;
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
@@ -9,7 +10,6 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 use std::sync::mpsc::channel;
-use pyo3::prelude::*;
 
 #[derive(Debug, Deserialize, Clone)]
 struct DigestedReadRestrictionFragments {
@@ -26,7 +26,10 @@ fn count_restriction_fragment_combinations_in_chunk(
     let slices_groups = slices.iter().group_by(|r| &r.parent_read);
 
     for (_parent_read, slice_group) in slices_groups.into_iter() {
-        let restriction_fragments = slice_group.into_iter().map(|s| s.restriction_fragment);
+        let restriction_fragments = slice_group
+            .into_iter()
+            .map(|s| s.restriction_fragment)
+            .filter(|frag| *frag >= 0);
 
         for comb in restriction_fragments.combinations(2) {
             let mut f1 = comb[0];
@@ -88,15 +91,17 @@ pub fn count_restriction_fragment_combinations<P: AsRef<Path>>(
                 .map(|r| {
                     r.unwrap()
                         .deserialize(Some(&headers))
-                        .expect("Record does not match the expected structure")})
+                        .expect("Record does not match the expected structure")
+                })
                 .filter(|s: &DigestedReadRestrictionFragments| s.capture != ".")
                 .collect(),
             false => chunk
-            .map(|r| {
-                r.unwrap()
-                    .deserialize(Some(&headers))
-                    .expect("Record does not match the expected structure")})
-            .collect(),
+                .map(|r| {
+                    r.unwrap()
+                        .deserialize(Some(&headers))
+                        .expect("Record does not match the expected structure")
+                })
+                .collect(),
         };
         let tx = tx.clone();
         pool.spawn(move || {
@@ -142,12 +147,12 @@ pub fn restriction_fragment_counts_to_tsv<P: AsRef<Path>>(
 
 // Python bindings
 
-
-
 /// Groups all slices by the parent id and counts the occurences of each restriction fragment combination.
 #[pyfunction]
 #[pyo3(name = "count_restriction_fragment_combinations")]
-#[pyo3(text_signature = "(infile: str, outfile: str, remove_viewpoint: bool, n_threads: int, chunksize: int)")]
+#[pyo3(
+    text_signature = "(infile: str, outfile: str, remove_viewpoint: bool, n_threads: int, chunksize: int)"
+)]
 fn count_restriction_fragment_combinations_py(
     _py: Python,
     infile: String,
@@ -156,30 +161,23 @@ fn count_restriction_fragment_combinations_py(
     n_threads: Option<usize>,
     chunksize: Option<usize>,
 ) -> PyResult<String> {
-    
     ctrlc::set_handler(|| std::process::exit(2)).unwrap_or_default();
-    
-    let counts = count_restriction_fragment_combinations(
-        infile,
-        chunksize,
-        n_threads,
-        remove_viewpoint,
-    ).unwrap();
+
+    let counts =
+        count_restriction_fragment_combinations(infile, chunksize, n_threads, remove_viewpoint)
+            .unwrap();
 
     restriction_fragment_counts_to_tsv(outfile.clone(), counts)?;
 
     Ok(outfile)
 }
 
-
 #[pymodule]
 #[pyo3(name = "count_fragments")]
 fn fastq_deduplication(_py: Python, module: &PyModule) -> PyResult<()> {
-    module.add_function(wrap_pyfunction!(count_restriction_fragment_combinations_py, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        count_restriction_fragment_combinations_py,
+        module
+    )?)?;
     Ok(())
 }
-
-
-
-
-
