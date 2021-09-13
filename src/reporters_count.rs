@@ -1,4 +1,5 @@
 use crate::utils;
+use csv::ByteRecord;
 use itertools::Itertools;
 use pyo3::prelude::*;
 use rayon::prelude::*;
@@ -18,20 +19,24 @@ struct DigestedReadRestrictionFragments {
     capture: String,
 }
 
+//impl Iterator<Item = &'a DigestedReadRestrictionFragments<'a>>
+
 fn count_restriction_fragment_combinations_in_chunk(
     slices: &mut Vec<DigestedReadRestrictionFragments>,
-) -> HashMap<(i64, i64), usize> {
+) -> HashMap<(i64, i64), i64> {
     let mut restriction_fragment_counts = HashMap::new();
-    slices.sort_by_key(|r| r.parent_read.clone());
-    let slices_groups = slices.iter().group_by(|r| &r.parent_read);
+    //slices.sort_unstable_by(|a, b| a.parent_read.cmp(&b.parent_read));
+
+    let slices_groups = slices.iter().group_by(|&r| &r.parent_read);
 
     for (_parent_read, slice_group) in slices_groups.into_iter() {
         let restriction_fragments = slice_group
             .into_iter()
             .map(|s| s.restriction_fragment)
-            .filter(|frag| *frag >= 0);
+            .filter(|frag| *frag >= 0)
+            .collect_vec();
 
-        for comb in restriction_fragments.combinations(2) {
+        for comb in restriction_fragments.into_iter().combinations(2) {
             let mut f1 = comb[0];
             let mut f2 = comb[1];
 
@@ -39,12 +44,12 @@ fn count_restriction_fragment_combinations_in_chunk(
                 std::mem::swap(&mut f1, &mut f2)
             }
 
-            restriction_fragment_counts
+            *restriction_fragment_counts
                 .entry((f1, f2))
-                .and_modify(|e| *e += 1)
-                .or_insert(1);
+                .or_insert(0 as i64) += 1 as i64;
         }
     }
+
     restriction_fragment_counts
 }
 
@@ -53,10 +58,10 @@ pub fn count_restriction_fragment_combinations<P: AsRef<Path>>(
     chunksize: Option<usize>,
     n_threads: Option<usize>,
     remove_viewpoint: bool,
-) -> Result<BTreeMap<(i64, i64), usize>, Box<dyn Error>> {
+) -> Result<BTreeMap<(i64, i64), i64>, Box<dyn Error>> {
     // Open TSV and read headers
-    let mut reader = get_tsv_reader(path)?;
-    let headers = get_tsv_headers(&mut reader)?;
+    let mut reader = utils::get_tsv_reader(path)?;
+    let headers = utils::get_tsv_headers(&mut reader)?;
 
     // Using a threadpool to process each chunk of the TSV file
     let pool = rayon::ThreadPoolBuilder::new()
@@ -65,45 +70,39 @@ pub fn count_restriction_fragment_combinations<P: AsRef<Path>>(
         .unwrap();
     let (tx, rx) = channel();
 
-    // Run the counting operation on chunks of the TSV
-    for chunk in &reader
-        .byte_records()
-        .chunks(chunksize.unwrap_or(2e6 as usize))
-    {
-        let mut slices = match remove_viewpoint {
-            true => chunk
-                .map(|r| {
-                    r.unwrap()
-                        .deserialize(Some(&headers))
-                        .expect("Record does not match the expected structure")
-                })
-                .filter(|s: &DigestedReadRestrictionFragments| s.capture != ".")
-                .collect(),
-            false => chunk
-                .map(|r| {
-                    r.unwrap()
-                        .deserialize(Some(&headers))
-                        .expect("Record does not match the expected structure")
-                })
-                .collect(),
-        };
+    let tsv_chunks = reader
+        .into_byte_records()
+        .chunks(chunksize.unwrap_or(2e6 as usize));
+
+    for chunk in &tsv_chunks {
+        let slices_chunk = chunk.collect_vec();
+        let mut slices_deserialised: Vec<DigestedReadRestrictionFragments> = slices_chunk
+            .par_iter()
+            .map(|res| res.as_ref().unwrap().deserialize(Some(&headers)).unwrap())
+            .filter(|s: &DigestedReadRestrictionFragments| {
+                s.capture == "." || remove_viewpoint == false
+            })
+            .collect();
+
+        slices_deserialised.par_sort_by_key(|drf| drf.parent_read.clone());
+
+        //println!("{:?}", &slices_deserialised);
+
         let tx = tx.clone();
+
         pool.spawn(move || {
-            let counts = count_restriction_fragment_combinations_in_chunk(&mut slices);
+            let counts = count_restriction_fragment_combinations_in_chunk(&mut slices_deserialised);
             tx.send(counts).expect("Cant send data")
         })
     }
 
     drop(tx);
 
-    // Aggregate the results
     let mut restriction_fragment_counts_combined = BTreeMap::new();
     for counts in rx.iter() {
+        //println!("{:?}", counts);
         for (k, v) in counts {
-            restriction_fragment_counts_combined
-                .entry(k)
-                .and_modify(|old| *old += v)
-                .or_insert(v);
+            *restriction_fragment_counts_combined.entry(k).or_insert(0) += v;
         }
     }
 
@@ -112,7 +111,7 @@ pub fn count_restriction_fragment_combinations<P: AsRef<Path>>(
 
 pub fn restriction_fragment_counts_to_tsv<P: AsRef<Path>>(
     path: P,
-    counts: BTreeMap<(i64, i64), usize>,
+    counts: BTreeMap<(i64, i64), i64>,
 ) -> Result<(), io::Error> {
     let fh = utils::get_writer_handle(path.as_ref().to_str().expect("Not UTF-8 file name"))?;
     let mut writer = io::BufWriter::new(fh);
@@ -164,4 +163,17 @@ fn fastq_deduplication(_py: Python, module: &PyModule) -> PyResult<()> {
         module
     )?)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_counting() {
+        let reporters =
+            "/home/asmith/Projects/CapCruncher/capcruncher/data/test/Slc25A37_reporters.tsv.gz";
+        let res = count_restriction_fragment_combinations(reporters, None, None, false);
+        assert!(res.is_ok(), "Counting failed")
+    }
 }
