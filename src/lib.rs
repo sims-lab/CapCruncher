@@ -2,12 +2,12 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict};
 use pyo3::{wrap_pymodule};
 
-mod count_fragments;
-mod fastq_deduplication;
+mod reporters_count;
+mod deduplication_fastq;
 mod utils;
 
-use fastq_deduplication::*;
-use count_fragments::*;
+use deduplication_fastq::*;
+use reporters_count::*;
 
 
 #[pymodule]
