@@ -14,8 +14,6 @@ logging.basicConfig(format=FORMAT)
 logging.getLogger().setLevel(logging.INFO)
 
 
-
-
 def count_re_site_combinations(
     groups: pd.core.groupby.GroupBy, column: str = "restriction_fragment", counts: defaultdict = None
 ) -> defaultdict:
@@ -54,6 +52,8 @@ def count(
     remove_capture: bool = False,
     subsample: int = 0,
     method: str = "rust",
+    n_cores: int = 4,
+    chunksize: int = int(2e6),
 ):
     """
     Determines the number of captured restriction fragment interactions genome wide.
@@ -75,7 +75,7 @@ def count(
     if method == "rust":
         try:
             from capcruncher.libcapcruncher import count_fragments
-            count_fragments.count_restriction_fragment_combinations(reporters, output, remove_capture, 8, int(2e6))
+            count_fragments.count_restriction_fragment_combinations(reporters, output, remove_capture, n_cores, int(chunksize))
         
         except ImportError as e:
             logging.warn("Cannot import libcapcruncher, the rust library is likely not installed")
