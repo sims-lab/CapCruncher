@@ -111,6 +111,12 @@ def pileup(*args, **kwargs):
     default=0,
     help="Subsamples reporters before analysis of interactions",
 )
+@click.option(
+    "--method",
+    default="rust",
+    type=click.Choice(["python", "rust"]),
+    help="Use the newer rust based method or the slower python based method",
+)
 def count(*args, **kwargs):
     """
     Determines the number of captured restriction fragment interactions genome wide.

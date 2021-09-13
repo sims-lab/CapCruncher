@@ -7,6 +7,7 @@ from capcruncher.cli.cli_reporters import cli
 import click
 import os
 from tqdm import tqdm
+import logging
 
 
 def count_re_site_combinations(
@@ -46,6 +47,7 @@ def count(
     remove_exclusions: bool = False,
     remove_capture: bool = False,
     subsample: int = 0,
+    method: str = "rust",
 ):
     """
     Determines the number of captured restriction fragment interactions genome wide.
@@ -65,11 +67,15 @@ def count(
      subsample (int, optional): Subsamples the fragments by the specified fraction. Defaults to 0 i.e. No subsampling.
     """
 
-    try:
-        from capcruncher.libcapcruncher import count_fragments
-        count_fragments.count_restriction_fragment_combinations(reporters, output, remove_capture, 8, int(2e6))
+    if method == "rust":
+        try:
+            from capcruncher.libcapcruncher import count_fragments
+            count_fragments.count_restriction_fragment_combinations(reporters, output, remove_capture, 8, int(2e6))
+        
+        except ImportError as e:
+            logging.warn("Cannot import libcapcruncher, the rust library is likely not installed")
     
-    except ImportError as e:
+    else:            
 
         with xopen.xopen(output, mode="wb", threads=4) as writer:
 
