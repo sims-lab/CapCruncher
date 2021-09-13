@@ -22,7 +22,7 @@ pub fn get_writer_handle(path: &str) -> Result<Box<dyn io::Write>, io::Error> {
 }
 
 
-fn get_tsv_reader<P: AsRef<Path>>(path: P) -> Result<csv::Reader<Box<dyn io::Read>>, io::Error> {
+pub fn get_tsv_reader<P: AsRef<Path>>(path: P) -> Result<csv::Reader<Box<dyn io::Read>>, io::Error> {
     let fh = get_reader_handle(path.as_ref().to_str().expect("Not UTF-8 file name"))?;
     let reader = csv::ReaderBuilder::new()
         .has_headers(true)
@@ -31,7 +31,7 @@ fn get_tsv_reader<P: AsRef<Path>>(path: P) -> Result<csv::Reader<Box<dyn io::Rea
     Ok(reader)
 }
 
-fn get_tsv_headers<R: io::Read>(
+pub fn get_tsv_headers<R: io::Read>(
     reader: &mut csv::Reader<R>,
 ) -> Result<csv::ByteRecord, csv::Error> {
     let headers = reader.headers().unwrap().as_byte_record().to_owned();
