@@ -9,6 +9,12 @@ import os
 from tqdm import tqdm
 import logging
 
+FORMAT = '%(levelname)s %(name)s %(asctime)-15s %(message)s'
+logging.basicConfig(format=FORMAT)
+logging.getLogger().setLevel(logging.INFO)
+
+
+
 
 def count_re_site_combinations(
     groups: pd.core.groupby.GroupBy, column: str = "restriction_fragment", counts: defaultdict = None
@@ -66,7 +72,6 @@ def count(
      remove_capture (bool, optional): Removes all capture fragments before counting. Defaults to False.
      subsample (int, optional): Subsamples the fragments by the specified fraction. Defaults to 0 i.e. No subsampling.
     """
-
     if method == "rust":
         try:
             from capcruncher.libcapcruncher import count_fragments

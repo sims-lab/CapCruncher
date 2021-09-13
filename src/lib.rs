@@ -13,6 +13,8 @@ use reporters_count::*;
 #[pymodule]
 #[pyo3(name = "libcapcruncher")]
 fn libcapcruncher(py: Python, module: &PyModule) -> PyResult<()> {
+
+    pyo3_log::init();
     module.add_wrapped(wrap_pymodule!(fastq_deduplication))?;
     module.add_wrapped(wrap_pymodule!(count_fragments))?;
 
