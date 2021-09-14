@@ -1394,9 +1394,9 @@ def post_capcruncher_analysis():
 
 @follows(mkdir("capcruncher_analysis/reporters/counts"))
 @transform(
-    alignments_deduplicate_collate,
-    regex(r"capcruncher_analysis/reporters/(.*)\.(.*).tsv.gz"),
-    r"capcruncher_analysis/reporters/counts/\1.\2.tsv.gz",
+    alignments_deduplicate_slices,
+    regex(r"capcruncher_analysis/reporters/deduplicated/(.*?)\.(.*?)\.(.*?)\.(.*?)\.slices.tsv"),
+    r"capcruncher_analysis/reporters/counts/\1.\2.\3.\4.tsv.gz",
 )
 def reporters_count(infile, outfile):
 
