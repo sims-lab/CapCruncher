@@ -461,6 +461,37 @@ def test_reporter_count():
 
     assert result.exit_code == 0
 
+    result = runner.invoke(
+        cli,
+        [
+            "reporters",
+            "count",
+            reporters,
+            "-o",
+            output,
+            "--low-memory",
+        ],
+    )
+
+    assert result.exit_code == 0
+
+    result = runner.invoke(
+        cli,
+        [
+            "reporters",
+            "count",
+            reporters,
+            "-o",
+            output,
+            "--subsample",
+            "0.8",
+            "--remove_exclusions",
+            "--remove_capture",
+        ],
+    )
+
+    assert result.exit_code == 0
+
 
 def test_reporter_storage():
 
