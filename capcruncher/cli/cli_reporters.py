@@ -111,6 +111,17 @@ def pileup(*args, **kwargs):
     default=0,
     help="Subsamples reporters before analysis of interactions",
 )
+@click.option(
+    "--low-memory",
+    is_flag=True,
+    default=False,
+    help="Will perform counting in batches specifed by the chunksize to save memory (less accurate)",
+)
+@click.option(
+    "--chunksize",
+    default=int(2e6),
+    help="Number of records to process at once",
+)
 def count(*args, **kwargs):
     """
     Determines the number of captured restriction fragment interactions genome wide.
