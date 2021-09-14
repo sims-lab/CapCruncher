@@ -110,6 +110,7 @@ def pileup(*args, **kwargs):
     "--subsample",
     default=0,
     help="Subsamples reporters before analysis of interactions",
+    type=float,
 )
 @click.option(
     "--low-memory",
