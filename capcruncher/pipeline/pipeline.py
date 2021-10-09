@@ -1392,11 +1392,11 @@ def post_capcruncher_analysis():
 ####################
 
 
-@follows(mkdir("capcruncher_analysis/reporters/counts"))
+@follows(mkdir("capcruncher_analysis/reporters/counts/partitioned/"))
 @transform(
-    alignments_deduplicate_collate,
-    regex(r"capcruncher_analysis/reporters/(.*)\.(.*).tsv.gz"),
-    r"capcruncher_analysis/reporters/counts/\1.\2.tsv.gz",
+    alignments_deduplicate_slices,
+    regex(r"capcruncher_analysis/reporters/deduplicated/(.*?)\.(.*?)\.(.*?)\.(.*?)\.slices.tsv"),
+    r"capcruncher_analysis/reporters/counts/partitioned/\1.\2.\3.\4.tsv.gz",
 )
 def reporters_count(infile, outfile):
 
@@ -1417,14 +1417,31 @@ def reporters_count(infile, outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=2,
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
 
+@collate(
+    reporters_count,
+    regex(r"capcruncher_analysis/reporters/counts/partitioned/(.*?)\.(.*?)\.(.*?)\.(.*?)\.tsv.gz"),
+    r"capcruncher_analysis/reporters/counts/\1.\4.tsv.gz",
+    extras=[r"\1", r"\4"]
+)
+def reporters_count_collate(infiles, outfile, sample, viewpoint):
+
+    """Collates the number of interactions identified between reporter restriction fragments"""
+
+    dframes = [pd.read_csv(fn, sep="\t") for fn in infiles]
+    df = pd.concat(dframes)
+    df_total_counts = df.groupby(["bin1_id", "bin2_id"]).agg({"count": "sum"}).reset_index()
+
+    df_total_counts.to_csv(outfile, sep="\t", index=False)
+
+
 @follows(mkdir("capcruncher_analysis/reporters/fragments"))
 @transform(
-    reporters_count,
+    reporters_count_collate,
     regex(r"capcruncher_analysis/reporters/counts/(.*)\.(.*)\.tsv.gz"),
     add_inputs(genome_digest),
     r"capcruncher_analysis/reporters/fragments/\1.\2.fragments.hdf5",

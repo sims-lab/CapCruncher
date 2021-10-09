@@ -1,4 +1,4 @@
-CapCruncher CLI Modules
+CapCruncher CLI
 ======================
 
 alignments annotate
@@ -73,14 +73,6 @@ reporters differential
    :undoc-members:
    :show-inheritance:
 
-reporters heatmap
-----------------------------------------
-
-.. automodule:: capcruncher.cli.reporters_heatmap
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 reporters pileup
 ---------------------------------------
 
@@ -97,10 +89,10 @@ reporters store
    :undoc-members:
    :show-inheritance:
 
-tsv aggregate
-------------------------------------
+plot
+----------------------------------------
 
-.. automodule:: capcruncher.cli.tsv_aggregate
+.. automodule:: capcruncher.cli.plot
    :members:
    :undoc-members:
    :show-inheritance:
