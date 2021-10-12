@@ -92,7 +92,7 @@ def differential(*args, **kwargs):
     "--normalisation",
     help="Method to use interaction normalisation",
     default="raw",
-    type=click.Choice(["raw", "n_cis" "region"]),
+    type=click.Choice(["raw", "n_cis", "region"]),
 )
 @click.option(
     "--normalisation-regions",
@@ -197,22 +197,20 @@ def store():
 @click.argument("counts", required=True)
 @click.option(
     "-f",
-    "--fragment_map",
+    "--fragment-map",
     help="Path to digested genome bed file",
     required=True,
 )
 @click.option(
-    "-c",
-    "--capture_viewpoints",
-    "capture_viewpoints",
-    help="Path to capture viewpoints file",
+    "-v",
+    "--viewpoint-path",
+    help="Path to viewpoints file",
     required=True,
 )
 @click.option(
     "-n",
-    "--capture_name",
-    "capture_name",
-    help="Name of capture viewpoint to store",
+    "--viewpoint-name",
+    help="Name of viewpoint to store",
     required=True,
 )
 @click.option(
