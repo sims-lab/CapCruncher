@@ -75,8 +75,8 @@ def bedgraph(
         if normalisation in ["n_cis", "region"]:
             bedgraph.normalise_bedgraph(
                 scale_factor=scale_factor,
-                norm_method=normalisation,
-                norm_region=normalisation_regions,
+                method=normalisation,
+                region=normalisation_regions,
             )
 
         bedgraph.to_file(
