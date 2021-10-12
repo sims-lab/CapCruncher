@@ -110,7 +110,7 @@ class CoolerBedGraph:
             return self._reporters
 
     def normalise_bedgraph(
-        self, scale_factor=1e6, norm_method: str = "n_cis", norm_region: str = None
+        self, scale_factor=1e6, method: str = "n_cis", region: str = None
     ):
         """Normalises the bedgraph.
 
@@ -123,10 +123,12 @@ class CoolerBedGraph:
          pd.DataFrame: Normalised bedgraph formatted DataFrame
         """
 
-        if norm_method == "n_cis":
-            self._normalise_by_n_cis(scale_factor)
-        elif norm_method == "window":
+        if method == "raw":
             pass
+        elif method == "n_cis":
+            self._normalise_by_n_cis(scale_factor)
+        elif method == "region":
+            self._normalise_by_regions(scale_factor, region)
 
     def _normalise_by_n_cis(self, scale_factor: float):
         self.bedgraph["count"] = (
@@ -143,6 +145,23 @@ class CoolerBedGraph:
         df_viewpoint_norm_regions = pd.read_csv(
             regions, sep="/t", names=["chrom", "start", "end", "name"]
         ).loc[lambda df: df["name"].str.contains(self.viewpoint_name)]
+
+        counts_in_regions = []
+        for region in df_viewpoint_norm_regions.itertuples():
+            counts_in_regions.append(
+                self.bedgraph.query(
+                    "(start >= @region.start) and (start <= @region.end)"
+                )
+            )
+        
+        df_counts_in_regions = pd.concat(counts_in_regions)
+
+        total_counts_in_region = df_counts_in_regions['count'].sum()
+
+        self.bedgraph["count"] = (
+            self.bedgraph["count"] / total_counts_in_region
+        ) * scale_factor
+    
 
     def to_file(self, fn: os.PathLike):
         """Outputs the bedgraph dataframe to a file.
