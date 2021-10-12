@@ -117,7 +117,7 @@ def test_binning_with_conversion_table():
         binners_dict = pickle.load(r)
 
     cb = CoolerBinner(cooler_fn, binner=binners_dict[1000000])
-    cooler_binned = cb.to_cooler(outfile, normalise=False, scale_factor=1e6)
+    cooler_binned = cb.to_cooler(outfile)
     assert os.path.exists(cooler_binned)
 
 
