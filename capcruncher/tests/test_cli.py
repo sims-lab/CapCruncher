@@ -517,7 +517,7 @@ def test_reporter_storage():
             "Slc25A37",
             "-o",
             output_prefix,
-            "-c",
+            "-v",
             viewpoints,
             "--suffix",
             "fragments",
