@@ -142,20 +142,18 @@ class CoolerBedGraph:
                 "A valid bed file is required for region based normalisation"
             )
 
-        df_viewpoint_norm_regions = pd.read_csv(
-            regions, sep="/t", names=["chrom", "start", "end", "name"]
-        ).loc[lambda df: df["name"].str.contains(self.viewpoint_name)]
+        df_viewpoint_norm_regions = pd.read_csv(regions, sep="\t", names=["chrom", "start", "end", "name"])
+        df_viewpoint_norm_regions = df_viewpoint_norm_regions.loc[lambda df: df["name"].str.contains(self.viewpoint_name)]
 
         counts_in_regions = []
         for region in df_viewpoint_norm_regions.itertuples():
             counts_in_regions.append(
                 self.bedgraph.query(
-                    "(start >= @region.start) and (start <= @region.end)"
+                    "(chrom == @region.chrom) and (start >= @region.start) and (start <= @region.end)"
                 )
             )
         
         df_counts_in_regions = pd.concat(counts_in_regions)
-
         total_counts_in_region = df_counts_in_regions['count'].sum()
 
         self.bedgraph["count"] = (
