@@ -109,7 +109,10 @@ def bins(
         else:
             cb = CoolerBinner(cooler_fn, binsize=binsize, n_cores=n_cores)
 
-        cb.to_cooler(output, normalise=normalise, scale_factor=scale_factor)
+        if normalise:
+            cb.normalise(scale_factor=scale_factor)
+
+        cb.to_cooler(output)
 
 
 def merge(coolers: Tuple, output: os.PathLike):
