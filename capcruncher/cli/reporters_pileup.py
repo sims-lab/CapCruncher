@@ -36,7 +36,7 @@ def bedgraph(
                                        If None, will process all probes present in the file.
                                        Defaults to None.
      output_prefix (os.PathLike, optional): Output file prefix for bedgraph. Defaults to "".
-     normalise (bool, optional): Normalise counts using the number of cis interactions. Defaults to False.
+     normalisation (bool, optional): Normalise counts using the number of cis interactions. Defaults to False.
      binsize (int, optional): Genomic binsize to use for generating bedgraph. No binning performed if less than 0. Defaults to 0.
      gzip (bool, optional): Compress output bedgraph with gzip. Defaults to True.
      scale_factor (int, optional): Scaling factor for normalisation. Defaults to 1e6.
