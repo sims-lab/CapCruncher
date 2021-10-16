@@ -393,13 +393,13 @@ def fastq_split(infiles, outfile):
 @collate(
     "capcruncher_preprocessing/split/*.fastq*",
     regex(r"capcruncher_preprocessing/split/(.*)_part(\d+)_[12].fastq(?:.gz)?"),
-    r"capcruncher_preprocessing/deduplicated/deduplicated_ids/\1_\2.json.gz",
+    r"capcruncher_preprocessing/deduplicated/deduplicated_ids/\1_\2.encoded",
     extras=[r"\1", r"\2"],
 )
 def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
 
     """
-    Parses fastq files into json format for sequence deduplication.
+    Parses fastq files into a hashed format for sequence deduplication.
 
     Runs :ref:`capcruncher fastq deduplicate parse <CLI Documentation>`
 
@@ -425,13 +425,13 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
 
 @collate(
     fastq_duplicates_parse,
-    regex(r"capcruncher_preprocessing/deduplicated/deduplicated_ids/(.*)_\d*.json.gz"),
-    r"capcruncher_preprocessing/deduplicated/deduplicated_ids/\1.json.gz",
+    regex(r"capcruncher_preprocessing/deduplicated/deduplicated_ids/(.*)_\d*.encoded"),
+    r"capcruncher_preprocessing/deduplicated/deduplicated_ids/\1.encoded",
 )
 def fastq_duplicates_identify(infiles, outfile):
 
     """
-    Identifies duplicate sequences from parsed fastq files in json format.
+    Identifies duplicate sequences from hashed fastq files.
 
     Runs :ref:`capcruncher fastq deduplicate identify <CLI Documentation>`
 
@@ -491,7 +491,7 @@ def fastq_duplicates_remove(infiles, outfile):
                 "remove",
                 *infiles,
                 "-d",
-                f"capcruncher_preprocessing/deduplicated/deduplicated_ids/{sample_name}.json.gz",
+                f"capcruncher_preprocessing/deduplicated/deduplicated_ids/{sample_name}.encoded",
                 "--sample_name",
                 sample_name,
                 "--stats_prefix",

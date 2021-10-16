@@ -165,6 +165,22 @@ def pileup(*args, **kwargs):
     default=int(2e6),
     help="Number of records to process at once",
 )
+@click.option(
+    "--method",
+    default="rust",
+    type=click.Choice(["python", "rust"]),
+    help="Use the newer rust based method or the slower python based method",
+)
+@click.option(
+    "--chunksize",
+    default=2e6,
+    help="Number of records to process at once",
+)
+@click.option(
+    "--n-cores",
+    default=4,
+    help="Number of cores to use (rust method only)",
+)
 def count(*args, **kwargs):
     """
     Determines the number of captured restriction fragment interactions genome wide.

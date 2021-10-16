@@ -9,6 +9,7 @@ import xopen
 from click.testing import CliRunner
 from capcruncher.cli import cli
 import pandas as pd
+from capcruncher import libcapcruncher
 
 
 # Pre-run setup
@@ -89,7 +90,7 @@ def test_genome_digest():
 def test_deduplicate_parse():
 
     # Test parsing
-    output_parsed = os.path.join(dir_test, "test", "fq_parsed_test.json")
+    output_parsed = os.path.join(dir_test, "test", "fq_parsed_test.bincode")
 
     runner = CliRunner()
     result = runner.invoke(
@@ -107,19 +108,15 @@ def test_deduplicate_parse():
 
     # Check that the script exits successfully
     assert result.exit_code == 0
+    #result_test = libcapcruncher.load_bincode(output_parsed)
+    #assert len(result_test) == 1520
 
-    with open(output_parsed) as f:
-        result_test = ujson.load(f)
-
-    with open(data_dd.result_parsed) as f:
-        result_correct = ujson.load(f)
-
-    # Check that all keys and values match between the saved file and the test
-    assert result_test == result_correct
 
 
 def test_fastq_deduplicate_identification():
-    output_duplicates_test = os.path.join(dir_test, "test", "fq_duplicates_test.json")
+
+    parsed = os.path.join(dir_data, "test", "fastq_parsed_for_deduplication.bincode")
+    duplicates = os.path.join(dir_test, "test", "fastq_duplicates.bincode")
 
     runner = CliRunner()
     result = runner.invoke(
@@ -128,22 +125,19 @@ def test_fastq_deduplicate_identification():
             "fastq",
             "deduplicate",
             "identify",
-            data_dd.result_parsed,
+            parsed,
             "-o",
-            output_duplicates_test,
+            duplicates,
         ],
     )
 
     assert result.exit_code == 0
+    #result_test = libcapcruncher.load_bincode(duplicates)
 
-    with open(output_duplicates_test) as f:
-        result_test = ujson.load(f)
 
-    with open(data_dd.result_identify) as f:
-        result_correct = ujson.load(f)
 
-    # Checks that the same number of duplicates are identified, some randomness in identification
-    assert len(result_test) == len(result_correct)
+
+
 
 
 def test_fastq_deduplicate_removal():
@@ -152,6 +146,7 @@ def test_fastq_deduplicate_removal():
     output_removal_prefix = os.path.join(dir_test, "test", "fq_dedup_test")
     output_removal_test = output_removal_prefix + "_1.fastq"
     output_removal_test_stats = os.path.join(dir_test, "stats", "deduplication")
+    duplicates = os.path.join(dir_test, "test", "fastq_duplicates.bincode")
 
     runner = CliRunner()
     result = runner.invoke(
@@ -161,7 +156,7 @@ def test_fastq_deduplicate_removal():
             "deduplicate",
             "remove",
             "-d",
-            data_dd.result_identify,
+            duplicates,
             "-o",
             output_removal_prefix,
             data_dd.fq1,
@@ -175,24 +170,12 @@ def test_fastq_deduplicate_removal():
 
     assert result.exit_code == 0
     assert os.path.exists(output_removal_test_stats + ".deduplication.csv")
+    
+    stats = pd.read_csv(f'{output_removal_test_stats}.deduplication.csv')
+    assert stats.query("stat_type == 'reads_unique'")['stat'].values[0] == 982
+    assert stats.query("stat_type == 'reads_removed'")['stat'].values[0] == 538
 
-    with open(output_removal_test) as r:
-        result_test = r.readlines()
 
-    with open(data_dd.result_remove) as r:
-        result_correct = r.readlines()
-
-    with open(data_dd.result_identify) as r:
-        duplicates = ujson.load(r)
-
-    fq_unfilt_n_entries = get_fastq_n_records(data_dd.fq1)
-    fq_dd_n_entries = get_fastq_n_records(output_removal_test)
-
-    # Checks the number of expected duplicates are removed
-    assert len(duplicates) == fq_unfilt_n_entries - fq_dd_n_entries
-
-    # Checks the test file matches the expected file
-    assert len(result_test) == len(result_correct)
 
 
 def test_fastq_digest():

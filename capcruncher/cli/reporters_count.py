@@ -151,7 +151,9 @@ def count(
     remove_capture: bool = False,
     subsample: int = 0,
     low_memory: bool = False,
-    chunksize: int = 2e6,
+    chunksize: int = int(2e6),
+    method: str = "rust",
+    n_cores: int = 4,
 ):
     """
     Determines the number of captured restriction fragment interactions genome wide.
@@ -170,29 +172,38 @@ def count(
      remove_capture (bool, optional): Removes all capture fragments before counting. Defaults to False.
      subsample (int, optional): Subsamples the fragments by the specified fraction. Defaults to 0 i.e. No subsampling.
     """
+    if method == "rust":
+        try:
+            from capcruncher.libcapcruncher import count_fragments
+            count_fragments.count_restriction_fragment_combinations(reporters, output, remove_capture, n_cores, int(chunksize))
+        
+        except ImportError as e:
+            logging.warn("Cannot import libcapcruncher, the rust library is likely not installed")
+    
+    else:            
 
-    with xopen.xopen(output, mode="wb", threads=4) as writer:
+        with xopen.xopen(output, mode="wb", threads=4) as writer:
 
-        # Write output file header.
-        header = "\t".join(["bin1_id", "bin2_id", "count"]) + "\n"
-        writer.write(header.encode())
+            # Write output file header.
+            header = "\t".join(["bin1_id", "bin2_id", "count"]) + "\n"
+            writer.write(header.encode())
 
-        if low_memory:
-            counts = get_counts_by_batch(
-                reporters=reporters,
-                chunksize=chunksize,
-                remove_capture=remove_capture,
-                remove_exclusions=remove_exclusions,
-                subsample=subsample,
-            )
-        else:
-            counts = get_counts_from_file(
-                reporters=reporters,
-                remove_capture=remove_capture,
-                remove_exclusions=remove_exclusions,
-                subsample=subsample,
-            )
+            if low_memory:
+                counts = get_counts_by_batch(
+                    reporters=reporters,
+                    chunksize=chunksize,
+                    remove_capture=remove_capture,
+                    remove_exclusions=remove_exclusions,
+                    subsample=subsample,
+                )
+            else:
+                counts = get_counts_from_file(
+                    reporters=reporters,
+                    remove_capture=remove_capture,
+                    remove_exclusions=remove_exclusions,
+                    subsample=subsample,
+                )
 
-        for (rf1, rf2), count in counts.items():
-            line = "\t".join([str(rf1), str(rf2), str(count)]) + "\n"
-            writer.write(line.encode())
+            for (rf1, rf2), count in counts.items():
+                line = "\t".join([str(rf1), str(rf2), str(count)]) + "\n"
+                writer.write(line.encode())

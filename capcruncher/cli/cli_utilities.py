@@ -23,5 +23,20 @@ def gtf_to_bed12(gtf: str, output:str):
             w.write(gtf_line_to_bed12_line(df) + '\n')
 
 
+@cli.command()
+@click.argument('bincode_file')
+@click.argument('output_file')
+def bincode_to_json(bincode_file, output_file):
+
+    from libcapcruncher.fastq_deduplication import bincode_to_dict
+    import ujson
+    import xopen
+
+    bc_dict = bincode_to_dict(bincode_file)
+
+    with xopen.xopen(output_file, 'w') as w:
+        ujson.dump(bc_dict, w)
+
+
 
 

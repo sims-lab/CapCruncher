@@ -102,13 +102,20 @@ def deduplicate():
     "-o",
     "--output",
     help="File to store hashed sequence identifiers",
-    default="out.json",
+    default="out.encoded",
 )
 @click.option(
     "--read_buffer",
     help="Number of reads to process before writing to file",
     default=1e5,
     type=click.INT,
+)
+@click.option(
+    "-m",
+    "--method",
+    help="Method to use for splitting",
+    type=click.Choice(["python", "rust"]),
+    default="rust",
 )
 def deduplicate_parse(*args, **kwargs):
 
@@ -131,7 +138,14 @@ def deduplicate_parse(*args, **kwargs):
     nargs=-1,
 )
 @click.option(
-    "-o", "--output", help="Output file", default="duplicates.json", required=True
+    "-o", "--output", help="Output file", default="duplicates.encoded", required=True
+)
+@click.option(
+    "-m",
+    "--method",
+    help="Method to use for splitting",
+    type=click.Choice(["python", "rust"]),
+    default="rust",
 )
 def deduplicate_identify(*args, **kwargs):
 
@@ -181,6 +195,13 @@ def deduplicate_identify(*args, **kwargs):
 )
 @click.option("--sample_name", help="Name of sample e.g. DOX_treated_1", default='sampleX')
 @click.option("--stats_prefix", help="Output prefix for stats file", default='stats')
+@click.option(
+    "-m",
+    "--method",
+    help="Method to use for splitting",
+    type=click.Choice(["python", "rust"]),
+    default="rust",
+)
 def deduplicate_remove(*args, **kwargs):
     """
     Removes fragments with duplicated sequences from fastq files.
