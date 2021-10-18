@@ -1466,7 +1466,7 @@ def reporters_store_restriction_fragment(infile, outfile, sample_name, capture_n
         P.PARAMS["genome_name"],
         "-n",
         capture_name,
-        "-c",
+        "-v",
         P.PARAMS["analysis_viewpoints"],
         "-o",
         output_prefix,
@@ -1725,7 +1725,8 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
         infile,
         "-o",
         output_prefix,
-        "--normalise",
+        "--normalisation",
+        "n_cis",
         "--scale_factor",
         str(P.PARAMS.get("normalisation_scale_factor", 1000000)),
     ]
