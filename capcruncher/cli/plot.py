@@ -173,7 +173,7 @@ def plot_reporters(
     start, end = [int(x) for x in region.split(":")[1].replace(",", "").split("-")]
 
     with open(config, "r") as r:
-        tracks = yaml.load(r)
+        tracks = yaml.safe_load(r)
 
     # Perform the plotting
     frame = cb.Frame()
