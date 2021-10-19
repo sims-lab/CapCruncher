@@ -1134,6 +1134,7 @@ def alignments_filter(infiles, outfile):
     output_prefix = outfile.replace(".completed", "")
     output_log_file = f"{output_prefix}.log"
     stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
+    custom_filtering = P.PARAMS.get('analysis_optional_custom_filtering')
 
     statement = [
         "capcruncher",
@@ -1152,7 +1153,8 @@ def alignments_filter(infiles, outfile):
         sample_name,
         "--read_type",
         sample_read_type,
-        "--no-cis-and-trans-stats",  # Need to have the de-duplicated versions of these.
+        "--no-cis-and-trans-stats",
+        f"--custom_filtering {custom_filtering}" if os.path.exists(custom_filtering) else "",
         ">",
         output_log_file,
     ]
