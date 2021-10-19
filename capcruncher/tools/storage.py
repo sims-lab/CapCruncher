@@ -13,7 +13,7 @@ from capcruncher.utils import split_intervals_on_chrom, intersect_bins
 import itertools
 
 
-def get_capture_coords(viewpoint_file: str, viewpoint_name: str):
+def get_viewpoint_coords(viewpoint_file: str, viewpoint_name: str):
     df_viewpoints = BedTool(viewpoint_file).to_dataframe()
     df_viewpoints = df_viewpoints.query(f'name == "{viewpoint_name}"')
 
@@ -26,7 +26,7 @@ def get_capture_coords(viewpoint_file: str, viewpoint_name: str):
     return viewpoints
 
 
-def get_capture_bins(bins, viewpoint_chrom, viewpoint_start, viewpoint_end):
+def get_viewpoint_bins(bins, viewpoint_chrom, viewpoint_start, viewpoint_end):
 
     return [
         int(b)
@@ -35,14 +35,13 @@ def get_capture_bins(bins, viewpoint_chrom, viewpoint_start, viewpoint_end):
         )["name"]
     ]
 
-
 def create_cooler_cc(
     output_prefix: str,
     bins: pd.DataFrame,
     pixels: pd.DataFrame,
-    capture_name: str,
-    capture_viewpoints: os.PathLike,
-    capture_bins: Union[int, list] = None,
+    viewpoint_name: str,
+    viewpoint_path: os.PathLike,
+    viewpoint_bins: Union[int, list] = None,
     suffix=None,
     **cooler_kwargs,
 ) -> os.PathLike:
@@ -53,50 +52,50 @@ def create_cooler_cc(
      output_prefix (str): Output path for hdf5 file. If this already exists, will append a new group to the file.
      bins (pd.DataFrame): DataFrame containing the genomic coordinates of all bins in the pixels table.
      pixels (pd.DataFrame): DataFrame with columns: bin1_id, bin2_id, count.
-     capture_name (str): Name of capture probe to store.
-     capture_viewpoints (os.PathLike): Path to capture viewpoints used for the analysis.
-     capture_bins (Union[int, list], optional): Bins containing capture viewpoints. Can be determined from viewpoints if not supplied. Defaults to None.
+     viewpoint_name (str): Name of viewpoint to store.
+     viewpoint_path (os.PathLike): Path to viewpoints used for the analysis.
+     viewpoint_bins (Union[int, list], optional): Bins containing viewpoint. Can be determined from viewpoint_path. Defaults to None.
      suffix (str, optional): Suffix to append before the .hdf5 file extension. Defaults to None.
 
     Raises:
-     ValueError: Capture name must exactly match the name of a supplied capture viewpoint.
+     ValueError: Viewpoint name must exactly match the a supplied viewpoint.
 
     Returns:
      os.PathLike: Path of cooler hdf5 file.
     """
 
     # Gets capture coordinates
-    capture_coords = get_capture_coords(capture_viewpoints, capture_name)
+    viewpoint_coords = get_viewpoint_coords(viewpoint_path, viewpoint_name)
 
     # Make sure capture coordinates are returned correctly, if not, error.
-    if capture_coords is None:
-        raise ValueError(f"Incorrect capture name specified: {capture_name}.")
+    if viewpoint_coords is None:
+        raise ValueError(f"Incorrect capture name specified: {viewpoint_name}.")
 
     # If capture bins not provided get them using the coordinates.
-    if not capture_bins:
-        capture_bins = list(
+    if not viewpoint_bins:
+        viewpoint_bins = list(
             itertools.chain.from_iterable(
                 [
-                    get_capture_bins(bins, c["chrom"], c["start"], c["end"])
-                    for c in capture_coords
+                    get_viewpoint_bins(bins, c["chrom"], c["start"], c["end"])
+                    for c in viewpoint_coords
                 ]
             )
         )
 
     # Need to store bins as a list so make sure its not just a single int.
-    elif isinstance(capture_bins, int):
-        capture_bins = [
-            int(capture_bins),
+    elif isinstance(viewpoint_bins, int):
+        viewpoint_bins = [
+            int(viewpoint_bins),
         ]
 
     # The cooler.create_cooler function will not accept np.arrays so must convert to python list
-    elif isinstance(capture_bins, (np.array, pd.Series)):
-        capture_bins = [int(x) for x in capture_bins]
+    elif isinstance(viewpoint_bins, (np.array, pd.Series)):
+        viewpoint_bins = [int(x) for x in viewpoint_bins]
 
     # Get the number of cis interactions, required for normalisation.
     bins_cis = bins.loc[
-        lambda df: df["chrom"].isin([c["chrom"] for c in capture_coords])
-    ]["name"].loc[lambda ser: ~ser.isin(capture_bins)]
+        lambda df: df["chrom"].isin([c["chrom"] for c in viewpoint_coords])
+    ]["name"].loc[lambda ser: ~ser.isin(viewpoint_bins)]
 
     pixels_cis = pixels.loc[
         lambda df: (df["bin1_id"].isin(bins_cis)) | (df["bin2_id"].isin(bins_cis))
@@ -105,11 +104,11 @@ def create_cooler_cc(
 
     # Metadata for cooler file.
     metadata = {
-        "capture_bins": capture_bins,
-        "capture_name": capture_name,
-        "capture_chrom": [c["chrom"] for c in capture_coords],
-        "capture_coords": [
-            f'{c["chrom"]}:{c["start"]}-{c["end"]}' for c in capture_coords
+        "viewpoint_bins": viewpoint_bins,
+        "viewpoint_name": viewpoint_name,
+        "viewpoint_chrom": [c["chrom"] for c in viewpoint_coords],
+        "viewpoint_coords": [
+            f'{c["chrom"]}:{c["start"]}-{c["end"]}' for c in viewpoint_coords
         ],
         "n_cis_interactions": int(n_cis_interactions),
     }
@@ -118,10 +117,10 @@ def create_cooler_cc(
         output_prefix
     ):  # Will append to a prexisting file if one is supplied
         append_to_file = True
-        cooler_fn = f"{output_prefix}::/{capture_name}"
+        cooler_fn = f"{output_prefix}::/{viewpoint_name}"
     else:
         append_to_file = False
-        cooler_fn = f"{output_prefix.replace('.hdf5', '')}.{capture_name}{'.' + suffix if suffix else ''}.hdf5"
+        cooler_fn = f"{output_prefix.replace('.hdf5', '')}.{viewpoint_name}{'.' + suffix if suffix else ''}.hdf5"
 
     cooler.create_cooler(
         cooler_fn,
@@ -433,14 +432,14 @@ class CoolerBinner:
         return self.binner.bin_conversion_table
 
     @property
-    def capture_bins(self):
+    def viewpoint_bins(self):
         """
         Returns:
          pd.DataFrame: Capture bins converted to the new even genomic bin format.
         """
-        capture_frags = self.cooler.info["metadata"]["capture_bins"]
+        viewpoint_frags = self.cooler.info["metadata"]["viewpoint_bins"]
         return self.bin_conversion_table.loc[
-            lambda df: df["name_fragment"].isin(capture_frags)
+            lambda df: df["name_fragment"].isin(viewpoint_frags)
         ]["name_bin"].values
 
     @property
@@ -467,7 +466,7 @@ class CoolerBinner:
             self._pixels = self._get_pixels()
             return self._pixels
 
-    def normalise_pixels(
+    def normalise(
         self,
         n_fragment_correction: bool = True,
         n_interaction_correction: bool = True,
@@ -509,29 +508,16 @@ class CoolerBinner:
                 self.pixels["count_n_rf_norm"] / self.n_cis_interactions
             ) * scale_factor
 
-    def to_cooler(self, store, normalise=False, **normalise_options):
+    def to_cooler(self, store: os.PathLike):
 
-        capture_bins = self.capture_bins
-        capture_name = self.cooler.info["metadata"]["capture_name"]
-        capture_coords = self.cooler.info["metadata"]["capture_coords"]
-        capture_chrom = self.cooler.info["metadata"]["capture_chrom"]
-
-        metadata = {
-            "capture_bins": [int(x) for x in self.capture_bins],
-            "capture_name": capture_name,
-            "capture_coords": capture_coords,
-            "capture_chrom": capture_chrom,
-            "n_cis_interactions": self.n_cis_interactions,
-        }
-
-        if normalise:
-            self.normalise_pixels(**normalise_options)
+        metadata = {**self.cooler.info["metadata"]}
+        metadata["viewpoint_bins"] = [int(x) for x in self.viewpoint_bins]
 
         if os.path.exists(store):  # Will append to a prexisting file if one is supplied
-            cooler_fn = f"{store}::/{capture_name}/resolutions/{self.binsize}"
+            cooler_fn = f"{store}::/{metadata['viewpoint_name']}/resolutions/{self.binsize}"
         else:
             cooler_fn = (
-                f"{store.replace('.hdf5', '')}.{capture_name}.{self.binsize}.hdf5"
+                f"{store.replace('.hdf5', '')}.{metadata['viewpoint_name']}.{self.binsize}.hdf5"
             )
 
         cooler.create_cooler(
