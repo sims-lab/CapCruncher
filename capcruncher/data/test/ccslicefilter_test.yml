@@ -1,4 +1,4 @@
-TEST_FILTERING:
+CUSTOM_FILTERING_STAGE_NAME:
   - remove_unmapped_slices
   - remove_orphan_slices
   - remove_multi_capture_fragments

@@ -517,7 +517,7 @@ def test_reporter_storage():
             "Slc25A37",
             "-o",
             output_prefix,
-            "-c",
+            "-v",
             viewpoints,
             "--suffix",
             "fragments",
@@ -564,6 +564,32 @@ def test_reporter_storage():
     )
 
     assert result.exit_code == 0
+
+def test_reporters_pileup():
+    
+    runner = CliRunner()
+    clr_path = os.path.join(dir_data, "test", "test.Slc25A37.hdf5")
+    bdg_prefix = os.path.join(dir_test, "test", "test.Slc25A37")
+    bdg_path = f"{bdg_prefix}..bedgraph"
+
+
+    result = runner.invoke(
+        cli,
+        [
+            "reporters",
+            "pileup",
+            clr_path,
+            '-o',
+            bdg_prefix,
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert os.path.exists(bdg_path)
+ 
+
+
+
 
 
 
