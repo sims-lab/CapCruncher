@@ -64,7 +64,8 @@ def test_binning():
     cooler_fn = os.path.join(dir_test, "test", "cooler.Slc25A37.fragments.hdf5")
     outfile = os.path.join(dir_test, "test", "cooler.binned")
     cb = CoolerBinner(cooler_fn, binsize=2500, n_cores=8)
-    cb.to_cooler(outfile, normalise=False, scale_factor=1e6)
+    cb.normalise(scale_factor=1e6)
+    cb.to_cooler(outfile)
     assert os.path.exists(f'{outfile}.Slc25A37.2500.hdf5')
 
 
@@ -116,7 +117,7 @@ def test_binning_with_conversion_table():
         binners_dict = pickle.load(r)
 
     cb = CoolerBinner(cooler_fn, binner=binners_dict[1000000])
-    cooler_binned = cb.to_cooler(outfile, normalise=False, scale_factor=1e6)
+    cooler_binned = cb.to_cooler(outfile)
     assert os.path.exists(cooler_binned)
 
 
