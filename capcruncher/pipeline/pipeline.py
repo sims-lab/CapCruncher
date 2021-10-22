@@ -1316,10 +1316,12 @@ def alignments_deduplicate_slices_statistics(
 
     df_slices = pd.read_csv(infile, sep="\t")
     
-    reporter_statistics = slice_filterer(
-        df_slices, sample_name=sample, read_type=read_type
-    ).cis_or_trans_stats.to_csv(outfile, index=False)
-
+    try:
+        reporter_statistics = slice_filterer(
+            df_slices, sample_name=sample, read_type=read_type
+        ).cis_or_trans_stats.to_csv(outfile, index=False)
+    except:
+        touch_file(outfile)
 
 @collate(
     alignments_deduplicate_slices,
