@@ -972,7 +972,7 @@ def annotate_sort_blacklist(outfile):
 
     blacklist_file = P.PARAMS.get("analysis_optional_blacklist")
 
-    if HAS_BLACKLIST and blacklist_file.endswith('.bed'):
+    if HAS_BLACKLIST and blacklist_file.endswith(".bed"):
         statement = [
             "sort",
             "-k1,1",
@@ -981,7 +981,7 @@ def annotate_sort_blacklist(outfile):
             ">",
             outfile,
         ]
-    elif HAS_BLACKLIST and blacklist_file.endswith('.bed.gz'):
+    elif HAS_BLACKLIST and blacklist_file.endswith(".bed.gz"):
         statement = [
             "zcat",
             blacklist_file,
@@ -1134,7 +1134,7 @@ def alignments_filter(infiles, outfile):
     output_prefix = outfile.replace(".completed", "")
     output_log_file = f"{output_prefix}.log"
     stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
-    custom_filtering = P.PARAMS.get('analysis_optional_custom_filtering')
+    custom_filtering = P.PARAMS.get("analysis_optional_custom_filtering")
 
     statement = [
         "capcruncher",
@@ -1154,7 +1154,9 @@ def alignments_filter(infiles, outfile):
         "--read_type",
         sample_read_type,
         "--no-cis-and-trans-stats",
-        f"--custom_filtering {custom_filtering}" if os.path.exists(custom_filtering) else "",
+        f"--custom_filtering {custom_filtering}"
+        if os.path.exists(custom_filtering)
+        else "",
         ">",
         output_log_file,
     ]
@@ -1250,14 +1252,14 @@ def alignments_deduplicate_fragments(infile, outfile, read_type):
     r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.\4.slices.tsv",
     extras=[r"\1", r"\2", r"\3", r"\4"],
 )
-def alignments_deduplicate_slices(infile, outfile, sample_name, part, read_type, viewpoint):
+def alignments_deduplicate_slices(
+    infile, outfile, sample_name, part, read_type, viewpoint
+):
 
     """Removes reporters with duplicate coordinates"""
 
     slices, duplicated_ids = infile
-    stats_prefix = (
-        f"capcruncher_statistics/reporters/data/{sample_name}_part{part}_{read_type}_{viewpoint}"
-    )
+    stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_part{part}_{read_type}_{viewpoint}"
 
     statement = [
         "capcruncher",
@@ -1315,13 +1317,14 @@ def alignments_deduplicate_slices_statistics(
     slice_filterer = filters.get(P.PARAMS["analysis_method"])
 
     df_slices = pd.read_csv(infile, sep="\t")
-    
+
     try:
-        reporter_statistics = slice_filterer(
+        slice_filterer(
             df_slices, sample_name=sample, read_type=read_type
         ).cis_or_trans_stats.to_csv(outfile, index=False)
     except:
         touch_file(outfile)
+
 
 @collate(
     alignments_deduplicate_slices,
@@ -1399,7 +1402,9 @@ def post_capcruncher_analysis():
 @follows(mkdir("capcruncher_analysis/reporters/counts/partitioned/"))
 @transform(
     alignments_deduplicate_slices,
-    regex(r"capcruncher_analysis/reporters/deduplicated/(.*?)\.(.*?)\.(.*?)\.(.*?)\.slices.tsv"),
+    regex(
+        r"capcruncher_analysis/reporters/deduplicated/(.*?)\.(.*?)\.(.*?)\.(.*?)\.slices.tsv"
+    ),
     r"capcruncher_analysis/reporters/counts/partitioned/\1.\2.\3.\4.tsv.gz",
 )
 def reporters_count(infile, outfile):
@@ -1428,9 +1433,11 @@ def reporters_count(infile, outfile):
 
 @collate(
     reporters_count,
-    regex(r"capcruncher_analysis/reporters/counts/partitioned/(.*?)\.(.*?)\.(.*?)\.(.*?)\.tsv.gz"),
+    regex(
+        r"capcruncher_analysis/reporters/counts/partitioned/(.*?)\.(.*?)\.(.*?)\.(.*?)\.tsv.gz"
+    ),
     r"capcruncher_analysis/reporters/counts/\1.\4.tsv.gz",
-    extras=[r"\1", r"\4"]
+    extras=[r"\1", r"\4"],
 )
 def reporters_count_collate(infiles, outfile, sample, viewpoint):
 
@@ -1438,7 +1445,9 @@ def reporters_count_collate(infiles, outfile, sample, viewpoint):
 
     dframes = [pd.read_csv(fn, sep="\t") for fn in infiles]
     df = pd.concat(dframes)
-    df_total_counts = df.groupby(["bin1_id", "bin2_id"]).agg({"count": "sum"}).reset_index()
+    df_total_counts = (
+        df.groupby(["bin1_id", "bin2_id"]).agg({"count": "sum"}).reset_index()
+    )
 
     df_total_counts.to_csv(outfile, sep="\t", index=False)
 
