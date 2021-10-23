@@ -30,7 +30,7 @@ def read_dataframes(filenames: Iterable, **kwargs):
             dframes.append(df)
 
     if len(dframes) > 0:
-        return df
+        return dframes
     else:
         raise RuntimeError(f"All dataframes supplied are empty or incorrectly formatted: {filenames}")
 
