@@ -1333,28 +1333,29 @@ def alignments_deduplicate_slices_statistics(
 
     """Generates reporter statistics from de-duplicated files"""
 
-    from capcruncher.tools.filter import (
-        CCSliceFilter,
-        TriCSliceFilter,
-        TiledCSliceFilter,
+    statement = [
+        "capcruncher",
+        "utilities",
+        "cis-and-trans-stats",
+        infile,
+        "-m",
+        P.PARAMS["analysis_method"],
+        "-o",
+        outfile,
+        "--sample-name",
+        sample,
+        "--read-type",
+        read_type,
+    ]
+    
+    P.run(
+        " ".join(statement),
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=P.PARAMS["pipeline_n_cores"],
+        job_condaenv=P.PARAMS["conda_env"],
     )
 
-    filters = {
-        "capture": CCSliceFilter,
-        "tri": TriCSliceFilter,
-        "tiled": TiledCSliceFilter,
-    }
-    slice_filterer = filters.get(P.PARAMS["analysis_method"])
-
-    df_slices = pd.read_csv(infile, sep="\t")
-
-    try:
-        slice_filterer(
-            df_slices, sample_name=sample, read_type=read_type
-        ).cis_or_trans_stats.to_csv(outfile, index=False)
-    except:
-        touch_file(outfile)
-
+    
 
 @collate(
     alignments_deduplicate_slices,
