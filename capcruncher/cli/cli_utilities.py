@@ -77,14 +77,14 @@ def repartition_csvs(
 @click.argument("slices")
 @click.option("-o", "--output", help="Output file name")
 @click.option("-m", "--method", type=click.Choice(["capture", "tri", "tiled"]))
-@click.option("--sample_name", help="Name of sample e.g. DOX_treated_1")
+@click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
 @click.option(
-    "--read_type",
+    "--read-type",
     help="Type of read",
     default="flashed",
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
 )
-def get_cis_and_trans_stats(
+def cis_and_trans_stats(
     slices: str,
     output: str,
     method: Literal["capture", "tri", "tiled"],
