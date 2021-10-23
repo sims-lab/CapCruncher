@@ -1208,6 +1208,23 @@ def reporters_fragments_collate(infiles, outfile, *grouping_args):
         zap_file(fn)
 
 
+@follows(alignments_filter)
+@collate(
+    "capcruncher_analysis/reporters/identified/*.tsv",
+    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).slices.tsv"),
+    r"capcruncher_analysis/reporters/collated/\1.\2.\3.0.slices.tsv",
+    extras=[r"\1", r"\2", r"\3"],
+)
+def alignments_slices_re_collate(infiles, outfile, *grouping_args):
+
+    import dask.dataframe as dd
+
+    (dd.read_csv(infiles, sep="\t")
+       .repartition(partition_size="2GB")
+       .to_csv(outfile.replace(".0.slices.tsv", ".*.slices.tsv"), sep="\t", index=False)
+    )
+
+
 @follows(mkdir("capcruncher_analysis/reporters/deduplicated"))
 @transform(
     reporters_fragments_collate,
@@ -1237,23 +1254,23 @@ def alignments_deduplicate_fragments(infile, outfile, read_type):
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
-        job_memory="32G",
+        job_total_memory="32G",
         job_condaenv=P.PARAMS["conda_env"],
     )
 
 
-@follows(alignments_deduplicate_fragments)
+@follows(alignments_deduplicate_fragments, alignments_slices_re_collate)
 @transform(
-    "capcruncher_analysis/reporters/identified/*.tsv",
+    "capcruncher_analysis/reporters/collated/*slices.tsv",
     regex(
-        r".*/(?P<sample>.*)_part(?P<partition>\d+)\.(?P<read_type>flashed|pe)\.(?P<viewpoint>.*)\.slices.tsv"
+        r".*/(?P<sample>.*)\.(?P<read_type>flashed|pe)\.(?P<viewpoint>.*)\.(?P<part>\d+)\.slices.tsv"
     ),
-    add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\3.\4.json.gz"),
+    add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.json.gz"),
     r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.\4.slices.tsv",
     extras=[r"\1", r"\2", r"\3", r"\4"],
 )
 def alignments_deduplicate_slices(
-    infile, outfile, sample_name, part, read_type, viewpoint
+    infile, outfile, sample_name, read_type, viewpoint, part
 ):
 
     """Removes reporters with duplicate coordinates"""
@@ -1293,12 +1310,12 @@ def alignments_deduplicate_slices(
 
 @transform(
     alignments_deduplicate_slices,
-    regex(r".*/(.*)\.(.*)\.(flashed|pe)\.(.*)\.slices.tsv"),
+    regex(r".*/(.*)\.(flashed|pe)\.(.*)\.(\d+)\.slices.tsv"),
     r"capcruncher_statistics/reporters/data/\1_\2_\3_\4.reporter.stats.csv",
     extras=[r"\1", r"\2", r"\3", r"\4"],
 )
 def alignments_deduplicate_slices_statistics(
-    infile, outfile, sample, part, read_type, viewpoint
+    infile, outfile, sample, read_type, viewpoint, part
 ):
 
     """Generates reporter statistics from de-duplicated files"""
@@ -1328,7 +1345,9 @@ def alignments_deduplicate_slices_statistics(
 
 @collate(
     alignments_deduplicate_slices,
-    regex(r".*/(?P<sample>.*)\.(?:.*)\.(?:flashed|pe).(?P<capture>.*).slices.tsv"),
+    regex(
+        r".*/(?P<sample>.*)\.(?:.*)\.(?:flashed|pe).(?P<capture>.*)\.\d+\.slices.tsv"
+    ),
     r"capcruncher_analysis/reporters/\1.\2.tsv.gz",
     extras=[r"\1", r"\2"],
 )
