@@ -1,11 +1,11 @@
-from typing import Iterable
+from typing import Iterable, Literal
 import click
 from capcruncher.cli import UnsortedGroup
 import ast
 
 
 def strip_cmdline_args(args):
-    
+
     formatted_args = dict()
     for arg in args:
         key, value = arg.split("=")
@@ -18,7 +18,6 @@ def strip_cmdline_args(args):
                 formatted_args[key] = ast.literal_eval(value)
             except SyntaxError:
                 formatted_args[key] = value
-
 
     return formatted_args
 
@@ -72,3 +71,47 @@ def repartition_csvs(
         .repartition(partition_size=partition_size)
         .to_csv(out_glob, **write_args)
     )
+
+
+@cli.command()
+@click.argument("slices")
+@click.option("-o", "--output", help="Output file name")
+@click.option("-m", "--method", type=click.Choice(["capture", "tri", "tiled"]))
+@click.option("--sample_name", help="Name of sample e.g. DOX_treated_1")
+@click.option(
+    "--read_type",
+    help="Type of read",
+    default="flashed",
+    type=click.Choice(["flashed", "pe"], case_sensitive=False),
+)
+def get_cis_and_trans_stats(
+    slices: str,
+    output: str,
+    method: Literal["capture", "tri", "tiled"],
+    sample_name: str = "",
+    read_type: str = "",
+):
+
+    import pandas as pd
+    from cgatcore.iotools import touch_file
+    from capcruncher.tools.filter import (
+        CCSliceFilter,
+        TriCSliceFilter,
+        TiledCSliceFilter,
+    )
+
+    filters = {
+        "capture": CCSliceFilter,
+        "tri": TriCSliceFilter,
+        "tiled": TiledCSliceFilter,
+    }
+    slice_filterer = filters.get(method)
+
+    df_slices = pd.read_csv(slices, sep="\t")
+
+    try:
+        slice_filterer(
+            df_slices, sample_name=sample_name, read_type=read_type
+        ).cis_or_trans_stats.to_csv(output, index=False)
+    except:
+        touch_file(output)
