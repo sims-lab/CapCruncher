@@ -1355,7 +1355,7 @@ def alignments_deduplicate_slices_statistics(
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    
+
 
 @collate(
     alignments_deduplicate_slices,
@@ -1469,7 +1469,7 @@ def reporters_count(infile, outfile):
     regex(
         r"capcruncher_analysis/reporters/counts/partitioned/(.*?)\.(.*?)\.(.*?)\.(.*?)\.tsv.gz"
     ),
-    r"capcruncher_analysis/reporters/counts/\1.\4.tsv.gz",
+    r"capcruncher_analysis/reporters/counts/\1.\3.tsv.gz",
     extras=[r"\1", r"\4"],
 )
 def reporters_count_collate(infiles, outfile, sample, viewpoint):
