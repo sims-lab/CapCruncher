@@ -1217,11 +1217,24 @@ def reporters_fragments_collate(infiles, outfile, *grouping_args):
 )
 def alignments_slices_re_collate(infiles, outfile, *grouping_args):
 
-    import dask.dataframe as dd
-
-    (dd.read_csv(infiles, sep="\t")
-       .repartition(partition_size="2GB")
-       .to_csv(outfile.replace(".0.slices.tsv", ".*.slices.tsv"), sep="\t", index=False)
+    statement = [
+        "capcruncher",
+        "utilities",
+        "repartition-csvs",
+        *infiles,
+        "-o",
+        outfile.replace(".0.slices.tsv", ".*.slices.tsv"),
+        "-r",
+        "sep='\t'",
+        "-w",
+        "sep='\t'",
+    ]
+    
+    P.run(
+        " ".join(statement),
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=P.PARAMS["pipeline_n_cores"],
+        job_condaenv=P.PARAMS["conda_env"],
     )
 
 
