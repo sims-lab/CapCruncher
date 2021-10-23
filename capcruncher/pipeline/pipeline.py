@@ -1225,9 +1225,9 @@ def alignments_slices_re_collate(infiles, outfile, *grouping_args):
         "-o",
         outfile.replace(".0.slices.tsv", ".*.slices.tsv"),
         "-r",
-        "sep='\t'",
+        "sep='\\t'",
         "-w",
-        "sep='\t'",
+        "sep='\\t'",
     ]
     
     P.run(
@@ -1359,7 +1359,7 @@ def alignments_deduplicate_slices_statistics(
 @collate(
     alignments_deduplicate_slices,
     regex(
-        r".*/(?P<sample>.*)\.(?:.*)\.(?:flashed|pe).(?P<capture>.*)\.\d+\.slices.tsv"
+        r".*/(?P<sample>.*)\.(?:flashed|pe).(?P<capture>.*)\.\d+\.slices.tsv"
     ),
     r"capcruncher_analysis/reporters/\1.\2.tsv.gz",
     extras=[r"\1", r"\2"],
