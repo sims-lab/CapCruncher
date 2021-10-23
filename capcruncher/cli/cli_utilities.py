@@ -1,18 +1,24 @@
 from typing import Iterable
 import click
 from capcruncher.cli import UnsortedGroup
+import ast
 
 
 def strip_cmdline_args(args):
-
+    
     formatted_args = dict()
-    try:
-        for arg in args.split():
-            if arg:
-                key, value = arg.split("=")
-                formatted_args[key] = value if not value == "None" else None
-    except AttributeError as e:
-        pass
+    for arg in args:
+        key, value = arg.split("=")
+
+        if "\\t" in value:
+            formatted_args[key] = "\t"
+        else:
+
+            try:
+                formatted_args[key] = ast.literal_eval(value)
+            except SyntaxError:
+                formatted_args[key] = value
+
 
     return formatted_args
 
@@ -46,14 +52,14 @@ def gtf_to_bed12(gtf: str, output: str):
 @click.argument("infiles", nargs=-1, required=True)
 @click.option("-s", "--partition-size", default="2GB")
 @click.option("-o", "--out-glob", required=True)
-@click.option("--read-args")
-@click.option("--write-args")
+@click.option("-r", "--read-args", multiple=True)
+@click.option("-w", "--write-args", multiple=True)
 def repartition_csvs(
     infiles: Iterable,
     out_glob: str,
     partition_size: str,
-    read_args=None,
-    write_args=None,
+    read_args: tuple = None,
+    write_args: tuple = None,
 ):
 
     import dask.dataframe as dd
