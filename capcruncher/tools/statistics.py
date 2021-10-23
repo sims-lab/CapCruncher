@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 from collections import namedtuple
-from utils import read_dataframes
+from capcruncher.utils import read_dataframes
 
 
 class DeduplicationStatistics():
