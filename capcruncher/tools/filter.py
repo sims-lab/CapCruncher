@@ -624,21 +624,15 @@ class CCSliceFilter(SliceFilter):
             "trans",
         )
 
-        try:
-            # Aggregate by capture site for reporting
-            interactions_by_capture = pd.DataFrame(
-                cap_and_rep.groupby("capture")["cis/trans"]
-                .value_counts()
-                .to_frame()
-                .rename(columns={"cis/trans": "count"})
-                .reset_index()
-                .assign(sample=self.sample_name, read_type=self.read_type)
-            )
-        except Exception as e:
-            print(e)
-            interactions_by_capture = pd.DataFrame()
-
-        return interactions_by_capture
+        # Aggregate by capture site for reporting
+        return pd.DataFrame(
+            cap_and_rep.groupby("capture")["cis/trans"]
+            .value_counts()
+            .to_frame()
+            .rename(columns={"cis/trans": "count"})
+            .reset_index()
+            .assign(sample=self.sample_name, read_type=self.read_type)
+        )
 
     def remove_non_reporter_fragments(self):
         """
