@@ -1765,7 +1765,7 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
     output_prefix = f"capcruncher_analysis/bedgraphs/{sample_name}.normalised"
 
     norm_regions = P.PARAMS.get("normalisation_regions")
-    norm_by_region = os.path.exist(norm_regions)
+    norm_by_region = os.path.exists(norm_regions)
 
 
     statement = [
