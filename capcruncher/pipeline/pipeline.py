@@ -1735,7 +1735,7 @@ def reporters_make_bedgraph(infile, outfile, sample_name):
 
     output_prefix = f"capcruncher_analysis/bedgraphs/{sample_name}.raw"
 
-    statement = ["capcruncher", "reporters", "pileup", infile, "-o", output_prefix]
+    statement = ["capcruncher", "reporters", "pileup", infile, "-o", output_prefix, "--normalisation", "raw"]
 
     P.run(
         " ".join(statement),
@@ -1764,6 +1764,10 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
 
     output_prefix = f"capcruncher_analysis/bedgraphs/{sample_name}.normalised"
 
+    norm_regions = P.PARAMS.get("normalisation_regions")
+    norm_by_region = os.path.exists(norm_regions)
+
+
     statement = [
         "capcruncher",
         "reporters",
@@ -1772,7 +1776,9 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
         "-o",
         output_prefix,
         "--normalisation",
-        "n_cis",
+        "n_cis" if not norm_by_region else "region",
+        "--normalisation-regions" if norm_by_region else " ",
+        norm_regions if norm_by_region else " ",        
         "--scale_factor",
         str(P.PARAMS.get("normalisation_scale_factor", 1000000)),
     ]

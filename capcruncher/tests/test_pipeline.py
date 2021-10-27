@@ -55,6 +55,7 @@ def setup():
                     'PATH_TO_TSV_FORMATTED_DESIGN_MATRIX': os.path.join(dir_data, "test", 'data_for_pipeline_run', 'design_matrix.tsv'),
                     'PATH_TO_GENES_IN_BED12_FORMAT': os.path.join(dir_data, "test", 'data_for_pipeline_run', 'mm9_chr14_genes.bed'),
                     'HUB_NAME': 'capturec_test',
+                    'REGIONS_FOR_NORM': os.path.join(dir_data, "test", 'data_for_pipeline_run', 'regions_for_norm.bed'),
                     }
                 
     with open(data_path_config, 'r') as config:
