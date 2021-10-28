@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import h5py
 
 
 from capcruncher.tools.io import parse_bam
@@ -155,28 +156,41 @@ def filter(
             f"{stats_prefix}.reporter.stats.csv", index=False
         )
 
-    # Output slices filtered by capture site
-    for capture_site, df_cap in slice_filter.slices.query('capture != "."').groupby(
-        "capture"
-    ):
 
-        if fragments:
-            # Extract only fragments that appear in the capture dataframe
-            output_slices = slice_filter.slices.loc[
-                lambda df: df["parent_read"].isin(df_cap["parent_read"])
-            ]
-            # Generate a new slice filterer and extract the fragments
-            output_fragments = slice_filter_type(output_slices).fragments
 
-            # Output fragments and slices
-            output_fragments.sort_values("parent_read").to_csv(
-                f"{output_prefix}.{capture_site.strip()}.fragments.tsv{'.gz' if gzip else ''}",
-                sep="\t",
-                index=False,
-            )
+    
 
-        output_slices.sort_values("slice_name").to_csv(
-            f"{output_prefix}.{capture_site.strip()}.slices.tsv{'.gz' if gzip else ''}",
-            sep="\t",
-            index=False,
-        )
+
+    # Output slices filtered by viewpoint
+
+    with pd.HDFStore(f"{output_prefix}.hdf5") as store:
+        for viewpoint, df_cap in slice_filter.slices.query('capture != "."').groupby(
+            "capture"
+        ):
+
+            if fragments:
+                # Extract only fragments that appear in the capture dataframe
+                output_slices = slice_filter.slices.loc[
+                    lambda df: df["parent_read"].isin(df_cap["parent_read"])
+                ]
+                # Generate a new slice filterer and extract the fragments
+                output_fragments = slice_filter_type(output_slices).fragments
+
+                # Output fragments and slices
+                # output_fragments.sort_values("parent_read").to_csv(
+                #     f"{output_prefix}.{capture_site.strip()}.fragments.tsv{'.gz' if gzip else ''}",
+                #     sep="\t",
+                #     index=False,
+                # )
+                store.append(key=f"{viewpoint}/fragments", format="table", value=output_fragments)
+
+            
+            store.append(key=f"{viewpoint}/slices", format="table", value=output_slices)
+
+
+
+            # output_slices.sort_values("slice_name").to_csv(
+            #     f"{output_prefix}.{viewpoint.strip()}.slices.tsv{'.gz' if gzip else ''}",
+            #     sep="\t",
+            #     index=False,
+            # )
