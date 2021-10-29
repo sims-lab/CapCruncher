@@ -215,8 +215,12 @@ def count(
 
     elif output.endswith(".hdf5"):
 
-        with pd.HDFStore(output, "w") as store:
+        breakpoint()
+
+        with pd.HDFStore(reporters) as store:
             viewpoints = {k.split("/")[1] for k in store.keys()}
+
+        with pd.HDFStore(output, "w") as store:          
             for viewpoint in viewpoints:
                 counts = get_counts_from_hdf5(
                     reporters,
