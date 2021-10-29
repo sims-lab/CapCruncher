@@ -92,6 +92,7 @@ class SliceFilter:
     def _required_columns_present(self, df) -> bool:
 
         columns_required = [
+            "parent_id",
             "slice_name",
             "parent_read",
             "pe",
@@ -843,7 +844,7 @@ class TiledCSliceFilter(SliceFilter):
                 coordinates=("coordinates", "|".join)
             )
         )
-        
+
         return df
 
     @property
