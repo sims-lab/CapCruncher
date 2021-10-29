@@ -34,3 +34,4 @@ dependencies:
   - seaborn
   - ucsc-fatotwobit
   - ucsc-bedtobigbed
+  - pytables
