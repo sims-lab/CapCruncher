@@ -156,41 +156,20 @@ def filter(
             f"{stats_prefix}.reporter.stats.csv", index=False
         )
 
-
-
-    
-
-
     # Output slices filtered by viewpoint
 
-    with pd.HDFStore(f"{output_prefix}.hdf5") as store:
-        for viewpoint, df_cap in slice_filter.slices.query('capture != "."').groupby(
-            "capture"
-        ):
+    df_slices = slice_filter.slices.set_index("parent_read")
+
+    with pd.HDFStore(f"{output_prefix}.hdf5", mode="w") as store:
+        for viewpoint, df_viewpoint_slices in df_slices.query('capture != "."').groupby("capture", as_index=False):
+           
+            # Extract only fragments that appear in the capture dataframe
+            df_viewpoint_associated_slices = df_slices.loc[df_viewpoint_slices.index].reset_index()
 
             if fragments:
-                # Extract only fragments that appear in the capture dataframe
-                output_slices = slice_filter.slices.loc[
-                    lambda df: df["parent_read"].isin(df_cap["parent_read"])
-                ]
-                # Generate a new slice filterer and extract the fragments
-                output_fragments = slice_filter_type(output_slices).fragments
+                # Generate a new slice filterer, extract the fragments and store
+                df_fragments = slice_filter_type(df_viewpoint_associated_slices).fragments
+                store.append(key=f"{viewpoint}/fragments", format="table", value=df_fragments, data_columns=["parent_id"])
 
-                # Output fragments and slices
-                # output_fragments.sort_values("parent_read").to_csv(
-                #     f"{output_prefix}.{capture_site.strip()}.fragments.tsv{'.gz' if gzip else ''}",
-                #     sep="\t",
-                #     index=False,
-                # )
-                store.append(key=f"{viewpoint}/fragments", format="table", value=output_fragments)
-
-            
-            store.append(key=f"{viewpoint}/slices", format="table", value=output_slices)
-
-
-
-            # output_slices.sort_values("slice_name").to_csv(
-            #     f"{output_prefix}.{viewpoint.strip()}.slices.tsv{'.gz' if gzip else ''}",
-            #     sep="\t",
-            #     index=False,
-            # )
+            # Store all slices associated with the viewpoint
+            store.append(key=f"{viewpoint}/slices", format="table", value=df_viewpoint_associated_slices, data_columns=["parent_id"])
