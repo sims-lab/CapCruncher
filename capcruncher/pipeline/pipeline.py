@@ -1120,7 +1120,7 @@ def post_annotation():
     fastq_alignment,
     regex(r"capcruncher_preprocessing/aligned/(.*).bam"),
     add_inputs(r"capcruncher_analysis/annotations/\1.annotations.tsv"),
-    r"capcruncher_analysis/reporters/identified/\1.completed",
+    r"capcruncher_analysis/reporters/identified/\1.hdf5",
 )
 def alignments_filter(infiles, outfile):
     """Filteres slices and outputs reporter slices for each capture site"""
@@ -1131,7 +1131,7 @@ def alignments_filter(infiles, outfile):
     sample_part = sample.group(2)
     sample_read_type = sample.group(3)
 
-    output_prefix = outfile.replace(".completed", "")
+    output_prefix = outfile.replace(".hdf5", "")
     output_log_file = f"{output_prefix}.log"
     stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
     custom_filtering = P.PARAMS.get("analysis_optional_custom_filtering")
@@ -1168,84 +1168,81 @@ def alignments_filter(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # Make sentinel file
-    touch_file(outfile)
-
     # Zero annotations
     if not P.PARAMS.get("analysis_optional_keep_annotations", False):
         zap_file(annotations)
 
 
-@follows(mkdir("capcruncher_analysis/reporters/collated"), alignments_filter)
-@collate(
-    "capcruncher_analysis/reporters/identified/*.tsv",
-    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(fragments).tsv"),
-    r"capcruncher_analysis/reporters/collated/\1.\2.\3.\4.tsv",
-    extras=[r"\1", r"\2", r"\3", r"\4"],
-)
-def reporters_fragments_collate(infiles, outfile, *grouping_args):
+# @follows(mkdir("capcruncher_analysis/reporters/collated"), alignments_filter)
+# @collate(
+#     "capcruncher_analysis/reporters/identified/*.tsv",
+#     regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(fragments).tsv"),
+#     r"capcruncher_analysis/reporters/collated/\1.\2.\3.\4.tsv",
+#     extras=[r"\1", r"\2", r"\3", r"\4"],
+# )
+# def reporters_fragments_collate(infiles, outfile, *grouping_args):
 
-    """Concatenates identified reporters"""
+#     """Concatenates identified reporters"""
 
-    statement = []
-    for ii, fn in enumerate(infiles):
-        if ii == 0:
-            cmd = f"cat {fn} > {outfile}"
-        else:
-            cmd = f"tail -n +2 {fn} >> {outfile}"
+#     statement = []
+#     for ii, fn in enumerate(infiles):
+#         if ii == 0:
+#             cmd = f"cat {fn} > {outfile}"
+#         else:
+#             cmd = f"tail -n +2 {fn} >> {outfile}"
 
-        statement.append(cmd)
+#         statement.append(cmd)
 
-    P.run(
-        " && ".join(statement),
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=P.PARAMS["pipeline_n_cores"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
+#     P.run(
+#         " && ".join(statement),
+#         job_queue=P.PARAMS["pipeline_cluster_queue"],
+#         job_threads=P.PARAMS["pipeline_n_cores"],
+#         job_condaenv=P.PARAMS["conda_env"],
+#     )
 
-    # Zero un-aggregated reporters
-    for fn in infiles:
-        zap_file(fn)
+#     # Zero un-aggregated reporters
+#     for fn in infiles:
+#         zap_file(fn)
 
 
-@follows(alignments_filter)
-@collate(
-    "capcruncher_analysis/reporters/identified/*.tsv",
-    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).slices.tsv"),
-    r"capcruncher_analysis/reporters/collated/\1.\2.\3.0.slices.tsv",
-    extras=[r"\1", r"\2", r"\3"],
-)
-def alignments_slices_re_collate(infiles, outfile, *grouping_args):
+# @follows(alignments_filter)
+# @collate(
+#     "capcruncher_analysis/reporters/identified/*.tsv",
+#     regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).slices.tsv"),
+#     r"capcruncher_analysis/reporters/collated/\1.\2.\3.0.slices.tsv",
+#     extras=[r"\1", r"\2", r"\3"],
+# )
+# def alignments_slices_re_collate(infiles, outfile, *grouping_args):
 
-    statement = [
-        "capcruncher",
-        "utilities",
-        "repartition-csvs",
-        *infiles,
-        "-o",
-        outfile.replace(".0.slices.tsv", ".*.slices.tsv"),
-        "-r",
-        "sep='\\t'",
-        "-w",
-        "sep='\\t'",
-    ]
+#     statement = [
+#         "capcruncher",
+#         "utilities",
+#         "repartition-csvs",
+#         *infiles,
+#         "-o",
+#         outfile.replace(".0.slices.tsv", ".*.slices.tsv"),
+#         "-r",
+#         "sep='\\t'",
+#         "-w",
+#         "sep='\\t'",
+#     ]
     
-    P.run(
-        " ".join(statement),
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=P.PARAMS["pipeline_n_cores"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
+#     P.run(
+#         " ".join(statement),
+#         job_queue=P.PARAMS["pipeline_cluster_queue"],
+#         job_threads=P.PARAMS["pipeline_n_cores"],
+#         job_condaenv=P.PARAMS["conda_env"],
+#     )
 
 
 @follows(mkdir("capcruncher_analysis/reporters/deduplicated"))
-@transform(
-    reporters_fragments_collate,
-    regex(r".*/(?P<sample>.*).(flashed|pe).(?P<capture>.*).fragments.tsv"),
-    r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.json.gz",
+@collate(
+    alignments_filter,
+    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).hdf5"),
+    r"capcruncher_analysis/reporters/deduplicated/\1.\2.hdf5",
     extras=[r"\2"],
 )
-def alignments_deduplicate_fragments(infile, outfile, read_type):
+def alignments_deduplicate_fragments(infiles, outfile, read_type):
 
     """
     Identifies duplicate fragments with the same coordinates and order.
@@ -1256,8 +1253,8 @@ def alignments_deduplicate_fragments(infile, outfile, read_type):
         "alignments",
         "deduplicate",
         "identify",
-        infile,
-        "--read_type",
+        *infiles,
+        "--read-type",
         read_type,
         "-o",
         outfile,
@@ -1272,15 +1269,15 @@ def alignments_deduplicate_fragments(infile, outfile, read_type):
     )
 
 
-@follows(alignments_deduplicate_fragments, alignments_slices_re_collate)
+@follows(alignments_deduplicate_fragments)
 @transform(
-    "capcruncher_analysis/reporters/collated/*slices.tsv",
+    alignments_filter,
     regex(
-        r".*/(?P<sample>.*)\.(?P<read_type>flashed|pe)\.(?P<viewpoint>.*)\.(?P<part>\d+)\.slices.tsv"
+        r".*/(?P<sample>.*)\.(?P<read_type>flashed|pe).(?P<part>\d+)\.hdf5"
     ),
-    add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.json.gz"),
-    r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.\4.slices.tsv",
-    extras=[r"\1", r"\2", r"\3", r"\4"],
+    add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\2.json.gz"),
+    r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.hdf5",
+    extras=[r"\1", r"\2", r"\3",],
 )
 def alignments_deduplicate_slices(
     infile, outfile, sample_name, read_type, viewpoint, part
@@ -1289,7 +1286,7 @@ def alignments_deduplicate_slices(
     """Removes reporters with duplicate coordinates"""
 
     slices, duplicated_ids = infile
-    stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_part{part}_{read_type}_{viewpoint}"
+    stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_part{part}_{read_type}"
 
     statement = [
         "capcruncher",
@@ -1323,9 +1320,9 @@ def alignments_deduplicate_slices(
 
 @transform(
     alignments_deduplicate_slices,
-    regex(r".*/(.*)\.(flashed|pe)\.(.*)\.(\d+)\.slices.tsv"),
-    r"capcruncher_statistics/reporters/data/\1_\2_\3_\4.reporter.stats.csv",
-    extras=[r"\1", r"\2", r"\3", r"\4"],
+    regex(r".*/(.*)\.(flashed|pe)\.(\d+)\.hdf5"),
+    r"capcruncher_statistics/reporters/data/\1_\2_\3.reporter.stats.csv",
+    extras=[r"\1", r"\2", r"\3"],
 )
 def alignments_deduplicate_slices_statistics(
     infile, outfile, sample, read_type, viewpoint, part
@@ -1346,6 +1343,8 @@ def alignments_deduplicate_slices_statistics(
         sample,
         "--read-type",
         read_type,
+        "--input-type",
+        "hdf5"
     ]
     
     P.run(
@@ -1360,34 +1359,31 @@ def alignments_deduplicate_slices_statistics(
 @collate(
     alignments_deduplicate_slices,
     regex(
-        r".*/(?P<sample>.*)\.(?:flashed|pe).(?P<capture>.*)\.\d+\.slices.tsv"
+        r".*/(?P<sample>.*)\.(?:flashed|pe)\.\d+\.hdf5"
     ),
-    r"capcruncher_analysis/reporters/\1.\2.tsv.gz",
-    extras=[r"\1", r"\2"],
+    r"capcruncher_analysis/reporters/\1.hdf5",
+    extras=[r"\1"],
 )
-def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
+def alignments_deduplicate_collate(infiles, outfile):
 
     """Final collation of reporters by sample and capture probe"""
 
-    statement = []
-    tmp = outfile.replace(".gz", "")
-    for ii, fn in enumerate(infiles):
-        if ii == 0:
-            cmd = f"cat {fn} > {tmp}"
-        else:
-            cmd = f"tail -n +2 {fn} >> {tmp}"
-
-        statement.append(cmd)
-
-    statement.append(f'cat {tmp} | pigz -p {P.PARAMS["pipeline_n_cores"]} > {outfile}')
-    statement.append(f"rm -f {tmp}")
+    statement = [
+        "capcruncher",
+        "utilities",
+        "merge-capcruncher-hdfs",
+        *infiles,
+        "-o",
+        outfile,
+    ]
 
     P.run(
-        " && ".join(statement),
+        " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
     )
+    
 
 
 @follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
@@ -1436,9 +1432,9 @@ def post_capcruncher_analysis():
 @transform(
     alignments_deduplicate_slices,
     regex(
-        r"capcruncher_analysis/reporters/deduplicated/(.*?)\.(.*?)\.(.*?)\.(.*?)\.slices.tsv"
+        r".*/(?P<sample>.*?)\.(?P<readtype>.*?)\.(?P<part>.*?).hdf5"
     ),
-    r"capcruncher_analysis/reporters/counts/partitioned/\1.\2.\3.\4.tsv.gz",
+    r"capcruncher_analysis/reporters/counts/partitioned/\1.\2.\3.hdf5",
 )
 def reporters_count(infile, outfile):
 
@@ -1467,64 +1463,80 @@ def reporters_count(infile, outfile):
 @collate(
     reporters_count,
     regex(
-        r"capcruncher_analysis/reporters/counts/partitioned/(.*?)\.(.*?)\.(.*?)\.(.*?)\.tsv.gz"
+        r"capcruncher_analysis/reporters/counts/partitioned/(.*?)\.hdf5"
     ),
-    r"capcruncher_analysis/reporters/counts/\1.\3.tsv.gz",
-    extras=[r"\1", r"\4"],
+    r"capcruncher_analysis/reporters/counts/\1.completed",
+    extras=[r"\1"],
 )
-def reporters_count_collate(infiles, outfile, sample, viewpoint):
+def reporters_count_collate(infiles, outfile, sample):
 
     """Collates the number of interactions identified between reporter restriction fragments"""
 
-    dframes = [pd.read_csv(fn, sep="\t") for fn in infiles]
-    df = pd.concat(dframes)
-    df_total_counts = (
-        df.groupby(["bin1_id", "bin2_id"]).agg({"count": "sum"}).reset_index()
-    )
+    import dask.dataframe as dd
 
-    df_total_counts.to_csv(outfile, sep="\t", index=False)
+    with pd.HDFStore(infiles[0]) as store:
+        viewpoints = {k.split("/")[1] for k in store.keys()}
 
+    for viewpoint in viewpoints:
+        ddframe = dd.read_hdf(infiles, key=viewpoint)
+        (ddframe.shuffle(on=["bin1_id", "bin2_id"])
+                .map_partitions(lambda df: df.groupby(["bin1_id", "bin2_id"]).agg({"count": "sum"}).reset_index())
+                .to_hdf(outfile.replace(".completed", ".hdf5"), key=viewpoint)
+        )
+
+    touch_file(outfile) 
 
 @follows(mkdir("capcruncher_analysis/reporters/fragments"))
 @transform(
     reporters_count_collate,
-    regex(r"capcruncher_analysis/reporters/counts/(.*)\.(.*)\.tsv.gz"),
+    regex(r"capcruncher_analysis/reporters/counts/(.*)\.hdf5"),
     add_inputs(genome_digest),
-    r"capcruncher_analysis/reporters/fragments/\1.\2.fragments.hdf5",
-    extras=[r"\1", r"\2"],
+    r"capcruncher_analysis/reporters/fragments/\1.completed",
+    extras=[r"\1"],
 )
-def reporters_store_restriction_fragment(infile, outfile, sample_name, capture_name):
+def reporters_store_restriction_fragment(infile, outfile, sample_name):
 
     """Stores restriction fragment interaction counts in cooler format"""
 
     counts, rf_map = infile
-    output_prefix = outfile.replace(f".{capture_name}.fragments", "")
+    output_prefix = outfile.replace(".completed", "")
 
-    statement = [
-        "capcruncher",
-        "reporters",
-        "store",
-        "fragments",
-        counts,
-        "-f",
-        rf_map,
-        "-g",
-        P.PARAMS["genome_name"],
-        "-n",
-        capture_name,
-        "-v",
-        P.PARAMS["analysis_viewpoints"],
-        "-o",
-        output_prefix,
-        "--suffix",
-        "fragments",
-    ]
+
+    with pd.HDFStore(counts) as store:
+        viewpoints = {k.split("/")[1] for k in store.keys()}
+
+    statements = list()
+    for viewpoint in viewpoints:
+
+        statement = [
+            "capcruncher",
+            "reporters",
+            "store",
+            "fragments",
+            counts,
+            "-f",
+            rf_map,
+            "-g",
+            P.PARAMS["genome_name"],
+            "-n",
+            viewpoint,
+            "-v",
+            P.PARAMS["analysis_viewpoints"],
+            "-o",
+            output_prefix,
+            "--suffix",
+            "fragments",
+        ]
+
+        statements.append(" ".join(statement))
 
     P.run(
-        " ".join(statement),
+        statements,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
     )
+
+    touch_file(outfile)
 
 
 @follows(genome_digest, reporters_count)
