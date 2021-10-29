@@ -68,14 +68,15 @@ def identify_duplicates_from_hdf5(
     fragments: list, viewpoint: str, read_type: Literal["flashed", "pe"]
 ):
 
-    df_fragments_coords = dd.read_hdf(fragments, key=f"{viewpoint}/fragments", columns=["parent_id", "coordinates"])
+    df_fragments_coords = dd.read_hdf(fragments, key=f"{viewpoint}/fragments", columns=["id", "coordinates"])
 
     if read_type == "flashed":
 
         return set(
             df_fragments_coords
-            .drop_duplicates(subset="coordinates")
-            ["parent_id"]
+            .shuffle(on="coordinates")
+            .map_partitions(lambda df: df[df.duplicated(subset="coordinates")])
+            ["id"]
         )
 
     elif read_type == "pe":
@@ -83,11 +84,12 @@ def identify_duplicates_from_hdf5(
         return set(
             df_fragments_coords.map_partitions(
                 lambda df: df.join(extract_start_and_end_slice_coords_pe(df))[
-                    ["parent_id", "coordinates_pe"]
+                    ["id", "coordinates_pe"]
                 ]
             )
-            .drop_duplicates(subset="coordinates_pe")
-            ["parent_id"]
+            .shuffle(on="coordinates_pe")
+            .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])
+            ["id"]
         )
 
 
