@@ -120,7 +120,7 @@ def create_cooler_cc(
         cooler_fn = f"{output_prefix}::/{viewpoint_name}"
     else:
         append_to_file = False
-        cooler_fn = f"{output_prefix.replace('.hdf5', '')}.{viewpoint_name}{'.' + suffix if suffix else ''}.hdf5"
+        cooler_fn = f"{output_prefix.replace('.hdf5', '')}{'.' + suffix if suffix else ''}.hdf5::/{viewpoint_name}"
 
     cooler.create_cooler(
         cooler_fn,
@@ -330,14 +330,14 @@ class CoolerBinner:
 
     def __init__(
         self,
-        cooler_fn: os.PathLike,
+        cooler_group: os.PathLike,
         binsize: int = None,
         n_cores: int = 8,
         binner: GenomicBinner = None,
     ):
         """
         Args:
-         cooler_fn (os.PathLike): Path to cooler to bin. A cooler group can be specified with FN_PATH.hdf5::/PATH_TO_GROUP.
+         cooler_group (os.PathLike): Path to cooler to bin. A cooler group can be specified with FN_PATH.hdf5::/PATH_TO_GROUP.
          binsize (int, optional): Genomic binsize. Defaults to None.
          n_cores (int, optional): Number of cores to use for binning. Defaults to 8.
          binner (capcruncher.storage.GenomicBinner, optional): Binner object to produce conversion tables.
@@ -345,7 +345,7 @@ class CoolerBinner:
                                                                  Defaults to None.
         """
 
-        self.cooler = cooler.Cooler(cooler_fn)
+        self.cooler = cooler.Cooler(cooler_group)
         self.bins_fragments = self.cooler.bins()[:]
 
         self.binner = binner or GenomicBinner(
@@ -513,12 +513,7 @@ class CoolerBinner:
         metadata = {**self.cooler.info["metadata"]}
         metadata["viewpoint_bins"] = [int(x) for x in self.viewpoint_bins]
 
-        if os.path.exists(store):  # Will append to a prexisting file if one is supplied
-            cooler_fn = f"{store}::/{metadata['viewpoint_name']}/resolutions/{self.binsize}"
-        else:
-            cooler_fn = (
-                f"{store.replace('.hdf5', '')}.{metadata['viewpoint_name']}.{self.binsize}.hdf5"
-            )
+        cooler_fn = f"{store}::/{metadata['viewpoint_name']}/resolutions/{self.binsize}"
 
         cooler.create_cooler(
             cooler_fn,
