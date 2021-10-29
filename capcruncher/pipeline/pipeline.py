@@ -1364,7 +1364,7 @@ def alignments_deduplicate_slices_statistics(
 @collate(
     alignments_deduplicate_slices,
     regex(r".*/(?P<sample>.*)\.(?:flashed|pe)\.\d+\.hdf5"),
-    r"capcruncher_analysis/reporters/\1.hdf5",
+    r"capcruncher_analysis/reporters/\1_slices.hdf5",
     extras=[r"\1"],
 )
 def alignments_deduplicate_collate(infiles, outfile):
@@ -1492,12 +1492,12 @@ def reporters_count_collate(infiles, outfile, sample):
     touch_file(outfile)
 
 
-@follows(mkdir("capcruncher_analysis/reporters/fragments"), reporters_count_collate)
+@follows(reporters_count_collate)
 @transform(
     "capcruncher_analysis/reporters/counts/*.hdf5",
     regex(r"capcruncher_analysis/reporters/counts/(.*)\.hdf5"),
     add_inputs(genome_digest),
-    r"capcruncher_analysis/reporters/fragments/\1.hdf5",
+    r"capcruncher_analysis/reporters/\1_cooler.hdf5",
     extras=[r"\1"],
 )
 def reporters_store_restriction_fragment(infile, outfile, sample_name):
@@ -1520,8 +1520,6 @@ def reporters_store_restriction_fragment(infile, outfile, sample_name):
         P.PARAMS["analysis_viewpoints"],
         "-o",
         outfile,
-        "--suffix",
-        "fragments",
     ]
 
     P.run(
@@ -1529,8 +1527,6 @@ def reporters_store_restriction_fragment(infile, outfile, sample_name):
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
     )
-
-    touch_file(outfile)
 
 
 @follows(genome_digest, reporters_count)
@@ -1576,9 +1572,9 @@ def generate_bin_conversion_tables(outfile):
 )
 @transform(
     "capcruncher_analysis/reporters/fragments/*.hdf5",
-    regex(r"capcruncher_analysis/reporters/fragments/(.*).hdf5"),
+    regex(r"capcruncher_analysis/reporters/(.*).hdf5"),
     add_inputs(generate_bin_conversion_tables),
-    r"capcruncher_analysis/reporters/binned/\1.hdf5",
+    r"capcruncher_analysis/reporters/\1_cooler.hdf5",
 )
 def reporters_store_binned(infile, outfile):
 
@@ -1615,42 +1611,39 @@ def reporters_store_binned(infile, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
+    
+    # Link bin tables to conserve space
+    from capcruncher.tools.storage import link_bins
+    link_bins(outfile)
+
     # Make sentinel file
     touch_file(outfile)
 
 
-@follows(reporters_store_restriction_fragment, reporters_store_binned)
-@collate(
-    [
-        "capcruncher_analysis/reporters/fragments/*.hdf5",
-        "capcruncher_analysis/reporters/binned/*.hdf5",
-    ],
-    regex(r".*/(.*)\.(.*)\.(?:fragments|\d+)\.hdf5"),
-    r"capcruncher_analysis/reporters/\1.hdf5",
-    extras=[r"\1"],
-)
-def reporters_store_merged(infiles, outfile, sample_name):
+# @follows(reporters_store_restriction_fragment, reporters_store_binned)
+# @transform(reporters_store_binned, regex(r".*/(.*).hdf5"), r"")
+# def reporters_store_merged(infiles, outfile, sample_name):
 
-    """Combines cooler files together"""
+#     """Combines cooler files together"""
 
-    statement = [
-        "capcruncher",
-        "reporters",
-        "store",
-        "merge",
-        " ".join(infiles),
-        "-o",
-        outfile,
-    ]
+#     statement = [
+#         "capcruncher",
+#         "reporters",
+#         "store",
+#         "merge",
+#         " ".join(infiles),
+#         "-o",
+#         outfile,
+#     ]
 
-    P.run(
-        " ".join(statement),
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
+#     P.run(
+#         " ".join(statement),
+#         job_queue=P.PARAMS["pipeline_cluster_queue"],
+#         job_condaenv=P.PARAMS["conda_env"],
+#     )
 
-    for fn in infiles:
-        zap_file(fn)
+#     for fn in infiles:
+#         zap_file(fn)
 
 
 #######################
@@ -1732,8 +1725,8 @@ def pipeline_make_report(infile, outfile):
 @active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
 @follows(mkdir("capcruncher_analysis/bedgraphs"))
 @transform(
-    reporters_store_merged,
-    regex(r".*/(.*).hdf5"),
+    reporters_store_binned,
+    regex(r".*/(.*)_cooler.hdf5"),
     r"capcruncher_analysis/bedgraphs/\1.raw.completed",
     extras=[r"\1"],
 )
@@ -1764,8 +1757,8 @@ def reporters_make_bedgraph(infile, outfile, sample_name):
 
 @active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
 @transform(
-    reporters_store_merged,
-    regex(r".*/(.*).hdf5"),
+    reporters_store_binned,
+    regex(r".*/(.*)_cooler.hdf5"),
     r"capcruncher_analysis/bedgraphs/\1.normalised.completed",
     extras=[r"\1"],
 )
