@@ -194,7 +194,7 @@ def identify(
 
     elif input_type == "hdf5":
 
-        outfile = f"{output}.hdf5"
+        outfile = f"{output.replace('.hdf5', '')}.hdf5"
         if os.path.exists(outfile):
             os.remove(outfile)
 
@@ -212,7 +212,7 @@ def identify(
                 fragments, viewpoint=viewpoint, read_type=read_type
             )
 
-            duplicated_fragments.to_hdf(f"{output}.hdf5", f"/{viewpoint}")
+            duplicated_fragments.to_hdf(outfile, f"/{viewpoint}")
 
 
 def remove(
