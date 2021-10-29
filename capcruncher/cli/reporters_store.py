@@ -2,7 +2,8 @@ import os
 import re
 from typing import Tuple
 import warnings
-warnings.simplefilter('ignore', category=RuntimeWarning)
+
+warnings.simplefilter("ignore", category=RuntimeWarning)
 import pickle
 
 import click
@@ -12,20 +13,37 @@ from capcruncher.cli.cli_reporters import cli
 from capcruncher.tools.storage import CoolerBinner, create_cooler_cc, link_bins
 
 
+def get_viewpoints(store: h5py.File):
+    
+    keys = set()
+    for k in store.keys():
+        if "/" in k:
+            keys.add(k.split("/")[1])
+        else:
+            keys.add(k)
+    return keys
+
+
+def get_dataset_keys(f):
+    keys = []
+    f.visit(lambda key : keys.append(key) if isinstance(f[key], h5py.Dataset) else None)
+    return keys
+
+
 def fragments(
     counts: os.PathLike,
     fragment_map: os.PathLike,
     output: os.PathLike,
-    viewpoint_name: str,
     viewpoint_path: os.PathLike,
+    viewpoint_name: str = "",
     genome: str = "",
     suffix: str = "",
 ):
     """
     Stores restriction fragment interaction combinations at the restriction fragment level.
 
-    Parses reporter restriction fragment interaction counts produced by 
-    "capcruncher reporters count" and gerates a cooler formatted group in an HDF5 File. 
+    Parses reporter restriction fragment interaction counts produced by
+    "capcruncher reporters count" and gerates a cooler formatted group in an HDF5 File.
     See `https://cooler.readthedocs.io/en/latest/` for further details.
 
 
@@ -49,24 +67,46 @@ def fragments(
 
     # Load counts
     if counts.endswith(".hdf5"):
-        df_counts = pd.read_hdf(counts, key=viewpoint_name)
+
+        with pd.HDFStore(counts) as store:
+               
+
+            if not viewpoint_name:
+                viewpoints = {k.split("/")[1] for k in store.keys()}
+            else:
+                viewpoints = {
+                    viewpoint_name,
+                }
+
+            for viewpoint in viewpoints:
+                df_counts = store[viewpoint]
+
+                create_cooler_cc(
+                    output,
+                    bins=df_restriction_fragment_map,
+                    pixels=df_counts,
+                    viewpoint_name=viewpoint,
+                    viewpoint_path=viewpoint_path,
+                    assembly=genome,
+                    suffix=suffix,
+                )
+
     else:
         df_counts = pd.read_csv(counts, sep="\t")
-
-    # Create cooler file at restriction fragment resolution
-    cooler_fn = create_cooler_cc(
-        output,
-        bins=df_restriction_fragment_map,
-        pixels=df_counts,
-        viewpoint_name=viewpoint_name,
-        viewpoint_path=viewpoint_path,
-        assembly=genome,
-        suffix=suffix,
-    )
+        # Create cooler file at restriction fragment resolution
+        create_cooler_cc(
+            output,
+            bins=df_restriction_fragment_map,
+            pixels=df_counts,
+            viewpoint_name=viewpoint_name,
+            viewpoint_path=viewpoint_path,
+            assembly=genome,
+            suffix=suffix,
+        )
 
 
 def bins(
-    cooler_fn: os.PathLike,
+    cooler_path: os.PathLike,
     output: os.PathLike,
     binsizes: Tuple = None,
     normalise: bool = False,
@@ -78,14 +118,14 @@ def bins(
     """
     Convert a cooler group containing restriction fragments to constant genomic windows
 
-    Parses a cooler group and aggregates restriction fragment interaction counts into 
-    genomic bins of a specified size. If the normalise option is selected,  
-    columns containing normalised counts are added to the pixels table of the output 
+    Parses a cooler group and aggregates restriction fragment interaction counts into
+    genomic bins of a specified size. If the normalise option is selected,
+    columns containing normalised counts are added to the pixels table of the output
 
 
     Notes:
      To avoid repeatedly calculating restriction fragment to bin conversions,
-     bin conversion tables (a .pkl file containing a dictionary of 
+     bin conversion tables (a .pkl file containing a dictionary of
      `:class:capcruncher.tools.storage.GenomicBinner` objects, one per binsize) can be supplied.
 
 
@@ -99,62 +139,98 @@ def bins(
      overlap_fraction (float, optional): Minimum fraction to use for defining overlapping bins. Defaults to 1e-9.
     """
 
+    # Get a conversion table if one exists
     if conversion_tables:
-        with open(conversion_tables, 'rb') as r:
+        with open(conversion_tables, "rb") as r:
             genomic_binner_objs = pickle.load(r)
     else:
         genomic_binner_objs = None
 
-    for binsize in binsizes:
+    # Get Viewpoints
+    with h5py.File(cooler_path) as store:
+        viewpoints = get_viewpoints(store)
 
-        if genomic_binner_objs and (binsize in genomic_binner_objs):
-            cb = CoolerBinner(cooler_fn, binsize=binsize, n_cores=n_cores, binner=genomic_binner_objs[binsize])
-        else:
-            cb = CoolerBinner(cooler_fn, binsize=binsize, n_cores=n_cores)
+    # Perform binning
+    for viewpoint in viewpoints:
 
-        if normalise:
-            cb.normalise(scale_factor=scale_factor)
+        cooler_group = f"{cooler_path}::/{viewpoint}"
 
-        cb.to_cooler(output)
+        for binsize in binsizes:
+            if genomic_binner_objs and (binsize in genomic_binner_objs):
+                cb = CoolerBinner(
+                    cooler_group,
+                    binsize=binsize,
+                    n_cores=n_cores,
+                    binner=genomic_binner_objs[binsize],
+                )
+            else:
+                cb = CoolerBinner(cooler_group, binsize=binsize, n_cores=n_cores)
+
+            if normalise:
+                cb.normalise(scale_factor=scale_factor)
+
+            cb.to_cooler(output)
 
 
 def merge(coolers: Tuple, output: os.PathLike):
     """
     Merges capcruncher cooler files together.
-    
+
     Produces a unified cooler with both restriction fragment and genomic bins whilst
     reducing the storage space required by hard linking the "bins" tables to prevent duplication.
 
     Args:
      coolers (Tuple): Cooler files produced by either the fragments or bins subcommands.
      output (os.PathLike): Path from merged cooler file.
-    """    
-
-    with h5py.File(output, "w") as dest:
-
-        for clr in coolers:
-            re_fn = re.match(r"(.*/)?(.*)\.(.*)\.(.*)?\.hdf5", clr)
-            assert re_fn, f'{clr} file name not in correct format! Use format PATH_TO_HDF5/SAMPLE.VIEWPOINT.FRAGMENT|BINSIZE.hdf5'
-            sample = re_fn.group(2)
-            capture = re_fn.group(3)
-            resolution = re_fn.group(4)
-
-            with h5py.File(clr, "r") as src:
-
-                if resolution == "fragments":  # i.e. Is a fragment cooler
-                    dest_grp_name = capture
-                else:
-                    dest_grp_name = f"{capture}/resolutions/{resolution}"
-
-                if not dest.get(dest_grp_name):
-                    dest.copy(src.parent, dest_grp_name)
-                else:
-                    for key in src.keys():
-                        dest.copy(src[key], f"{dest_grp_name}/{key}")
-
-                attributes = {k: v for k, v in src.parent.attrs.items()}
-                dest[dest_grp_name].attrs.update(attributes)
-
-    link_bins(output)
+    """
 
 
+    # # Get all keys from both hdf5 files
+    # all_dataset_keys = list()
+    # for cooler_path in coolers:
+    #     with h5py.File(cooler_path) as store:
+    #         dataset_keys = get_dataset_keys(store)
+    #         all_dataset_keys.extend(dataset_keys)
+    
+    
+    # with h5py.File(output, "w") as dest:
+
+
+    # #     for clr in coolers:
+    # #         with h5py.File(clr, "r") as src:
+
+    # #             for viewpoint in src.keys():
+
+    # #                 if 
+                    
+    # #                 # Copy the cooler groups if there is no cooler present here
+    # #                 if not isinstance(dest[f"/{viewpoint}/pixels"], h5py.Group):
+    # #                     for key in src[viewpoint].keys():
+    # #                         dest.copy(src[f"/{viewpoint}/{key}"], f"{viewpoint}/{key}")
+                
+
+
+
+
+                
+                
+                
+                
+                
+                
+                
+    # #             if resolution == "fragments":  # i.e. Is a fragment cooler
+    # #                 dest_grp_name = capture
+    # #             else:
+    # #                 dest_grp_name = f"{capture}/resolutions/{resolution}"
+
+    # #             if not dest.get(dest_grp_name):
+    # #                 dest.copy(src.parent, dest_grp_name)
+    # #             else:
+    # #                 for key in src.keys():
+    # #                     dest.copy(src[key], f"{dest_grp_name}/{key}")
+
+    # #             attributes = {k: v for k, v in src.parent.attrs.items()}
+    # #             dest[dest_grp_name].attrs.update(attributes)
+
+    # # link_bins(output)
