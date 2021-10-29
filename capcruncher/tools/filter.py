@@ -460,6 +460,7 @@ class CCSliceFilter(SliceFilter):
             self.slices.sort_values(["parent_read", "chrom", "start"])
             .groupby("parent_read", as_index=False, sort=False)
             .agg(
+                id=("parent_id", "first"),
                 unique_slices=("slice", "nunique"),
                 pe=("pe", "first"),
                 mapped=("mapped", "sum"),
@@ -831,27 +832,18 @@ class TiledCSliceFilter(SliceFilter):
             self.slices.sort_values(["parent_read", "chrom", "start"])
             .groupby("parent_read", as_index=False, sort=False)
             .agg(
-                {
-                    "slice": "nunique",
-                    "pe": "first",
-                    "mapped": "sum",
-                    "multimapped": "sum",
-                    "capture_count": "sum",
-                    "restriction_fragment": "nunique",
-                    "blacklist": "sum",
-                    "coordinates": "|".join,
-                }
+                id=("parent_id", "first"),
+                unique_slices=("slice", "nunique"),
+                pe=("pe","first"),
+                mapped=("mapped", "sum"),
+                multimapped=("multimapped", "sum"),
+                capture_count=("capture_count", "sum"),
+                unique_restriction_fragments=("restriction_fragment", "nunique"),
+                blacklisted_slices=("blacklist", "sum"),
+                coordinates=("coordinates", "|".join)
             )
         )
-
-        # Rename for clarity
-        df = df.rename(
-            columns={
-                "restriction_fragment": "unique_restriction_fragments",
-                "slice": "unique_slices",
-                "blacklist": "blacklisted_slices",
-            }
-        )
+        
         return df
 
     @property
