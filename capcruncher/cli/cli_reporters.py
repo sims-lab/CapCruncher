@@ -211,7 +211,7 @@ def store():
     "-n",
     "--viewpoint-name",
     help="Name of viewpoint to store",
-    required=True,
+    default="",
 )
 @click.option(
     "-g",
@@ -242,7 +242,7 @@ def store_fragments(*args, **kwargs):
 
 
 @store.command(name="bins")
-@click.argument("cooler_fn", required=True)
+@click.argument("cooler_path", required=True)
 @click.option(
     "-b",
     "--binsizes",
