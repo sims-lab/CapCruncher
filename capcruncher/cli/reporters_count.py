@@ -1,3 +1,4 @@
+from types import _VT_co
 from typing import Union
 import pandas as pd
 from collections import defaultdict
@@ -130,9 +131,23 @@ def get_counts_by_batch(reporters: os.PathLike, chunksize: int, **kwargs):
     return ligated_rf_counts
 
 
-def get_counts_from_file(reporters: os.PathLike, **kwargs):
+def get_counts_from_tsv(reporters: os.PathLike, **kwargs):
 
     df_reporters = pd.read_csv(reporters, sep="\t")
+
+    fragments = preprocess_reporters_for_counting(df_reporters, **kwargs)
+
+    logging.info("Counting")
+    ligated_rf_counts = count_re_site_combinations(
+        fragments, column="restriction_fragment"
+    )
+
+    return ligated_rf_counts
+
+
+def get_counts_from_hdf5(reporters: os.PathLike, viewpoint: str, **kwargs):
+
+    df_reporters = pd.read_hdf(reporters, key=viewpoint)
 
     fragments = preprocess_reporters_for_counting(df_reporters, **kwargs)
 
@@ -147,6 +162,7 @@ def get_counts_from_file(reporters: os.PathLike, **kwargs):
 def count(
     reporters: os.PathLike,
     output: os.PathLike = "counts.tsv",
+    input_type: str = "hdf5",
     remove_exclusions: bool = False,
     remove_capture: bool = False,
     subsample: int = 0,
@@ -171,28 +187,44 @@ def count(
      subsample (int, optional): Subsamples the fragments by the specified fraction. Defaults to 0 i.e. No subsampling.
     """
 
-    with xopen.xopen(output, mode="wb", threads=4) as writer:
+    if output.endswith(".tsv") or output.endswith(".tsv.gz"):
+        with xopen.xopen(output, mode="wb", threads=4) as writer:
 
-        # Write output file header.
-        header = "\t".join(["bin1_id", "bin2_id", "count"]) + "\n"
-        writer.write(header.encode())
+            # Write output file header.
+            header = "\t".join(["bin1_id", "bin2_id", "count"]) + "\n"
+            writer.write(header.encode())
 
-        if low_memory:
-            counts = get_counts_by_batch(
-                reporters=reporters,
-                chunksize=chunksize,
-                remove_capture=remove_capture,
-                remove_exclusions=remove_exclusions,
-                subsample=subsample,
-            )
-        else:
-            counts = get_counts_from_file(
-                reporters=reporters,
-                remove_capture=remove_capture,
-                remove_exclusions=remove_exclusions,
-                subsample=subsample,
-            )
+            if low_memory:
+                counts = get_counts_by_batch(
+                    reporters=reporters,
+                    chunksize=chunksize,
+                    remove_capture=remove_capture,
+                    remove_exclusions=remove_exclusions,
+                    subsample=subsample,
+                )
+            else:
+                counts = get_counts_from_tsv(
+                    reporters=reporters,
+                    remove_capture=remove_capture,
+                    remove_exclusions=remove_exclusions,
+                    subsample=subsample,
+                )
 
-        for (rf1, rf2), count in counts.items():
-            line = "\t".join([str(rf1), str(rf2), str(count)]) + "\n"
-            writer.write(line.encode())
+            for (rf1, rf2), count in counts.items():
+                line = "\t".join([str(rf1), str(rf2), str(count)]) + "\n"
+                writer.write(line.encode())
+
+    elif output.endswith(".hdf5"):
+
+        with pd.HDFStore(output, "w") as store:
+            viewpoints = {k.split("/")[1] for k in store.keys()}
+            for viewpoint in viewpoints:
+                counts = get_counts_from_hdf5(
+                    reporters,
+                    viewpoint=viewpoint,
+                    remove_capture=remove_capture,
+                    remove_exclusions=remove_exclusions,
+                    subsample=subsample,
+                )
+
+                store["viewpoint"] = pd.Series(counts).rename_axis(["bin1_id", "bin2_id"]).reset_index(name='count')
