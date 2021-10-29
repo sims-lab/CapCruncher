@@ -215,12 +215,10 @@ def count(
 
     elif output.endswith(".hdf5"):
 
-        breakpoint()
-
         with pd.HDFStore(reporters) as store:
             viewpoints = {k.split("/")[1] for k in store.keys()}
 
-        with pd.HDFStore(output, "w") as store:          
+        with pd.HDFStore(output, "w") as store:
             for viewpoint in viewpoints:
                 counts = get_counts_from_hdf5(
                     reporters,
@@ -230,4 +228,10 @@ def count(
                     subsample=subsample,
                 )
 
-                store["viewpoint"] = pd.Series(counts).rename_axis(["bin1_id", "bin2_id"]).reset_index(name='count')
+                store.append(
+                    viewpoint,
+                    pd.Series(counts)
+                    .rename_axis(["bin1_id", "bin2_id"])
+                    .reset_index(name="count"),
+                    format="table",
+                )
