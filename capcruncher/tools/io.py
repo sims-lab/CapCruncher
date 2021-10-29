@@ -6,8 +6,9 @@ import traceback
 import pandas as pd
 from pysam import FastxFile
 from xopen import xopen
-from capcruncher.utils import get_timing
+from capcruncher.utils import get_timing, hash_column
 import pysam
+import numpy as np
 
 
 class FastqReaderProcess(multiprocessing.Process):
@@ -376,6 +377,8 @@ def parse_bam(bam):
     df_bam["start"] = df_bam["start"].replace("", 0).astype(int)
     df_bam["end"] = df_bam["end"].replace("", 0).astype(int)
     df_bam.set_index(["slice_name", "chrom", "start"], inplace=True)
+    df_bam["parent_id"] = hash_column(df_bam["parent_read"])
+    df_bam["parent_id"] = df_bam["parent_id"].astype(str)
     return df_bam
 
 
