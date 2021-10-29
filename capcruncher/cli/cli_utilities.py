@@ -4,6 +4,7 @@ from capcruncher.cli import UnsortedGroup
 import ast
 import pandas as pd
 from cgatcore.iotools import touch_file
+import os
 
 
 def strip_cmdline_args(args):
@@ -134,3 +135,17 @@ def cis_and_trans_stats(
             df_cis_and_trans_stats.to_csv(output, index=False)
 
 
+
+@cli.command()
+@click.argument("infiles")
+@click.option("-o", "--output", help="Output file name")
+def merge_capcruncher_hdfs(infiles: Iterable, outfile: os.PathLike):
+
+    import dask.dataframe as dd
+
+    with pd.HDFStore(infiles[0]) as store:
+        viewpoints = {k.split("/")[1] for k in store.keys()}
+
+    for viewpoint in viewpoints:
+        ddframe = dd.read_hdf5(infiles, key=viewpoint)
+        ddframe.to_hdf(outfile, key=viewpoint) 
