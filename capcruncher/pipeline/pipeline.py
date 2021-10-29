@@ -1497,7 +1497,7 @@ def reporters_count_collate(infiles, outfile, sample):
     "capcruncher_analysis/reporters/counts/*.hdf5",
     regex(r"capcruncher_analysis/reporters/counts/(.*)\.hdf5"),
     add_inputs(genome_digest),
-    r"capcruncher_analysis/reporters/fragments/\1.completed",
+    r"capcruncher_analysis/reporters/fragments/\1.hdf5",
     extras=[r"\1"],
 )
 def reporters_store_restriction_fragment(infile, outfile, sample_name):
@@ -1505,38 +1505,27 @@ def reporters_store_restriction_fragment(infile, outfile, sample_name):
     """Stores restriction fragment interaction counts in cooler format"""
 
     counts, rf_map = infile
-    output_prefix = outfile.replace(".completed", "")
 
-    with pd.HDFStore(counts) as store:
-        viewpoints = {k.split("/")[1] for k in store.keys()}
-
-    statements = list()
-    for viewpoint in viewpoints:
-
-        statement = [
-            "capcruncher",
-            "reporters",
-            "store",
-            "fragments",
-            counts,
-            "-f",
-            rf_map,
-            "-g",
-            P.PARAMS["genome_name"],
-            "-n",
-            viewpoint,
-            "-v",
-            P.PARAMS["analysis_viewpoints"],
-            "-o",
-            output_prefix,
-            "--suffix",
-            "fragments",
-        ]
-
-        statements.append(" ".join(statement))
+    statement = [
+        "capcruncher",
+        "reporters",
+        "store",
+        "fragments",
+        counts,
+        "-f",
+        rf_map,
+        "-g",
+        P.PARAMS["genome_name"],
+        "-v",
+        P.PARAMS["analysis_viewpoints"],
+        "-o",
+        outfile,
+        "--suffix",
+        "fragments",
+    ]
 
     P.run(
-        statements,
+        " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
     )
@@ -1587,12 +1576,11 @@ def generate_bin_conversion_tables(outfile):
 )
 @transform(
     "capcruncher_analysis/reporters/fragments/*.hdf5",
-    regex(r"capcruncher_analysis/reporters/fragments/(.*)\.(.*)\.fragments\.hdf5"),
+    regex(r"capcruncher_analysis/reporters/fragments/(.*).hdf5"),
     add_inputs(generate_bin_conversion_tables),
-    r"capcruncher_analysis/reporters/binned/\1.\2.completed",
-    extras=[r"\2"],
+    r"capcruncher_analysis/reporters/binned/\1.hdf5",
 )
-def reporters_store_binned(infile, outfile, capture_name):
+def reporters_store_binned(infile, outfile):
 
     """
     Converts a cooler file of restriction fragments to even genomic bins.
@@ -1617,7 +1605,7 @@ def reporters_store_binned(infile, outfile, capture_name):
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
         "-o",
-        outfile.replace(f".{capture_name}.completed", ""),
+        outfile,
     ]
 
     P.run(
