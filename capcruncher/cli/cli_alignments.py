@@ -167,7 +167,7 @@ def deduplicate():
 
 
 @deduplicate.command()
-@click.argument("fragments", nargs=-1)
+@click.argument("fragments", nargs=-1, required=True)
 @click.option(
     "-v",
     "--viewpoint",
