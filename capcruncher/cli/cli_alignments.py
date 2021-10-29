@@ -206,14 +206,14 @@ def identify(*args, **kwargs):
 
 
 @deduplicate.command()
-@click.argument("slices_fn")
+@click.argument("slices", nargs=1, required=True)
 @click.option(
     "-d",
     "--duplicated_ids",
     help="Path to duplicated fragment ids determined by the 'identify' subcommand.",
 )
 @click.option(
-    "-o", "--output", help="Path for outputting deduplicated slices in tsv format."
+    "-o", "--output", help="Path for outputting deduplicated slices in tsv format.", default="slices_dedup.hdf5",
 )
 @click.option(
     "--buffer",
