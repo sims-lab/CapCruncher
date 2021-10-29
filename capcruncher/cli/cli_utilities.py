@@ -137,7 +137,7 @@ def cis_and_trans_stats(
 
 
 @cli.command()
-@click.argument("infiles")
+@click.argument("infiles", nargs=-1, required=True)
 @click.option("-o", "--output", help="Output file name")
 def merge_capcruncher_hdfs(infiles: Iterable, outfile: os.PathLike):
 
