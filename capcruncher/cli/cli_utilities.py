@@ -2,6 +2,8 @@ from typing import Iterable, Literal
 import click
 from capcruncher.cli import UnsortedGroup
 import ast
+import pandas as pd
+from cgatcore.iotools import touch_file
 
 
 def strip_cmdline_args(args):
@@ -77,6 +79,7 @@ def repartition_csvs(
 @click.argument("slices")
 @click.option("-o", "--output", help="Output file name")
 @click.option("-m", "--method", type=click.Choice(["capture", "tri", "tiled"]))
+@click.option("--input-type", type=click.Choice(["hdf5", "tsv"]))
 @click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
 @click.option(
     "--read-type",
@@ -88,12 +91,11 @@ def cis_and_trans_stats(
     slices: str,
     output: str,
     method: Literal["capture", "tri", "tiled"],
+    input_type: str = "hdf5",
     sample_name: str = "",
     read_type: str = "",
 ):
 
-    import pandas as pd
-    from cgatcore.iotools import touch_file
     from capcruncher.tools.filter import (
         CCSliceFilter,
         TriCSliceFilter,
@@ -107,11 +109,28 @@ def cis_and_trans_stats(
     }
     slice_filterer = filters.get(method)
 
-    df_slices = pd.read_csv(slices, sep="\t")
+    if input_type == "tsv":
+        df_slices = pd.read_csv(slices, sep="\t")
 
-    try:
-        slice_filterer(
-            df_slices, sample_name=sample_name, read_type=read_type
-        ).cis_or_trans_stats.to_csv(output, index=False)
-    except:
-        touch_file(output)
+        try:
+            slice_filterer(
+                df_slices, sample_name=sample_name, read_type=read_type
+            ).cis_or_trans_stats.to_csv(output, index=False)
+        except:
+            touch_file(output)
+
+    
+    elif input_type == "hdf5":
+
+        with pd.HDFStore(slices, "r") as store:
+            viewpoints = {k.split("/")[1] for k in store.keys()}
+
+            stats = list()
+            for viewpoint in viewpoints:
+                df_slices = store[f"/{viewpoint}"]
+                stats.append(slice_filterer(df_slices, sample_name=sample_name, read_type=read_type).cis_or_trans_stats)
+            
+            df_cis_and_trans_stats = pd.concat(stats)
+            df_cis_and_trans_stats.to_csv(output, index=False)
+
+
