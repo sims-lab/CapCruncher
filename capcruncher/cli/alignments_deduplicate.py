@@ -68,20 +68,19 @@ def identify_duplicates_from_hdf5(
     fragments: list, viewpoint: str, read_type: Literal["flashed", "pe"]
 ):
 
-    df_fragments_coords = dd.read_hdf(fragments, key=f"{viewpoint}/fragments", columns=["id", "coordinates"])
+    df_fragments_coords = dd.read_hdf(
+        fragments, key=f"{viewpoint}/fragments", columns=["id", "coordinates"]
+    )
 
     if read_type == "flashed":
 
-        return set(
-            df_fragments_coords
-            .shuffle(on="coordinates")
-            .map_partitions(lambda df: df[df.duplicated(subset="coordinates")])
-            ["id"]
-        )
+        return df_fragments_coords.shuffle(on="coordinates").map_partitions(
+            lambda df: df[df.duplicated(subset="coordinates")]
+        )["id"]
 
     elif read_type == "pe":
 
-        return set(
+        return (
             df_fragments_coords.map_partitions(
                 lambda df: df.join(extract_start_and_end_slice_coords_pe(df))[
                     ["id", "coordinates_pe"]
@@ -91,6 +90,52 @@ def identify_duplicates_from_hdf5(
             .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])
             ["id"]
         )
+
+
+def remove_duplicates_from_tsv(
+    slices: os.PathLike, output: os.PathLike, duplicated_ids: os.PathLike, buffer=1e6
+):
+
+    # Remove output if it exist as will need to append to file.
+    if os.path.exists(output):
+        os.unlink(output)
+
+    df_slices = pd.read_csv(slices, sep="\t", chunksize=buffer)
+
+    with xopen.xopen(duplicated_ids, "r") as r:
+        ids_duplicated = {int(x) for x in ujson.load(r)}
+
+    n_reads_total = 0
+    n_reads_unique = 0
+
+    # Iterate slices in chunks
+    for ii, df in enumerate(df_slices):
+
+        print(f"Processed {(ii + 1) * buffer} slices")
+
+        n_reads_total += df["parent_read"].nunique()
+
+        # Hash the parent_read column and remove any duplicated ids.
+        df = (
+            df.assign(parent_read_hashed=lambda df: hash_column(df["parent_read"]))
+            .set_index("parent_read_hashed")
+            .loc[lambda df: ~df.index.isin(ids_duplicated)]
+        )
+
+        n_reads_unique += df["parent_read"].nunique()
+
+        # Append to file.
+        df.reset_index(drop=True).to_csv(
+            output, sep="\t", index=None, header=True if ii < 1 else False, mode="a"
+        )
+
+    return (n_reads_total, n_reads_unique)
+
+
+def remove_duplicates_from_hdf5(
+    slices: Iterable, viewpoint: str, duplicated_ids: os.PathLike, output: os.PathLike
+):
+    pass
 
 
 def identify(
@@ -130,33 +175,53 @@ def identify(
         if len(fragments) > 1:
             raise NotImplementedError("Currently just supports a single tsv input")
         else:
-            duplicated_fragments = identify_deduplicates_from_tsv(fragments[0], read_type=read_type, buffer=buffer)
+            duplicated_fragments = identify_deduplicates_from_tsv(
+                fragments[0], read_type=read_type, buffer=buffer
+            )
+            with xopen.xopen(f"{output}", "w") as w:
+                ujson.dump(dict.fromkeys(duplicated_fragments), w)
 
     elif input_type == "hdf5":
 
+        os.remove(f"{output}.hdf5")
+
         if viewpoint == "":
-            with pd.HDFStore(fragments[0]) as store:
-                viewpoints = [k.split("/")[1] for k in store.keys()]
+            with pd.HDFStore(fragments[0], mode="r") as store:
+                viewpoints = {k.split("/")[1] for k in store.keys()}
         else:
             # Need a fake list to iterate
-            viewpoints = [viewpoint, ]
-            
-        for viewpoint in viewpoints:
-            duplicated_fragments = identify_duplicates_from_hdf5(fragments, viewpoint=viewpoint, read_type=read_type)
+            viewpoints = [
+                viewpoint,
+            ]
 
-    with xopen.xopen(output, "w") as w:
-        ujson.dump(dict.fromkeys(duplicated_fragments), w)
+
+        for viewpoint in viewpoints:
+            duplicated_fragments = identify_duplicates_from_hdf5(
+                    fragments, viewpoint=viewpoint, read_type=read_type
+                )
+    
+            duplicated_fragments.to_hdf(f"{output}.hdf5", f"/{viewpoint}")
+
+
+
+        # # with pd.HDFStore(f"{output}.hdf5", "w") as store:
+        #     for viewpoint in viewpoints:
+        #         duplicated_fragments = identify_duplicates_from_hdf5(
+        #             fragments, viewpoint=viewpoint, read_type=read_type
+        #         )
+                
+        #         store[viewpoint] = duplicated_fragments
 
 
 def remove(
-    slices_fn: os.PathLike,
+    slices: os.PathLike,
     duplicated_ids: os.PathLike,
     output: os.PathLike = "dedup.slices.tsv.gz",
     buffer: int = 5e6,
     sample_name: str = "",
     read_type: str = "",
     stats_prefix: os.PathLike = "",
-    input_type: str = "hdf5"
+    input_type: str = "hdf5",
 ):
     """
     Removes duplicated aligned fragments.
@@ -178,39 +243,13 @@ def remove(
      stats_prefix (os.PathLike, optional): Output path for deduplication statistics. Defaults to "".
     """
 
-
-    # Remove output if it exist as will need to append to file.
-    if os.path.exists(output):
-        os.unlink(output)
-
-    df_slices = pd.read_csv(slices_fn, sep="\t", chunksize=buffer)
-
-    with xopen.xopen(duplicated_ids, "r") as r:
-        ids_duplicated = {int(x) for x in ujson.load(r)}
-
-    n_reads_total = 0
-    n_reads_unique = 0
-
-    # Iterate slices in chunks
-    for ii, df in enumerate(df_slices):
-
-        print(f"Processed {(ii + 1) * buffer} slices")
-
-        n_reads_total += df["parent_read"].nunique()
-
-        # Hash the parent_read column and remove any duplicated ids.
-        df = (
-            df.assign(parent_read_hashed=lambda df: hash_column(df["parent_read"]))
-            .set_index("parent_read_hashed")
-            .loc[lambda df: ~df.index.isin(ids_duplicated)]
+    if input_type == "tsv":
+        n_read_total, n_reads_unique = remove_duplicates_from_tsv(
+            slices, output, duplicated_ids, buffer=buffer
         )
 
-        n_reads_unique += df["parent_read"].nunique()
-
-        # Append to file.
-        df.reset_index(drop=True).to_csv(
-            output, sep="\t", index=None, header=True if ii < 1 else False, mode="a"
-        )
+    elif input_type == "hdf5":
+        pass
 
     # Prepare stats
     df_stats = pd.DataFrame()
