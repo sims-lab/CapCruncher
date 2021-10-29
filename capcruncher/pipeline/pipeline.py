@@ -1226,7 +1226,7 @@ def alignments_filter(infiles, outfile):
 #         "-w",
 #         "sep='\\t'",
 #     ]
-    
+
 #     P.run(
 #         " ".join(statement),
 #         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -1235,11 +1235,11 @@ def alignments_filter(infiles, outfile):
 #     )
 
 
-@follows(mkdir("capcruncher_analysis/reporters/deduplicated"))
+@follows(mkdir("capcruncher_analysis/reporters/deduplicated/fragments"))
 @collate(
     alignments_filter,
     regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).hdf5"),
-    r"capcruncher_analysis/reporters/deduplicated/\1.\2.hdf5",
+    r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\2.hdf5",
     extras=[r"\2"],
 )
 def alignments_deduplicate_fragments(infiles, outfile, read_type):
@@ -1272,21 +1272,23 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
 @follows(alignments_deduplicate_fragments)
 @transform(
     alignments_filter,
-    regex(
-        r".*/(?P<sample>.*)\.(?P<read_type>flashed|pe).(?P<part>\d+)\.hdf5"
-    ),
-    add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\2.json.gz"),
+    regex(r".*/(?P<sample>.*)_part(?P<part>\d+)\.(?P<read_type>flashed|pe)\.hdf5"),
+    add_inputs(r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\3.hdf5"),
     r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.hdf5",
-    extras=[r"\1", r"\2", r"\3",],
+    extras=[
+        r"\1",
+        r"\2",
+        r"\3",
+    ],
 )
-def alignments_deduplicate_slices(
-    infile, outfile, sample_name, read_type, viewpoint, part
-):
+def alignments_deduplicate_slices(infile, outfile, sample_name, part, read_type):
 
     """Removes reporters with duplicate coordinates"""
 
     slices, duplicated_ids = infile
-    stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_part{part}_{read_type}"
+    stats_prefix = (
+        f"capcruncher_statistics/reporters/data/{sample_name}_part{part}_{read_type}"
+    )
 
     statement = [
         "capcruncher",
@@ -1320,12 +1322,16 @@ def alignments_deduplicate_slices(
 
 @transform(
     alignments_deduplicate_slices,
-    regex(r".*/(.*)\.(flashed|pe)\.(\d+)\.hdf5"),
+    regex(r".*/(.*?)\.(.*?)\.(.*?)\.hdf5"),
     r"capcruncher_statistics/reporters/data/\1_\2_\3.reporter.stats.csv",
     extras=[r"\1", r"\2", r"\3"],
 )
 def alignments_deduplicate_slices_statistics(
-    infile, outfile, sample, read_type, viewpoint, part
+    infile,
+    outfile,
+    sample,
+    part,
+    read_type,
 ):
 
     """Generates reporter statistics from de-duplicated files"""
@@ -1344,9 +1350,9 @@ def alignments_deduplicate_slices_statistics(
         "--read-type",
         read_type,
         "--input-type",
-        "hdf5"
+        "hdf5",
     ]
-    
+
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -1355,12 +1361,9 @@ def alignments_deduplicate_slices_statistics(
     )
 
 
-
 @collate(
     alignments_deduplicate_slices,
-    regex(
-        r".*/(?P<sample>.*)\.(?:flashed|pe)\.\d+\.hdf5"
-    ),
+    regex(r".*/(?P<sample>.*)\.(?:flashed|pe)\.\d+\.hdf5"),
     r"capcruncher_analysis/reporters/\1.hdf5",
     extras=[r"\1"],
 )
@@ -1383,7 +1386,6 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
     )
-    
 
 
 @follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
@@ -1431,9 +1433,7 @@ def post_capcruncher_analysis():
 @follows(mkdir("capcruncher_analysis/reporters/counts/partitioned/"))
 @transform(
     alignments_deduplicate_slices,
-    regex(
-        r".*/(?P<sample>.*?)\.(?P<readtype>.*?)\.(?P<part>.*?).hdf5"
-    ),
+    regex(r".*/(?P<sample>.*?)\.(?P<part>.*?)\.(?P<readtype>.*?)\.hdf5"),
     r"capcruncher_analysis/reporters/counts/partitioned/\1.\2.\3.hdf5",
 )
 def reporters_count(infile, outfile):
@@ -1463,7 +1463,7 @@ def reporters_count(infile, outfile):
 @collate(
     reporters_count,
     regex(
-        r"capcruncher_analysis/reporters/counts/partitioned/(.*?)\.hdf5"
+        r"capcruncher_analysis/reporters/counts/partitioned/(?P<sample>.*?)\.(:?.*?)\.(:?.*?)\.hdf5"
     ),
     r"capcruncher_analysis/reporters/counts/\1.completed",
     extras=[r"\1"],
@@ -1479,16 +1479,22 @@ def reporters_count_collate(infiles, outfile, sample):
 
     for viewpoint in viewpoints:
         ddframe = dd.read_hdf(infiles, key=viewpoint)
-        (ddframe.shuffle(on=["bin1_id", "bin2_id"])
-                .map_partitions(lambda df: df.groupby(["bin1_id", "bin2_id"]).agg({"count": "sum"}).reset_index())
-                .to_hdf(outfile.replace(".completed", ".hdf5"), key=viewpoint)
+        (
+            ddframe.shuffle(on=["bin1_id", "bin2_id"])
+            .map_partitions(
+                lambda df: df.groupby(["bin1_id", "bin2_id"])
+                .agg({"count": "sum"})
+                .reset_index()
+            )
+            .to_hdf(outfile.replace(".completed", ".hdf5"), key=viewpoint)
         )
 
-    touch_file(outfile) 
+    touch_file(outfile)
 
-@follows(mkdir("capcruncher_analysis/reporters/fragments"))
+
+@follows(mkdir("capcruncher_analysis/reporters/fragments"), reporters_count_collate)
 @transform(
-    reporters_count_collate,
+    "capcruncher_analysis/reporters/counts/*.hdf5",
     regex(r"capcruncher_analysis/reporters/counts/(.*)\.hdf5"),
     add_inputs(genome_digest),
     r"capcruncher_analysis/reporters/fragments/\1.completed",
@@ -1500,7 +1506,6 @@ def reporters_store_restriction_fragment(infile, outfile, sample_name):
 
     counts, rf_map = infile
     output_prefix = outfile.replace(".completed", "")
-
 
     with pd.HDFStore(counts) as store:
         viewpoints = {k.split("/")[1] for k in store.keys()}
@@ -1576,10 +1581,12 @@ def generate_bin_conversion_tables(outfile):
 
 @active_if(P.PARAMS.get("analysis_bin_size"))
 @follows(
-    generate_bin_conversion_tables, mkdir("capcruncher_analysis/reporters/binned/")
+    generate_bin_conversion_tables,
+    mkdir("capcruncher_analysis/reporters/binned/"),
+    reporters_store_restriction_fragment,
 )
 @transform(
-    reporters_store_restriction_fragment,
+    "capcruncher_analysis/reporters/fragments/*.hdf5",
     regex(r"capcruncher_analysis/reporters/fragments/(.*)\.(.*)\.fragments\.hdf5"),
     add_inputs(generate_bin_conversion_tables),
     r"capcruncher_analysis/reporters/binned/\1.\2.completed",
@@ -1747,7 +1754,16 @@ def reporters_make_bedgraph(infile, outfile, sample_name):
 
     output_prefix = f"capcruncher_analysis/bedgraphs/{sample_name}.raw"
 
-    statement = ["capcruncher", "reporters", "pileup", infile, "-o", output_prefix, "--normalisation", "raw"]
+    statement = [
+        "capcruncher",
+        "reporters",
+        "pileup",
+        infile,
+        "-o",
+        output_prefix,
+        "--normalisation",
+        "raw",
+    ]
 
     P.run(
         " ".join(statement),
@@ -1779,7 +1795,6 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
     norm_regions = P.PARAMS.get("normalisation_regions")
     norm_by_region = os.path.exists(norm_regions)
 
-
     statement = [
         "capcruncher",
         "reporters",
@@ -1790,7 +1805,7 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
         "--normalisation",
         "n_cis" if not norm_by_region else "region",
         "--normalisation-regions" if norm_by_region else " ",
-        norm_regions if norm_by_region else " ",        
+        norm_regions if norm_by_region else " ",
         "--scale_factor",
         str(P.PARAMS.get("normalisation_scale_factor", 1000000)),
     ]
