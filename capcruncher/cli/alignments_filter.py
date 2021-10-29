@@ -169,7 +169,7 @@ def filter(
             if fragments:
                 # Generate a new slice filterer, extract the fragments and store
                 df_fragments = slice_filter_type(df_viewpoint_associated_slices).fragments
-                store.append(key=f"{viewpoint}/fragments", format="table", value=df_fragments, data_columns=["parent_id"])
+                store.append(key=f"{viewpoint}/fragments", format="table", value=df_fragments, data_columns=["id"])
 
             # Store all slices associated with the viewpoint
             store.append(key=f"{viewpoint}/slices", format="table", value=df_viewpoint_associated_slices, data_columns=["parent_id"])
