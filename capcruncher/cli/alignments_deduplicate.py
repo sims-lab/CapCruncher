@@ -87,8 +87,7 @@ def identify_duplicates_from_hdf5(
                 ]
             )
             .shuffle(on="coordinates_pe")
-            .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])
-            ["id"]
+            .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])["id"]
         )
 
 
@@ -135,7 +134,19 @@ def remove_duplicates_from_tsv(
 def remove_duplicates_from_hdf5(
     slices: Iterable, viewpoint: str, duplicated_ids: os.PathLike, output: os.PathLike
 ):
-    pass
+
+    ser_duplicated_ids = pd.read_hdf(duplicated_ids, key=viewpoint)
+
+    with pd.HDFStore(slices, "r") as store:
+        n_slices_total = store.get_storer(f"/{viewpoint}/slices").nrows
+        df_slices_dedup = store.select(
+            f"/{viewpoint}/slices", where="parent_id != ser_duplicated_ids"
+        )
+        n_slices_unique = df_slices_dedup.shape[0]
+
+    df_slices_dedup.to_hdf(output, key=f"/{viewpoint}")
+
+    return (n_slices_total, n_slices_unique)
 
 
 def identify(
@@ -183,7 +194,9 @@ def identify(
 
     elif input_type == "hdf5":
 
-        os.remove(f"{output}.hdf5")
+        outfile = f"{output}.hdf5"
+        if os.path.exists(outfile):
+            os.remove(outfile)
 
         if viewpoint == "":
             with pd.HDFStore(fragments[0], mode="r") as store:
@@ -194,23 +207,12 @@ def identify(
                 viewpoint,
             ]
 
-
         for viewpoint in viewpoints:
             duplicated_fragments = identify_duplicates_from_hdf5(
-                    fragments, viewpoint=viewpoint, read_type=read_type
-                )
-    
+                fragments, viewpoint=viewpoint, read_type=read_type
+            )
+
             duplicated_fragments.to_hdf(f"{output}.hdf5", f"/{viewpoint}")
-
-
-
-        # # with pd.HDFStore(f"{output}.hdf5", "w") as store:
-        #     for viewpoint in viewpoints:
-        #         duplicated_fragments = identify_duplicates_from_hdf5(
-        #             fragments, viewpoint=viewpoint, read_type=read_type
-        #         )
-                
-        #         store[viewpoint] = duplicated_fragments
 
 
 def remove(
@@ -244,17 +246,28 @@ def remove(
     """
 
     if input_type == "tsv":
-        n_read_total, n_reads_unique = remove_duplicates_from_tsv(
+        n_slices_total, n_slices_unique = remove_duplicates_from_tsv(
             slices, output, duplicated_ids, buffer=buffer
         )
 
     elif input_type == "hdf5":
-        pass
+
+        with pd.HDFStore(slices, mode="r") as store:
+            viewpoints = {k.split("/")[1] for k in store.keys()}
+
+        total_reads = 0
+        total_unique = 0
+        for viewpoint in viewpoints:
+            n_slices_total, n_slices_unique = remove_duplicates_from_hdf5(
+                slices, viewpoint, duplicated_ids, output
+            )
+            total_reads += n_slices_total
+            total_unique += n_slices_unique
 
     # Prepare stats
     df_stats = pd.DataFrame()
     df_stats["stat_type"] = ["not-deduplicated", "deduplicated"]
-    df_stats["stat"] = [n_reads_total, n_reads_unique]
+    df_stats["stat"] = [n_slices_total, n_slices_unique]
     df_stats["sample"] = sample_name
     df_stats["read_type"] = read_type
     df_stats["read_number"] = 0
