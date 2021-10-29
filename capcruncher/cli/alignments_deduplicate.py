@@ -147,7 +147,7 @@ def remove_duplicates_from_hdf5(
         )
         n_slices_unique = df_slices_dedup.shape[0]
 
-    df_slices_dedup.to_hdf(output, key=f"/{viewpoint}")
+    df_slices_dedup.to_hdf(output, key=f"/{viewpoint}", format="table")
 
     return (n_slices_total, n_slices_unique)
 
