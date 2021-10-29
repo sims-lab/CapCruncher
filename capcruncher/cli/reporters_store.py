@@ -48,7 +48,10 @@ def fragments(
     )
 
     # Load counts
-    df_counts = pd.read_csv(counts, sep="\t")
+    if counts.endswith(".hdf5"):
+        df_counts = pd.read_hdf(counts, key=viewpoint_name)
+    else:
+        df_counts = pd.read_csv(counts, sep="\t")
 
     # Create cooler file at restriction fragment resolution
     cooler_fn = create_cooler_cc(
