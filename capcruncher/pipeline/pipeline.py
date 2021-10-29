@@ -1363,9 +1363,8 @@ def alignments_deduplicate_slices_statistics(
 
 @collate(
     alignments_deduplicate_slices,
-    regex(r".*/(?P<sample>.*)\.(?:flashed|pe)\.\d+\.hdf5"),
+    regex(r".*/(?P<sample>.*)\.\d+\.(?:flashed|pe)\.hdf5"),
     r"capcruncher_analysis/reporters/\1_slices.hdf5",
-    extras=[r"\1"],
 )
 def alignments_deduplicate_collate(infiles, outfile):
 
@@ -1420,7 +1419,7 @@ def stats_alignment_filtering_collate(infiles, outfile):
     collate_read_data(data["read"]).to_csv(outfile, index=False)
 
 
-@follows(alignments_deduplicate_slices, stats_alignment_filtering_collate)
+@follows(alignments_deduplicate_collate, stats_alignment_filtering_collate)
 def post_capcruncher_analysis():
     """Reporters have been identified, deduplicated and collated by sample/capture probe"""
 
@@ -1492,12 +1491,12 @@ def reporters_count_collate(infiles, outfile, sample):
     touch_file(outfile)
 
 
-@follows(reporters_count_collate)
+@follows(reporters_count_collate, mkdir("capcruncher_analysis/reporters/fragments/"))
 @transform(
     "capcruncher_analysis/reporters/counts/*.hdf5",
     regex(r"capcruncher_analysis/reporters/counts/(.*)\.hdf5"),
     add_inputs(genome_digest),
-    r"capcruncher_analysis/reporters/\1_cooler.hdf5",
+    r"capcruncher_analysis/reporters/fragments/\1.complete",
     extras=[r"\1"],
 )
 def reporters_store_restriction_fragment(infile, outfile, sample_name):
@@ -1519,7 +1518,7 @@ def reporters_store_restriction_fragment(infile, outfile, sample_name):
         "-v",
         P.PARAMS["analysis_viewpoints"],
         "-o",
-        outfile,
+        outfile.replace("fragments/", "").replace(".complete", "_cooler.hdf5"),
     ]
 
     P.run(
@@ -1527,6 +1526,8 @@ def reporters_store_restriction_fragment(infile, outfile, sample_name):
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
     )
+
+    touch_file(outfile)
 
 
 @follows(genome_digest, reporters_count)
@@ -1567,12 +1568,11 @@ def generate_bin_conversion_tables(outfile):
 @active_if(P.PARAMS.get("analysis_bin_size"))
 @follows(
     generate_bin_conversion_tables,
-    mkdir("capcruncher_analysis/reporters/binned/"),
     reporters_store_restriction_fragment,
 )
 @transform(
-    "capcruncher_analysis/reporters/fragments/*.hdf5",
-    regex(r"capcruncher_analysis/reporters/(.*).hdf5"),
+    "capcruncher_analysis/reporters/*_cooler.hdf5",
+    regex(r"capcruncher_analysis/reporters/(.*)_cooler.hdf5"),
     add_inputs(generate_bin_conversion_tables),
     r"capcruncher_analysis/reporters/\1_cooler.hdf5",
 )
@@ -2239,7 +2239,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
 ##################
 
 
-@follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
+@follows(reporters_store_binned, mkdir("capcruncher_plots/templates"))
 @active_if(ANALYSIS_METHOD in ["tri", "tiled"] and MAKE_PLOTS)
 @merge(
     "capcruncher_analysis/reporters/*.hdf5",
