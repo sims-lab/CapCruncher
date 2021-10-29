@@ -138,7 +138,7 @@ def remove_duplicates_from_hdf5(
     try:
         ser_duplicated_ids = pd.read_hdf(duplicated_ids, key=viewpoint)
     except KeyError:
-        ser_duplicated_ids = pd.Series()
+        ser_duplicated_ids = pd.Series(data=["NO_DATA"], name=viewpoint)
 
     with pd.HDFStore(slices, "r") as store:
         n_slices_total = store.get_storer(f"/{viewpoint}/slices").nrows
