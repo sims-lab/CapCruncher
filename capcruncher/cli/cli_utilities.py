@@ -138,7 +138,7 @@ def cis_and_trans_stats(
 
 @cli.command()
 @click.argument("infiles", nargs=-1, required=True)
-@click.option("-o", "--output", help="Output file name")
+@click.option("-o", "--outfile", help="Output file name")
 def merge_capcruncher_hdfs(infiles: Iterable, outfile: os.PathLike):
 
     import dask.dataframe as dd
@@ -147,5 +147,5 @@ def merge_capcruncher_hdfs(infiles: Iterable, outfile: os.PathLike):
         viewpoints = {k.split("/")[1] for k in store.keys()}
 
     for viewpoint in viewpoints:
-        ddframe = dd.read_hdf5(infiles, key=viewpoint)
+        ddframe = dd.read_hdf(infiles, key=viewpoint)
         ddframe.to_hdf(outfile, key=viewpoint) 
