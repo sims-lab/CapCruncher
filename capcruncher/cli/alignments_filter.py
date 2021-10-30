@@ -160,7 +160,7 @@ def filter(
 
     df_slices = slice_filter.slices.set_index("parent_read")
 
-    with pd.HDFStore(f"{output_prefix}.hdf5", mode="w") as store:
+    with pd.HDFStore(f"{output_prefix}.hdf5", mode="w", complib="blosc") as store:
         for viewpoint, df_viewpoint_slices in df_slices.query('capture != "."').groupby("capture", as_index=False):
            
             # Extract only fragments that appear in the capture dataframe
@@ -169,7 +169,7 @@ def filter(
             if fragments:
                 # Generate a new slice filterer, extract the fragments and store
                 df_fragments = slice_filter_type(df_viewpoint_associated_slices).fragments
-                store.append(key=f"{viewpoint}/fragments", format="table", value=df_fragments, data_columns=["id"])
+                store.put(key=f"{viewpoint}/fragments", format="table", value=df_fragments, data_columns=["id"])
 
             # Store all slices associated with the viewpoint
-            store.append(key=f"{viewpoint}/slices", format="table", value=df_viewpoint_associated_slices, data_columns=["parent_id"])
+            store.put(key=f"{viewpoint}/slices", format="table", value=df_viewpoint_associated_slices, data_columns=["parent_id"])
