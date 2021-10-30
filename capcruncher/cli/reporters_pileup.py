@@ -61,7 +61,7 @@ def bedgraph(
         elif ii == 0 and bin_bedgraph:
             # Only want to bin once and then re-use this for the rest
             binner = CoolerBinner(
-                cooler_fn=f"{cooler_fn}::{viewpoint_name}", binsize=binsize
+                cooler_group=f"{cooler_fn}::{viewpoint_name}", binsize=binsize
             )
             bedgraph = CoolerBedGraphWindowed(
                 cooler_fn=f"{cooler_fn}::{viewpoint_name}", binner=binner, sparse=sparse
