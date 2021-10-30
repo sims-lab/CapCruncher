@@ -1386,6 +1386,9 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
+    for fn in  infiles:
+        zap_file(fn)
+
 
 @follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
 @merge(
@@ -1489,6 +1492,9 @@ def reporters_count_collate(infiles, outfile, sample):
         )
 
     touch_file(outfile)
+
+    for fn in infiles:
+        zap_file(fn)
 
 
 @follows(reporters_count_collate, mkdir("capcruncher_analysis/reporters/fragments/"))
