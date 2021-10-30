@@ -35,3 +35,4 @@ dependencies:
   - ucsc-fatotwobit
   - ucsc-bedtobigbed
   - pytables
+  - blosc
