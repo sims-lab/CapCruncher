@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-import h5py
+import xxhash
 
 
 from capcruncher.tools.io import parse_bam
@@ -158,18 +158,18 @@ def filter(
 
     # Output slices filtered by viewpoint
 
-    df_slices = slice_filter.slices.set_index("parent_read")
+    df_slices = slice_filter.slices.set_index("parent_id")
+    df_capture = df_slices.query("capture_count == 1")
+    df_slices = df_slices.assign(viewpoint=df_slices.index.map(df_capture["capture"]),
+                                 partition=xxhash.xxh64_intdigest(bam, seed=42))
 
-    with pd.HDFStore(f"{output_prefix}.hdf5", mode="w", complib="blosc") as store:
-        for viewpoint, df_viewpoint_slices in df_slices.query('capture != "."').groupby("capture", as_index=False):
-           
-            # Extract only fragments that appear in the capture dataframe
-            df_viewpoint_associated_slices = df_slices.loc[df_viewpoint_slices.index].reset_index()
+    if fragments:
+        df_fragments = (slice_filter_type(df_slices.reset_index())
+                        .fragments
+                        .assign(viewpoint=lambda df: df["id"].map(df_capture["capture"]).astype("category"),
+                                partition=xxhash.xxh64_intdigest(bam, seed=42))
+                        )
+        df_fragments.to_parquet(f"{output_prefix}.fragments.parquet", partition_cols="viewpoint")
 
-            if fragments:
-                # Generate a new slice filterer, extract the fragments and store
-                df_fragments = slice_filter_type(df_viewpoint_associated_slices).fragments
-                store.put(key=f"{viewpoint}/fragments", format="table", value=df_fragments, data_columns=["id"])
 
-            # Store all slices associated with the viewpoint
-            store.put(key=f"{viewpoint}/slices", format="table", value=df_viewpoint_associated_slices, data_columns=["parent_id"])
+    df_slices.to_parquet(f"{output_prefix}.slices.parquet", partition_cols="viewpoint")
