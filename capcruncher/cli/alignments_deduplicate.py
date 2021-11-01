@@ -66,29 +66,35 @@ def identify_deduplicates_from_tsv(
 
 
 def identify_duplicates_from_hdf5(
-    fragments: list, viewpoint: str, read_type: Literal["flashed", "pe"]
+    fragments: list, read_type: Literal["flashed", "pe"]
 ):
 
     df_fragments_coords = dd.read_hdf(
-        fragments, key=f"{viewpoint}/fragments", columns=["id", "coordinates"]
+        fragments, key=f"/fragments", columns=["id", "coordinates"]
     )
 
     if read_type == "flashed":
 
-        return df_fragments_coords.shuffle(on="coordinates").map_partitions(
-            lambda df: df[df.duplicated(subset="coordinates")]
-        )["id"]
+        return (
+            df_fragments_coords.map_partitions(
+                lambda df: df.assign(coordinates=hash_column(df["coordinates"]))
+            )
+            .shuffle(on="coordinates")
+            .map_partitions(lambda df: df[df.duplicated(subset="coordinates")])
+            ["id"]
+        )
 
     elif read_type == "pe":
 
         return (
             df_fragments_coords.map_partitions(
-                lambda df: df.join(extract_start_and_end_slice_coords_pe(df))[
-                    ["id", "coordinates_pe"]
-                ]
+                lambda df: df.join(extract_start_and_end_slice_coords_pe(df))
+                [["id", "coordinates_pe"]]
+                .assign(coordinates_pe=lambda df: hash_column(df["coordinates_pe"]))
             )
             .shuffle(on="coordinates_pe")
-            .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])["id"]
+            .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])
+            ["id"]
         )
 
 
@@ -96,11 +102,13 @@ def identify_duplicates_from_parquet(
     fragments: list, viewpoint: str, read_type: Literal["flashed", "pe"]
 ):
 
-
-    breakpoint()
     df_fragments_coords = dd.read_parquet(
         fragments,
-        filters=[[("viewpoint", "==", viewpoint),]],
+        filters=[
+            [
+                ("viewpoint", "==", viewpoint),
+            ]
+        ],
         columns=["id", "coordinates"],
     )
 
@@ -121,7 +129,7 @@ def identify_duplicates_from_parquet(
             .shuffle(on="coordinates_pe")
             .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])["id"]
         )
-    
+
     return ids_duplicated
 
 
@@ -235,35 +243,25 @@ def identify(
         if os.path.exists(outfile):
             os.remove(outfile)
 
-        if viewpoint == "":
-            with pd.HDFStore(fragments[0], mode="r") as store:
-                viewpoints = {k.split("/")[1] for k in store.keys()}
-        else:
-            # Need a fake list to iterate
-            viewpoints = [
-                viewpoint,
-            ]
+        duplicated_fragments = identify_duplicates_from_hdf5(
+            fragments, read_type=read_type
+        )
 
-        for viewpoint in viewpoints:
-            duplicated_fragments = identify_duplicates_from_hdf5(
-                fragments, viewpoint=viewpoint, read_type=read_type
-            )
+        duplicated_fragments.to_hdf(outfile, f"/slices")
 
-            duplicated_fragments.to_hdf(outfile, f"/{viewpoint}")
-    
     elif input_type == "parquet":
 
         import pyarrow.parquet as pq
 
         outfile = f"{output.replace('.parquet', '')}.parquet"
-        
+
         if os.path.exists(outfile):
             shutil.rmtree(outfile)
-        
+
         if viewpoint == "":
             ds = pq.ParquetDataset(fragments[0], use_legacy_dataset=False)
             viewpoints = pd.Series(ds.files).str.extract(r"viewpoint=(.*?)/").tolist()
-            
+
         else:
             # Need a fake list to iterate
             viewpoints = [
@@ -274,8 +272,6 @@ def identify(
             duplicated_fragments = identify_duplicates_from_parquet(
                 fragments, viewpoint=viewpoint, read_type=read_type
             )
-
-
 
 
 def remove(
