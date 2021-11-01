@@ -9,6 +9,7 @@ import ujson
 import os
 import numpy as np
 import dask.dataframe as dd
+import shutil
 
 
 def extract_start_and_end_slice_coords_pe(df):
@@ -91,6 +92,39 @@ def identify_duplicates_from_hdf5(
         )
 
 
+def identify_duplicates_from_parquet(
+    fragments: list, viewpoint: str, read_type: Literal["flashed", "pe"]
+):
+
+
+    breakpoint()
+    df_fragments_coords = dd.read_parquet(
+        fragments,
+        filters=[[("viewpoint", "==", viewpoint),]],
+        columns=["id", "coordinates"],
+    )
+
+    if read_type == "flashed":
+
+        ids_duplicated = df_fragments_coords.shuffle(on="coordinates").map_partitions(
+            lambda df: df[df.duplicated(subset="coordinates")]
+        )["id"]
+
+    elif read_type == "pe":
+
+        ids_duplicated = (
+            df_fragments_coords.map_partitions(
+                lambda df: df.join(extract_start_and_end_slice_coords_pe(df))[
+                    ["id", "coordinates_pe"]
+                ]
+            )
+            .shuffle(on="coordinates_pe")
+            .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])["id"]
+        )
+    
+    return ids_duplicated
+
+
 def remove_duplicates_from_tsv(
     slices: os.PathLike, output: os.PathLike, duplicated_ids: os.PathLike, buffer=1e6
 ):
@@ -154,7 +188,7 @@ def remove_duplicates_from_hdf5(
 
 def identify(
     fragments: os.PathLike,
-    input_type: str = "hdf5",
+    input_type: str = "parquet",
     output: os.PathLike = "duplicated_ids.json",
     viewpoint: str = "",
     buffer: int = 1e6,
@@ -216,6 +250,32 @@ def identify(
             )
 
             duplicated_fragments.to_hdf(outfile, f"/{viewpoint}")
+    
+    elif input_type == "parquet":
+
+        import pyarrow.parquet as pq
+
+        outfile = f"{output.replace('.parquet', '')}.parquet"
+        
+        if os.path.exists(outfile):
+            shutil.rmtree(outfile)
+        
+        if viewpoint == "":
+            ds = pq.ParquetDataset(fragments[0], use_legacy_dataset=False)
+            viewpoints = pd.Series(ds.files).str.extract(r"viewpoint=(.*?)/").tolist()
+            
+        else:
+            # Need a fake list to iterate
+            viewpoints = [
+                viewpoint,
+            ]
+
+        for viewpoint in viewpoints:
+            duplicated_fragments = identify_duplicates_from_parquet(
+                fragments, viewpoint=viewpoint, read_type=read_type
+            )
+
+
 
 
 def remove(

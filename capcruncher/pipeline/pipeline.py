@@ -1120,7 +1120,7 @@ def post_annotation():
     fastq_alignment,
     regex(r"capcruncher_preprocessing/aligned/(.*).bam"),
     add_inputs(r"capcruncher_analysis/annotations/\1.annotations.tsv"),
-    r"capcruncher_analysis/reporters/identified/\1.hdf5",
+    r"capcruncher_analysis/reporters/identified/\1.slices.parquet",
 )
 def alignments_filter(infiles, outfile):
     """Filteres slices and outputs reporter slices for each capture site"""
@@ -1131,7 +1131,7 @@ def alignments_filter(infiles, outfile):
     sample_part = sample.group(2)
     sample_read_type = sample.group(3)
 
-    output_prefix = outfile.replace(".hdf5", "")
+    output_prefix = outfile.replace(".slices.parquet", "")
     output_log_file = f"{output_prefix}.log"
     stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
     custom_filtering = P.PARAMS.get("analysis_optional_custom_filtering")
@@ -1164,7 +1164,7 @@ def alignments_filter(infiles, outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_memory=P.PARAMS["pipeline_memory"],
+        job_total_memory=P.PARAMS["pipeline_memory"],
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1172,74 +1172,11 @@ def alignments_filter(infiles, outfile):
     if not P.PARAMS.get("analysis_optional_keep_annotations", False):
         zap_file(annotations)
 
-
-# @follows(mkdir("capcruncher_analysis/reporters/collated"), alignments_filter)
-# @collate(
-#     "capcruncher_analysis/reporters/identified/*.tsv",
-#     regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(fragments).tsv"),
-#     r"capcruncher_analysis/reporters/collated/\1.\2.\3.\4.tsv",
-#     extras=[r"\1", r"\2", r"\3", r"\4"],
-# )
-# def reporters_fragments_collate(infiles, outfile, *grouping_args):
-
-#     """Concatenates identified reporters"""
-
-#     statement = []
-#     for ii, fn in enumerate(infiles):
-#         if ii == 0:
-#             cmd = f"cat {fn} > {outfile}"
-#         else:
-#             cmd = f"tail -n +2 {fn} >> {outfile}"
-
-#         statement.append(cmd)
-
-#     P.run(
-#         " && ".join(statement),
-#         job_queue=P.PARAMS["pipeline_cluster_queue"],
-#         job_threads=P.PARAMS["pipeline_n_cores"],
-#         job_condaenv=P.PARAMS["conda_env"],
-#     )
-
-#     # Zero un-aggregated reporters
-#     for fn in infiles:
-#         zap_file(fn)
-
-
-# @follows(alignments_filter)
-# @collate(
-#     "capcruncher_analysis/reporters/identified/*.tsv",
-#     regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).slices.tsv"),
-#     r"capcruncher_analysis/reporters/collated/\1.\2.\3.0.slices.tsv",
-#     extras=[r"\1", r"\2", r"\3"],
-# )
-# def alignments_slices_re_collate(infiles, outfile, *grouping_args):
-
-#     statement = [
-#         "capcruncher",
-#         "utilities",
-#         "repartition-csvs",
-#         *infiles,
-#         "-o",
-#         outfile.replace(".0.slices.tsv", ".*.slices.tsv"),
-#         "-r",
-#         "sep='\\t'",
-#         "-w",
-#         "sep='\\t'",
-#     ]
-
-#     P.run(
-#         " ".join(statement),
-#         job_queue=P.PARAMS["pipeline_cluster_queue"],
-#         job_threads=P.PARAMS["pipeline_n_cores"],
-#         job_condaenv=P.PARAMS["conda_env"],
-#     )
-
-
 @follows(mkdir("capcruncher_analysis/reporters/deduplicated/fragments"))
 @collate(
     alignments_filter,
-    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).hdf5"),
-    r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\2.hdf5",
+    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).slices.parquet"),
+    r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\2.parquet",
     extras=[r"\2"],
 )
 def alignments_deduplicate_fragments(infiles, outfile, read_type):
