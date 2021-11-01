@@ -42,7 +42,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
     )
     df_ann = df_ann.drop(columns="end", errors="ignore")
 
-    return (
+    df =  (
         df.join(df_ann, how="inner")
         .drop(columns=["slice_name.1"], errors="ignore")
         .assign(
@@ -53,6 +53,11 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
         .reset_index()
         .sort_values(["parent_read", "slice"])
     )
+
+    df["capture"] = df["capture"].astype("category")
+    df["exclusion"] = df["exclusion"].astype("category")
+
+    return df
 
 
 @get_timing(task_name="analysis of bam file")
@@ -169,7 +174,6 @@ def filter(
                         .assign(viewpoint=lambda df: df["id"].map(df_capture["capture"]).astype("category"),
                                 partition=xxhash.xxh64_intdigest(bam, seed=42))
                         )
-        df_fragments.to_parquet(f"{output_prefix}.fragments.parquet", partition_cols="viewpoint")
 
-
-    df_slices.to_parquet(f"{output_prefix}.slices.parquet", partition_cols="viewpoint")
+        df_fragments.to_hdf(f"{output_prefix}.hdf5", key="fragments", data_columns=["id"], format="table")
+    df_slices.reset_index().to_hdf(f"{output_prefix}.hdf5", key="slices", data_columns=["parent_id"], format="table")

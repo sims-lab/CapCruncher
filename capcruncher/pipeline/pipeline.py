@@ -1120,7 +1120,7 @@ def post_annotation():
     fastq_alignment,
     regex(r"capcruncher_preprocessing/aligned/(.*).bam"),
     add_inputs(r"capcruncher_analysis/annotations/\1.annotations.tsv"),
-    r"capcruncher_analysis/reporters/identified/\1.slices.parquet",
+    r"capcruncher_analysis/reporters/identified/\1.hdf5",
 )
 def alignments_filter(infiles, outfile):
     """Filteres slices and outputs reporter slices for each capture site"""
@@ -1131,7 +1131,7 @@ def alignments_filter(infiles, outfile):
     sample_part = sample.group(2)
     sample_read_type = sample.group(3)
 
-    output_prefix = outfile.replace(".slices.parquet", "")
+    output_prefix = outfile.replace(".hdf5", "")
     output_log_file = f"{output_prefix}.log"
     stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
     custom_filtering = P.PARAMS.get("analysis_optional_custom_filtering")
