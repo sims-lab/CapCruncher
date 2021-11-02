@@ -926,6 +926,7 @@ class TiledCSliceFilter(SliceFilter):
             .melt(id_vars="capture", var_name="cis/trans", value_name="count")
             .sort_values("capture")
             .assign(sample=self.sample_name, read_type=self.read_type)
+            .rename(columns={"capture": "viewpoint"})
         )
 
     def remove_slices_outside_capture(self):
