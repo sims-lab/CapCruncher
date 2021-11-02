@@ -1,4 +1,5 @@
-from typing import Iterable, List, Literal
+from typing import Iterable, List, Literal, Tuple
+import dask
 import pandas as pd
 
 import click
@@ -8,6 +9,7 @@ from capcruncher.utils import hash_column, load_json
 import ujson
 import os
 import numpy as np
+from dask.delayed import delayed
 import dask.dataframe as dd
 import shutil
 
@@ -90,7 +92,7 @@ def identify_duplicates_from_hdf5(
             df_fragments_coords.map_partitions(
                 lambda df: df.join(extract_start_and_end_slice_coords_pe(df))
                 [["id", "coordinates_pe"]]
-                .assign(coordinates_pe=lambda df: hash_column(df["coordinates_pe"]))
+                #.assign(coordinates_pe=lambda df: hash_column(df["coordinates_pe"]))
             )
             .shuffle(on="coordinates_pe")
             .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])
@@ -173,25 +175,56 @@ def remove_duplicates_from_tsv(
     return (n_reads_total, n_reads_unique)
 
 
-def remove_duplicates_from_hdf5(
-    slices: Iterable, viewpoint: str, duplicated_ids: os.PathLike, output: os.PathLike
+def remove_duplicates_from_hdf5_single(
+    slices: Iterable, duplicated_ids: os.PathLike, output: os.PathLike
 ):
 
     try:
-        ser_duplicated_ids = pd.read_hdf(duplicated_ids, key=viewpoint)
+        ser_duplicated_ids = pd.read_hdf(duplicated_ids, key="/duplicated_ids")
     except KeyError:
-        ser_duplicated_ids = pd.Series(data=["NO_DATA"], name=viewpoint)
+        ser_duplicated_ids = pd.Series(data=["NO_DATA"], name="duplicated_ids")
 
     with pd.HDFStore(slices, "r") as store:
-        n_slices_total = store.get_storer(f"/{viewpoint}/slices").nrows
+        n_slices_total = store.get_storer(f"/slices").nrows
         df_slices_dedup = store.select(
-            f"/{viewpoint}/slices", where="parent_id != ser_duplicated_ids"
+            f"/slices", where="parent_id != ser_duplicated_ids"
         )
         n_slices_unique = df_slices_dedup.shape[0]
 
-    df_slices_dedup.to_hdf(output, key=f"/{viewpoint}", format="table")
+    df_slices_dedup.to_hdf(output, key=f"/slices", format="table")
 
     return (n_slices_total, n_slices_unique)
+
+def remove_duplicates_from_hdf5_files (
+    slices: Iterable, duplicated_ids: os.PathLike, output: os.PathLike
+) -> Tuple[int, int]:
+
+    try:
+        ser_duplicated_ids = pd.read_hdf(duplicated_ids, key="/duplicated_ids")
+    except KeyError:
+        ser_duplicated_ids = pd.Series(data=["NO_DATA"], name="duplicated_ids")
+
+    n_slices_total = 0
+
+    # Need to get total number of slices
+    for slice_file in slices:
+        with pd.HDFStore(slice_file, "r") as store:
+            n_slices_total += store.get_storer("slices").nrows
+            #dtypes_sample = store.select("slices", start=0, stop=1000)
+    
+    # Generate a dask dataframe
+    dframes = [delayed(pd.read_hdf(fn, key="slices", where="parent_id != ser_duplicated_ids"))
+               for fn in slices]
+
+    ddf = dd.from_delayed(dframes)
+    ddf.to_hdf(output, key="slices", format="table", data_columns=["viewpoint"], mode="w", min_itemsize={"slice_name": 75, "parent_read": 75})
+
+    # Need to get final number of slices
+    with pd.HDFStore(output, "r") as store:
+        n_slices_unique = store.get_storer(f"slices").nrows
+
+    return (n_slices_total, n_slices_unique)
+
 
 
 def identify(
@@ -310,18 +343,8 @@ def remove(
         )
 
     elif input_type == "hdf5":
-
-        with pd.HDFStore(slices, mode="r") as store:
-            viewpoints = {k.split("/")[1] for k in store.keys()}
-
-        total_reads = 0
-        total_unique = 0
-        for viewpoint in viewpoints:
-            n_slices_total, n_slices_unique = remove_duplicates_from_hdf5(
-                slices, viewpoint, duplicated_ids, output
-            )
-            total_reads += n_slices_total
-            total_unique += n_slices_unique
+        #slices = [slices,] if isinstance(slices, str) else slices 
+        n_slices_total, n_slices_unique = remove_duplicates_from_hdf5_files(slices, duplicated_ids, output)
 
     # Prepare stats
     df_stats = pd.DataFrame()
