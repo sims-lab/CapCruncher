@@ -137,9 +137,6 @@ def merge_capcruncher_hdfs(infiles: Iterable, outfile: os.PathLike):
 
     import dask.dataframe as dd
 
-    with pd.HDFStore(infiles[0]) as store:
-        viewpoints = {k.split("/")[1] for k in store.keys()}
-
-    for viewpoint in viewpoints:
-        ddframe = dd.read_hdf(infiles, key=viewpoint)
-        ddframe.to_hdf(outfile, key=viewpoint) 
+    (dd.read_hdf(infiles, key="slices")
+       .to_hdf(outfile, key="slices")
+    )
