@@ -102,6 +102,7 @@ def cis_and_trans_stats(
         TriCSliceFilter,
         TiledCSliceFilter,
     )
+    import dask.dataframe as dd
 
     filters = {
         "capture": CCSliceFilter,
@@ -122,18 +123,11 @@ def cis_and_trans_stats(
 
     
     elif input_type == "hdf5":
-
-        with pd.HDFStore(slices, "r") as store:
-            viewpoints = {k.split("/")[1] for k in store.keys()}
-
-            stats = list()
-            for viewpoint in viewpoints:
-                df_slices = store[f"/{viewpoint}"]
-                stats.append(slice_filterer(df_slices, sample_name=sample_name, read_type=read_type).cis_or_trans_stats)
-            
-            df_cis_and_trans_stats = pd.concat(stats)
-            df_cis_and_trans_stats.to_csv(output, index=False)
-
+        ddf = (dd.read_hdf(slices, key="slices", mode="r")
+                 .shuffle("parent_id")
+                 .map_partitions(lambda df: slice_filterer(df, sample_name=sample_name, read_type=read_type).cis_or_trans_stats)
+                 .to_csv(output, single_file=True, index=False)
+               )
 
 
 @cli.command()

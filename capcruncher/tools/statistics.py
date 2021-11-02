@@ -64,7 +64,7 @@ def collate_slice_data(fnames):
 
 def collate_cis_trans_data(fnames):
     return (pd.concat(read_dataframes(fnames))
-              .groupby(['sample', 'capture', 'read_type', 'cis/trans'])
+              .groupby(['sample', 'viewpoint', 'read_type', 'cis/trans'])
               .sum()
               .reset_index()
               .sort_values(["sample", "read_type", 'count'], ascending=[True, True, False]))
