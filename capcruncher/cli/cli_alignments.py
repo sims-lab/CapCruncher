@@ -178,8 +178,8 @@ def deduplicate():
     "-t",
     "--input-type",
     help="File format for input",
-    default="hdf5",
-    type=click.Choice(["hdf5", "tsv"], case_sensitive=False),
+    default="parquet",
+    type=click.Choice(["parquet", "hdf5", "tsv"], case_sensitive=False),
 )
 @click.option(
     "-o",
@@ -206,7 +206,7 @@ def identify(*args, **kwargs):
 
 
 @deduplicate.command()
-@click.argument("slices", nargs=1, required=True)
+@click.argument("slices", nargs=-1, required=True)
 @click.option(
     "-d",
     "--duplicated_ids",
