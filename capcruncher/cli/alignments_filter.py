@@ -56,6 +56,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
 
     df["capture"] = df["capture"].astype("category")
     df["exclusion"] = df["exclusion"].astype("category")
+    df["chrom"] = df["chrom"].astype("category")
 
     return df
 
@@ -166,13 +167,13 @@ def filter(
     df_slices = slice_filter.slices.set_index("parent_id")
     df_capture = df_slices.query("capture_count == 1")
     df_slices = df_slices.assign(viewpoint=df_slices.index.map(df_capture["capture"]),
-                                 partition=xxhash.xxh64_intdigest(bam, seed=42))
+                                 partition=xxhash.xxh32_intdigest(bam, seed=42))
 
     if fragments:
         df_fragments = (slice_filter_type(df_slices.reset_index())
                         .fragments
                         .assign(viewpoint=lambda df: df["id"].map(df_capture["capture"]).astype("category"),
-                                partition=xxhash.xxh64_intdigest(bam, seed=42))
+                                partition=xxhash.xxh32_intdigest(bam, seed=42))
                         )
 
         df_fragments.to_hdf(f"{output_prefix}.hdf5", key="fragments", data_columns=["id"], format="table")
