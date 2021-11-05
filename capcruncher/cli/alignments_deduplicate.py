@@ -202,7 +202,7 @@ def remove_duplicates_from_hdf5_files (
     try:
         ser_duplicated_ids = pd.read_hdf(duplicated_ids, key="/duplicated_ids")
     except KeyError:
-        ser_duplicated_ids = pd.Series(data=["NO_DATA"], name="duplicated_ids")
+        ser_duplicated_ids = pd.Series(data=["NO_DATA"], name="/duplicated_ids")
 
     n_slices_total = 0
 
@@ -280,7 +280,7 @@ def identify(
             fragments, read_type=read_type
         )
 
-        duplicated_fragments.to_hdf(outfile, f"/slices")
+        duplicated_fragments.to_hdf(outfile, f"/duplicated_ids")
 
     elif input_type == "parquet":
 
