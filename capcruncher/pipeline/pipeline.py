@@ -1019,6 +1019,7 @@ def annotate_sort_blacklist(outfile):
                 "fn": "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
                 "action": "get",
                 "fraction": 0.2,
+                "categorise": False,
             },
             {
                 "name": "capture",
@@ -1039,22 +1040,25 @@ def annotate_sort_blacklist(outfile):
                 "fn": "capcruncher_analysis/annotations/exclude.bed",
                 "action": "count",
                 "fraction": 1e-9,
+                "categorise": False,
             },
             {
                 "name": "capture_count",
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "count",
                 "fraction": 0.9,
+                "categorise": False,
             },
             {
                 "name": "blacklist",
                 "fn": "capcruncher_analysis/annotations/blacklist.bed",
                 "action": "count",
                 "fraction": 1e-9,
+                "categorise": False,
             },
         ]
     ),
-    r"capcruncher_analysis/annotations/\1.annotations.tsv",
+    r"capcruncher_analysis/annotations/\1.annotations.hdf5",
 )
 def annotate_alignments(infile, outfile):
 
@@ -1121,7 +1125,7 @@ def post_annotation():
 @transform(
     fastq_alignment,
     regex(r"capcruncher_preprocessing/aligned/(.*).bam"),
-    add_inputs(r"capcruncher_analysis/annotations/\1.annotations.tsv"),
+    add_inputs(r"capcruncher_analysis/annotations/\1.annotations.hdf5"),
     r"capcruncher_analysis/reporters/identified/\1.hdf5",
 )
 def alignments_filter(infiles, outfile):
