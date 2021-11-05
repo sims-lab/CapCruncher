@@ -210,7 +210,6 @@ def remove_duplicates_from_hdf5_files (
     for slice_file in slices:
         with pd.HDFStore(slice_file, "r") as store:
             n_slices_total += store.get_storer("slices").nrows
-            #dtypes_sample = store.select("slices", start=0, stop=1000)
     
     # Generate a dask dataframe
     dframes = [delayed(pd.read_hdf(fn, key="slices", where="parent_id != ser_duplicated_ids"))
@@ -280,7 +279,7 @@ def identify(
             fragments, read_type=read_type
         )
 
-        duplicated_fragments.to_hdf(outfile, f"/duplicated_ids")
+        duplicated_fragments.to_hdf(outfile, f"/duplicated_ids", min_itemsize={"id": 25})
 
     elif input_type == "parquet":
 
