@@ -128,6 +128,8 @@ def annotate(
         bed_files, names, actions, cycle_argument(overlap_fractions), cycle_argument(categorise)
     ):
 
+        print(bed)
+
         intersections_to_perform.append(
             BedIntersection(
                 bed1=slices,
