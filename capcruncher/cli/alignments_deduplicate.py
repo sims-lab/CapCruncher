@@ -215,7 +215,7 @@ def remove_duplicates_from_hdf5_files (
     dframes = [delayed(pd.read_hdf(fn, key="slices", where="parent_id != ser_duplicated_ids"))
                for fn in slices]
 
-    ddf = dd.from_delayed(dframes)
+    ddf = dd.from_delayed(dframes, verify_meta=False)
     ddf.to_hdf(output, key="slices", format="table", data_columns=["viewpoint"], mode="w", min_itemsize={"slice_name": 75, "parent_read": 75})
 
     # Need to get final number of slices
