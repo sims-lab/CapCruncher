@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Literal
 import warnings
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -38,7 +38,8 @@ class BedIntersection:
         intersection_name: str = "count",
         intersection_method: str = "count",
         intersection_min_frac: float = 1e-9,
-        invalid_bed_action="error",
+        invalid_bed_action: Literal["ignore", "error"] = "error",
+        categorise: bool = False
         
     ):
         """
@@ -76,13 +77,23 @@ class BedIntersection:
 
         # Other options
         self.invalid_bed_action = invalid_bed_action
+        self.categorise = categorise
 
     def _intersections_count(self, a, b):
         return a.intersect(
             b, loj=True, c=True, f=self.min_frac, sorted=True).to_dataframe()
 
     def _intersections_get(self, a, b):
-        return a.intersect(b, loj=True, f=self.min_frac, sorted=True).to_dataframe()
+        
+        if self.categorise:
+            categories = b.to_dataframe()["name"].unique()
+            df = a.intersect(b, loj=True, f=self.min_frac, sorted=True).to_dataframe()
+            df["name"] = pd.Categorical(df["name"], categories=categories)
+        else:
+            df = a.intersect(b, loj=True, f=self.min_frac, sorted=True).to_dataframe()
+        
+        return df
+
 
     def _format_invalid_intersection(self, bed):
         return (
@@ -90,7 +101,6 @@ class BedIntersection:
                 .assign(**{self.intersection_name: self._intersection_na})
                 .set_index("name")
                 .loc[:, self.intersection_name])
-
 
     @property
     def intersection(self) -> pd.Series:
