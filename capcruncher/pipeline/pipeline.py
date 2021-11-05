@@ -1025,12 +1025,14 @@ def annotate_sort_blacklist(outfile):
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "get",
                 "fraction": 0.9,
+                "categorise": True,
             },
             {
                 "name": "exclusion",
                 "fn": "capcruncher_analysis/annotations/exclude.bed",
                 "action": "get",
                 "fraction": 1e-9,
+                "categorise": True,
             },
             {
                 "name": "exclusion_count",
@@ -1068,7 +1070,7 @@ def annotate_alignments(infile, outfile):
      * restriction fragment number
     """
 
-    flags = {"name": "-n", "fn": "-b", "action": "-a", "fraction": "-f"}
+    flags = {"name": "-n", "fn": "-b", "action": "-a", "fraction": "-f", "categorise": "-c"}
     statement_bamtobed = " ".join(["bedtools", "bamtobed", "-i", infile[0]])
     statement_sort = " ".join(["sort", "-k1,1", "-k2,2n"])
     statement_annotate = " ".join(
