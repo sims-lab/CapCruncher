@@ -1,6 +1,6 @@
 import pathlib
 import multiprocessing
-from typing import Union
+from typing import Dict, Union
 import traceback
 
 import pandas as pd
@@ -384,7 +384,6 @@ def parse_bam(bam):
     df_bam["end"] = df_bam["end"].replace("", 0).astype(int)
     df_bam.set_index(["slice_name", "chrom", "start"], inplace=True)
     return df_bam
-
 
            
 
