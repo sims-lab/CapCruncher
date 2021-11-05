@@ -41,7 +41,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
             low_memory=False,
         )
     elif annotations.endswith(".hdf5"):
-        df_ann = pd.read_hdf(annotations, "annotations")
+        df_ann = pd.read_hdf(annotations, "annotation")
 
     df_ann = df_ann.drop(columns="end", errors="ignore")
 
