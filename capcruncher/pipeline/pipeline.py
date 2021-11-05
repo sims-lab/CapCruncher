@@ -1175,8 +1175,8 @@ def alignments_filter(infiles, outfile):
 @follows(mkdir("capcruncher_analysis/reporters/deduplicated/fragments"))
 @collate(
     alignments_filter,
-    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).slices.parquet"),
-    r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\2.parquet",
+    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).hdf5"),
+    r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\2.hdf5",
     extras=[r"\2"],
 )
 def alignments_deduplicate_fragments(infiles, outfile, read_type):
@@ -1195,6 +1195,8 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         read_type,
         "-o",
         outfile,
+        "--input-type",
+        "hdf5"
     ]
 
     P.run(
@@ -1207,24 +1209,23 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
 
 
 @follows(alignments_deduplicate_fragments)
-@transform(
+@collate(
     alignments_filter,
     regex(r".*/(?P<sample>.*)_part(?P<part>\d+)\.(?P<read_type>flashed|pe)\.hdf5"),
     add_inputs(r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\3.hdf5"),
-    r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.hdf5",
+    r"capcruncher_analysis/reporters/deduplicated/\1.\3.hdf5",
     extras=[
         r"\1",
-        r"\2",
         r"\3",
     ],
 )
-def alignments_deduplicate_slices(infile, outfile, sample_name, part, read_type):
+def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
 
-    """Removes reporters with duplicate coordinates"""
+    """Removes reporters with duplicate coordinates. Merges partitions."""
 
-    slices, duplicated_ids = infile
+    slices, duplicated_ids = list(zip(*infile))
     stats_prefix = (
-        f"capcruncher_statistics/reporters/data/{sample_name}_part{part}_{read_type}"
+        f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}"
     )
 
     statement = [
@@ -1232,9 +1233,9 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, part, read_type)
         "alignments",
         "deduplicate",
         "remove",
-        slices,
+        *slices,
         "-d",
-        duplicated_ids,
+        duplicated_ids[0],
         "-o",
         outfile,
         "--stats_prefix",
@@ -1254,20 +1255,20 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, part, read_type)
     )
 
     # Zero non-deduplicated reporters
-    zap_file(slices)
+    for s in slices:
+        zap_file(s)
 
 
 @transform(
     alignments_deduplicate_slices,
-    regex(r".*/(.*?)\.(.*?)\.(.*?)\.hdf5"),
-    r"capcruncher_statistics/reporters/data/\1_\2_\3.reporter.stats.csv",
-    extras=[r"\1", r"\2", r"\3"],
+    regex(r".*/(.*?)\.(.*?)\.hdf5"),
+    r"capcruncher_statistics/reporters/data/\1_\2.reporter.stats.csv",
+    extras=[r"\1", r"\2"],
 )
 def alignments_deduplicate_slices_statistics(
     infile,
     outfile,
     sample,
-    part,
     read_type,
 ):
 
@@ -1305,7 +1306,7 @@ def alignments_deduplicate_slices_statistics(
 )
 def alignments_deduplicate_collate(infiles, outfile):
 
-    """Final collation of reporters by sample and capture probe"""
+    """Final collation of reporters by sample"""
 
     statement = [
         "capcruncher",
@@ -1369,10 +1370,10 @@ def post_capcruncher_analysis():
 ####################
 
 
-@follows(mkdir("capcruncher_analysis/reporters/counts/partitioned/"))
+@follows(mkdir("capcruncher_analysis/reporters/counts"))
 @transform(
     alignments_deduplicate_slices,
-    regex(r".*/(?P<sample>.*?)\.(?P<part>.*?)\.(?P<readtype>.*?)\.hdf5"),
+    regex(r".*/(?P<sample>.*?)\.hdf5"),
     r"capcruncher_analysis/reporters/counts/partitioned/\1.\2.\3.hdf5",
 )
 def reporters_count(infile, outfile):
