@@ -1,5 +1,6 @@
 from typing import Union, Literal
 import warnings
+import numpy as np
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
@@ -86,9 +87,10 @@ class BedIntersection:
     def _intersections_get(self, a, b):
         
         if self.categorise:
-            categories = b.to_dataframe()["name"].unique()
+            b_names = b.to_dataframe().iloc[:, -1].unique()
+            c = pd.CategoricalDtype(np.concatenate([np.array(["."]), b_names]))
             df = a.intersect(b, loj=True, f=self.min_frac, sorted=True).to_dataframe()
-            df["name"] = pd.Categorical(df["name"], categories=categories)
+            df.iloc[:, -1] = df.iloc[:, -1].astype(str).astype(c)
         else:
             df = a.intersect(b, loj=True, f=self.min_frac, sorted=True).to_dataframe()
         

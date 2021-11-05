@@ -54,6 +54,7 @@ def annotate(
     actions: Tuple = None,
     bed_files: Tuple = None,
     names: Tuple = None,
+    categorise: Tuple[bool] = None,
     overlap_fractions: Tuple = None,
     output: os.PathLike = None,
     duplicates: str = "remove",
@@ -123,8 +124,8 @@ def annotate(
     print("Performing intersection")
 
     intersections_to_perform = []
-    for bed, name, action, fraction in zip(
-        bed_files, names, actions, cycle_argument(overlap_fractions)
+    for bed, name, action, fraction, categorical in zip(
+        bed_files, names, actions, cycle_argument(overlap_fractions), cycle_argument(categorise)
     ):
 
         intersections_to_perform.append(
@@ -135,6 +136,7 @@ def annotate(
                 intersection_method=action,
                 intersection_min_frac=fraction,
                 invalid_bed_action=invalid_bed_action,
+                categorise=categorical
             )
         )
 
@@ -156,5 +158,9 @@ def annotate(
     )
 
     print("Writing annotations to file.")
+    
     # Export to tsv
-    df_annotation.to_csv(output, sep="\t", index=False)
+    if output.endswith(".tsv"):
+        df_annotation.to_csv(output, sep="\t", index=False)
+    elif output.endswith(".hdf5"):
+        df_annotation.to_hdf(output, key="/annotation", format="table")
