@@ -32,14 +32,17 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
     Returns:
      pd.DataFrame: Merged dataframe
     """
+    if annotations.endswith(".tsv"):
+        df_ann = pd.read_csv(
+            annotations,
+            sep="\t",
+            header=0,
+            index_col=["slice_name", "chrom", "start"],
+            low_memory=False,
+        )
+    elif annotations.endswith(".hdf5"):
+        df_ann = pd.read_hdf(annotations, "annotations")
 
-    df_ann = pd.read_csv(
-        annotations,
-        sep="\t",
-        header=0,
-        index_col=["slice_name", "chrom", "start"],
-        low_memory=False,
-    )
     df_ann = df_ann.drop(columns="end", errors="ignore")
 
     df =  (
