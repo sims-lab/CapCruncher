@@ -41,7 +41,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
             low_memory=False,
         )
     elif annotations.endswith(".hdf5"):
-        df_ann = pd.read_hdf(annotations, "annotation")
+        df_ann = pd.read_hdf(annotations, "annotation").set_index(["slice_name", "chrom", "start"])
 
     df_ann = df_ann.drop(columns="end", errors="ignore")
 
@@ -56,10 +56,6 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
         .reset_index()
         .sort_values(["parent_read", "slice"])
     )
-
-    df["capture"] = df["capture"].astype("category")
-    df["exclusion"] = df["exclusion"].astype("category")
-    df["chrom"] = df["chrom"].astype("category")
 
     return df
 
