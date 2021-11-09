@@ -1380,7 +1380,7 @@ def post_capcruncher_analysis():
 @transform(
     alignments_deduplicate_slices,
     regex(r".*/(?P<sample>.*?)\.hdf5"),
-    r"capcruncher_analysis/reporters/counts/partitioned/\1.\2.\3.hdf5",
+    r"capcruncher_analysis/reporters/counts/\1.hdf5",
 )
 def reporters_count(infile, outfile):
 
@@ -1406,39 +1406,39 @@ def reporters_count(infile, outfile):
     )
 
 
-@collate(
-    reporters_count,
-    regex(
-        r"capcruncher_analysis/reporters/counts/partitioned/(?P<sample>.*?)\.(:?.*?)\.(:?.*?)\.hdf5"
-    ),
-    r"capcruncher_analysis/reporters/counts/\1.completed",
-    extras=[r"\1"],
-)
-def reporters_count_collate(infiles, outfile, sample):
+# @collate(
+#     reporters_count,
+#     regex(
+#         r"capcruncher_analysis/reporters/counts/partitioned/(?P<sample>.*?)\.(:?.*?)\.(:?.*?)\.hdf5"
+#     ),
+#     r"capcruncher_analysis/reporters/counts/\1.completed",
+#     extras=[r"\1"],
+# )
+# def reporters_count_collate(infiles, outfile, sample):
 
-    """Collates the number of interactions identified between reporter restriction fragments"""
+#     """Collates the number of interactions identified between reporter restriction fragments"""
 
-    import dask.dataframe as dd
+#     import dask.dataframe as dd
 
-    with pd.HDFStore(infiles[0]) as store:
-        viewpoints = {k.split("/")[1] for k in store.keys()}
+#     with pd.HDFStore(infiles[0]) as store:
+#         viewpoints = {k.split("/")[1] for k in store.keys()}
 
-    for viewpoint in viewpoints:
-        ddframe = dd.read_hdf(infiles, key=viewpoint)
-        (
-            ddframe.shuffle(on=["bin1_id", "bin2_id"])
-            .map_partitions(
-                lambda df: df.groupby(["bin1_id", "bin2_id"])
-                .agg({"count": "sum"})
-                .reset_index()
-            )
-            .to_hdf(outfile.replace(".completed", ".hdf5"), key=viewpoint)
-        )
+#     for viewpoint in viewpoints:
+#         ddframe = dd.read_hdf(infiles, key=viewpoint)
+#         (
+#             ddframe.shuffle(on=["bin1_id", "bin2_id"])
+#             .map_partitions(
+#                 lambda df: df.groupby(["bin1_id", "bin2_id"])
+#                 .agg({"count": "sum"})
+#                 .reset_index()
+#             )
+#             .to_hdf(outfile.replace(".completed", ".hdf5"), key=viewpoint)
+#         )
 
-    touch_file(outfile)
+#     touch_file(outfile)
 
-    for fn in infiles:
-        zap_file(fn)
+#     for fn in infiles:
+#         zap_file(fn)
 
 
 @follows(reporters_count_collate, mkdir("capcruncher_analysis/reporters/fragments/"))
