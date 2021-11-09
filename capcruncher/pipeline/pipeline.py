@@ -1441,7 +1441,7 @@ def reporters_count(infile, outfile):
 #         zap_file(fn)
 
 
-@follows(reporters_count_collate, mkdir("capcruncher_analysis/reporters/fragments/"))
+@follows(reporters_count, mkdir("capcruncher_analysis/reporters/fragments/"))
 @transform(
     "capcruncher_analysis/reporters/counts/*.hdf5",
     regex(r"capcruncher_analysis/reporters/counts/(.*)\.hdf5"),
