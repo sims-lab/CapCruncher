@@ -244,7 +244,7 @@ def test_fastq_digest():
 
 def test_alignments_annotate():
 
-    test_output = os.path.join(dir_test, "test", "test_annotate.tsv")
+    test_output = os.path.join(dir_test, "test", "test_annotate.hdf5")
     test_bed = os.path.join(dir_data, "test", "alignment_annotation", "test_slices.bed")
     test_capture = os.path.join(dir_data, "test", "alignment_annotation","test_capture.bed")
     test_exclusion = os.path.join(dir_data, "test", "alignment_annotation","test_exclusions.bed")
