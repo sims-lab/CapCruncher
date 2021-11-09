@@ -33,19 +33,6 @@ def cleanup():
 def get_fastq_n_records(fq):
     return sum(1 for l in pysam.FastxFile(fq))
 
-
-class DataDeduplicate:
-    fq1 = os.path.join(dir_data, "test", "duplicated_1.fastq.gz")
-    fq2 = os.path.join(dir_data, "test", "duplicated_2.fastq.gz")
-    result_parsed = os.path.join(dir_test, "expected", "fq_parsed_result.json")
-    result_identify = os.path.join(dir_test, "expected", "fq_duplicates_results.json")
-    result_remove = os.path.join(dir_test, "expected", "fq_dedup_1.fastq")
-
-
-# Test data
-data_dd = DataDeduplicate
-
-
 def test_cli_runs():
     """Test checks that the cli is functional and the help option works"""
 
@@ -56,7 +43,7 @@ def test_cli_runs():
 
 def test_genome_digest():
 
-    test_fa = os.path.join(dir_data, "test", "test.fa")
+    test_fa = os.path.join(dir_data, "genome_digest", "test", "test.fa")
     test_output = os.path.join(dir_test, "test", "test_digest_genome.bed")
     test_output_stats = os.path.join(dir_test, "stats", "test_digest_genome.bed")
 
@@ -98,8 +85,8 @@ def test_deduplicate_parse():
             "fastq",
             "deduplicate",
             "parse",
-            data_dd.fq1,
-            data_dd.fq2,
+            os.path.join(dir_data, "test", "duplicated_1.fastq.gz"),
+            os.path.join(dir_data, "test", "duplicated_2.fastq.gz"),
             "-o",
             output_parsed,
         ],
@@ -128,7 +115,7 @@ def test_fastq_deduplicate_identification():
             "fastq",
             "deduplicate",
             "identify",
-            data_dd.result_parsed,
+            os.path.join(dir_test, "expected", "fq_parsed_result.json"),
             "-o",
             output_duplicates_test,
         ],
@@ -139,7 +126,7 @@ def test_fastq_deduplicate_identification():
     with open(output_duplicates_test) as f:
         result_test = ujson.load(f)
 
-    with open(data_dd.result_identify) as f:
+    with open(os.path.join(dir_test, "expected", "fq_duplicates_results.json")) as f:
         result_correct = ujson.load(f)
 
     # Checks that the same number of duplicates are identified, some randomness in identification
@@ -161,11 +148,11 @@ def test_fastq_deduplicate_removal():
             "deduplicate",
             "remove",
             "-d",
-            data_dd.result_identify,
+            os.path.join(dir_test, "expected", "fq_duplicates_results.json"),
             "-o",
             output_removal_prefix,
-            data_dd.fq1,
-            data_dd.fq2,
+            os.path.join(dir_data, "test", "duplicated_1.fastq.gz"),
+            os.path.join(dir_data, "test", "duplicated_2.fastq.gz"),
             "--stats_prefix",
             output_removal_test_stats,
             "--sample_name",
@@ -179,13 +166,13 @@ def test_fastq_deduplicate_removal():
     with open(output_removal_test) as r:
         result_test = r.readlines()
 
-    with open(data_dd.result_remove) as r:
+    with open(os.path.join(dir_test, "expected", "fq_dedup_1.fastq")) as r:
         result_correct = r.readlines()
 
-    with open(data_dd.result_identify) as r:
+    with open(os.path.join(dir_test, "expected", "fq_duplicates_results.json")) as r:
         duplicates = ujson.load(r)
 
-    fq_unfilt_n_entries = get_fastq_n_records(data_dd.fq1)
+    fq_unfilt_n_entries = get_fastq_n_records(os.path.join(dir_data, "test", "duplicated_1.fastq.gz"))
     fq_dd_n_entries = get_fastq_n_records(output_removal_test)
 
     # Checks the number of expected duplicates are removed
