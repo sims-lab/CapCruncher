@@ -249,6 +249,7 @@ def test_alignments_annotate():
     test_capture = os.path.join(dir_data, "test", "alignment_annotation","test_capture.bed")
     test_exclusion = os.path.join(dir_data, "test", "alignment_annotation","test_exclusions.bed")
     test_rf = os.path.join(dir_data, "test", "alignment_annotation","test_rf.bed")
+    test_bad_bed = os.path.join(dir_data, "test", "alignment_annotation", "bad_bed.bed")
 
     # Test with bad exclusions file
     runner = CliRunner()
@@ -259,31 +260,11 @@ def test_alignments_annotate():
             "annotate",
             test_bed,
             "-b",
-            test_capture,
-            "-b",
-            test_capture,
-            "-b",
-            test_exclusion,
-            "-b",
-            test_rf,
-            "-a",
-            "get",
-            "-a",
-            "count",
-            "-a",
-            "get",
-            "-a",
-            "get",
+            test_bad_bed,
             "-n",
-            "capture",
-            "-n",
-            "capture_count",
-            "-n",
-            "exclusion",
-            "-n",
-            "rf",
-            "-o",
-            test_output,
+            "will_fail",
+            "-a",
+            "count"
         ],
     )
 
