@@ -184,8 +184,8 @@ def test_fastq_deduplicate_removal():
 
 def test_fastq_digest():
 
-    fq1 = os.path.join(dir_data, "test", "digest_1.fastq.gz")
-    fq2 = os.path.join(dir_data, "test", "digest_2.fastq.gz")
+    fq1 = os.path.join(dir_data, "test", "fastq_digestion","digest_1.fastq.gz")
+    fq2 = os.path.join(dir_data, "test", "fastq_digestion" ,"digest_2.fastq.gz")
     test_output_flashed = os.path.join(
         dir_test, "test", "test_fastq_digest_flashed.fastq"
     )
