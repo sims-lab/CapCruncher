@@ -4,7 +4,13 @@ from functools import cached_property
 from importlib import import_module, metadata
 import subprocess
 import warnings
+import logging
 
+
+# create logger
+logger = logging.getLogger("capcruncher")
+logger.setLevel(logging.INFO)
+logging.basicConfig(format='%(levelname)s:%(asctime)s %(module)-20s %(message)s', level=logging.DEBUG)
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
