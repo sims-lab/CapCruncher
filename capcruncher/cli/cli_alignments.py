@@ -36,7 +36,7 @@ def cli():
     ],
     type=click.FLOAT,
 )
-@click.option("-c", "--categorise", help="Categorise the output from get", multiple=True)
+@click.option("-c", "--categorise", help="Categorise the output from get", multiple=True, default=[False,])
 @click.option(
     "-o",
     "--output",
