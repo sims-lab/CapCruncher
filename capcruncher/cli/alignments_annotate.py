@@ -2,6 +2,9 @@ import itertools
 import sys
 import warnings
 from typing import Tuple, Union
+import logging
+
+#logger = logging.getLogger(__name__)
 
 from joblib.parallel import Parallel, delayed
 
@@ -43,8 +46,7 @@ def remove_duplicates_from_bed(bed: Union[str, BedTool, pd.DataFrame]) -> BedToo
 
     return (
         df.drop_duplicates(subset="name", keep="first")
-        .sort_values(["chrom", "start"])
-        [["chrom", "start", "end", "name"]]
+        .sort_values(["chrom", "start"])[["chrom", "start", "end", "name"]]
         .pipe(BedTool.from_dataframe)
     )
 
@@ -89,13 +91,19 @@ def annotate(
      NotImplementedError: Only supported option for duplicate bed names is remove.
     """
 
+    logging.info("Validating commandline arguments")
+    len_bed_files = len(bed_files)
+    if not all([len(arg)==len_bed_files for arg in [actions, names]]):
+        raise ValueError("The lengths of the supplied bed files actions and names do not match")
+
+
     # If reading from stdin
     if slices == "-":
         slices = pd.read_csv(sys.stdin, sep="\t", header=None).pipe(
             BedTool.from_dataframe
         )
 
-    print("Validating bed file")
+    logging.info("Validating input bed file before annotation")
 
     # Check if valid bed format
     if not is_valid_bed(slices):
@@ -111,7 +119,7 @@ def annotate(
             "Wrong number of column names/files/actions provided, check command"
         )
 
-    print("Dealing with duplicates in the bed file")
+    logging.info("Dealing with duplicates in the bed file")
 
     # Deal with multimapping reads.
     if duplicates == "remove":
@@ -121,14 +129,16 @@ def annotate(
             "Only supported option at present is to remove duplicates"
         )
 
-    print("Performing intersection")
 
+    logging.info("Performing intersection")
     intersections_to_perform = []
     for bed, name, action, fraction, categorical in zip(
-        bed_files, names, actions, cycle_argument(overlap_fractions), cycle_argument(categorise)
+        bed_files,
+        names,
+        actions,
+        cycle_argument(overlap_fractions),
+        cycle_argument(categorise),
     ):
-
-        print(bed)
 
         intersections_to_perform.append(
             BedIntersection(
@@ -138,16 +148,18 @@ def annotate(
                 intersection_method=action,
                 intersection_min_frac=fraction,
                 invalid_bed_action=invalid_bed_action,
-                categorise=categorical
+                categorise=categorical,
             )
         )
+
+    logging.debug(intersections_to_perform)
 
     intersections_results = Parallel(n_jobs=n_cores)(
         delayed(lambda bi: bi.intersection)(intersection)
         for intersection in intersections_to_perform
     )
 
-    print("Merging annotations")
+    logging.info("Merging annotations")
     # Merge intersections with slices
 
     df_annotation = (
@@ -159,8 +171,8 @@ def annotate(
         .rename(columns={"name": "slice_name"})
     )
 
-    print("Writing annotations to file.")
-    
+    logging.info("Writing annotations to file.")
+
     # Export to tsv
     if output.endswith(".tsv"):
         df_annotation.to_csv(output, sep="\t", index=False)
