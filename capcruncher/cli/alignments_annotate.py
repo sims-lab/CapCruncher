@@ -97,30 +97,20 @@ def annotate(
         raise ValueError("The lengths of the supplied bed files actions and names do not match")
 
 
-    # If reading from stdin
+    logging.info("Reading slices from stdin")
     if slices == "-":
         slices = pd.read_csv(sys.stdin, sep="\t", header=None).pipe(
             BedTool.from_dataframe
         )
 
     logging.info("Validating input bed file before annotation")
-
-    # Check if valid bed format
     if not is_valid_bed(slices):
         raise ValueError(f"bed - {slices} is invalid")
 
-    # Check if name column present
     if not bed_has_name(slices):
         raise ValueError(f"bed - {slices} does not have a name column")
 
-    # Check if the right number of items present
-    if not len(names) == len(bed_files) == len(actions):
-        raise IndexError(
-            "Wrong number of column names/files/actions provided, check command"
-        )
-
     logging.info("Dealing with duplicates in the bed file")
-
     # Deal with multimapping reads.
     if duplicates == "remove":
         slices = remove_duplicates_from_bed(slices)
