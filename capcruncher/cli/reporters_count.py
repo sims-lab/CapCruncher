@@ -8,6 +8,9 @@ import click
 import os
 from tqdm import tqdm
 import logging
+from dask import delayed
+
+from capcruncher.utils import get_categories_from_hdf5_column, get_file_type
 
 
 def subsample_reporters_from_df(df: pd.DataFrame, subsample: float):
@@ -111,7 +114,7 @@ def count_re_site_combinations(
     return counts
 
 
-def get_counts_by_batch(reporters: os.PathLike, chunksize: int, **kwargs):
+def get_counts_from_tsv_by_batch(reporters: os.PathLike, chunksize: int, **kwargs):
 
     df_reporters_iterator = pd.read_csv(reporters, sep="\t", chunksize=chunksize)
 
@@ -144,24 +147,34 @@ def get_counts_from_tsv(reporters: os.PathLike, **kwargs):
     return ligated_rf_counts
 
 
-def get_counts_from_hdf5(reporters: os.PathLike, viewpoint: str, **kwargs):
+def get_fragment_combinations(df: pd.DataFrame):
+    return [sorted(comb) for comb in combinations(df["restriction_fragment"], 2)]
 
-    df_reporters = pd.read_hdf(reporters, key=viewpoint)
 
-    fragments = preprocess_reporters_for_counting(df_reporters, **kwargs)
+def get_counts_from_reporters(reporters: pd.DataFrame, **kwargs):
 
-    logging.info("Counting")
-    ligated_rf_counts = count_re_site_combinations(
-        fragments, column="restriction_fragment"
+    return (
+        reporters.groupby(["parent_id"])
+        .apply(get_fragment_combinations)
+        .reset_index()
+        .rename(columns={0: "combinations"})["combinations"]
+        .explode()
+        .reset_index()
+        .assign(
+            bin1_id=lambda df: df["combinations"].map(lambda c: c[0]),
+            bin2_id=lambda df: df["combinations"].map(lambda c: c[1]),
+        )
+        .groupby(["bin1_id", "bin2_id"])
+        .size()
+        .reset_index()
+        .rename(columns={0: "count"})
     )
-
-    return ligated_rf_counts
 
 
 def count(
     reporters: os.PathLike,
     output: os.PathLike = "counts.tsv",
-    input_type: str = "hdf5",
+    file_type: str = "auto",
     remove_exclusions: bool = False,
     remove_capture: bool = False,
     subsample: int = 0,
@@ -186,52 +199,65 @@ def count(
      subsample (int, optional): Subsamples the fragments by the specified fraction. Defaults to 0 i.e. No subsampling.
     """
 
-    if output.endswith(".tsv") or output.endswith(".tsv.gz"):
+    input_file_type = get_file_type(reporters) if file_type == "auto" else file_type
+    output_file_type = get_file_type(output)
+
+    if output_file_type == "tsv":
         with xopen.xopen(output, mode="wb", threads=4) as writer:
 
             # Write output file header.
             header = "\t".join(["bin1_id", "bin2_id", "count"]) + "\n"
             writer.write(header.encode())
 
-            if low_memory:
-                counts = get_counts_by_batch(
-                    reporters=reporters,
-                    chunksize=chunksize,
-                    remove_capture=remove_capture,
-                    remove_exclusions=remove_exclusions,
-                    subsample=subsample,
-                )
+            if input_file_type == "tsv":
+
+                if low_memory:
+                    counts = get_counts_from_tsv_by_batch(
+                        reporters=reporters,
+                        chunksize=chunksize,
+                        remove_capture=remove_capture,
+                        remove_exclusions=remove_exclusions,
+                        subsample=subsample,
+                    )
+                else:
+                    counts = get_counts_from_tsv(
+                        reporters=reporters,
+                        remove_capture=remove_capture,
+                        remove_exclusions=remove_exclusions,
+                        subsample=subsample,
+                    )
+
+                for (rf1, rf2), count in counts.items():
+                    line = "\t".join([str(rf1), str(rf2), str(count)]) + "\n"
+                    writer.write(line.encode())
             else:
-                counts = get_counts_from_tsv(
-                    reporters=reporters,
-                    remove_capture=remove_capture,
-                    remove_exclusions=remove_exclusions,
-                    subsample=subsample,
-                )
+                raise NotImplementedError("Currently only tsv -> tsv supported")
 
-            for (rf1, rf2), count in counts.items():
-                line = "\t".join([str(rf1), str(rf2), str(count)]) + "\n"
-                writer.write(line.encode())
+    elif output_file_type == "hdf5":
 
-    elif output.endswith(".hdf5"):
+        viewpoints = get_categories_from_hdf5_column(reporters, "slices", "viewpoint")
 
-        with pd.HDFStore(reporters) as store:
-            viewpoints = {k.split("/")[1] for k in store.keys()}
+        with pd.HDFStore(reporters, "r") as store:
+            dframes = [delayed(lambda hdf5_store, table, vp_to_select: hdf5_store.select(table, where="viewpoint == vp_to_select"))(store, "slices", vp)
+                       for vp in viewpoints]
 
-        with pd.HDFStore(output, "w") as store:
-            for viewpoint in viewpoints:
-                counts = get_counts_from_hdf5(
-                    reporters,
-                    viewpoint=viewpoint,
-                    remove_capture=remove_capture,
-                    remove_exclusions=remove_exclusions,
-                    subsample=subsample,
-                )
 
-                store.append(
-                    viewpoint,
-                    pd.Series(counts)
-                    .rename_axis(["bin1_id", "bin2_id"])
-                    .reset_index(name="count"),
-                    format="table",
-                )
+        
+
+        # with pd.HDFStore(output, "w") as store:
+        #     for viewpoint in viewpoints:
+        #         counts = get_counts_from_hdf5(
+        #             reporters,
+        #             viewpoint=viewpoint,
+        #             remove_capture=remove_capture,
+        #             remove_exclusions=remove_exclusions,
+        #             subsample=subsample,
+        #         )
+
+        #         store.append(
+        #             viewpoint,
+        #             pd.Series(counts)
+        #             .rename_axis(["bin1_id", "bin2_id"])
+        #             .reset_index(name="count"),
+        #             format="table",
+        #         )

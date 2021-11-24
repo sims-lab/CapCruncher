@@ -91,21 +91,22 @@ def test_pipeline_pre_annotation():
     assert completed.returncode == 0
 
 def test_pipeline_post_annotation():
-
     cmd = f'python {dir_pipeline}/pipeline.py make post_annotation --local -p 4'
     completed = subprocess.run(cmd.split())
     assert completed.returncode == 0
 
 def test_pipeline_post_capcruncher_analysis():
-
     cmd = f'python {dir_pipeline}/pipeline.py make post_capcruncher_analysis --local -p 4'
     completed = subprocess.run(cmd.split())
+    breakpoint()
     assert completed.returncode == 0
+
 
 def test_pipeline_all():
 
     cmd = f'python {dir_pipeline}/pipeline.py make full --local -p 4'
     completed = subprocess.run(cmd.split())
+    breakpoint()
     assert completed.returncode == 0
 
 def test_stats_exist():

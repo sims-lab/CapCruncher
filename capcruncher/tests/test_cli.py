@@ -153,9 +153,9 @@ def test_fastq_deduplicate_removal():
             output_removal_prefix,
             os.path.join(dir_data, "test",  "fastq_deduplication","duplicated_1.fastq.gz"),
             os.path.join(dir_data, "test",  "fastq_deduplication","duplicated_2.fastq.gz"),
-            "--stats_prefix",
+            "--stats-prefix",
             output_removal_test_stats,
-            "--sample_name",
+            "--sample-name",
             "test",
         ],
     )
@@ -204,9 +204,9 @@ def test_fastq_digest():
             "dpnii",
             "-o",
             test_output_pe,
-            "--stats_prefix",
+            "--stats-prefix",
             test_output_stats,
-            "--sample_name",
+            "--sample-name",
             "test",
             fq1,
             fq2,
@@ -228,9 +228,9 @@ def test_fastq_digest():
             "dpnii",
             "-o",
             test_output_flashed,
-            "--stats_prefix",
+            "--stats-prefix",
             test_output_stats,
-            "--sample_name",
+            "--sample-name",
             "test",
             fq1,
         ],
@@ -328,9 +328,7 @@ def test_alignments_annotate():
 def test_alignments_filter():
 
     bam = os.path.join(dir_data, "test", "Slc25A37-test_1_part0.pe.bam")
-    annotations = os.path.join(
-        dir_data, "test", "Slc25A37-test_1_part0.pe.annotations.tsv"
-    )
+    annotations = os.path.join(dir_data, "test", "Slc25A37-test_1_part0.pe.annotations.tsv")
     output_prefix = os.path.join(dir_test, "test", "test_filtering_cli")
     stats_prefix = os.path.join(dir_test, "stats", "test_filtering_cli")
 
@@ -347,7 +345,7 @@ def test_alignments_filter():
             annotations,
             "-o",
             output_prefix,
-            "--stats_prefix",
+            "--stats-prefix",
             stats_prefix,
             "--fragments",
             "--read-stats",
@@ -375,7 +373,7 @@ def test_reporter_deduplicate_identify():
             "deduplicate",
             "identify",
             reporters_duplicated,
-            '--read_type',
+            '--read-type',
             'flashed',
             "-o",
             reporters_duplicated_ids
@@ -394,7 +392,7 @@ def test_reporter_deduplicate_identify():
             "deduplicate",
             "identify",
             reporters_duplicated,
-            '--read_type',
+            '--read-type',
             'pe',
             "-o",
             reporters_duplicated_ids
