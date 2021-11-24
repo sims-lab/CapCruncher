@@ -228,7 +228,7 @@ def remove_duplicates_from_hdf5_files (
 
 def identify(
     fragments: os.PathLike,
-    input_type: str = "parquet",
+    filetype: str = "auto",
     output: os.PathLike = "duplicated_ids.json",
     viewpoint: str = "",
     buffer: int = 1e6,
@@ -259,7 +259,9 @@ def identify(
                                 Defaults to "flashed".
     """
 
-    if input_type == "tsv":
+    filetype = os.path.splitext(os.path.basename(fragments))[-1] if filetype == "auto" else filetype
+
+    if filetype == "tsv":
         if len(fragments) > 1:
             raise NotImplementedError("Currently just supports a single tsv input")
         else:
@@ -269,7 +271,7 @@ def identify(
             with xopen.xopen(f"{output}", "w") as w:
                 ujson.dump(dict.fromkeys(duplicated_fragments), w)
 
-    elif input_type == "hdf5":
+    elif filetype == "hdf5":
 
         outfile = f"{output.replace('.hdf5', '')}.hdf5"
         if os.path.exists(outfile):
@@ -281,29 +283,7 @@ def identify(
 
         duplicated_fragments.to_hdf(outfile, f"/duplicated_ids", min_itemsize={"id": 25})
 
-    elif input_type == "parquet":
-
-        import pyarrow.parquet as pq
-
-        outfile = f"{output.replace('.parquet', '')}.parquet"
-
-        if os.path.exists(outfile):
-            shutil.rmtree(outfile)
-
-        if viewpoint == "":
-            ds = pq.ParquetDataset(fragments[0], use_legacy_dataset=False)
-            viewpoints = pd.Series(ds.files).str.extract(r"viewpoint=(.*?)/").tolist()
-
-        else:
-            # Need a fake list to iterate
-            viewpoints = [
-                viewpoint,
-            ]
-
-        for viewpoint in viewpoints:
-            duplicated_fragments = identify_duplicates_from_parquet(
-                fragments, viewpoint=viewpoint, read_type=read_type
-            )
+    
 
 
 def remove(
@@ -314,7 +294,7 @@ def remove(
     sample_name: str = "",
     read_type: str = "",
     stats_prefix: os.PathLike = "",
-    input_type: str = "hdf5",
+    filetype: str = "hdf5",
 ):
     """
     Removes duplicated aligned fragments.
@@ -335,13 +315,15 @@ def remove(
      read_type (str, optional): Process combined(flashed) or non-combined reads (pe) used for statistics. Defaults to "".
      stats_prefix (os.PathLike, optional): Output path for deduplication statistics. Defaults to "".
     """
-
-    if input_type == "tsv":
+    
+    filetype = os.path.splitext(os.path.basename(slices))[-1] if filetype == "auto" else filetype
+    
+    if filetype == "tsv":
         n_slices_total, n_slices_unique = remove_duplicates_from_tsv(
             slices, output, duplicated_ids, buffer=buffer
         )
 
-    elif input_type == "hdf5":
+    elif filetype == "hdf5":
         #slices = [slices,] if isinstance(slices, str) else slices 
         n_slices_total, n_slices_unique = remove_duplicates_from_hdf5_files(slices, duplicated_ids, output)
 
