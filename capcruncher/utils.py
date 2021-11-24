@@ -8,7 +8,8 @@ from collections import OrderedDict
 from datetime import timedelta
 from functools import wraps
 from itertools import cycle, groupby
-from typing import Callable, IO, Iterable, Tuple, Union, Generator
+from typing import Callable, IO, Iterable, Literal, Tuple, Union, Generator, List
+import numpy as np
 
 import click
 import pandas as pd
@@ -426,7 +427,7 @@ def get_file_type(fn: os.PathLike) -> str:
     Determines file type based on extension.
 
     Args:
-        fn (os.PathLike): Path to analyse
+        fn (os.PathLike): Path to extract file extension from.
 
     Returns:
         str: File type
@@ -445,6 +446,33 @@ def get_file_type(fn: os.PathLike) -> str:
         return file_types[ext]
     except KeyError as e:
         print(f"File extension {ext} is not supported")
+
+
+def get_categories_from_hdf5_column(
+    path: os.PathLike,
+    key: str,
+    column: str,
+    null_value: Union[Literal["."], int, float] = ".",
+) -> List[str]:
+    """Extracts all categories from pytables table column.
+
+    Args:
+        path (os.PathLike): Path to hdf5 store
+        key (str): Table name
+        column (str): Column name from which to extract categories
+        null_value (Union[Literal[, optional): [description]. Defaults to ".".
+
+    Returns:
+        List[str]: Category names
+    """
+
+    return [
+        cat
+        for cat in pd.read_hdf(path, key, start=0, stop=10)[
+            column
+        ].cat.categories.values
+        if not cat == null_value
+    ]
 
 
 class PysamFakeEntry:
