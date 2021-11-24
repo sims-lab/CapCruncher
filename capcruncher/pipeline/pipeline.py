@@ -1184,7 +1184,7 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
 @follows(mkdir("capcruncher_analysis/reporters/deduplicated/fragments"))
 @collate(
     alignments_filter,
-    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).hdf5"),
+    regex(r".*/(?P<sample>.*).part\d+.(flashed|pe).hdf5"),
     r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\2.hdf5",
     extras=[r"\2"],
 )
@@ -1220,7 +1220,7 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
 @follows(alignments_deduplicate_fragments)
 @collate(
     alignments_filter,
-    regex(r".*/(?P<sample>.*)_part(?P<part>\d+)\.(?P<read_type>flashed|pe)\.hdf5"),
+    regex(r".*/(?P<sample>.*).part(?P<part>\d+)\.(?P<read_type>flashed|pe)\.hdf5"),
     add_inputs(r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\3.hdf5"),
     r"capcruncher_analysis/reporters/deduplicated/\1.\3.hdf5",
     extras=[
