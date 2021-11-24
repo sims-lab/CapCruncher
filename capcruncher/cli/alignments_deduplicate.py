@@ -329,18 +329,28 @@ def remove(
      stats_prefix (os.PathLike, optional): Output path for deduplication statistics. Defaults to "".
     """
 
-    file_type = (
+    input_file_type = (
         get_file_type(slices)
         if file_type == "auto"
         else file_type
     )
 
+    output_file_type = get_file_type(output)
+
     if file_type == "tsv":
+
+        if not  output_file_type == "tsv":
+            raise NotImplementedError("Currently only tsv -> tsv output supported")
+
         n_slices_total, n_slices_unique = remove_duplicates_from_tsv(
             slices, output, duplicated_ids, buffer=buffer
         )
 
     elif file_type == "hdf5":
+
+        if not  output_file_type == "hdf5":
+            raise NotImplementedError("Currently only hdf5 -> hdf5 output supported")
+
         n_slices_total, n_slices_unique = remove_duplicates_from_hdf5(
             slices, duplicated_ids, output
         )
