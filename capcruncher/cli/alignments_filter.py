@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import xxhash
+import logging
 
 
 from capcruncher.tools.io import parse_bam
@@ -14,7 +15,7 @@ SLICE_FILTERS = {
 }
 
 
-@get_timing(task_name="merging annotations with BAM input")
+#@get_timing(task_name="merging annotations with BAM input")
 def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFrame:
     """Combines annotations with the parsed bam file output.
 
@@ -60,7 +61,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
     return df
 
 
-@get_timing(task_name="analysis of bam file")
+#@get_timing(task_name="analysis of bam file")
 def filter(
     bam: os.PathLike,
     annotations: os.PathLike,
@@ -131,13 +132,13 @@ def filter(
     """
 
     # Read bam file and merege annotations
+    logging.info("Loading bam file")
     df_alignment = parse_bam(bam)
+    logging.info("Merging bam file with annotations")
     df_alignment = merge_annotations(df_alignment, annotations)
 
     # Initialise SliceFilter
     # If no custom filtering, will use the class default.
-
-    print(f"Filtering slices with method: {method}")
     slice_filter_type = SLICE_FILTERS[method]
     slice_filter = slice_filter_type(
         slices=df_alignment,
@@ -147,6 +148,7 @@ def filter(
     )
 
     # Filter slices using the slice_filter
+    logging.info(f"Filtering slices with method: {method}")
     slice_filter.filter_slices()
 
     if slice_stats:
@@ -157,6 +159,7 @@ def filter(
 
     # Save reporter stats
     if cis_and_trans_stats:
+        logging.info(f"Writing reporter statistics")
         slice_filter.cis_or_trans_stats.to_csv(
             f"{stats_prefix}.reporter.stats.csv", index=False
         )
@@ -169,6 +172,7 @@ def filter(
                                  partition=xxhash.xxh32_intdigest(bam, seed=42))
 
     if fragments:
+        logging.info(f"Writing reporters at the fragment level")
         df_fragments = (slice_filter_type(df_slices.reset_index())
                         .fragments
                         .assign(viewpoint=lambda df: df["id"].map(df_capture["capture"]).astype("category"),
@@ -176,4 +180,8 @@ def filter(
                         )
 
         df_fragments.to_hdf(f"{output_prefix}.hdf5", key="fragments", data_columns=["id"], format="table")
+    
+    logging.info(f"Writing reporters slices")
     df_slices.reset_index().to_hdf(f"{output_prefix}.hdf5", key="slices", data_columns=["parent_id"], format="table")
+
+    logging.info(f"Completed analysis of bam file")
