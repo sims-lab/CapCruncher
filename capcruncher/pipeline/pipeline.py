@@ -1131,7 +1131,7 @@ def post_annotation():
 @transform(
     fastq_alignment,
     regex(r".*/(.*)_(part\d+).(flashed|pe).bam"),
-    add_inputs(r"capcruncher_analysis/annotations/\1.annotations.hdf5"),
+    add_inputs(r"capcruncher_analysis/annotations/\1_\2.\3.annotations.hdf5"),
     r"capcruncher_analysis/reporters/identified/\1.\2.\3.hdf5",
     extras=[r"\1", r"\2", r"\3"],
 )
