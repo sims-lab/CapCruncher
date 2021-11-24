@@ -80,7 +80,7 @@ def repartition_csvs(
 @click.argument("slices")
 @click.option("-o", "--output", help="Output file name")
 @click.option("-m", "--method", type=click.Choice(["capture", "tri", "tiled"]))
-@click.option("--input-type", type=click.Choice(["hdf5", "tsv"]))
+@click.option("--file-type", type=click.Choice(["hdf5", "tsv"]))
 @click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
 @click.option(
     "--read-type",
