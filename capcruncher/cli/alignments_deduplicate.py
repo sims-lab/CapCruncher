@@ -1,3 +1,4 @@
+import logging
 from typing import Iterable, List, Literal, Tuple
 import dask
 import pandas as pd
@@ -5,14 +6,13 @@ import pandas as pd
 import click
 import xopen
 from capcruncher.cli.cli_alignments import cli
-from capcruncher.utils import hash_column, load_json
+from capcruncher.utils import hash_column, load_json, get_file_type
 import ujson
 import os
 import numpy as np
 from dask.delayed import delayed
 import dask.dataframe as dd
 import shutil
-
 
 def extract_start_and_end_slice_coords_pe(df):
     coords = df["coordinates"].str.extract(
@@ -67,9 +67,7 @@ def identify_deduplicates_from_tsv(
     return duplicated_fragments
 
 
-def identify_duplicates_from_hdf5(
-    fragments: list, read_type: Literal["flashed", "pe"]
-):
+def identify_duplicates_from_hdf5(fragments: list, read_type: Literal["flashed", "pe"]) -> dd.Series:
 
     df_fragments_coords = dd.read_hdf(
         fragments, key=f"/fragments", columns=["id", "coordinates"]
@@ -82,21 +80,20 @@ def identify_duplicates_from_hdf5(
                 lambda df: df.assign(coordinates=hash_column(df["coordinates"]))
             )
             .shuffle(on="coordinates")
-            .map_partitions(lambda df: df[df.duplicated(subset="coordinates")])
-            ["id"]
+            .map_partitions(lambda df: df[df.duplicated(subset="coordinates")])["id"]
         )
 
     elif read_type == "pe":
 
         return (
             df_fragments_coords.map_partitions(
-                lambda df: df.join(extract_start_and_end_slice_coords_pe(df))
-                [["id", "coordinates_pe"]]
-                #.assign(coordinates_pe=lambda df: hash_column(df["coordinates_pe"]))
+                lambda df: df.join(extract_start_and_end_slice_coords_pe(df))[
+                    ["id", "coordinates_pe"]
+                ]
+                # .assign(coordinates_pe=lambda df: hash_column(df["coordinates_pe"]))
             )
             .shuffle(on="coordinates_pe")
-            .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])
-            ["id"]
+            .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])["id"]
         )
 
 
@@ -144,9 +141,7 @@ def remove_duplicates_from_tsv(
         os.unlink(output)
 
     df_slices = pd.read_csv(slices, sep="\t", chunksize=buffer)
-
-    with xopen.xopen(duplicated_ids, "r") as r:
-        ids_duplicated = {int(x) for x in ujson.load(r)}
+    ids_duplicated = read_duplicated_ids(duplicated_ids)
 
     n_reads_total = 0
     n_reads_unique = 0
@@ -154,7 +149,7 @@ def remove_duplicates_from_tsv(
     # Iterate slices in chunks
     for ii, df in enumerate(df_slices):
 
-        print(f"Processed {(ii + 1) * buffer} slices")
+        logging.info(f"Processed {(ii + 1) * buffer} slices")
 
         n_reads_total += df["parent_read"].nunique()
 
@@ -174,49 +169,37 @@ def remove_duplicates_from_tsv(
 
     return (n_reads_total, n_reads_unique)
 
-
-def remove_duplicates_from_hdf5_single(
-    slices: Iterable, duplicated_ids: os.PathLike, output: os.PathLike
-):
-
-    try:
-        ser_duplicated_ids = pd.read_hdf(duplicated_ids, key="/duplicated_ids")
-    except KeyError:
-        ser_duplicated_ids = pd.Series(data=["NO_DATA"], name="duplicated_ids")
-
-    with pd.HDFStore(slices, "r") as store:
-        n_slices_total = store.get_storer(f"/slices").nrows
-        df_slices_dedup = store.select(
-            f"/slices", where="parent_id != ser_duplicated_ids"
-        )
-        n_slices_unique = df_slices_dedup.shape[0]
-
-    df_slices_dedup.to_hdf(output, key=f"/slices", format="table")
-
-    return (n_slices_total, n_slices_unique)
-
-def remove_duplicates_from_hdf5_files (
-    slices: Iterable, duplicated_ids: os.PathLike, output: os.PathLike
+def remove_duplicates_from_hdf5(
+    slices: Iterable, duplicated_ids: pd.Series, output: os.PathLike
 ) -> Tuple[int, int]:
 
-    try:
-        ser_duplicated_ids = pd.read_hdf(duplicated_ids, key="/duplicated_ids")
-    except KeyError:
-        ser_duplicated_ids = pd.Series(data=["NO_DATA"], name="/duplicated_ids")
 
     n_slices_total = 0
+    duplicated_ids = read_duplicated_ids(duplicated_ids)
+    
 
     # Need to get total number of slices
     for slice_file in slices:
         with pd.HDFStore(slice_file, "r") as store:
             n_slices_total += store.get_storer("slices").nrows
-    
-    # Generate a dask dataframe
-    dframes = [delayed(pd.read_hdf(fn, key="slices", where="parent_id != ser_duplicated_ids"))
-               for fn in slices]
 
-    ddf = dd.from_delayed(dframes, )
-    ddf.to_hdf(output, key="slices", format="table", data_columns=["viewpoint"], mode="w", min_itemsize={"slice_name": 75, "parent_read": 75})
+    # Generate a dask dataframe
+    dframes = [
+        delayed(pd.read_hdf(fn, key="slices", where="parent_id != duplicated_ids"))
+        for fn in slices
+    ]
+
+    ddf = dd.from_delayed(
+        dframes,
+    )
+    ddf.to_hdf(
+        output,
+        key="slices",
+        format="table",
+        data_columns=["viewpoint"],
+        mode="w",
+        min_itemsize={"slice_name": 75, "parent_read": 75},
+    )
 
     # Need to get final number of slices
     with pd.HDFStore(output, "r") as store:
@@ -225,10 +208,29 @@ def remove_duplicates_from_hdf5_files (
     return (n_slices_total, n_slices_unique)
 
 
+def read_duplicated_ids(path: os.PathLike):
+
+    file_type = get_file_type(path)
+
+    if file_type == "json":
+         with xopen.xopen(path, "r") as r:
+            ids_duplicated = {int(x) for x in ujson.load(r)}
+    
+    elif file_type == "hdf5":
+
+        try:
+            ids_duplicated = pd.read_hdf(path, key="/duplicated_ids")
+        except KeyError:
+            ids_duplicated = pd.Series(data=["NO_DATA"], name="/duplicated_ids")
+    
+    return ids_duplicated
+
+
+
 
 def identify(
     fragments: os.PathLike,
-    filetype: str = "auto",
+    input_file_type: str = "auto",
     output: os.PathLike = "duplicated_ids.json",
     viewpoint: str = "",
     buffer: int = 1e6,
@@ -259,19 +261,23 @@ def identify(
                                 Defaults to "flashed".
     """
 
-    filetype = os.path.splitext(os.path.basename(fragments))[-1] if filetype == "auto" else filetype
+    input_file_type = (
+        get_file_type(fragments)
+        if input_file_type == "auto"
+        else input_file_type
+    )
+    output_file_type = get_file_type(output)
 
-    if filetype == "tsv":
+
+    # Extract duplicated fragment ids
+    if input_file_type == "tsv":
         if len(fragments) > 1:
             raise NotImplementedError("Currently just supports a single tsv input")
         else:
             duplicated_fragments = identify_deduplicates_from_tsv(
                 fragments[0], read_type=read_type, buffer=buffer
             )
-            with xopen.xopen(f"{output}", "w") as w:
-                ujson.dump(dict.fromkeys(duplicated_fragments), w)
-
-    elif filetype == "hdf5":
+    elif input_file_type == "hdf5":
 
         outfile = f"{output.replace('.hdf5', '')}.hdf5"
         if os.path.exists(outfile):
@@ -281,9 +287,16 @@ def identify(
             fragments, read_type=read_type
         )
 
-        duplicated_fragments.to_hdf(outfile, f"/duplicated_ids", min_itemsize={"id": 25})
-
+    # Output
+    if output_file_type == "json":
+        with xopen.xopen(output, "w") as w:
+            ujson.dump(dict.fromkeys(duplicated_fragments), w)
     
+    elif output_file_type == "hdf5":
+        duplicated_fragments.to_hdf(
+            outfile, f"/duplicated_ids", min_itemsize={"id": 25}
+        )
+        
 
 
 def remove(
@@ -294,7 +307,7 @@ def remove(
     sample_name: str = "",
     read_type: str = "",
     stats_prefix: os.PathLike = "",
-    filetype: str = "hdf5",
+    file_type: str = "hdf5",
 ):
     """
     Removes duplicated aligned fragments.
@@ -315,17 +328,22 @@ def remove(
      read_type (str, optional): Process combined(flashed) or non-combined reads (pe) used for statistics. Defaults to "".
      stats_prefix (os.PathLike, optional): Output path for deduplication statistics. Defaults to "".
     """
-    
-    filetype = os.path.splitext(os.path.basename(slices))[-1] if filetype == "auto" else filetype
-    
-    if filetype == "tsv":
+
+    file_type = (
+        get_file_type(slices)
+        if file_type == "auto"
+        else file_type
+    )
+
+    if file_type == "tsv":
         n_slices_total, n_slices_unique = remove_duplicates_from_tsv(
             slices, output, duplicated_ids, buffer=buffer
         )
 
-    elif filetype == "hdf5":
-        #slices = [slices,] if isinstance(slices, str) else slices 
-        n_slices_total, n_slices_unique = remove_duplicates_from_hdf5_files(slices, duplicated_ids, output)
+    elif file_type == "hdf5":
+        n_slices_total, n_slices_unique = remove_duplicates_from_hdf5(
+            slices, duplicated_ids, output
+        )
 
     # Prepare stats
     df_stats = pd.DataFrame()
