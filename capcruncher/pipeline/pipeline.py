@@ -1204,7 +1204,7 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         read_type,
         "-o",
         outfile,
-        "--input-type",
+        "--file-type",
         "hdf5",
     ]
 
@@ -1230,9 +1230,11 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
 )
 def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
 
-    """Removes reporters with duplicate coordinates. Merges partitions."""
+    """Removes reporters with duplicate coordinates and merges partitions."""
 
     slices, duplicated_ids = list(zip(*infile))
+    duplicated_ids = duplicated_ids[0] # All id paths are the same, just need one. 
+
     stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}"
 
     statement = [
@@ -1242,7 +1244,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         "remove",
         *slices,
         "-d",
-        duplicated_ids[0],
+        duplicated_ids,
         "-o",
         outfile,
         "--stats-prefix",
@@ -1294,7 +1296,7 @@ def alignments_deduplicate_slices_statistics(
         sample,
         "--read-type",
         read_type,
-        "--input-type",
+        "--file-type",
         "hdf5",
     ]
 
@@ -1968,7 +1970,7 @@ def hub_make(infiles, outfile):
         .assign(basename=lambda df: df["fn"].apply(os.path.basename))
     )
     attributes = df_bigwigs["basename"].str.extract(
-        r"(?P<samplename>.*?)\.(?P<method>.*?)\.(?P<viewpoint>.*?)\.(?P<filetype>.*)"
+        r"(?P<samplename>.*?)\.(?P<method>.*?)\.(?P<viewpoint>.*?)\.(?P<file_type>.*)"
     )
     df_bigwigs = (
         df_bigwigs.join(attributes)
