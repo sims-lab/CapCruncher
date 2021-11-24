@@ -492,9 +492,9 @@ def fastq_duplicates_remove(infiles, outfile):
                 *infiles,
                 "-d",
                 f"capcruncher_preprocessing/deduplicated/deduplicated_ids/{sample_name}.json.gz",
-                "--sample_name",
+                "--sample-name",
                 sample_name,
-                "--stats_prefix",
+                "--stats-prefix",
                 stats_prefix,
                 "-o",
                 output_prefix,
@@ -694,9 +694,9 @@ def fastq_digest_combined(infile, outfile):
         P.PARAMS["analysis_restriction_enzyme"],
         "--minimum_slice_length",
         "18",
-        "--stats_prefix",
+        "--stats-prefix",
         f"capcruncher_statistics/digestion/data/{os.path.basename(outfile)}",
-        "--sample_name",
+        "--sample-name",
         re.match(r".*/(.*?)_part.*", infile).group(1),
     ]
 
@@ -733,9 +733,9 @@ def fastq_digest_non_combined(infiles, outfile):
         P.PARAMS["analysis_restriction_enzyme"],
         "--minimum_slice_length",
         "18",
-        "--stats_prefix",
+        "--stats-prefix",
         f"capcruncher_statistics/digestion/data/{os.path.basename(outfile)}",
-        "--sample_name",
+        "--sample-name",
         re.match(r".*/(.*?)_part.*", infiles[0]).group(1),
     ]
 
@@ -1074,7 +1074,13 @@ def annotate_alignments(infile, outfile):
      * restriction fragment number
     """
 
-    flags = {"name": "-n", "fn": "-b", "action": "-a", "fraction": "-f", "categorise": "-c"}
+    flags = {
+        "name": "-n",
+        "fn": "-b",
+        "action": "-a",
+        "fraction": "-f",
+        "categorise": "-c",
+    }
     statement_bamtobed = " ".join(["bedtools", "bamtobed", "-i", infile[0]])
     statement_sort = " ".join(["sort", "-k1,1", "-k2,2n"])
     statement_annotate = " ".join(
@@ -1127,7 +1133,7 @@ def post_annotation():
     regex(r".*/(.*)_(part\d+).(flashed|pe).bam"),
     add_inputs(r"capcruncher_analysis/annotations/\1.annotations.hdf5"),
     r"capcruncher_analysis/reporters/identified/\1.\2.\3.hdf5",
-    extras=[r"\1", r"\2", r"\3"]
+    extras=[r"\1", r"\2", r"\3"],
 )
 def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_type):
     """Filteres slices and outputs reporter slices for each capture site"""
@@ -1149,14 +1155,14 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
         annotations,
         "-o",
         output_prefix,
-        "--stats_prefix",
+        "--stats-prefix",
         stats_prefix,
-        "--sample_name",
+        "--sample-name",
         sample_name,
-        "--read_type",
+        "--read-type",
         sample_read_type,
         "--no-cis-and-trans-stats",
-        f"--custom_filtering {custom_filtering}"
+        f"--custom-filtering {custom_filtering}"
         if os.path.exists(custom_filtering)
         else "",
         ">",
@@ -1173,6 +1179,7 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
     # Zero annotations
     if not P.PARAMS.get("analysis_optional_keep_annotations", False):
         zap_file(annotations)
+
 
 @follows(mkdir("capcruncher_analysis/reporters/deduplicated/fragments"))
 @collate(
@@ -1198,7 +1205,7 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         "-o",
         outfile,
         "--input-type",
-        "hdf5"
+        "hdf5",
     ]
 
     P.run(
@@ -1226,9 +1233,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
     """Removes reporters with duplicate coordinates. Merges partitions."""
 
     slices, duplicated_ids = list(zip(*infile))
-    stats_prefix = (
-        f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}"
-    )
+    stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}"
 
     statement = [
         "capcruncher",
@@ -1240,11 +1245,11 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         duplicated_ids[0],
         "-o",
         outfile,
-        "--stats_prefix",
+        "--stats-prefix",
         stats_prefix,
-        "--sample_name",
+        "--sample-name",
         sample_name,
-        "--read_type",
+        "--read-type",
         read_type,
     ]
 
@@ -1326,7 +1331,7 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    for fn in  infiles:
+    for fn in infiles:
         zap_file(fn)
 
 
@@ -1557,9 +1562,9 @@ def reporters_store_binned(infile, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    
     # Link bin tables to conserve space
     from capcruncher.tools.storage import link_bins
+
     link_bins(outfile)
 
     # Make sentinel file

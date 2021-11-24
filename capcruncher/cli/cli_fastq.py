@@ -73,9 +73,9 @@ def split(*args, **kwargs):
     default=1e5,
     type=click.INT,
 )
-@click.option("--stats_prefix", help="Output prefix for stats file", default="stats")
+@click.option("--stats-prefix", help="Output prefix for stats file", default="stats")
 @click.option(
-    "--sample_name", help="Name of sample e.g. DOX_treated_1. Required for correct statistics.", default="sampleX"
+    "--sample-name", help="Name of sample e.g. DOX_treated_1. Required for correct statistics.", default="sampleX"
 )
 def digest(*args, **kwargs):
     """
@@ -179,8 +179,8 @@ def deduplicate_identify(*args, **kwargs):
     default=5,
     type=click.INT,
 )
-@click.option("--sample_name", help="Name of sample e.g. DOX_treated_1", default='sampleX')
-@click.option("--stats_prefix", help="Output prefix for stats file", default='stats')
+@click.option("--sample-name", help="Name of sample e.g. DOX_treated_1", default='sampleX')
+@click.option("--stats-prefix", help="Output prefix for stats file", default='stats')
 def deduplicate_remove(*args, **kwargs):
     """
     Removes fragments with duplicated sequences from fastq files.

@@ -94,7 +94,7 @@ def annotate(*args, **kwargs):
     required=True,
 )
 @click.option(
-    "--custom_filtering",
+    "--custom-filtering",
     help="Custom filtering to be used. This must be supplied as a path to a yaml file.",
     default=None,
 )
@@ -105,13 +105,13 @@ def annotate(*args, **kwargs):
     default="",
 )
 @click.option(
-    "--stats_prefix",
+    "--stats-prefix",
     help="Output prefix for stats file(s)",
     default="",
 )
-@click.option("--sample_name", help="Name of sample e.g. DOX_treated_1")
+@click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
 @click.option(
-    "--read_type",
+    "--read-type",
     help="Type of read",
     default="flashed",
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
@@ -222,13 +222,13 @@ def identify(*args, **kwargs):
     default=1e6,
     type=click.INT,
 )
-@click.option("--stats_prefix", help="Output prefix for deduplication statistics")
+@click.option("--stats-prefix", help="Output prefix for deduplication statistics")
 @click.option(
-    "--sample_name",
+    "--sample-name",
     help="Name of sample being analysed e.g. DOX_treated_1. Required for correct statistics.",
 )
 @click.option(
-    "--read_type",
+    "--read-type",
     help="Indicates if the fragments have been combined (flashed) or not (pe). Required for correct statistics.",
     default="flashed",
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
