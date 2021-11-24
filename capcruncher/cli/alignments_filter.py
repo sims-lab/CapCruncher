@@ -15,7 +15,7 @@ SLICE_FILTERS = {
 }
 
 
-#@get_timing(task_name="merging annotations with BAM input")
+# @get_timing(task_name="merging annotations with BAM input")
 def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFrame:
     """Combines annotations with the parsed bam file output.
 
@@ -42,11 +42,13 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
             low_memory=False,
         )
     elif annotations.endswith(".hdf5"):
-        df_ann = pd.read_hdf(annotations, "annotation").set_index(["slice_name", "chrom", "start"])
+        df_ann = pd.read_hdf(annotations, "annotation").set_index(
+            ["slice_name", "chrom", "start"]
+        )
 
     df_ann = df_ann.drop(columns="end", errors="ignore")
 
-    df =  (
+    df = (
         df.join(df_ann, how="inner")
         .drop(columns=["slice_name.1"], errors="ignore")
         .assign(
@@ -61,7 +63,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
     return df
 
 
-#@get_timing(task_name="analysis of bam file")
+# @get_timing(task_name="analysis of bam file")
 def filter(
     bam: os.PathLike,
     annotations: os.PathLike,
@@ -76,7 +78,6 @@ def filter(
     read_stats: bool = True,
     slice_stats: bool = True,
     cis_and_trans_stats: bool = True,
-
 ):
     """
     Removes unwanted aligned slices and identifies reporters.
@@ -153,7 +154,7 @@ def filter(
 
     if slice_stats:
         slice_filter.filter_stats.to_csv(f"{stats_prefix}.slice.stats.csv", index=False)
-    
+
     if read_stats:
         slice_filter.read_stats.to_csv(f"{stats_prefix}.read.stats.csv", index=False)
 
@@ -168,20 +169,31 @@ def filter(
 
     df_slices = slice_filter.slices.set_index("parent_id")
     df_capture = df_slices.query("capture_count == 1")
-    df_slices = df_slices.assign(viewpoint=df_slices.index.map(df_capture["capture"]),
-                                 partition=xxhash.xxh32_intdigest(bam, seed=42))
+    df_slices = df_slices.assign(
+        viewpoint=df_slices.index.map(df_capture["capture"]),
+        partition=xxhash.xxh32_intdigest(bam, seed=42),
+    )
 
     if fragments:
         logging.info(f"Writing reporters at the fragment level")
-        df_fragments = (slice_filter_type(df_slices.reset_index())
-                        .fragments
-                        .assign(viewpoint=lambda df: df["id"].map(df_capture["capture"]).astype("category"),
-                                partition=xxhash.xxh32_intdigest(bam, seed=42))
-                        )
+        df_fragments = slice_filter_type(df_slices.reset_index()).fragments.assign(
+            viewpoint=lambda df: df["id"].map(df_capture["capture"]).astype("category"),
+            partition=xxhash.xxh32_intdigest(bam, seed=42),
+        )
 
-        df_fragments.to_hdf(f"{output_prefix}.hdf5", key="fragments", data_columns=["id"], format="table")
-    
+        df_fragments.to_hdf(
+            f"{output_prefix}.hdf5",
+            key="fragments",
+            data_columns=["id"],
+            format="table",
+        )
+
     logging.info(f"Writing reporters slices")
-    df_slices.reset_index().to_hdf(f"{output_prefix}.hdf5", key="slices", data_columns=["parent_id"], format="table")
+    df_slices.reset_index().to_hdf(
+        f"{output_prefix}.hdf5",
+        key="slices",
+        data_columns=["parent_id"],
+        format="table",
+    )
 
     logging.info(f"Completed analysis of bam file")
