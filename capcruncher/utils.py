@@ -419,6 +419,10 @@ def gtf_line_to_bed12_line(df):
     )
 
 
+def get_file_type(fn):
+    return os.path.splitext(os.path.basename(fn).replace(".gz"))[-1]
+
+
 class PysamFakeEntry:
     """Testing class used to supply a pysam FastqProxy like object"""
 
