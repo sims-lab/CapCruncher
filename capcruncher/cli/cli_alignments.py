@@ -177,10 +177,10 @@ def deduplicate():
 )
 @click.option(
     "-t",
-    "--input-type",
+    "--file-type",
     help="File format for input",
-    default="parquet",
-    type=click.Choice(["parquet", "hdf5", "tsv"], case_sensitive=False),
+    default="auto",
+    type=click.Choice(["auto", "tsv", "hdf5"], case_sensitive=False),
 )
 @click.option(
     "-o",
@@ -215,6 +215,13 @@ def identify(*args, **kwargs):
 )
 @click.option(
     "-o", "--output", help="Path for outputting deduplicated slices in tsv format.", default="slices_dedup.hdf5",
+)
+@click.option(
+    "-t",
+    "--file-type",
+    help="File format for input",
+    default="auto",
+    type=click.Choice(["auto", "tsv", "hdf5"], case_sensitive=False),
 )
 @click.option(
     "--buffer",
