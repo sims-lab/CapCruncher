@@ -32,7 +32,9 @@ def read_dataframes(filenames: Iterable, **kwargs):
     if len(dframes) > 0:
         return dframes
     else:
-        raise RuntimeError(f"All dataframes supplied are empty or incorrectly formatted: {filenames}")
+        raise RuntimeError(
+            f"All dataframes supplied are empty or incorrectly formatted: {filenames}"
+        )
 
 
 def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
@@ -419,8 +421,30 @@ def gtf_line_to_bed12_line(df):
     )
 
 
-def get_file_type(fn):
-    return os.path.splitext(os.path.basename(fn).replace(".gz"))[-1]
+def get_file_type(fn: os.PathLike) -> str:
+    """
+    Determines file type based on extension.
+
+    Args:
+        fn (os.PathLike): Path to analyse
+
+    Returns:
+        str: File type
+    """
+
+    file_types = {
+        "hdf5": "hdf5",
+        "hdf": "hdf5",
+        "json": "json",
+        "tsv": "tsv",
+        "h5": "hdf5",
+    }
+    ext = os.path.splitext(os.path.basename(fn).replace(".gz", ""))[-1].strip(".")
+
+    try:
+        return file_types[ext]
+    except KeyError as e:
+        print(f"File extension {ext} is not supported")
 
 
 class PysamFakeEntry:
