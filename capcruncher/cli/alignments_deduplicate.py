@@ -230,7 +230,7 @@ def read_duplicated_ids(path: os.PathLike):
 
 def identify(
     fragments: os.PathLike,
-    input_file_type: str = "auto",
+    file_type: str = "auto",
     output: os.PathLike = "duplicated_ids.json",
     viewpoint: str = "",
     buffer: int = 1e6,
