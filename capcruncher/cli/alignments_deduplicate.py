@@ -263,8 +263,8 @@ def identify(
 
     input_file_type = (
         get_file_type(fragments)
-        if input_file_type == "auto"
-        else input_file_type
+        if file_type == "auto"
+        else file_type
     )
     output_file_type = get_file_type(output)
 
