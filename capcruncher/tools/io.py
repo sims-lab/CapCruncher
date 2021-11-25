@@ -6,6 +6,7 @@ import traceback
 import pandas as pd
 from pysam import FastxFile
 from xopen import xopen
+from capcruncher.tools.count import preprocess_reporters_for_counting
 from capcruncher.utils import get_timing, hash_column, get_fragment_combinations
 import pysam
 import numpy as np
@@ -465,12 +466,14 @@ class FragmentCountingProcess(multiprocessing.Process):
         self,
         inq: multiprocessing.Queue,
         outq: multiprocessing.Queue,
+        **preprocessing_kwargs,
     ):
 
         # Multiprocessing vars
         self.inq = inq
         self.outq = outq
         self.block_period = 0.01
+        self.preprocessing_kwargs = preprocessing_kwargs
 
         super(FragmentCountingProcess, self).__init__()
 
@@ -482,6 +485,8 @@ class FragmentCountingProcess(multiprocessing.Process):
 
                 if df is None:
                     break
+                
+                df = preprocess_reporters_for_counting(df, **self.preprocessing_kwargs)
 
                 counts = (
                     df.groupby(["parent_id"])
