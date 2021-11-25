@@ -96,7 +96,13 @@ def count(
             path=reporters, key="slices", inq=viewpoints_queue, outq=slices_queue
         )
         counters = [
-            FragmentCountingProcess(inq=slices_queue, outq=counts_queue)
+            FragmentCountingProcess(
+                inq=slices_queue,
+                outq=counts_queue,
+                remove_capture=remove_capture,
+                remove_exclusions=remove_exclusions,
+                subsample=subsample,
+            )
             for i in range(N_PROCESSES)
         ]
 
@@ -110,22 +116,22 @@ def count(
             writer = CCHDF5WriterProcess(
                 output_path=output, output_key="slices", single_file=True
             )
-        
+
         processes = [writer, *counters, reader]
         for process in processes:
             process.start()
 
         for vp in tqdm.tqdm(viewpoints):
             viewpoints_queue.put(vp)
-        
+
         viewpoints_queue.put(None)
         reader.join()
 
         for i in range(N_PROCESSES):
             slices_queue.put((None, None))
-        
+
         for counter in counters:
             counter.join()
-        
+
         counts_queue.put((None, None))
         writer.join()
