@@ -474,7 +474,6 @@ def get_categories_from_hdf5_column(
         if not cat == null_value
     ]
 
-
 class PysamFakeEntry:
     """Testing class used to supply a pysam FastqProxy like object"""
 
