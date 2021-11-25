@@ -510,7 +510,7 @@ class CCHDF5WriterProcess(multiprocessing.Process):
         self,
         inq: multiprocessing.Queue,
         output_path: os.PathLike,
-        output_key: str = "slices",
+        output_key: str = "/",
         output_format: str = "cooler",
         single_file: bool = True,
         restriction_fragment_map: os.PathLike = None,
