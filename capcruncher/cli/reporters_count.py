@@ -3,172 +3,17 @@ import pandas as pd
 from collections import defaultdict
 from itertools import combinations
 import xopen
-from capcruncher.cli.cli_reporters import cli
-import click
 import os
 from tqdm import tqdm
 import logging
-from dask import delayed
 
+from capcruncher.tools.io import (
+    CCHDF5ReaderProcess,
+    FragmentCountingProcess,
+    CCHDF5WriterProcess,
+)
+from capcruncher.tools.count import get_counts_from_tsv, get_counts_from_tsv_by_batch
 from capcruncher.utils import get_categories_from_hdf5_column, get_file_type
-
-
-def subsample_reporters_from_df(df: pd.DataFrame, subsample: float):
-
-    logging.info("Subsampling data")
-    if isinstance(subsample, float):
-        subsample_options = {"frac": subsample}
-    elif isinstance(subsample, int):
-        subsample_options = {"n": subsample}
-
-    # Generate a subsample of fragments and slice these from the reporter dataframe
-    df_reporters = df[
-        df["parent_read"].isin(df["parent_read"].sample(**subsample_options))
-    ]
-
-    return df_reporters
-
-
-def remove_exclusions_from_df(df: pd.DataFrame):
-
-    logging.info("Removing exclusions")
-    # Must only remove exclusions if they are relevant for the capture being examined
-    df_capture = df.query('capture != "."')
-
-    # Finds excluded reporters
-    df_reporters_exclusions = df.query('(capture == ".") and (exclusion_count > 0)')
-
-    # Merge captures with excluded reporters and remove only exclusions
-    # where the excluded region is the same as the capture probe.
-    df_reporters_to_remove = (
-        df_capture.drop_duplicates(["parent_read", "capture"])[
-            ["parent_read", "capture"]
-        ]
-        .merge(
-            df_reporters_exclusions[["parent_read", "exclusion", "slice_name"]],
-            on="parent_read",
-        )
-        .query("capture == exclusion")
-    )
-
-    df_reporters = df.loc[
-        ~(df["slice_name"].isin(df_reporters_to_remove["slice_name"]))
-    ]
-
-    return df_reporters
-
-
-def preprocess_reporters_for_counting(df: pd.DataFrame, **kwargs):
-
-    # Need to remove any restiction fragments that are not in the digested genome
-    df_reporters = df.query("restriction_fragment != -1")
-
-    if kwargs.get("remove_exclusions"):
-        df_reporters = remove_exclusions_from_df(df_reporters)
-
-    # Remove the capture site
-    if kwargs.get("remove_viewpoints"):
-        logging.info("Removing viewpoints")
-        df_reporters = df_reporters.query('capture != "."')
-
-    # Subsample at the fragment level
-    if kwargs.get("subsample"):
-        df_reporters = subsample_reporters_from_df(df_reporters, kwargs["subsample"])
-
-    logging.info("Grouping into fragments")
-    fragments = df_reporters.groupby("parent_read")
-
-    return fragments
-
-
-def count_re_site_combinations(
-    groups: pd.core.groupby.GroupBy,
-    column: str = "restriction_fragment",
-    counts: defaultdict = None,
-) -> defaultdict:
-    """
-    Counts the number of unique combinations bewteen groups in a column.
-
-    Args:
-     df (pd.core.groupby.GroupBy): Aggregated dataframe for processing.
-     column (str, optional): Column to examine for unique combinations per group. Defaults to "restriction_fragment".
-     counts (defaultdict, optional): defaultdict(int) containing previous counts. Defaults to None.
-
-    Returns:
-     defaultdict: defaultdict(int) containing the count of unique interactions.
-    """
-
-    if not counts:
-        counts = defaultdict(int)  # Store counts in a default dict
-
-    # For each set of ligated fragments
-    for ii, (group_name, frag) in enumerate(tqdm(groups)):
-
-        for rf1, rf2 in combinations(frag[column], 2):  # Get fragment combinations
-            # TODO: Notice a high amount of multicaptures (same oligo) not being removed.
-            # Need to track this down but for now will explicitly prevent the same bin appearing twice.
-            if not rf1 == rf2:
-                rf1, rf2 = sorted([rf1, rf2])  # Sort them to ensure consistency
-                counts[rf1, rf2] += 1
-
-    return counts
-
-
-def get_counts_from_tsv_by_batch(reporters: os.PathLike, chunksize: int, **kwargs):
-
-    df_reporters_iterator = pd.read_csv(reporters, sep="\t", chunksize=chunksize)
-
-    ligated_rf_counts = defaultdict(int)
-    for ii, df_reporters in enumerate(df_reporters_iterator):
-
-        logging.info(f"Processing chunk #{ii+1} of {chunksize} slices")
-
-        fragments = preprocess_reporters_for_counting(df_reporters, **kwargs)
-
-        logging.info("Counting")
-        ligated_rf_counts = count_re_site_combinations(
-            fragments, column="restriction_fragment", counts=ligated_rf_counts
-        )
-
-    return ligated_rf_counts
-
-
-def get_counts_from_tsv(reporters: os.PathLike, **kwargs):
-
-    df_reporters = pd.read_csv(reporters, sep="\t")
-
-    fragments = preprocess_reporters_for_counting(df_reporters, **kwargs)
-
-    logging.info("Counting")
-    ligated_rf_counts = count_re_site_combinations(
-        fragments, column="restriction_fragment"
-    )
-
-    return ligated_rf_counts
-
-
-def get_fragment_combinations(df: pd.DataFrame):
-    return [sorted(comb) for comb in combinations(df["restriction_fragment"], 2)]
-
-
-def get_counts_from_reporters(reporters: pd.DataFrame, **kwargs):
-
-    return (
-        reporters.groupby(["parent_id"])
-        .apply(get_fragment_combinations)
-        .reset_index()
-        .rename(columns={0: "combinations"})["combinations"]
-        .explode()
-        .reset_index()
-        .assign(
-            bin1_id=lambda df: df["combinations"].map(lambda c: c[0]),
-            bin2_id=lambda df: df["combinations"].map(lambda c: c[1]),
-        )
-        .groupby(["bin1_id", "bin2_id"])
-        .size()
-        .reset_index()
-        .rename(columns={0: "count"})
-    )
 
 
 def count(
@@ -180,6 +25,9 @@ def count(
     subsample: int = 0,
     low_memory: bool = False,
     chunksize: int = 2e6,
+    output_as_cooler: bool = False,
+    restriction_fragment_map: os.PathLike = None,
+    viewpoints_path: os.PathLike = None,
 ):
     """
     Determines the number of captured restriction fragment interactions genome wide.
@@ -235,29 +83,49 @@ def count(
 
     elif output_file_type == "hdf5":
 
+        import multiprocessing
+
+        N_PROCESSES = 4
         viewpoints = get_categories_from_hdf5_column(reporters, "slices", "viewpoint")
 
-        with pd.HDFStore(reporters, "r") as store:
-            dframes = [delayed(lambda hdf5_store, table, vp_to_select: hdf5_store.select(table, where="viewpoint == vp_to_select"))(store, "slices", vp)
-                       for vp in viewpoints]
+        viewpoints_queue = multiprocessing.Queue()
+        slices_queue = multiprocessing.Queue()
+        counts_queue = multiprocessing.Queue()
 
+        reader = CCHDF5ReaderProcess(
+            path=reporters, key="slices", inq=viewpoints_queue, outq=slices_queue
+        )
+        counters = [
+            FragmentCountingProcess(inq=slices_queue, outq=counts_queue)
+            for i in range(N_PROCESSES)
+        ]
 
+        if output_as_cooler:
+            writer = CCHDF5WriterProcess(
+                output_path=output,
+                restriction_fragment_map=restriction_fragment_map,
+                viewpoint_path=viewpoints_path,
+            )
+        else:
+            writer = CCHDF5WriterProcess(
+                output_path=output, output_key="slices", single_file=True
+            )
         
+        processes = [writer, *counters, reader]
+        for process in processes:
+            process.start()
 
-        # with pd.HDFStore(output, "w") as store:
-        #     for viewpoint in viewpoints:
-        #         counts = get_counts_from_hdf5(
-        #             reporters,
-        #             viewpoint=viewpoint,
-        #             remove_capture=remove_capture,
-        #             remove_exclusions=remove_exclusions,
-        #             subsample=subsample,
-        #         )
+        for vp in tqdm.tqdm(viewpoints):
+            viewpoints_queue.put(vp)
+        
+        viewpoints_queue.put(None)
+        reader.join()
 
-        #         store.append(
-        #             viewpoint,
-        #             pd.Series(counts)
-        #             .rename_axis(["bin1_id", "bin2_id"])
-        #             .reset_index(name="count"),
-        #             format="table",
-        #         )
+        for i in range(N_PROCESSES):
+            slices_queue.put((None, None))
+        
+        for counter in counters:
+            counter.join()
+        
+        counts_queue.put((None, None))
+        writer.join()
