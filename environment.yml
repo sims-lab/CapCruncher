@@ -8,6 +8,7 @@ dependencies:
   - cgatcore
   - click
   - joblib
+  - dask
   - natsort
   - pybedtools
   - pysam

@@ -187,7 +187,13 @@ normalisation:
     # Current normalisation formula: 
     # (REPORTER_COUNT / N_CIS_REPORTERS) * SCALE_FACTOR
     # (Required) 
-    scale_factor: 1000000 
+    scale_factor: 1000000
+    
+    # Regions to use for normalising viewpoint pileups.
+    # To use this method, provide the path to a bed file with the inverval(s)
+    # to be used for normalising *each* viewpoint. All viewpoints must have at least 
+    # one region specified.
+    regions: REGIONS_FOR_NORM
 
 plot:
 
