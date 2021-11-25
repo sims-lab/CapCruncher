@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 from collections import namedtuple
+from capcruncher.utils import read_dataframes
 
 
 class DeduplicationStatistics():
@@ -31,7 +32,7 @@ DigestionStats = namedtuple('DigestionStats', ['read_type', 'read_number', 'unfi
 
 def collate_histogram_data(fnames):
     return (
-        pd.concat([pd.read_csv(fn) for fn in fnames])
+        pd.concat(read_dataframes(fnames))
         .groupby(["sample", "read_type", "read_number", "n_slices"])["n_reads"]
         .sum()
         .reset_index()
@@ -40,7 +41,7 @@ def collate_histogram_data(fnames):
 
 def collate_read_data(fnames):
 
-    df = (pd.concat([pd.read_csv(fn) for fn in fnames])
+    df = (pd.concat(read_dataframes(fnames))
         .query('(read_number == 0) or (read_number == 1)')
         .groupby(["sample", "stage", "read_type", "read_number", "stat_type"])["stat"]
         .sum()
@@ -51,7 +52,7 @@ def collate_read_data(fnames):
 
 def collate_slice_data(fnames):
 
-    df = pd.concat([pd.read_csv(fn) for fn in fnames])
+    df = pd.concat(read_dataframes(fnames))
     aggregations = {col: 'sum' if not 'unique' in col else 'max' for col in df.columns
                     if not col in ['sample', 'stage', 'read_type']}
 
@@ -62,15 +63,7 @@ def collate_slice_data(fnames):
         )
 
 def collate_cis_trans_data(fnames):
-
-    dframes = []
-    for fn in fnames:
-        try:
-            dframes.append(pd.read_csv(fn))
-        except pd.errors.EmptyDataError:
-            pass
-
-    return (pd.concat(dframes)
+    return (pd.concat(read_dataframes(fnames))
               .groupby(['sample', 'capture', 'read_type', 'cis/trans'])
               .sum()
               .reset_index()

@@ -1,4 +1,5 @@
 import glob
+import logging
 import os
 import re
 import sys
@@ -15,6 +16,23 @@ import ujson
 import xxhash
 from pybedtools import BedTool
 import pybedtools
+
+
+def read_dataframes(filenames: Iterable, **kwargs):
+    dframes = []
+    for fn in filenames:
+        try:
+            df = pd.read_csv(fn, **kwargs)
+        except (pd.errors.EmptyDataError):
+            logging.warning(f"{fn} is empty")
+
+        if not df.empty:
+            dframes.append(df)
+
+    if len(dframes) > 0:
+        return dframes
+    else:
+        raise RuntimeError(f"All dataframes supplied are empty or incorrectly formatted: {filenames}")
 
 
 def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
