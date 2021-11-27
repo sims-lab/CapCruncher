@@ -4,7 +4,7 @@ from collections import defaultdict
 from itertools import combinations
 import xopen
 import os
-from tqdm import tqdm
+import tqdm
 import logging
 
 from capcruncher.tools.io import (
@@ -108,13 +108,17 @@ def count(
 
         if output_as_cooler:
             writer = CCHDF5WriterProcess(
+                inq=counts_queue,
                 output_path=output,
                 restriction_fragment_map=restriction_fragment_map,
                 viewpoint_path=viewpoints_path,
             )
         else:
             writer = CCHDF5WriterProcess(
-                output_path=output, output_key="slices", single_file=True
+                inq=counts_queue,
+                output_path=output,
+                output_key="slices",
+                single_file=True,
             )
 
         processes = [writer, *counters, reader]
