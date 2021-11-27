@@ -36,7 +36,15 @@ def cli():
     ],
     type=click.FLOAT,
 )
-@click.option("-c", "--categorise", help="Categorise the output from get", multiple=True, default=[False,])
+@click.option(
+    "-t",
+    "--dtypes",
+    help="Data type for column",
+    multiple=True,
+    default=[
+        "str",
+    ],
+)
 @click.option(
     "-o",
     "--output",
@@ -214,7 +222,10 @@ def identify(*args, **kwargs):
     help="Path to duplicated fragment ids determined by the 'identify' subcommand.",
 )
 @click.option(
-    "-o", "--output", help="Path for outputting deduplicated slices in tsv format.", default="slices_dedup.hdf5",
+    "-o",
+    "--output",
+    help="Path for outputting deduplicated slices in tsv format.",
+    default="slices_dedup.hdf5",
 )
 @click.option(
     "-t",
