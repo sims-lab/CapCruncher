@@ -1019,42 +1019,42 @@ def annotate_sort_blacklist(outfile):
                 "fn": "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
                 "action": "get",
                 "fraction": 0.2,
-                "categorise": False,
+                "dtype": "int",
             },
             {
                 "name": "capture",
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "get",
                 "fraction": 0.9,
-                "categorise": True,
+                "dtype": "category",
             },
             {
                 "name": "exclusion",
                 "fn": "capcruncher_analysis/annotations/exclude.bed",
                 "action": "get",
                 "fraction": 1e-9,
-                "categorise": True,
+                "dtype": "category",
             },
             {
                 "name": "exclusion_count",
                 "fn": "capcruncher_analysis/annotations/exclude.bed",
                 "action": "count",
                 "fraction": 1e-9,
-                "categorise": False,
+                "dtype": "int",
             },
             {
                 "name": "capture_count",
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "count",
                 "fraction": 0.9,
-                "categorise": False,
+                "dtype": "int",
             },
             {
                 "name": "blacklist",
                 "fn": "capcruncher_analysis/annotations/blacklist.bed",
                 "action": "count",
                 "fraction": 1e-9,
-                "categorise": False,
+                "dtype": "int",
             },
         ]
     ),
@@ -1079,7 +1079,7 @@ def annotate_alignments(infile, outfile):
         "fn": "-b",
         "action": "-a",
         "fraction": "-f",
-        "categorise": "-c",
+        "dtype": "-t",
     }
     statement_bamtobed = " ".join(["bedtools", "bamtobed", "-i", infile[0]])
     statement_sort = " ".join(["sort", "-k1,1", "-k2,2n"])
@@ -1142,7 +1142,7 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
     output_prefix = outfile.replace(".hdf5", "")
     output_log_file = f"{output_prefix}.log"
     stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
-    custom_filtering = P.PARAMS.get("analysis_optional_custom_filtering")
+    custom_filtering = P.PARAMS.get("analysis_optional_custom_filtering", "NO_PATH_PROVIDED")
 
     statement = [
         "capcruncher",
@@ -1264,10 +1264,10 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
     )
 
     # Zero non-deduplicated reporters
-    for s in slices:
-        zap_file(s)
+    # for s in slices:
+    #     zap_file(s)
 
-
+    
 @transform(
     alignments_deduplicate_slices,
     regex(r".*/(.*?)\.(.*?)\.hdf5"),
@@ -1307,27 +1307,42 @@ def alignments_deduplicate_slices_statistics(
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-
+@follows(alignments_deduplicate_slices_statistics)
 @collate(
     alignments_deduplicate_slices,
-    regex(r".*/(?P<sample>.*)\.\d+\.(?:flashed|pe)\.hdf5"),
-    r"capcruncher_analysis/reporters/\1_slices.hdf5",
+    regex(r".*/(?P<sample>.*)\.(?:flashed|pe)\.hdf5"),
+    r"capcruncher_analysis/reporters/\1.hdf5",
 )
 def alignments_deduplicate_collate(infiles, outfile):
 
     """Final collation of reporters by sample"""
 
-    statement = [
+    tmp = f"{outfile}.tmp"
+
+    statement_merge = [
         "capcruncher",
         "utilities",
         "merge-capcruncher-hdfs",
         *infiles,
         "-o",
-        outfile,
+        tmp,
+        "-i",
+        "viewpoint",
     ]
 
+    # statement_repack = ["ptrepack", 
+    #                     "--chunkshape=auto",
+    #                     "--sortby=viewpoint",
+    #                     "--complevel=2",
+    #                     "--complib=blosc",
+    #                     f"{tmp}:/slices/table",
+    #                     f"{outfile}:/slices/table",
+    #                     ]
+    
+    # statement_clean = ["rm", tmp]
+
     P.run(
-        " ".join(statement),
+        " ".join(statement_merge),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
@@ -1381,7 +1396,7 @@ def post_capcruncher_analysis():
 
 @follows(mkdir("capcruncher_analysis/reporters/counts"))
 @transform(
-    alignments_deduplicate_slices,
+    alignments_deduplicate_collate,
     regex(r".*/(?P<sample>.*?)\.hdf5"),
     r"capcruncher_analysis/reporters/counts/\1.hdf5",
 )
