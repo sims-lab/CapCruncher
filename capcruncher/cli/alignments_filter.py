@@ -177,7 +177,7 @@ def filter(
     if fragments:
         logging.info(f"Writing reporters at the fragment level")
         df_fragments = slice_filter_type(df_slices.reset_index()).fragments.assign(
-            viewpoint=lambda df: df["id"].map(df_capture["capture"]).astype("category"),
+            viewpoint=lambda df: df["id"].map(df_capture["capture"]),
             partition=xxhash.xxh32_intdigest(bam, seed=42),
         )
 
@@ -186,14 +186,20 @@ def filter(
             key="fragments",
             data_columns=["id"],
             format="table",
+            complib='blosc', 
+            complevel=2
         )
 
     logging.info(f"Writing reporters slices")
+    
     df_slices.reset_index().to_hdf(
         f"{output_prefix}.hdf5",
         key="slices",
         data_columns=["parent_id"],
         format="table",
+        complib='blosc', 
+        complevel=2,
+
     )
 
     logging.info(f"Completed analysis of bam file")
