@@ -3,6 +3,7 @@ import sys
 import warnings
 from typing import Tuple, Union
 import logging
+import dask.dataframe as dd
 
 #logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ def annotate(
     actions: Tuple = None,
     bed_files: Tuple = None,
     names: Tuple = None,
-    categorise: Tuple[bool] = None,
+    dtypes: Tuple[bool] = None,
     overlap_fractions: Tuple = None,
     output: os.PathLike = None,
     duplicates: str = "remove",
@@ -122,12 +123,12 @@ def annotate(
 
     logging.info("Performing intersection")
     intersections_to_perform = []
-    for bed, name, action, fraction, categorical in zip(
+    for bed, name, action, fraction, dtype in zip(
         bed_files,
         names,
         actions,
         cycle_argument(overlap_fractions),
-        cycle_argument(categorise),
+        cycle_argument(dtypes),
     ):
 
         intersections_to_perform.append(
@@ -138,7 +139,7 @@ def annotate(
                 intersection_method=action,
                 intersection_min_frac=fraction,
                 invalid_bed_action=invalid_bed_action,
-                categorise=categorical,
+                dtype=dtype,
             )
         )
 
@@ -161,10 +162,11 @@ def annotate(
         .rename(columns={"name": "slice_name"})
     )
 
+    del intersections_results
     logging.info("Writing annotations to file.")
 
     # Export to tsv
     if output.endswith(".tsv"):
         df_annotation.to_csv(output, sep="\t", index=False)
     elif output.endswith(".hdf5"):
-        df_annotation.to_hdf(output, key="/annotation", format="table")
+        df_annotation.to_hdf(output, key="/annotation", format="table", complib='blosc', complevel=2)
