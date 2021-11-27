@@ -92,7 +92,7 @@ def cis_and_trans_stats(
     slices: str,
     output: str,
     method: Literal["capture", "tri", "tiled"],
-    input_type: str = "hdf5",
+    file_type: str = "hdf5",
     sample_name: str = "",
     read_type: str = "",
 ):
@@ -103,6 +103,7 @@ def cis_and_trans_stats(
         TiledCSliceFilter,
     )
     import dask.dataframe as dd
+    import dask.distributed
 
     filters = {
         "capture": CCSliceFilter,
@@ -111,7 +112,7 @@ def cis_and_trans_stats(
     }
     slice_filterer = filters.get(method)
 
-    if input_type == "tsv":
+    if file_type == "tsv":
         df_slices = pd.read_csv(slices, sep="\t")
 
         try:
@@ -121,22 +122,50 @@ def cis_and_trans_stats(
         except:
             touch_file(output)
 
-    
-    elif input_type == "hdf5":
-        ddf = (dd.read_hdf(slices, key="slices", mode="r")
-                 .shuffle("parent_id")
-                 .map_partitions(lambda df: slice_filterer(df, sample_name=sample_name, read_type=read_type).cis_or_trans_stats)
-                 .to_csv(output, single_file=True, index=False)
-               )
+    elif file_type == "hdf5":
+        client = dask.distributed.Client(processes=True)
+
+        ddf = (
+            dd.read_hdf(slices, key="slices", mode="r")
+            .shuffle("parent_id")
+            .map_partitions(
+                lambda df: slice_filterer(
+                    df, sample_name=sample_name, read_type=read_type
+                ).cis_or_trans_stats
+            )
+            .groupby(["viewpoint", "cis/trans", "sample", "read_type"])
+            .sum()
+            .reset_index()
+            .query("viewpoint != '.'")
+            .to_csv(output, single_file=True, index=False)
+        )
+
+        client.shutdown()
 
 
 @cli.command()
 @click.argument("infiles", nargs=-1, required=True)
 @click.option("-o", "--outfile", help="Output file name")
-def merge_capcruncher_hdfs(infiles: Iterable, outfile: os.PathLike):
+@click.option(
+    "-i", "--index-cols", help="Columns to use as data_columns for queries", multiple=True
+)
+@click.option(
+    "-c", "--category-cols", help="Columns to use as data_columns for queries", multiple=True
+)
+def merge_capcruncher_hdfs(infiles: Iterable, outfile: os.PathLike, index_cols=None, category_cols=None):
 
     import dask.dataframe as dd
+    import dask.distributed
+    client = dask.distributed.Client(processes=True)
 
-    (dd.read_hdf(infiles, key="slices")
-       .to_hdf(outfile, key="slices")
-    )
+    kwargs = {}
+    kwargs.update({"data_columns": index_cols} if index_cols else {})
+
+    ddf = dd.read_hdf(infiles, key="slices")
+    
+    if category_cols:
+        ddf = ddf.categorize(columns=[*category_cols])
+    
+    ddf.to_hdf(outfile, key="slices", **kwargs)
+
+    client.shutdown()
