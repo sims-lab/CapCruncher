@@ -40,7 +40,7 @@ class BedIntersection:
         intersection_method: str = "count",
         intersection_min_frac: float = 1e-9,
         invalid_bed_action: Literal["ignore", "error"] = "error",
-        categorise: bool = False
+        dtype: str = "str",
         
     ):
         """
@@ -78,7 +78,7 @@ class BedIntersection:
 
         # Other options
         self.invalid_bed_action = invalid_bed_action
-        self.categorise = categorise
+        self.dtype = dtype
 
     def _intersections_count(self, a, b):
         return a.intersect(
@@ -86,11 +86,16 @@ class BedIntersection:
 
     def _intersections_get(self, a, b):
         
-        if self.categorise:
+        if self.dtype == "category":
             b_names = b.to_dataframe().iloc[:, -1].unique()
             c = pd.CategoricalDtype(np.concatenate([np.array(["."]), b_names]))
             df = a.intersect(b, loj=True, f=self.min_frac, sorted=True).to_dataframe()
             df.iloc[:, -1] = df.iloc[:, -1].astype(str).astype(c)
+        
+        elif "int" in self.dtype:
+            df = a.intersect(b, loj=True, f=self.min_frac, sorted=True).to_dataframe()
+            df.iloc[:, -1] = df.iloc[:, -1].replace(".", -1).astype(self.dtype)
+
         else:
             df = a.intersect(b, loj=True, f=self.min_frac, sorted=True).to_dataframe()
         
