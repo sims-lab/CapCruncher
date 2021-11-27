@@ -7,7 +7,7 @@ import pandas as pd
 from pysam import FastxFile
 from xopen import xopen
 from capcruncher.tools.count import preprocess_reporters_for_counting
-from capcruncher.utils import get_timing, hash_column, get_fragment_combinations
+from capcruncher.utils import get_timing, hash_column
 import pysam
 import numpy as np
 import queue
@@ -407,7 +407,10 @@ def parse_bam(bam):
     df_bam["parent_id"] = hash_column(df_bam["parent_read"])
     df_bam["parent_id"] = df_bam["parent_id"].astype(str)
     df_bam["chrom"] = df_bam["chrom"].astype("category")
-    df_bam["pe"] = df_bam["pe"].astype("category")
+
+    pe_category = pd.CategoricalDtype(["flashed", "pe"])
+    df_bam["pe"] = df_bam["pe"].astype(pe_category) # Only the one type present so need to include both
+
     df_bam["slice"] = df_bam["slice"].astype(int)
     df_bam["uid"] = df_bam["uid"].astype(int)
     df_bam["start"] = df_bam["start"].replace("", 0).astype(int)
