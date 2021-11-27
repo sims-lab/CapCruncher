@@ -12,7 +12,9 @@ import os
 import numpy as np
 from dask.delayed import delayed
 import dask.dataframe as dd
+import dask.distributed
 import shutil
+
 
 def extract_start_and_end_slice_coords_pe(df):
     coords = df["coordinates"].str.extract(
@@ -67,7 +69,9 @@ def identify_deduplicates_from_tsv(
     return duplicated_fragments
 
 
-def identify_duplicates_from_hdf5(fragments: list, read_type: Literal["flashed", "pe"]) -> dd.Series:
+def identify_duplicates_from_hdf5(
+    fragments: list, read_type: Literal["flashed", "pe"]
+) -> dd.Series:
 
     df_fragments_coords = dd.read_hdf(
         fragments, key=f"/fragments", columns=["id", "coordinates"]
@@ -169,36 +173,32 @@ def remove_duplicates_from_tsv(
 
     return (n_reads_total, n_reads_unique)
 
+
 def remove_duplicates_from_hdf5(
     slices: Iterable, duplicated_ids: pd.Series, output: os.PathLike
 ) -> Tuple[int, int]:
 
-
     n_slices_total = 0
     duplicated_ids = read_duplicated_ids(duplicated_ids)
-    
 
     # Need to get total number of slices
     for slice_file in slices:
         with pd.HDFStore(slice_file, "r") as store:
             n_slices_total += store.get_storer("slices").nrows
 
-    # Generate a dask dataframe
-    dframes = [
-        delayed(pd.read_hdf(fn, key="slices", where="parent_id != duplicated_ids"))
-        for fn in slices
-    ]
-
-    ddf = dd.from_delayed(
-        dframes,
+    ddf = dd.read_hdf(slices, "slices").map_partitions(
+        lambda df: df.loc[~(df["parent_id"].isin(duplicated_ids))]
     )
+
     ddf.to_hdf(
         output,
         key="slices",
         format="table",
         data_columns=["viewpoint"],
         mode="w",
-        min_itemsize={"slice_name": 75, "parent_read": 75},
+        min_itemsize={"slice_name": 75, "parent_read": 75, "coordinates": 75, "chrom": 25},
+        complib="blosc",
+        complevel=2,
     )
 
     # Need to get final number of slices
@@ -213,19 +213,17 @@ def read_duplicated_ids(path: os.PathLike):
     file_type = get_file_type(path)
 
     if file_type == "json":
-         with xopen.xopen(path, "r") as r:
+        with xopen.xopen(path, "r") as r:
             ids_duplicated = {int(x) for x in ujson.load(r)}
-    
+
     elif file_type == "hdf5":
 
         try:
             ids_duplicated = pd.read_hdf(path, key="/duplicated_ids")
         except KeyError:
             ids_duplicated = pd.Series(data=["NO_DATA"], name="/duplicated_ids")
-    
+
     return ids_duplicated
-
-
 
 
 def identify(
@@ -261,13 +259,8 @@ def identify(
                                 Defaults to "flashed".
     """
 
-    input_file_type = (
-        get_file_type(fragments)
-        if file_type == "auto"
-        else file_type
-    )
+    input_file_type = get_file_type(fragments) if file_type == "auto" else file_type
     output_file_type = get_file_type(output)
-
 
     # Extract duplicated fragment ids
     if input_file_type == "tsv":
@@ -291,12 +284,17 @@ def identify(
     if output_file_type == "json":
         with xopen.xopen(output, "w") as w:
             ujson.dump(dict.fromkeys(duplicated_fragments), w)
-    
+
     elif output_file_type == "hdf5":
+
+        cluster = dask.distributed.LocalCluster(n_workers=8)
+        client = dask.distributed.Client(cluster)
+
         duplicated_fragments.to_hdf(
             outfile, f"/duplicated_ids", min_itemsize={"id": 25}
         )
-        
+
+        client.shutdown()
 
 
 def remove(
@@ -330,30 +328,35 @@ def remove(
     """
 
     input_file_type = (
-        get_file_type(slices)
+        get_file_type(slices if not len(slices) > 1 else slices[0])
         if file_type == "auto"
         else file_type
     )
 
     output_file_type = get_file_type(output)
 
-    if file_type == "tsv":
+    if input_file_type == "tsv":
 
-        if not  output_file_type == "tsv":
+        if not output_file_type == "tsv":
             raise NotImplementedError("Currently only tsv -> tsv output supported")
 
         n_slices_total, n_slices_unique = remove_duplicates_from_tsv(
             slices, output, duplicated_ids, buffer=buffer
         )
 
-    elif file_type == "hdf5":
+    elif input_file_type == "hdf5":
 
-        if not  output_file_type == "hdf5":
+        cluster = dask.distributed.LocalCluster(n_workers=8)
+        client = dask.distributed.Client(cluster)
+
+        if not output_file_type == "hdf5":
             raise NotImplementedError("Currently only hdf5 -> hdf5 output supported")
 
         n_slices_total, n_slices_unique = remove_duplicates_from_hdf5(
             slices, duplicated_ids, output
         )
+
+        client.shutdown()
 
     # Prepare stats
     df_stats = pd.DataFrame()
