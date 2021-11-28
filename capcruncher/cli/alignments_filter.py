@@ -184,7 +184,7 @@ def filter(
         df_fragments.to_hdf(
             f"{output_prefix}.hdf5",
             key="fragments",
-            data_columns=["id"],
+            data_columns=["viewpoint"],
             format="table",
             complib='blosc', 
             complevel=2
@@ -195,7 +195,7 @@ def filter(
     df_slices.reset_index().to_hdf(
         f"{output_prefix}.hdf5",
         key="slices",
-        data_columns=["parent_id"],
+        data_columns=["viewpoint"],
         format="table",
         complib='blosc', 
         complevel=2,
