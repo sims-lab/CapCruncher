@@ -1317,7 +1317,7 @@ def alignments_deduplicate_collate(infiles, outfile):
 
     """Final collation of reporters by sample"""
 
-    tmp = f"{outfile}.tmp"
+    #tmp = f"{outfile}.tmp"
 
     statement_merge = [
         "capcruncher",
@@ -1325,9 +1325,11 @@ def alignments_deduplicate_collate(infiles, outfile):
         "merge-capcruncher-hdfs",
         *infiles,
         "-o",
-        tmp,
+        outfile,
         "-i",
         "viewpoint",
+        "-c",
+        "viewpoint"
     ]
 
     # statement_repack = ["ptrepack", 
