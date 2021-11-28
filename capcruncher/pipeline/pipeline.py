@@ -1400,11 +1400,14 @@ def post_capcruncher_analysis():
 @transform(
     alignments_deduplicate_collate,
     regex(r".*/(?P<sample>.*?)\.hdf5"),
+    add_inputs(genome_digest, P.PARAMS["analysis_viewpoints"]),
     r"capcruncher_analysis/reporters/counts/\1.hdf5",
 )
 def reporters_count(infile, outfile):
 
     """Counts the number of interactions identified between reporter restriction fragments"""
+
+    infile, restriction_fragment_map, viewpoints = infile 
 
     statement = [
         "capcruncher",
@@ -1413,7 +1416,10 @@ def reporters_count(infile, outfile):
         infile,
         "-o",
         outfile,
-        "--remove_exclusions",
+        "-f",
+        restriction_fragment_map,
+        "-v",
+        viewpoints,
         ">",
         f"{outfile}.log",
     ]
