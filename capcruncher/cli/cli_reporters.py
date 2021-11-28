@@ -165,6 +165,23 @@ def pileup(*args, **kwargs):
     default=int(2e6),
     help="Number of records to process at once",
 )
+@click.option(
+    "-f",
+    "--fragment-map",
+    help="Path to digested genome bed file",
+)
+@click.option(
+    "-v",
+    "--viewpoint-path",
+    help="Path to viewpoints file",
+    required=True,
+)
+@click.option(
+    "--cooler-output",
+    "output_as_cooler",
+    help="Output counts in cooler format",
+    is_flag=True,
+)
 def count(*args, **kwargs):
     """
     Determines the number of captured restriction fragment interactions genome wide.
