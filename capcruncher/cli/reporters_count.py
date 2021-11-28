@@ -26,8 +26,8 @@ def count(
     low_memory: bool = False,
     chunksize: int = 2e6,
     output_as_cooler: bool = False,
-    restriction_fragment_map: os.PathLike = None,
-    viewpoints_path: os.PathLike = None,
+    fragment_map: os.PathLike = None,
+    viewpoint_path: os.PathLike = None,
 ):
     """
     Determines the number of captured restriction fragment interactions genome wide.
@@ -85,7 +85,7 @@ def count(
 
         import multiprocessing
 
-        N_PROCESSES = 4
+        N_PROCESSES = 6
         viewpoints = get_categories_from_hdf5_column(reporters, "slices", "viewpoint")
 
         viewpoints_queue = multiprocessing.Queue()
@@ -110,8 +110,8 @@ def count(
             writer = CCHDF5WriterProcess(
                 inq=counts_queue,
                 output_path=output,
-                restriction_fragment_map=restriction_fragment_map,
-                viewpoint_path=viewpoints_path,
+                restriction_fragment_map=fragment_map,
+                viewpoint_path=viewpoint_path,
             )
         else:
             writer = CCHDF5WriterProcess(
@@ -121,13 +121,14 @@ def count(
                 single_file=True,
             )
 
+
         processes = [writer, *counters, reader]
         for process in processes:
             process.start()
 
         for vp in tqdm.tqdm(viewpoints):
             viewpoints_queue.put(vp)
-
+        
         viewpoints_queue.put(None)
         reader.join()
 
