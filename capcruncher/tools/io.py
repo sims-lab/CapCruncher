@@ -6,7 +6,10 @@ import traceback
 import pandas as pd
 from pysam import FastxFile
 from xopen import xopen
-from capcruncher.tools.count import preprocess_reporters_for_counting
+from capcruncher.tools.count import (
+    preprocess_reporters_for_counting,
+    get_fragment_combinations,
+)
 from capcruncher.utils import get_timing, hash_column
 import pysam
 import numpy as np
@@ -405,11 +408,13 @@ def parse_bam(bam):
     )
 
     df_bam["parent_id"] = hash_column(df_bam["parent_read"])
-    df_bam["parent_id"] = df_bam["parent_id"].astype(str)
+    df_bam["parent_id"] = df_bam["parent_id"]
     df_bam["chrom"] = df_bam["chrom"].astype("category")
 
     pe_category = pd.CategoricalDtype(["flashed", "pe"])
-    df_bam["pe"] = df_bam["pe"].astype(pe_category) # Only the one type present so need to include both
+    df_bam["pe"] = df_bam["pe"].astype(
+        pe_category
+    )  # Only the one type present so need to include both
 
     df_bam["slice"] = df_bam["slice"].astype(int)
     df_bam["uid"] = df_bam["uid"].astype(int)
@@ -439,6 +444,25 @@ class CCHDF5ReaderProcess(multiprocessing.Process):
 
         super(CCHDF5ReaderProcess, self).__init__()
 
+    def _select_by_viewpoint(self, store, viewpoint):
+
+        viewpoint = viewpoint
+        df = store.select(
+                        self.key,
+                        where="viewpoint in viewpoint",
+                        columns=[
+                            "parent_id",
+                            "restriction_fragment",
+                            "viewpoint",
+                            "capture",
+                            "exclusion",
+                        ],
+                    )
+        return df
+
+
+
+
     def run(self):
 
         with pd.HDFStore(self.path, "r") as store:
@@ -451,12 +475,7 @@ class CCHDF5ReaderProcess(multiprocessing.Process):
                     if viewpoint_to_find is None:
                         break
 
-                    df = store.select(
-                        self.key,
-                        where="viewpoint in viewpoint_to_find",
-                        columns=["parent_id", "restriction_fragment"],
-                    )
-
+                    df = self._select_by_viewpoint(store, viewpoint_to_find)
                     if not df.empty:
                         self.outq.put((viewpoint_to_find, df))
 
@@ -488,7 +507,7 @@ class FragmentCountingProcess(multiprocessing.Process):
 
                 if df is None:
                     break
-                
+
                 df = preprocess_reporters_for_counting(df, **self.preprocessing_kwargs)
 
                 counts = (
@@ -497,6 +516,7 @@ class FragmentCountingProcess(multiprocessing.Process):
                     .reset_index(drop=True)
                     .explode()
                     .to_frame("combinations")
+                    .dropna(axis=0)
                     .assign(
                         bin1_id=lambda df: df["combinations"].map(lambda c: c[0]),
                         bin2_id=lambda df: df["combinations"].map(lambda c: c[1]),
@@ -533,6 +553,14 @@ class CCHDF5WriterProcess(multiprocessing.Process):
         self.restriction_fragment_map = restriction_fragment_map
         self.viewpoint_path = viewpoint_path
 
+        if self.output_format == "cooler":
+            self.bins = pd.read_csv(
+                restriction_fragment_map,
+                sep="\t",
+                header=None,
+                names=["chrom", "start", "end", "name"],
+            )
+
         # Multiprocessing vars
         self.inq = inq
         self.block_period = 0.01
@@ -563,7 +591,7 @@ class CCHDF5WriterProcess(multiprocessing.Process):
                         create_cooler_cc(
                             output_prefix=self.path,
                             pixels=df,
-                            bins=self.restriction_fragment_map,
+                            bins=self.bins,
                             viewpoint_name=vp,
                             viewpoint_path=self.viewpoint_path,
                         )
