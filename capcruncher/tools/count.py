@@ -24,39 +24,45 @@ def subsample_reporters_from_df(df: pd.DataFrame, subsample: float):
 
     # Generate a subsample of fragments and slice these from the reporter dataframe
     df_reporters = df[
-        df["parent_read"].isin(df["parent_read"].sample(**subsample_options))
+        df["parent_id"].isin(df["parent_id"].sample(**subsample_options))
     ]
 
     return df_reporters
 
 
 def remove_exclusions_from_df(df: pd.DataFrame):
+    #TODO: remove this slight dtype hack
+    df = df.astype({"viewpoint": str})
+    #df.loc[:, "viewpoint"] = df.loc[:, "viewpoint"].astype(str)
+    return df.query("viewpoint != exclusion")
 
-    logging.info("Removing exclusions")
+
+
+
     # Must only remove exclusions if they are relevant for the capture being examined
-    df_capture = df.query('capture != "."')
+    # df_capture = df.query('capture != "."')
 
-    # Finds excluded reporters
-    df_reporters_exclusions = df.query('(capture == ".") and (exclusion_count > 0)')
+    # # Finds excluded reporters
+    # df_reporters_exclusions = df.query('(capture == ".") and (exclusion == ".")')
 
-    # Merge captures with excluded reporters and remove only exclusions
-    # where the excluded region is the same as the capture probe.
-    df_reporters_to_remove = (
-        df_capture.drop_duplicates(["parent_read", "capture"])[
-            ["parent_read", "capture"]
-        ]
-        .merge(
-            df_reporters_exclusions[["parent_read", "exclusion", "slice_name"]],
-            on="parent_read",
-        )
-        .query("capture == exclusion")
-    )
+    # # Merge captures with excluded reporters and remove only exclusions
+    # # where the excluded region is the same as the capture probe.
+    # df_reporters_to_remove = (
+    #     df_capture.drop_duplicates(["parent_read", "capture"])[
+    #         ["parent_read", "capture"]
+    #     ]
+    #     .merge(
+    #         df_reporters_exclusions[["parent_read", "exclusion", "slice_name"]],
+    #         on="parent_read",
+    #     )
+    #     .query("capture == exclusion")
+    # )
 
-    df_reporters = df.loc[
-        ~(df["slice_name"].isin(df_reporters_to_remove["slice_name"]))
-    ]
+    # df_reporters = df.loc[
+    #     ~(df["slice_name"].isin(df_reporters_to_remove["slice_name"]))
+    # ]
 
-    return df_reporters
+    # return df_reporters
 
 
 def preprocess_reporters_for_counting(df: pd.DataFrame, **kwargs):
@@ -65,21 +71,24 @@ def preprocess_reporters_for_counting(df: pd.DataFrame, **kwargs):
     df_reporters = df.query("restriction_fragment != -1")
 
     if kwargs.get("remove_exclusions"):
+        logging.info("Removing excluded regions")
         df_reporters = remove_exclusions_from_df(df_reporters)
 
     # Remove the capture site
     if kwargs.get("remove_viewpoints"):
         logging.info("Removing viewpoints")
-        df_reporters = df_reporters.query('capture != "."')
+        df_reporters = df_reporters.query('capture == "."')
 
     # Subsample at the fragment level
     if kwargs.get("subsample"):
         df_reporters = subsample_reporters_from_df(df_reporters, kwargs["subsample"])
+    
+    return df_reporters
 
-    logging.info("Grouping into fragments")
-    fragments = df_reporters.groupby("parent_read")
+    # logging.info("Grouping into fragments")
+    # fragments = df_reporters.groupby("parent_id")
 
-    return fragments
+    # return fragments
 
 
 def count_re_site_combinations(
@@ -124,7 +133,8 @@ def get_counts_from_tsv_by_batch(reporters: os.PathLike, chunksize: int, **kwarg
 
         logging.info(f"Processing chunk #{ii+1} of {chunksize} slices")
 
-        fragments = preprocess_reporters_for_counting(df_reporters, **kwargs)
+        reporters = preprocess_reporters_for_counting(df_reporters, **kwargs)
+        fragments = reporters.groupby("parent_id")
 
         logging.info("Counting")
         ligated_rf_counts = count_re_site_combinations(
@@ -138,7 +148,8 @@ def get_counts_from_tsv(reporters: os.PathLike, **kwargs):
 
     df_reporters = pd.read_csv(reporters, sep="\t")
 
-    fragments = preprocess_reporters_for_counting(df_reporters, **kwargs)
+    reporters = preprocess_reporters_for_counting(df_reporters, **kwargs)
+    fragments = reporters.groupby("parent_id")
 
     logging.info("Counting")
     ligated_rf_counts = count_re_site_combinations(
