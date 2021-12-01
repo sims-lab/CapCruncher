@@ -64,14 +64,14 @@ def create_cooler_cc(
      os.PathLike: Path of cooler hdf5 file.
     """
 
-    # Gets capture coordinates
+    # Gets viewpoint coordinates
     viewpoint_coords = get_viewpoint_coords(viewpoint_path, viewpoint_name)
 
-    # Make sure capture coordinates are returned correctly, if not, error.
+    # Make sure viewpoint coordinates are returned correctly, if not, error.
     if viewpoint_coords is None:
-        raise ValueError(f"Incorrect capture name specified: {viewpoint_name}.")
+        raise ValueError(f"Incorrect viewpoint name specified: {viewpoint_name}.")
 
-    # If capture bins not provided get them using the coordinates.
+    # If viewpoint bins not provided get them using the coordinates.
     if not viewpoint_bins:
         viewpoint_bins = list(
             itertools.chain.from_iterable(
@@ -323,7 +323,7 @@ class CoolerBinner:
      binner (capcruncher.storeage.GenomicBinner): Binner class to generate bin conversion tables
      binsize (int): Genomic bin size
      scale_factor (int): Scaling factor for normalising interaction counts.
-     n_cis_interactions (int): Number of cis interactions with the capture bins.
+     n_cis_interactions (int): Number of cis interactions with the viewpoint bins.
      n_cores (int): Number of cores to use for binning.
 
     """
@@ -435,7 +435,7 @@ class CoolerBinner:
     def viewpoint_bins(self):
         """
         Returns:
-         pd.DataFrame: Capture bins converted to the new even genomic bin format.
+         pd.DataFrame: viewpoint bins converted to the new even genomic bin format.
         """
         viewpoint_frags = self.cooler.info["metadata"]["viewpoint_bins"]
         return self.bin_conversion_table.loc[
@@ -542,23 +542,23 @@ def link_bins(clr: os.PathLike):
 
     with h5py.File(clr, "a") as f:
 
-        # Get all captures stored
-        captures = list(f.keys())
+        # Get all viewpoints stored
+        viewpoints = sorted(list(f.keys()))
 
         # Get all resolutions stored
-        resolutions_group = f[captures[0]].get("resolutions")
+        resolutions_group = f[viewpoints[0]].get("resolutions")
         resolutions = list(resolutions_group.keys()) if resolutions_group else None
 
-        for capture in captures[1:]:
+        for viewpoint in viewpoints[1:]:
 
-            # Delete currenly stored bins group and replace with link to first capture "bins" group
-            del f[capture]["bins"]
-            f[capture]["bins"] = f[captures[0]]["bins"]
+            # Delete currenly stored bins group and replace with link to first viewpoint "bins" group
+            del f[viewpoint]["bins"]
+            f[viewpoint]["bins"] = f[viewpoints[0]]["bins"]
 
             if resolutions:
                 for resolution in resolutions:
                     # Repeat for resolutions i.e. binned coolers
-                    del f[capture]["resolutions"][resolution]["bins"]
-                    f[capture]["resolutions"][resolution]["bins"] = f[captures[0]][
+                    del f[viewpoint]["resolutions"][resolution]["bins"]
+                    f[viewpoint]["resolutions"][resolution]["bins"] = f[viewpoints[0]][
                         "resolutions"
                     ][resolution]["bins"]
