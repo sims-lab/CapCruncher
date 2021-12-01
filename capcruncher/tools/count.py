@@ -113,7 +113,7 @@ def count_re_site_combinations(
     # For each set of ligated fragments
     for ii, (group_name, frag) in enumerate(tqdm(groups)):
 
-        for rf1, rf2 in combinations(frag[column], 2):  # Get fragment combinations
+        for rf1, rf2 in itertools.combinations(frag[column], 2):  # Get fragment combinations
             # TODO: Notice a high amount of multicaptures (same oligo) not being removed.
             # Need to track this down but for now will explicitly prevent the same bin appearing twice.
             if not rf1 == rf2:
