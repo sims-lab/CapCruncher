@@ -36,7 +36,7 @@ analysis:
     # Genomic window size(s) to use for binning restriction fragment interaction counts
     # into even genomic windows. Only bin sizes that are present here will be allowed 
     # to be used for heatmap generation.
-    # (Required, will become optional for capture mode in a later update)
+    # (Optional) Leave blank to prevent binning
     bin_size: 2500
 
 genome:
