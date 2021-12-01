@@ -1260,9 +1260,9 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # Zero non-deduplicated reporters
-    # for s in slices:
-    #     zap_file(s)
+    #Zero non-deduplicated reporters
+    for s in slices:
+        zap_file(s)
 
 
 @transform(
@@ -1315,8 +1315,6 @@ def alignments_deduplicate_collate(infiles, outfile):
 
     """Final collation of reporters by sample"""
 
-    # tmp = f"{outfile}.tmp"
-
     statement_merge = [
         "capcruncher",
         "utilities",
@@ -1328,17 +1326,6 @@ def alignments_deduplicate_collate(infiles, outfile):
         "viewpoint",
     ]
 
-    # statement_repack = ["ptrepack",
-    #                     "--chunkshape=auto",
-    #                     "--sortby=viewpoint",
-    #                     "--complevel=2",
-    #                     "--complib=blosc",
-    #                     f"{tmp}:/slices/table",
-    #                     f"{outfile}:/slices/table",
-    #                     ]
-
-    # statement_clean = ["rm", tmp]
-
     P.run(
         " ".join(statement_merge),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -1346,8 +1333,8 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # for fn in infiles:
-    #     zap_file(fn)
+    for fn in infiles:
+        zap_file(fn)
 
 
 @follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
@@ -1428,85 +1415,17 @@ def reporters_count(infile, outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=1,
+        job_threads=n_counting_processes,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
+    # Link bin tables to conserve space
+    from capcruncher.tools.storage import link_bins
 
-# @collate(
-#     reporters_count,
-#     regex(
-#         r"capcruncher_analysis/reporters/counts/partitioned/(?P<sample>.*?)\.(:?.*?)\.(:?.*?)\.hdf5"
-#     ),
-#     r"capcruncher_analysis/reporters/counts/\1.completed",
-#     extras=[r"\1"],
-# )
-# def reporters_count_collate(infiles, outfile, sample):
-
-#     """Collates the number of interactions identified between reporter restriction fragments"""
-
-#     import dask.dataframe as dd
-
-#     with pd.HDFStore(infiles[0]) as store:
-#         viewpoints = {k.split("/")[1] for k in store.keys()}
-
-#     for viewpoint in viewpoints:
-#         ddframe = dd.read_hdf(infiles, key=viewpoint)
-#         (
-#             ddframe.shuffle(on=["bin1_id", "bin2_id"])
-#             .map_partitions(
-#                 lambda df: df.groupby(["bin1_id", "bin2_id"])
-#                 .agg({"count": "sum"})
-#                 .reset_index()
-#             )
-#             .to_hdf(outfile.replace(".completed", ".hdf5"), key=viewpoint)
-#         )
-
-#     touch_file(outfile)
-
-#     for fn in infiles:
-#         zap_file(fn)
+    link_bins(outfile)
 
 
-# @follows(reporters_count, mkdir("capcruncher_analysis/reporters/fragments/"))
-# @transform(
-#     "capcruncher_analysis/reporters/counts/*.hdf5",
-#     regex(r"capcruncher_analysis/reporters/counts/(.*)\.hdf5"),
-#     add_inputs(genome_digest),
-#     r"capcruncher_analysis/reporters/fragments/\1.complete",
-#     extras=[r"\1"],
-# )
-# def reporters_store_restriction_fragment(infile, outfile, sample_name):
-
-#     """Stores restriction fragment interaction counts in cooler format"""
-
-#     counts, rf_map = infile
-
-#     statement = [
-#         "capcruncher",
-#         "reporters",
-#         "store",
-#         "fragments",
-#         counts,
-#         "-f",
-#         rf_map,
-#         "-g",
-#         P.PARAMS["genome_name"],
-#         "-v",
-#         P.PARAMS["analysis_viewpoints"],
-#         "-o",
-#         outfile.replace("fragments/", "").replace(".complete", "_cooler.hdf5"),
-#     ]
-
-#     P.run(
-#         " ".join(statement),
-#         job_queue=P.PARAMS["pipeline_cluster_queue"],
-#         job_condaenv=P.PARAMS["conda_env"],
-#     )
-
-#     touch_file(outfile)
-
-
+@active_if(P.PARAMS.get("analysis_bin_size"))
 @follows(genome_digest)
 @originate(r"capcruncher_analysis/reporters/binners.pkl")
 def generate_bin_conversion_tables(outfile):
@@ -1538,9 +1457,8 @@ def generate_bin_conversion_tables(outfile):
         )  # Property is cached so need to call it to make sure it is present.
         binner_dict[int(bs)] = gb
 
-    with open("capcruncher_analysis/reporters/binners.pkl", "wb") as w:
+    with open(outfile, "wb") as w:
         pickle.dump(binner_dict, w)
-
 
 @active_if(P.PARAMS.get("analysis_bin_size"))
 @follows(
@@ -1558,10 +1476,10 @@ def reporters_store_binned(infile, outfile):
     Converts a cooler file of restriction fragments to even genomic bins.
     """
 
+    clr, conversion_tables = infile
     sentinel_file = outfile
     outfile = outfile.replace(".complete", ".hdf5")
 
-    clr, conversion_tables = infile
     statement = [
         "capcruncher",
         "reporters",
@@ -1597,32 +1515,6 @@ def reporters_store_binned(infile, outfile):
 
     # Make sentinel file
     touch_file(sentinel_file)
-
-
-# @follows(reporters_store_restriction_fragment, reporters_store_binned)
-# @transform(reporters_store_binned, regex(r".*/(.*).hdf5"), r"")
-# def reporters_store_merged(infiles, outfile, sample_name):
-
-#     """Combines cooler files together"""
-
-#     statement = [
-#         "capcruncher",
-#         "reporters",
-#         "store",
-#         "merge",
-#         " ".join(infiles),
-#         "-o",
-#         outfile,
-#     ]
-
-#     P.run(
-#         " ".join(statement),
-#         job_queue=P.PARAMS["pipeline_cluster_queue"],
-#         job_condaenv=P.PARAMS["conda_env"],
-#     )
-
-#     for fn in infiles:
-#         zap_file(fn)
 
 
 #######################
