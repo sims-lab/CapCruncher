@@ -36,9 +36,7 @@ Optional:
 """
 
 from collections import defaultdict
-from math import inf
 import os
-from posixpath import dirname
 import re
 import sys
 import pickle
@@ -48,7 +46,6 @@ import itertools
 import warnings
 import glob
 import shutil
-from cgatcore.pipeline.parameters import PARAMS
 from pybedtools.bedtool import BedTool
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -63,9 +60,7 @@ from ruffus import (
     mkdir,
     regex,
     transform,
-    suffix,
     originate,
-    split,
 )
 from capcruncher.tools.statistics import (
     collate_slice_data,
@@ -1328,8 +1323,6 @@ def alignments_deduplicate_collate(infiles, outfile):
         outfile,
         "-i",
         "viewpoint",
-        "-c",
-        "viewpoint"
     ]
 
     # statement_repack = ["ptrepack", 
@@ -1350,8 +1343,8 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    for fn in infiles:
-        zap_file(fn)
+    # for fn in infiles:
+    #     zap_file(fn)
 
 
 @follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
@@ -1420,6 +1413,7 @@ def reporters_count(infile, outfile):
         restriction_fragment_map,
         "-v",
         viewpoints,
+        "--cooler-output",
         ">",
         f"{outfile}.log",
     ]
@@ -1467,46 +1461,46 @@ def reporters_count(infile, outfile):
 #         zap_file(fn)
 
 
-@follows(reporters_count, mkdir("capcruncher_analysis/reporters/fragments/"))
-@transform(
-    "capcruncher_analysis/reporters/counts/*.hdf5",
-    regex(r"capcruncher_analysis/reporters/counts/(.*)\.hdf5"),
-    add_inputs(genome_digest),
-    r"capcruncher_analysis/reporters/fragments/\1.complete",
-    extras=[r"\1"],
-)
-def reporters_store_restriction_fragment(infile, outfile, sample_name):
+# @follows(reporters_count, mkdir("capcruncher_analysis/reporters/fragments/"))
+# @transform(
+#     "capcruncher_analysis/reporters/counts/*.hdf5",
+#     regex(r"capcruncher_analysis/reporters/counts/(.*)\.hdf5"),
+#     add_inputs(genome_digest),
+#     r"capcruncher_analysis/reporters/fragments/\1.complete",
+#     extras=[r"\1"],
+# )
+# def reporters_store_restriction_fragment(infile, outfile, sample_name):
 
-    """Stores restriction fragment interaction counts in cooler format"""
+#     """Stores restriction fragment interaction counts in cooler format"""
 
-    counts, rf_map = infile
+#     counts, rf_map = infile
 
-    statement = [
-        "capcruncher",
-        "reporters",
-        "store",
-        "fragments",
-        counts,
-        "-f",
-        rf_map,
-        "-g",
-        P.PARAMS["genome_name"],
-        "-v",
-        P.PARAMS["analysis_viewpoints"],
-        "-o",
-        outfile.replace("fragments/", "").replace(".complete", "_cooler.hdf5"),
-    ]
+#     statement = [
+#         "capcruncher",
+#         "reporters",
+#         "store",
+#         "fragments",
+#         counts,
+#         "-f",
+#         rf_map,
+#         "-g",
+#         P.PARAMS["genome_name"],
+#         "-v",
+#         P.PARAMS["analysis_viewpoints"],
+#         "-o",
+#         outfile.replace("fragments/", "").replace(".complete", "_cooler.hdf5"),
+#     ]
 
-    P.run(
-        " ".join(statement),
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
+#     P.run(
+#         " ".join(statement),
+#         job_queue=P.PARAMS["pipeline_cluster_queue"],
+#         job_condaenv=P.PARAMS["conda_env"],
+#     )
 
-    touch_file(outfile)
+#     touch_file(outfile)
 
 
-@follows(genome_digest, reporters_count)
+@follows(genome_digest)
 @originate(r"capcruncher_analysis/reporters/binners.pkl")
 def generate_bin_conversion_tables(outfile):
     """
@@ -1544,13 +1538,12 @@ def generate_bin_conversion_tables(outfile):
 @active_if(P.PARAMS.get("analysis_bin_size"))
 @follows(
     generate_bin_conversion_tables,
-    reporters_store_restriction_fragment,
 )
 @transform(
-    "capcruncher_analysis/reporters/*_cooler.hdf5",
-    regex(r"capcruncher_analysis/reporters/(.*)_cooler.hdf5"),
+    reporters_count,
+    regex(r"capcruncher_analysis/reporters/counts/(.*).hdf5"),
     add_inputs(generate_bin_conversion_tables),
-    r"capcruncher_analysis/reporters/\1_cooler.hdf5",
+    r"capcruncher_analysis/reporters/counts/\1.complete",
 )
 def reporters_store_binned(infile, outfile):
 
@@ -1577,7 +1570,7 @@ def reporters_store_binned(infile, outfile):
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
         "-o",
-        outfile,
+        outfile.replace(".complete", ".hdf5"),
     ]
 
     P.run(
@@ -1590,7 +1583,7 @@ def reporters_store_binned(infile, outfile):
     # Link bin tables to conserve space
     from capcruncher.tools.storage import link_bins
 
-    link_bins(outfile)
+    # link_bins(outfile)
 
     # Make sentinel file
     touch_file(outfile)
@@ -1701,8 +1694,8 @@ def pipeline_make_report(infile, outfile):
 @active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
 @follows(mkdir("capcruncher_analysis/bedgraphs"))
 @transform(
-    reporters_store_binned,
-    regex(r".*/(.*)_cooler.hdf5"),
+    "capcruncher_analysis/reporters/counts/*.hdf5",
+    regex(r".*/(.*).hdf5"),
     r"capcruncher_analysis/bedgraphs/\1.raw.completed",
     extras=[r"\1"],
 )
@@ -1733,8 +1726,8 @@ def reporters_make_bedgraph(infile, outfile, sample_name):
 
 @active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
 @transform(
-    reporters_store_binned,
-    regex(r".*/(.*)_cooler.hdf5"),
+    "capcruncher_analysis/reporters/counts/*.hdf5",
+    regex(r".*/(.*).hdf5"),
     r"capcruncher_analysis/bedgraphs/\1.normalised.completed",
     extras=[r"\1"],
 )
@@ -1749,7 +1742,7 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
 
     output_prefix = f"capcruncher_analysis/bedgraphs/{sample_name}.normalised"
 
-    norm_regions = P.PARAMS.get("normalisation_regions")
+    norm_regions = P.PARAMS.get("normalisation_regions", "NOT_PROVIDED")
     norm_by_region = os.path.exists(norm_regions)
 
     statement = [
