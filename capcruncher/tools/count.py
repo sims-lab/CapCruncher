@@ -2,7 +2,7 @@
 from typing import Union
 import pandas as pd
 from collections import defaultdict
-from itertools import combinations
+import itertools
 import xopen
 import os
 from tqdm import tqdm
@@ -10,7 +10,6 @@ import logging
 
 
 def get_fragment_combinations(df: pd.DataFrame):
-    import itertools
     return [sorted(comb) for comb in itertools.combinations(df["restriction_fragment"], 2)]
 
 
