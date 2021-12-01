@@ -466,13 +466,32 @@ def get_categories_from_hdf5_column(
         List[str]: Category names
     """
 
-    return [
-        cat
-        for cat in pd.read_hdf(path, key, start=0, stop=10)[
-            column
-        ].cat.categories.values
-        if not cat == null_value
-    ]
+    df_test = pd.read_hdf(path, key, start=0, stop=10)
+
+    # If its a category get from the cat codes
+    if isinstance(df_test.dtypes[column], pd.CategoricalDtype):
+        return [cat for cat in df_test[column].cat.categories.values if not cat == null_value]
+    
+    # Try to extract from the metadata
+    try:
+        with pd.HDFStore(path, "r") as store:
+            s = store.get_storer(key)
+            values = getattr(s.attrs, column)
+            return values
+    except AttributeError:
+        # Just determine from sampling all of the data (HIGHLY inefficient)
+        import dask.dataframe as dd
+        import dask.distributed
+
+        client = dask.distributed.Client(processes=True)
+        values = [x for x in dd.read_hdf(path, key, columns=column)[column].unique().compute()]
+        client.shutdown()
+        return values
+
+              
+
+    
+
 
 class PysamFakeEntry:
     """Testing class used to supply a pysam FastqProxy like object"""
