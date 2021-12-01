@@ -174,7 +174,6 @@ def pileup(*args, **kwargs):
     "-v",
     "--viewpoint-path",
     help="Path to viewpoints file",
-    required=True,
 )
 @click.option(
     "--cooler-output",
@@ -182,6 +181,14 @@ def pileup(*args, **kwargs):
     help="Output counts in cooler format",
     is_flag=True,
 )
+@click.option(
+    "-p",
+    "--n-cores",
+    default=1,
+    help="Number of cores to use for counting.",
+    type=int,
+)
+
 def count(*args, **kwargs):
     """
     Determines the number of captured restriction fragment interactions genome wide.
