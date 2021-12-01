@@ -291,7 +291,10 @@ def identify(
         client = dask.distributed.Client(cluster)
 
         duplicated_fragments.to_hdf(
-            outfile, f"/duplicated_ids", min_itemsize={"id": 25}
+            outfile, 
+            f"/duplicated_ids", 
+            min_itemsize={"id": 25},
+            index=False
         )
 
         client.shutdown()
