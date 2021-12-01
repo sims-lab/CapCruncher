@@ -1137,7 +1137,9 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
     output_prefix = outfile.replace(".hdf5", "")
     output_log_file = f"{output_prefix}.log"
     stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
-    custom_filtering = P.PARAMS.get("analysis_optional_custom_filtering", "NO_PATH_PROVIDED")
+    custom_filtering = P.PARAMS.get(
+        "analysis_optional_custom_filtering", "NO_PATH_PROVIDED"
+    )
 
     statement = [
         "capcruncher",
@@ -1228,7 +1230,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
     """Removes reporters with duplicate coordinates and merges partitions."""
 
     slices, duplicated_ids = list(zip(*infile))
-    duplicated_ids = duplicated_ids[0] # All id paths are the same, just need one. 
+    duplicated_ids = duplicated_ids[0]  # All id paths are the same, just need one.
 
     stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}"
 
@@ -1262,7 +1264,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
     # for s in slices:
     #     zap_file(s)
 
-    
+
 @transform(
     alignments_deduplicate_slices,
     regex(r".*/(.*?)\.(.*?)\.hdf5"),
@@ -1302,6 +1304,7 @@ def alignments_deduplicate_slices_statistics(
         job_condaenv=P.PARAMS["conda_env"],
     )
 
+
 @follows(alignments_deduplicate_slices_statistics)
 @collate(
     alignments_deduplicate_slices,
@@ -1312,7 +1315,7 @@ def alignments_deduplicate_collate(infiles, outfile):
 
     """Final collation of reporters by sample"""
 
-    #tmp = f"{outfile}.tmp"
+    # tmp = f"{outfile}.tmp"
 
     statement_merge = [
         "capcruncher",
@@ -1325,7 +1328,7 @@ def alignments_deduplicate_collate(infiles, outfile):
         "viewpoint",
     ]
 
-    # statement_repack = ["ptrepack", 
+    # statement_repack = ["ptrepack",
     #                     "--chunkshape=auto",
     #                     "--sortby=viewpoint",
     #                     "--complevel=2",
@@ -1333,7 +1336,7 @@ def alignments_deduplicate_collate(infiles, outfile):
     #                     f"{tmp}:/slices/table",
     #                     f"{outfile}:/slices/table",
     #                     ]
-    
+
     # statement_clean = ["rm", tmp]
 
     P.run(
@@ -1400,7 +1403,9 @@ def reporters_count(infile, outfile):
 
     """Counts the number of interactions identified between reporter restriction fragments"""
 
-    infile, restriction_fragment_map, viewpoints = infile 
+    infile, restriction_fragment_map, viewpoints = infile
+    n_counting_processes = P.PARAMS["pipeline_n_cores"] - 2
+    n_counting_processes = n_counting_processes if n_counting_processes > 0 else 1
 
     statement = [
         "capcruncher",
@@ -1414,6 +1419,8 @@ def reporters_count(infile, outfile):
         "-v",
         viewpoints,
         "--cooler-output",
+        "-p",
+        str(n_counting_processes),
         ">",
         f"{outfile}.log",
     ]
@@ -1551,6 +1558,9 @@ def reporters_store_binned(infile, outfile):
     Converts a cooler file of restriction fragments to even genomic bins.
     """
 
+    sentinel_file = outfile
+    outfile = outfile.replace(".complete", ".hdf5")
+
     clr, conversion_tables = infile
     statement = [
         "capcruncher",
@@ -1570,7 +1580,7 @@ def reporters_store_binned(infile, outfile):
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
         "-o",
-        outfile.replace(".complete", ".hdf5"),
+        outfile,
     ]
 
     P.run(
@@ -1583,10 +1593,10 @@ def reporters_store_binned(infile, outfile):
     # Link bin tables to conserve space
     from capcruncher.tools.storage import link_bins
 
-    # link_bins(outfile)
+    link_bins(outfile)
 
     # Make sentinel file
-    touch_file(outfile)
+    touch_file(sentinel_file)
 
 
 # @follows(reporters_store_restriction_fragment, reporters_store_binned)
