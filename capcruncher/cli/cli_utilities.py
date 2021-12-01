@@ -1,4 +1,4 @@
-from typing import Iterable, Literal
+from typing import Iterable, List, Literal
 import click
 from capcruncher.cli import UnsortedGroup
 import ast
@@ -147,25 +147,65 @@ def cis_and_trans_stats(
 @click.argument("infiles", nargs=-1, required=True)
 @click.option("-o", "--outfile", help="Output file name")
 @click.option(
-    "-i", "--index-cols", help="Columns to use as data_columns for queries", multiple=True
+    "-i",
+    "--index-cols",
+    help="Columns to use as data_columns for queries",
+    multiple=True,
 )
 @click.option(
-    "-c", "--category-cols", help="Columns to use as data_columns for queries", multiple=True
+    "-c",
+    "--category-cols",
+    help="Columns to use as data_columns for queries",
+    multiple=True,
 )
-def merge_capcruncher_hdfs(infiles: Iterable, outfile: os.PathLike, index_cols=None, category_cols=None):
+def merge_capcruncher_hdfs(
+    infiles: Iterable,
+    outfile: os.PathLike,
+    index_cols: List[str] = None,
+    category_cols: List[str] = None,
+):
 
     import dask.dataframe as dd
     import dask.distributed
+
     client = dask.distributed.Client(processes=True)
 
     kwargs = {}
     kwargs.update({"data_columns": index_cols} if index_cols else {})
 
     ddf = dd.read_hdf(infiles, key="slices")
-    
+
+    #TODO: Bug when selecting columns using a string category
+    # To fix, explicitly convert to string before writing
+    transform_to_string = dict()
+    transformed_categories = dict()
+    max_len = dict()
+    for col in index_cols:
+        if ddf[col].dtype == "category":
+            transform_to_string[col] = str
+            transformed_categories[col] = list(ddf[col].cat.categories)
+            max_len[col] = max([len(cat) for cat in ddf[col].cat.categories])
+        
+    ddf = ddf.astype(transform_to_string)
+
     if category_cols:
         ddf = ddf.categorize(columns=[*category_cols])
     
-    ddf.to_hdf(outfile, key="slices", **kwargs)
+    ddf = ddf.sort_values([*index_cols])
+
+    ddf.to_hdf(
+        outfile,
+        key="slices",
+        complib="blosc",
+        complevel=2,
+        min_itemsize=max_len,
+        **kwargs,
+    )
+
+    with pd.HDFStore(outfile, "a") as store:
+        store.create_table_index("slices", columns=index_cols, kind="full")
+
+        for col, cat in transformed_categories.items():
+            store.get_storer('slices').attrs[col] = cat
 
     client.shutdown()
