@@ -125,7 +125,7 @@ def count(
         for process in processes:
             process.start()
 
-        for vp in tqdm.tqdm(viewpoints):
+        for vp in viewpoints:
             viewpoints_queue.put(vp)
         
         viewpoints_queue.put(None)
