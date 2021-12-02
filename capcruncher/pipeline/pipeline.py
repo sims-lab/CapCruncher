@@ -1261,8 +1261,8 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
     )
 
     #Zero non-deduplicated reporters
-    for s in slices:
-        zap_file(s)
+    # for s in slices:
+    #     zap_file(s)
 
 
 @transform(
@@ -1333,8 +1333,8 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    for fn in infiles:
-        zap_file(fn)
+    # for fn in infiles:
+    #     zap_file(fn)
 
 
 @follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
@@ -1594,7 +1594,7 @@ def pipeline_make_report(infile, outfile):
 
 
 @active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
-@follows(mkdir("capcruncher_analysis/bedgraphs"))
+@follows(mkdir("capcruncher_analysis/bedgraphs"), reporters_count)
 @transform(
     "capcruncher_analysis/reporters/counts/*.hdf5",
     regex(r".*/(.*).hdf5"),
@@ -1625,7 +1625,7 @@ def reporters_make_bedgraph(infile, outfile, sample_name):
 
     touch_file(outfile)
 
-
+@follows(reporters_count)
 @active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
 @transform(
     "capcruncher_analysis/reporters/counts/*.hdf5",
