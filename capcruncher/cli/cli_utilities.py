@@ -205,7 +205,9 @@ def merge_capcruncher_hdfs(
     with pd.HDFStore(outfile, "a") as store:
         store.create_table_index("slices", columns=index_cols, kind="full")
 
-        for col, cat in transformed_categories.items():
-            store.get_storer('slices').attrs[col] = cat
+        if transformed_categories:
+            store.put("/slices_category_metadata", pd.DataFrame(transformed_categories))
+        
+            
 
     client.shutdown()

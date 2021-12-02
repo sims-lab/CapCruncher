@@ -475,8 +475,9 @@ def get_categories_from_hdf5_column(
     # Try to extract from the metadata
     try:
         with pd.HDFStore(path, "r") as store:
-            s = store.get_storer(key)
-            values = getattr(s.attrs, column)
+            #s = store.get_storer(key)
+            # values = getattr(s.attrs, column)
+            values = store[f"{key}_category_metadata"][column].unique()
             return values
     except AttributeError:
         # Just determine from sampling all of the data (HIGHLY inefficient)
