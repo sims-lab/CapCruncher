@@ -2,6 +2,7 @@ import pathlib
 import multiprocessing
 from typing import Dict, Union
 import traceback
+import tqdm
 
 import pandas as pd
 from pysam import FastxFile
@@ -525,6 +526,7 @@ class FragmentCountingProcess(multiprocessing.Process):
                     .size()
                     .reset_index()
                     .rename(columns={0: "count"})
+                    .sort_values(["bin1_id", "bin2_id"])
                 )
 
                 self.outq.put((vp, counts))
@@ -543,6 +545,7 @@ class CCHDF5WriterProcess(multiprocessing.Process):
         single_file: bool = True,
         restriction_fragment_map: os.PathLike = None,
         viewpoint_path: os.PathLike = None,
+        n_viewpoints: int = 0,
     ):
 
         # Writing vars
@@ -552,6 +555,7 @@ class CCHDF5WriterProcess(multiprocessing.Process):
         self.single_file = single_file
         self.restriction_fragment_map = restriction_fragment_map
         self.viewpoint_path = viewpoint_path
+        self.n_viewpoints = n_viewpoints
 
         if self.output_format == "cooler":
             self.bins = pd.read_csv(
@@ -569,36 +573,45 @@ class CCHDF5WriterProcess(multiprocessing.Process):
 
     def run(self):
 
-        while True:
-            try:
-                vp, df = self.inq.get(block=True, timeout=self.block_period)
+        with tqdm.tqdm(total=self.n_viewpoints) as pbar:
 
-                if df is None:
-                    break
+            while True:
+                try:
+                    vp, df = self.inq.get(block=True, timeout=self.block_period)
 
-                if self.output_format == "tsv" and self.single_file:
-                    df.to_csv(self.path, sep="\t", mode="a")
+                    if df is None:
+                        break
 
-                elif self.output_format == "hdf5":
-                    df.to_hdf(self.path, self.key, format="table", mode="a")
+                    if self.output_format == "tsv" and self.single_file:
+                        df.to_csv(self.path, sep="\t", mode="a")
 
-                elif self.output_format == "cooler":
+                    elif self.output_format == "hdf5":
+                        df.to_hdf(self.path, self.key, format="table", mode="a")
 
-                    if self.restriction_fragment_map and self.viewpoint_path:
+                    elif self.output_format == "cooler":
 
-                        from capcruncher.tools.storage import create_cooler_cc
+                        if self.restriction_fragment_map and self.viewpoint_path:
 
-                        create_cooler_cc(
-                            output_prefix=self.path,
-                            pixels=df,
-                            bins=self.bins,
-                            viewpoint_name=vp,
-                            viewpoint_path=self.viewpoint_path,
-                        )
-                    else:
-                        raise ValueError(
-                            "Restriction fragment map or path to viewpoints not supplied"
-                        )
+                            from capcruncher.tools.storage import create_cooler_cc
 
-            except queue.Empty:
-                pass
+                            create_cooler_cc(
+                                output_prefix=self.path,
+                                pixels=df,
+                                bins=self.bins,
+                                viewpoint_name=vp,
+                                viewpoint_path=self.viewpoint_path,
+                                ordered=True,
+                                dupcheck=False,
+                                triucheck=False,
+                            )
+                        else:
+                            raise ValueError(
+                                "Restriction fragment map or path to viewpoints not supplied"
+                            )
+                    
+
+                    pbar.update()
+                    
+
+                except queue.Empty:
+                    pass
