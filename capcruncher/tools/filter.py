@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import os
 import numpy as np
@@ -258,6 +259,8 @@ class SliceFilter:
                 getattr(self, filt)()  # Gets and calls the selected method
                 print(f"Number of slices: {self.slices.shape[0]}")
                 print(f'Number of reads: {self.slices["parent_read"].nunique()}')
+                logging.info(f"Filtered: {filt}")
+                
 
                 if output_slices == "filter":
                     self.slices.to_csv(os.path.join(output_location, f"{filt}.tsv.gz"))
@@ -282,11 +285,18 @@ class SliceFilter:
     def remove_orphan_slices(self):
         """Remove fragments with only one aligned slice (Common)"""
 
-        fragments = self.fragments
-        fragments_multislice = fragments.query("unique_slices > 1")
-        self.slices = self.slices[
-            self.slices["parent_read"].isin(fragments_multislice["parent_read"])
-        ]
+        # fragments = self.fragments
+        # fragments_multislice = fragments.query("unique_slices > 1")
+        # self.slices = self.slices[
+        #     self.slices["parent_read"].isin(fragments_multislice["parent_read"])
+        # ]
+
+        not_orphan = self.slices["parent_id"].duplicated(keep=False)
+        self.slices = self.slices.loc[not_orphan]
+
+
+
+
 
     def remove_duplicate_re_frags(self):
         """
