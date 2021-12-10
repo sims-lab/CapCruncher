@@ -139,6 +139,13 @@ analysis_optional:
     # Can be useful for troubleshooting errors with coordinates
     # (Debugging)
     keep_annotations: False
+
+
+    # Forces the pipeline to produce bigwigs when a high level of viewpoints are detected.
+    # This is not advised due to the high number of files that can be generated.
+    # In these situations it is advised to manually select the viewpoints for visualisation.
+    # (Optional)
+    force_bigwig_generation: False
    
 
 deduplication:
