@@ -489,7 +489,36 @@ def get_categories_from_hdf5_column(
         client.shutdown()
         return values
 
-              
+
+
+def get_cooler_uri(store: os.PathLike, viewpoint: str, resolution: Union[str, int]):
+
+    cooler_fragment = r"(?P<store>.*?).hdf5::/(?!.*/resolutions/)(?P<viewpoint>.*?)$"
+    cooler_binned = r"(?P<store>.*?).hdf5::/(?P<viewpoint>.*?)/resolutions/(?P<binsize>\d+)$"
+
+    if re.match(cooler_fragment, store):
+        if resolution:
+            uri = f"{store}/resolutions/{resolution}"
+        else:
+            uri =  store
+    
+    elif re.match(cooler_binned, store):
+        uri =  store
+    
+    else:
+
+        if not resolution:
+            uri = f"{store}::/{viewpoint}"
+    
+        else:
+            uri = f"{store}::/{viewpoint}/resolutions/{resolution}"
+
+
+    return uri
+    
+
+
+
 
     
 

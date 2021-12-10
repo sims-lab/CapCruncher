@@ -1,4 +1,5 @@
 import click
+from numpy import multiply
 
 
 @click.group()
@@ -80,7 +81,7 @@ def differential(*args, **kwargs):
 
 
 @cli.command()
-@click.argument("cooler_fn")
+@click.argument("uri")
 @click.option(
     "-n",
     "--viewpoint_names",
@@ -125,7 +126,7 @@ def pileup(*args, **kwargs):
     probes present in a capture experiment HDF5 file.
 
     The bedgraph generated can be normalised by the number of cis interactions for
-    inter experiment comparisons and/or binned into even genomic windows.
+    inter experiment comparisons and/or extract pilups binned into even genomic windows.
     """
 
     from capcruncher.cli.reporters_pileup import bedgraph
@@ -188,7 +189,6 @@ def pileup(*args, **kwargs):
     help="Number of cores to use for counting.",
     type=int,
 )
-
 def count(*args, **kwargs):
     """
     Determines the number of captured restriction fragment interactions genome wide.
@@ -335,3 +335,87 @@ def store_merge(*args, **kwargs):
     from capcruncher.cli.reporters_store import merge
 
     merge(*args, **kwargs)
+
+
+@cli.group()
+def compare():
+
+    """
+    Compare bedgraphs and CapCruncher cooler files.
+
+    These commands allow for specific viewpoints to be extracted from cooler files
+    and perform user defined groupby aggregations.
+
+    See subcommands for details.
+
+    """
+
+
+@compare.command(name="concat")
+@click.argument("infiles", required=True, nargs=-1)
+@click.option(
+    "-f",
+    "--format",
+    help="Input file format",
+    type=click.Choice(["auto", "bedgraph", "cooler"]),
+    default="cooler",
+)
+@click.option("-o", "--output", help="Output file name", default="union.tsv")
+@click.option("-v", "--viewpoint", help="Viewpoint to extract")
+@click.option("-r", "--resolution", help="Resolution to extract")
+@click.option(
+    "--region", help="Limit to specific coordinates in the format chrom:start-end"
+)
+@click.option(
+    "--normalisation",
+    help="Method to use interaction normalisation",
+    default="raw",
+    type=click.Choice(["raw", "n_cis", "region"]),
+)
+@click.option(
+    "--normalisation-regions",
+    help="Regions to use for interaction normalisation. The --normalisation method MUST be 'region'",
+    default=None,
+    type=click.STRING,
+)
+@click.option(
+    "--scale_factor",
+    help="Scale factor to use for bedgraph normalisation",
+    default=1e6,
+    type=click.INT,
+)
+@click.option(
+    "-p", "--n_cores", help="Number of cores to use for extracting bedgraphs", default=1
+)
+def bedgraphs_concat(*args, **kwargs):
+
+    from capcruncher.cli.reporters_compare import concat
+
+    concat(*args, **kwargs)
+
+
+@compare.command(name="summarise")
+@click.argument("infile", required=True)
+@click.option("-o", "--output_prefix", help="Output file prefix")
+@click.option("-f", "--ouput_format", type=click.Choice(["bedgraph", "tsv"]))
+@click.option(
+    "-m",
+    "--summary-methods",
+    help="Summary methods to use for aggregation. Can be any method in numpy or scipy.stats",
+    multiple=True,
+)
+@click.option("-n", "--group-names", help="Group names for aggregation", multiple=True)
+@click.option(
+    "-c",
+    "--group-columns",
+    help="Column names/numbers (0 indexed, the first column after the end coordinate counts as 0) for aggregation.",
+    multiple=True,
+)
+@click.option(
+    "--subtraction", is_flag=True, help="Perform subtration between aggregated groups"
+)
+def bedgraphs_summarise(*args, **kwargs):
+
+    from capcruncher.cli.reporters_compare import summarise
+
+    summarise(*args, **kwargs)
