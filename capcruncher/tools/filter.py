@@ -350,33 +350,31 @@ class SliceFilter:
 
         """
         if (
-            self.slices["pe"].str.contains("unflashed").sum() > 1
+            self.slices["pe"].iloc[:100].str.contains("pe").sum() > 1
         ):  # at least one un-flashed
-            fragments = self.fragments.assign(
-                read_start=lambda df: df["coordinates"]
+
+            fragments_partial = (
+            self.slices.groupby("parent_id")
+            .agg(coords=("coordinates", "|".join))
+            .reset_index())
+
+            fragments_partial = fragments_partial.assign(
+                read_start=lambda df: df["coords"]
                 .str.split("|")
                 .str[0]
                 .str.split(r":|-")
                 .str[1],
-                read_end=lambda df: df["coordinates"]
+                read_end=lambda df: df["coords"]
                 .str.split("|")
                 .str[-1]
                 .str.split(r":|-")
                 .str[-1],
             )
 
-            fragments_pe = fragments.query('pe == "unflashed"')
-            fragments_pe_duplicated = fragments_pe[
-                fragments_pe.duplicated(subset=["read_start", "read_end"])
-            ]
+            fragments_deduplicated = fragments_partial.drop_duplicates(subset=["read_start", "read_end"])
 
-            self.slices = self.slices[
-                ~(
-                    self.slices["parent_read"].isin(
-                        fragments_pe_duplicated["parent_read"]
-                    )
-                )
-            ]  # Slices not in duplicated
+            self.slices = self.slices.set_index("parent_id").loc[fragments_deduplicated["parent_id"]].reset_index()
+
 
     def remove_excluded_slices(self):
         """Removes any slices in the exclusion region (default 1kb) (V. Common)"""
