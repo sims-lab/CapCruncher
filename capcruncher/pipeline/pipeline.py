@@ -112,6 +112,15 @@ N_SAMPLES = len(
     {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) for fn in glob.glob("*.fastq*")}
 )
 
+# Determines the number of viewpoints being processed
+N_VIEWPOINTS = BedTool(P.PARAMS["analysis_viewpoints"]).count()
+HAS_HIGH_NUMBER_OF_VIEWPOINTS = (
+    True
+    if N_VIEWPOINTS > 100
+    and not P.PARAMS.get("analysis_optional_force_bigwig_generation")
+    else False
+)
+
 # Determines if the design matrix supplied does exist
 HAS_DESIGN = os.path.exists(P.PARAMS.get("analysis_design", ""))
 
@@ -121,7 +130,7 @@ FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
 # Determines if blacklist is used
 HAS_BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbose=False)
 
-# Has valid plot coordinates for heatmaps
+# Check if the plotting packages are installed
 try:
     import coolbox
 
@@ -133,7 +142,7 @@ except ImportError as e:
     MAKE_PLOTS = False
 
 # Determines if UCSC hub is created from run.
-MAKE_HUB = is_on(P.PARAMS.get("hub_create"))
+MAKE_HUB = is_on(P.PARAMS.get("hub_create")) and not HAS_HIGH_NUMBER_OF_VIEWPOINTS
 HUB_NAME = re.sub(r"[,\s+\t;:]", "_", P.PARAMS.get("hub_name", ""))
 
 # Warn about missing parameters
@@ -1260,7 +1269,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    #Zero non-deduplicated reporters
+    # Zero non-deduplicated reporters
     # for s in slices:
     #     zap_file(s)
 
@@ -1460,6 +1469,7 @@ def generate_bin_conversion_tables(outfile):
     with open(outfile, "wb") as w:
         pickle.dump(binner_dict, w)
 
+
 @active_if(P.PARAMS.get("analysis_bin_size"))
 @follows(
     generate_bin_conversion_tables,
@@ -1593,8 +1603,13 @@ def pipeline_make_report(infile, outfile):
 #####################
 
 
-@active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
-@follows(mkdir("capcruncher_analysis/bedgraphs"), reporters_count)
+@active_if(
+    (ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
+    and not HAS_HIGH_NUMBER_OF_VIEWPOINTS
+)
+@follows(
+    mkdir("capcruncher_analysis/bedgraphs"), reporters_count, reporters_store_binned
+)
 @transform(
     "capcruncher_analysis/reporters/counts/*.hdf5",
     regex(r".*/(.*).hdf5"),
@@ -1625,8 +1640,12 @@ def reporters_make_bedgraph(infile, outfile, sample_name):
 
     touch_file(outfile)
 
-@follows(reporters_count)
-@active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
+
+@follows(reporters_count, reporters_store_binned)
+@active_if(
+    (ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
+    and not HAS_HIGH_NUMBER_OF_VIEWPOINTS
+)
 @transform(
     "capcruncher_analysis/reporters/counts/*.hdf5",
     regex(r".*/(.*).hdf5"),
@@ -1730,9 +1749,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
 )
 def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
-    import numpy as np
-
-    df_bdg = pd.read_csv(infile, sep="\t")
+    df_bdg = pd.read_csv(infile, sep="\t", nrows=10)
     dir_output = os.path.dirname(outfile)
 
     summary_methods = [
@@ -1740,7 +1757,6 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
         for m in re.split(r"[,;\s+]", P.PARAMS.get("compare_summary_methods", "mean,"))
         if m
     ]
-    summary_functions = {method: getattr(np, method) for method in summary_methods}
 
     if not HAS_DESIGN:
         # Need to generate a design matrix if one does not exist
@@ -1752,59 +1768,30 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
     else:
         df_design = pd.read_csv(P.PARAMS["analysis_design"], sep="\t")
 
-    samples_grouped_by_condition = (
-        df_design.set_index("sample").groupby("condition").groups
-    )  # {GROUP_NAME: [Location]}
+    groups = df_design.groupby("condition").groups
 
-    for group_a, group_b in itertools.permutations(
-        samples_grouped_by_condition.keys(), 2
-    ):
+    statement = [
+        "capcruncher",
+        "reporters",
+        "compare",
+        "summarise",
+        infile,
+        "-o",
+        dir_output,
+        "-f",
+        "bedgraph",
+        *[f"-m {m}" for m in summary_methods],
+        *[f"-n {n}" for n in groups.keys()],
+        *[f"-c {','.join(cols)}" for cols in groups.values()],
+        "--subtraction"
+    ]
 
-        # Extract the two groups
-        df_a = df_bdg.loc[:, samples_grouped_by_condition[group_a]]
-        df_b = df_bdg.loc[:, samples_grouped_by_condition[group_b]]
+    P.run(
+        " ".join(statement),
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
+    )
 
-        for summary_method in summary_functions:
-            # Get summary counts
-            a_summary = pd.Series(
-                df_a.pipe(summary_functions[summary_method], axis=1),
-                name=summary_method,
-            )
-            b_summary = pd.Series(
-                df_b.pipe(summary_functions[summary_method], axis=1),
-                name=summary_method,
-            )
-
-            # Merge counts with coordinates
-            df_a_bdg = pd.concat([df_bdg.iloc[:, :3], a_summary], axis=1)
-            df_b_bdg = pd.concat([df_bdg.iloc[:, :3], b_summary], axis=1)
-
-            # Run subtraction
-            df_subtraction_bdg = pd.concat(
-                [df_bdg.iloc[:, :3], a_summary - b_summary], axis=1
-            )
-
-            # Output bedgraphs
-            df_a_bdg.to_csv(
-                f"{dir_output}/{group_a}.{summary_method}-summary.{viewpoint}.bedgraph",
-                sep="\t",
-                header=False,
-                index=None,
-            )
-
-            df_b_bdg.to_csv(
-                f"{dir_output}/{group_b}.{summary_method}-summary.{viewpoint}.bedgraph",
-                sep="\t",
-                header=False,
-                index=None,
-            )
-
-            df_subtraction_bdg.to_csv(
-                f"{dir_output}/{group_a}_vs_{group_b}.{summary_method}-subtraction.{viewpoint}.bedgraph",
-                sep="\t",
-                index=None,
-                header=False,
-            )
 
     touch_file(outfile)
 
