@@ -260,7 +260,6 @@ class SliceFilter:
                 print(f"Number of slices: {self.slices.shape[0]}")
                 print(f'Number of reads: {self.slices["parent_read"].nunique()}')
                 logging.info(f"Filtered: {filt}")
-                
 
                 if output_slices == "filter":
                     self.slices.to_csv(os.path.join(output_location, f"{filt}.tsv.gz"))
@@ -293,10 +292,6 @@ class SliceFilter:
 
         not_orphan = self.slices["parent_id"].duplicated(keep=False)
         self.slices = self.slices.loc[not_orphan]
-
-
-
-
 
     def remove_duplicate_re_frags(self):
         """
@@ -334,12 +329,15 @@ class SliceFilter:
 
         """
 
-        frags_deduplicated = self.fragments.sample(frac=1).drop_duplicates(
-            subset="coordinates", keep="first"
+        frags_deduplicated = (
+            self.slices.groupby("parent_id")
+            .agg(coords=("coordinates", "|".join))
+            .reset_index()
+            .drop_duplicates(subset="coords", keep="first")
         )
 
-        self.slices = self.slices[
-            self.slices["parent_read"].isin(frags_deduplicated["parent_read"])
+        self.slices = self.slices.loc[
+            self.slices["parent_id"].isin(frags_deduplicated["parent_id"])
         ]
 
     def remove_duplicate_slices_pe(self):
@@ -471,7 +469,7 @@ class CCSliceFilter(SliceFilter):
             self.slices.sort_values(["parent_read", "chrom", "start"])
             .groupby("parent_read", as_index=False, sort=False)
             .agg(
-                id=("parent_id", "first"),
+                id=("parent_id", lambda df: df.head(n=1)),
                 unique_slices=("slice", "nunique"),
                 pe=("pe", "first"),
                 mapped=("mapped", "sum"),
@@ -486,7 +484,9 @@ class CCSliceFilter(SliceFilter):
             )
         )
 
-        df["unique_capture_sites"] = df["unique_capture_sites"] - 1  # nunique identifies '.' as a capture site
+        df["unique_capture_sites"] = (
+            df["unique_capture_sites"] - 1
+        )  # nunique identifies '.' as a capture site
         df["unique_exclusions"] = df["unique_exclusions"] - 1  # as above
 
         # Add the number of reporters to the dataframe.
@@ -638,14 +638,14 @@ class CCSliceFilter(SliceFilter):
 
         # Aggregate by capture site for reporting
 
-        return (cap_and_rep.groupby(["capture", "cis/trans"])
-                           .size()
-                           .reset_index()
-                           .query("capture != '.'")
-                           .rename(columns={"capture": "viewpoint", 0: "count"})
-                           .assign(sample=self.sample_name, read_type=self.read_type)
-                           )
-
+        return (
+            cap_and_rep.groupby(["capture", "cis/trans"])
+            .size()
+            .reset_index()
+            .query("capture != '.'")
+            .rename(columns={"capture": "viewpoint", 0: "count"})
+            .assign(sample=self.sample_name, read_type=self.read_type)
+        )
 
     def remove_non_reporter_fragments(self):
         """
@@ -653,10 +653,22 @@ class CCSliceFilter(SliceFilter):
 
         """
 
-        frags_reporter = self.fragments.query("reporter_count > 0")
-        self.slices = self.slices[
-            self.slices["parent_read"].isin(frags_reporter["parent_read"])
-        ]
+        fragments_partial = self.slices.groupby("parent_id").agg(
+            n_capture=("capture_count", "sum"),
+            n_mapped=("mapped", "sum"),
+            n_blacklist=("blacklist", "sum"),
+            n_exclusions=("exclusion_count", "sum"),
+        )
+
+        fragments_with_reporters = fragments_partial.query(
+            "(n_mapped - n_capture - n_blacklist - n_exclusions) > 0"
+        )
+
+        self.slices = (
+            self.slices.set_index("parent_id")
+            .loc[fragments_with_reporters.index]
+            .reset_index()
+        )
 
     def remove_multi_capture_fragments(self):
         """
@@ -666,10 +678,16 @@ class CCSliceFilter(SliceFilter):
         one capture probe is present i.e. a double capture (V. Common)
 
         """
-        frags_capture = self.fragments.query("0 < unique_capture_sites < 2")
-        self.slices = self.slices[
-            self.slices["parent_read"].isin(frags_capture["parent_read"])
-        ]
+        fragments_n_captures = self.slices.groupby("parent_id")["capture"].nunique()
+        single_capture_fragments = fragments_n_captures[
+            fragments_n_captures == 2
+        ]  # Need to account for '.'
+
+        self.slices = (
+            self.slices.set_index("parent_id")
+            .loc[single_capture_fragments.index]
+            .reset_index()
+        )
 
     def remove_multicapture_reporters(self, n_adjacent: int = 1):
         """
@@ -846,13 +864,13 @@ class TiledCSliceFilter(SliceFilter):
             .agg(
                 id=("parent_id", "first"),
                 unique_slices=("slice", "nunique"),
-                pe=("pe","first"),
+                pe=("pe", "first"),
                 mapped=("mapped", "sum"),
                 multimapped=("multimapped", "sum"),
                 capture_count=("capture_count", "sum"),
                 unique_restriction_fragments=("restriction_fragment", "nunique"),
                 blacklisted_slices=("blacklist", "sum"),
-                coordinates=("coordinates", "|".join)
+                coordinates=("coordinates", "|".join),
             )
         )
 
