@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
+from pandas.core.base import DataError
 from pybedtools import BedTool
 import cooler
-from typing import Union
+from typing import Literal, Union
 from capcruncher.tools.storage import CoolerBinner
 from capcruncher.utils import is_valid_bed
 import os
@@ -19,28 +20,43 @@ class CoolerBedGraph:
 
     """
 
-    def __init__(self, cooler_fn: str, sparse: bool = True, only_cis: bool = False):
+    def __init__(self, uri: str, sparse: bool = True, only_cis: bool = False, region_to_limit: str = None):
         """
         Args:
-            cooler_fn (str): Path to cooler group in hdf5 file.
+            uri (str): Path to cooler group in hdf5 file.
             sparse (bool, optional): Only output non-zero bins. Defaults to True.
         """
-        self.sparse = sparse
-        self.only_cis = only_cis
+        self._sparse = sparse
+        self._only_cis = only_cis
 
-        self.cooler = cooler.Cooler(cooler_fn)
-        self.viewpoint_name = self.cooler.info["metadata"]["viewpoint_name"]
-        self._viewpoint_bins = self.cooler.info["metadata"]["viewpoint_bins"]
-        self._viewpoint_chrom = self.cooler.info["metadata"]["viewpoint_chrom"]
-        self._n_cis_interactions = self.cooler.info["metadata"]["n_cis_interactions"]
-        self._bins = self.cooler.bins()[:]
-        self._pixels = (
-            self.cooler.pixels()[:]
-            if not only_cis
-            else self.cooler.pixels().fetch(self._viewpoint_chrom)
-        )
+        self._cooler = cooler.Cooler(uri)
+        self.viewpoint_name = self._cooler.info["metadata"]["viewpoint_name"]
+        self._viewpoint_bins = self._cooler.info["metadata"]["viewpoint_bins"]
+        self.viewpoint_chrom = self._cooler.info["metadata"]["viewpoint_chrom"][0]
+        self.n_cis_interactions = self._cooler.info["metadata"]["n_cis_interactions"]
 
-        self._bedgraph = None
+        
+        if only_cis:
+            self._bins = self._cooler.bins().fetch(self.viewpoint_chrom)
+            viewpoint_chrom_bins = self._bins["name"]
+            self._pixels = (
+                self._cooler.pixels()
+                .fetch(self.viewpoint_chrom)
+                .query(
+                    "(bin1_id in @viewpoint_chrom_bins) and (bin2_id in @viewpoint_chrom_bins)"
+                )
+            )
+            self._bins = self._cooler.bins().fetch(self.viewpoint_chrom)
+        
+        elif region_to_limit:
+            self._pixels = self._cooler.pixels().fetch(region_to_limit)
+            self._bins = self._cooler.bins().fetch(region_to_limit)
+
+        else:
+            self._pixels = self._cooler.pixels()[:]
+            # TODO: Avoid this if possible as reading all bins into memory
+            self._bins = self._cooler.bins()[:]  
+
         self._reporters = None
 
     def _get_reporters(self):
@@ -68,32 +84,25 @@ class CoolerBedGraph:
             drop=True
         )
 
-    def _get_bedgraph(self):
+    def extract_bedgraph(
+        self, normalisation: Literal["raw", "n_cis", "region"] = "raw", **norm_kwargs)  -> pd.DataFrame:
 
         df_bdg = (
             self._bins.merge(
                 self.reporters,
                 left_on="name",
                 right_on="reporter",
-                how="inner" if self.sparse else "outer",
+                how="inner" if self._sparse else "outer",
             )[["chrom", "start", "end", "count"]]
             .assign(count=lambda df: df["count"].fillna(0))
             .sort_values(["chrom", "start"])
         )
 
-        return df_bdg
+        if not normalisation == "raw":
+            self.normalise_bedgraph(df_bdg, method=normalisation, **norm_kwargs)
 
-    @property
-    def bedgraph(self) -> pd.DataFrame:
-        """
-        Returns:
-         pd.DataFrame: DataFrame in bedgraph format.
-        """
-        if self._bedgraph is not None:
-            return self._bedgraph
-        else:
-            self._bedgraph = self._get_bedgraph()
-            return self._bedgraph
+        
+        return df_bdg
 
     @property
     def reporters(self) -> pd.DataFrame:
@@ -110,9 +119,9 @@ class CoolerBedGraph:
             return self._reporters
 
     def normalise_bedgraph(
-        self, scale_factor=1e6, method: str = "n_cis", region: str = None
+        self, bedgraph, scale_factor=1e6, method: str = "n_cis", region: str = None
     ):
-        """Normalises the bedgraph.
+        """Normalises the bedgraph (in place).
 
         Uses the number of cis interactions to normalise the bedgraph counts.
 
@@ -126,51 +135,42 @@ class CoolerBedGraph:
         if method == "raw":
             pass
         elif method == "n_cis":
-            self._normalise_by_n_cis(scale_factor)
+            self._normalise_by_n_cis(bedgraph, scale_factor)
         elif method == "region":
-            self._normalise_by_regions(scale_factor, region)
+            self._normalise_by_regions(bedgraph, scale_factor, region)
 
-    def _normalise_by_n_cis(self, scale_factor: float):
-        self.bedgraph["count"] = (
-            self.bedgraph["count"] / self._n_cis_interactions
+    def _normalise_by_n_cis(self, bedgraph, scale_factor: float):
+        bedgraph["count"] = (
+            bedgraph["count"] / self.n_cis_interactions
         ) * scale_factor
 
-    def _normalise_by_regions(self, scale_factor: float, regions: str):
+    def _normalise_by_regions(self, bedgraph, scale_factor: float, regions: str):
 
         if not is_valid_bed(regions):
             raise ValueError(
                 "A valid bed file is required for region based normalisation"
             )
 
-        df_viewpoint_norm_regions = pd.read_csv(regions, sep="\t", names=["chrom", "start", "end", "name"])
-        df_viewpoint_norm_regions = df_viewpoint_norm_regions.loc[lambda df: df["name"].str.contains(self.viewpoint_name)]
+        df_viewpoint_norm_regions = pd.read_csv(
+            regions, sep="\t", names=["chrom", "start", "end", "name"]
+        )
+        df_viewpoint_norm_regions = df_viewpoint_norm_regions.loc[
+            lambda df: df["name"].str.contains(self.viewpoint_name)
+        ]
 
         counts_in_regions = []
         for region in df_viewpoint_norm_regions.itertuples():
             counts_in_regions.append(
-                self.bedgraph.query(
+                bedgraph.query(
                     "(chrom == @region.chrom) and (start >= @region.start) and (start <= @region.end)"
                 )
             )
-        
+
         df_counts_in_regions = pd.concat(counts_in_regions)
-        total_counts_in_region = df_counts_in_regions['count'].sum()
+        total_counts_in_region = df_counts_in_regions["count"].sum()
 
-        self.bedgraph["count"] = (
-            self.bedgraph["count"] / total_counts_in_region
-        ) * scale_factor
-    
+        bedgraph["count"] = (bedgraph["count"] / total_counts_in_region) * scale_factor
 
-    def to_file(self, fn: os.PathLike):
-        """Outputs the bedgraph dataframe to a file.
-
-        If normalise is True, will also normalise the counts by the number of cis interactions.
-
-        Args:
-         fn (os.PathLike): Output file name.
-         normalise (bool, optional): Normalise the bedgraph before writing to file. Defaults to False.
-        """
-        self.bedgraph.to_csv(fn, sep="\t", header=None, index=False)
 
 
 class CoolerBedGraphWindowed(CoolerBedGraph):
@@ -211,12 +211,12 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
             count_aggregated,
             left_on="name",
             right_on="name_bin",
-            how="inner" if self.sparse else "outer",
+            how="inner" if self._sparse else "outer",
         ).drop(columns=["name_bin"])[["chrom", "start", "end", "count"]]
 
         return bedgraph_bins
 
-    def normalise_bedgraph(self, scale_factor=1e6):
+    def normalise_bedgraph(self, bedgraph, scale_factor=1e6):
 
         bct = self.binner.bin_conversion_table
         reporters = self.reporters
@@ -227,7 +227,7 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
             .assign(
                 count_overfrac_norm=lambda df: df["count"] * df["overlap_fraction"],
                 count_overfrac_n_interact_norm=lambda df: (
-                    df["count_overfrac_norm"] / self._n_cis_interactions
+                    df["count_overfrac_norm"] / self.n_cis_interactions
                 )
                 * scale_factor,
             ),
@@ -243,7 +243,7 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
             count_aggregated,
             left_on="name",
             right_on="name_bin",
-            how="inner" if self.sparse else "outer",
+            how="inner" if self._sparse else "outer",
         ).drop(columns=["name_bin"])[
             ["chrom", "start", "end", "count_overfrac_n_interact_norm"]
         ]

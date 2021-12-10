@@ -10,7 +10,7 @@ from capcruncher.tools.storage import CoolerBinner
 
 
 def bedgraph(
-    cooler_fn: os.PathLike,
+    uri: os.PathLike,
     viewpoint_names: list = None,
     output_prefix: os.PathLike = "",
     normalisation: Literal["raw", "n_cis", "region"] = "raw",
@@ -31,8 +31,8 @@ def bedgraph(
 
     \f
     Args:
-     cooler_fn (os.PathLike): Path to hdf5 file containing cooler groups.
-     viewpoint_names (list, optional): Name of viewpoints to extract. 
+     uri (os.PathLike): Path to hdf5 file containing cooler groups.
+     viewpoint_names (list, optional): Name of viewpoints to extract.
                                        If None, will process all probes present in the file.
                                        Defaults to None.
      output_prefix (os.PathLike, optional): Output file prefix for bedgraph. Defaults to "".
@@ -44,41 +44,29 @@ def bedgraph(
     """
 
     viewpoint_names = viewpoint_names or [
-        v.strip("/")
-        for v in cooler.fileops.list_coolers(cooler_fn)
-        if not "resolutions" in v
+        v.strip("/") for v in cooler.fileops.list_coolers(uri) if not "resolutions" in v
     ]
 
     bin_bedgraph = True if binsize > 0 else False
 
     for ii, viewpoint_name in enumerate(viewpoint_names):
 
-        if not bin_bedgraph:
-            bedgraph = CoolerBedGraph(
-                cooler_fn=f"{cooler_fn}::{viewpoint_name}", sparse=sparse
-            )
+        cooler_group = f"{uri}::{viewpoint_name}"
 
-        elif ii == 0 and bin_bedgraph:
-            # Only want to bin once and then re-use this for the rest
-            binner = CoolerBinner(
-                cooler_group=f"{cooler_fn}::{viewpoint_name}", binsize=binsize
-            )
-            bedgraph = CoolerBedGraphWindowed(
-                cooler_fn=f"{cooler_fn}::{viewpoint_name}", binner=binner, sparse=sparse
-            )
+        if bin_bedgraph:
+            cooler_group = f"{cooler_group}/resolutions/{binsize}"
 
-        else:
-            bedgraph = CoolerBedGraphWindowed(
-                cooler_fn=f"{cooler_fn}::{viewpoint_name}", binner=binner, sparse=sparse
-            )
-
-        if normalisation in ["n_cis", "region"]:
-            bedgraph.normalise_bedgraph(
-                scale_factor=scale_factor,
-                method=normalisation,
+        (
+            CoolerBedGraph(uri=cooler_group, sparse=sparse)
+            .extract_bedgraph(
+                normalisation=normalisation,
                 region=normalisation_regions,
+                scale_factor=scale_factor,
             )
-
-        bedgraph.to_file(
-            f'{output_prefix}.{viewpoint_name}.bedgraph{".gz" if gzip else ""}',
+            .to_csv(
+                f'{output_prefix}.{viewpoint_name}.bedgraph{".gz" if gzip else ""}',
+                sep="\t",
+                header=False,
+                index=False,
+            )
         )
