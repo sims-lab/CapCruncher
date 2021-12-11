@@ -63,7 +63,7 @@ def annotate(
     overlap_fractions: Tuple = None,
     output: os.PathLike = None,
     duplicates: str = "remove",
-    n_cores: int = 4,
+    n_cores: int = 6,
     invalid_bed_action: str = "error",
 ):
     """
@@ -158,10 +158,9 @@ def annotate(
     df_annotation = (
         convert_bed_to_dataframe(slices)
         .set_index("name")
-        .sort_index()
         .join(intersections_results)
+        .rename_axis(index="slice_name")
         .reset_index()
-        .rename(columns={"name": "slice_name"})
     )
 
 
