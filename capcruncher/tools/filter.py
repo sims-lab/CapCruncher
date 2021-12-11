@@ -255,11 +255,11 @@ class SliceFilter:
         for stage, filters in self.filter_stages.items():
             for filt in filters:
                 # Call all of the filters in the filter_stages dict in order
-                print(f"Filtering: {filt}")
+                logging.info(f"Filtering slices: {filt}")
                 getattr(self, filt)()  # Gets and calls the selected method
-                print(f"Number of slices: {self.slices.shape[0]}")
-                print(f'Number of reads: {self.slices["parent_read"].nunique()}')
-                logging.info(f"Filtered: {filt}")
+                logging.info(f"Completed: {filt}")
+                logging.info(f"Number of slices: {self.slices.shape[0]}")
+                logging.info(f'Number of reads: {self.slices["parent_read"].nunique()}')
 
                 if output_slices == "filter":
                     self.slices.to_csv(os.path.join(output_location, f"{filt}.tsv.gz"))
@@ -482,10 +482,10 @@ class CCSliceFilter(SliceFilter):
             )
         )
 
-        df["unique_capture_sites"] = (
-            df["unique_capture_sites"] - 1
-        )  # nunique identifies '.' as a capture site
-        df["unique_exclusions"] = df["unique_exclusions"] - 1  # as above
+        # df["unique_capture_sites"] = (
+        #     df["unique_capture_sites"] - 1
+        # )  # nunique identifies '.' as a capture site
+        # df["unique_exclusions"] = df["unique_exclusions"] - 1  # as above
 
         # Add the number of reporters to the dataframe.
         # Only consider a reporter if at least one capture slice is present
@@ -570,7 +570,8 @@ class CCSliceFilter(SliceFilter):
 
     @property
     def reporters(self) -> pd.DataFrame:
-        return self.slices.query('capture == "."')
+        # Return any slice with a  N/A value
+        return self.slices.query('capture_count < 1')
 
     @property
     def captures(self) -> pd.DataFrame:
@@ -583,7 +584,8 @@ class CCSliceFilter(SliceFilter):
          pd.DataFrame: Capture slices
 
         """
-        return self.slices.query('~(capture == ".")')
+        # Return any slice with a non N/A capture value
+        return self.slices.query('capture_count == 1')
 
     @property
     def capture_site_stats(self) -> pd.Series:
@@ -640,7 +642,6 @@ class CCSliceFilter(SliceFilter):
             cap_and_rep.groupby(["capture", "cis/trans"])
             .size()
             .reset_index()
-            .query("capture != '.'")
             .rename(columns={"capture": "viewpoint", 0: "count"})
             .assign(sample=self.sample_name, read_type=self.read_type)
         )
@@ -677,9 +678,7 @@ class CCSliceFilter(SliceFilter):
 
         """
         fragments_n_captures = self.slices.groupby("parent_id")["capture"].nunique()
-        single_capture_fragments = fragments_n_captures[
-            fragments_n_captures == 2
-        ]  # Need to account for '.'
+        single_capture_fragments = fragments_n_captures[fragments_n_captures == 1]
 
         self.slices = (
             self.slices.set_index("parent_id")
@@ -927,7 +926,7 @@ class TiledCSliceFilter(SliceFilter):
             df_not_primary_capture = df_cap.loc[
                 ~(df_cap["slice_name"].isin(df_primary_capture["slice_name"]))
             ]
-            df_outside_capture = self.slices.query('capture == "."').loc[
+            df_outside_capture = self.slices.query('capture != capture').loc[
                 lambda df_rep: df_rep["parent_read"].isin(df_cap["parent_read"])
             ]
 
@@ -974,8 +973,9 @@ class TiledCSliceFilter(SliceFilter):
         slightly differently.
         """
         multicapture_fragments = (
-            self.slices.query('capture != "."')
-            .groupby("parent_read")["capture"]
+            self.slices.query('capture_count == 1')
+            .groupby("parent_read")
+            ["capture"]
             .nunique()
             > 1
         )

@@ -34,6 +34,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
      pd.DataFrame: Merged dataframe
     """
     if annotations.endswith(".tsv"):
+        # TODO: Ensure that restriction fragment number is an int. No "."
         df_ann = pd.read_csv(
             annotations,
             sep="\t",
@@ -41,6 +42,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
             index_col=["slice_name", "chrom", "start"],
             low_memory=False,
         )
+
     elif annotations.endswith(".hdf5"):
         df_ann = pd.read_hdf(annotations, "annotation").set_index(
             ["slice_name", "chrom", "start"]
@@ -49,15 +51,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
     df_ann = df_ann.drop(columns="end", errors="ignore")
 
     df = (
-        df.join(df_ann, how="inner")
-        .drop(columns=["slice_name.1"], errors="ignore")
-        .assign(
-            restriction_fragment=lambda df: df["restriction_fragment"]
-            .replace(".", -1)
-            .astype(int)
-        )
-        .reset_index()
-        .sort_values(["parent_read", "slice"])
+        df.join(df_ann, how="inner").reset_index().sort_values(["parent_read", "slice"])
     )
 
     return df
@@ -140,8 +134,8 @@ def filter(
 
     # Initialise SliceFilter
     # If no custom filtering, will use the class default.
-    slice_filter_type = SLICE_FILTERS[method]
-    slice_filter = slice_filter_type(
+    slice_filter_class = SLICE_FILTERS[method]
+    slice_filter = slice_filter_class(
         slices=df_alignment,
         sample_name=sample_name,
         read_type=read_type,
@@ -169,16 +163,24 @@ def filter(
 
     df_slices = slice_filter.slices.set_index("parent_id")
     df_capture = df_slices.query("capture_count == 1")
-    df_slices = df_slices.assign(
-        viewpoint=df_slices.index.map(df_capture["capture"]),
-        partition=xxhash.xxh32_intdigest(bam, seed=42),
+
+    df_slices = (
+        df_slices.assign(partition=xxhash.xxh32_intdigest(bam, seed=42))
+        .join(df_capture["capture"], lsuffix="_slices", rsuffix="_capture")
+        .rename(columns={"capture_slices": "capture", "capture_capture": "viewpoint"})
     )
 
     if fragments:
         logging.info(f"Writing reporters at the fragment level")
-        df_fragments = slice_filter_type(df_slices.reset_index()).fragments.assign(
-            viewpoint=lambda df: df["id"].map(df_capture["capture"]),
-            partition=xxhash.xxh32_intdigest(bam, seed=42),
+        df_fragments = (
+            slice_filter_class(df_slices.reset_index())
+            .fragments.assign(
+                partition=xxhash.xxh32_intdigest(bam, seed=42),
+            )
+            .join(df_capture["capture"], lsuffix="_slices", rsuffix="_capture")
+            .rename(
+                columns={"capture_slices": "capture", "capture_capture": "viewpoint"}
+            )
         )
 
         df_fragments.to_hdf(
@@ -186,20 +188,19 @@ def filter(
             key="fragments",
             data_columns=["viewpoint"],
             format="table",
-            complib='blosc', 
-            complevel=2
+            complib="blosc",
+            complevel=2,
         )
 
     logging.info(f"Writing reporters slices")
-    
+
     df_slices.reset_index().to_hdf(
         f"{output_prefix}.hdf5",
         key="slices",
         data_columns=["viewpoint"],
         format="table",
-        complib='blosc', 
+        complib="blosc",
         complevel=2,
-
     )
 
     logging.info(f"Completed analysis of bam file")
