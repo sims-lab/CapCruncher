@@ -3,11 +3,13 @@ import sys
 import warnings
 from typing import Tuple, Union
 import logging
-import dask.dataframe as dd
+import numpy as np
+# import dask.dataframe as dd
 
 #logger = logging.getLogger(__name__)
 
 from joblib.parallel import Parallel, delayed
+import pybedtools
 
 warnings.simplefilter("ignore")
 import os
@@ -100,9 +102,9 @@ def annotate(
 
     logging.info("Reading slices from stdin")
     if slices == "-":
-        slices = pd.read_csv(sys.stdin, sep="\t", header=None).pipe(
-            BedTool.from_dataframe
-        )
+        slices = pd.read_csv(sys.stdin, sep="\t", header=None).pipe(BedTool.from_dataframe)
+    elif slices.endswith(".bam"):
+        slices = BedTool(slices).bam_to_bed()
 
     logging.info("Validating input bed file before annotation")
     if not is_valid_bed(slices):
@@ -143,7 +145,7 @@ def annotate(
             )
         )
 
-    logging.debug(intersections_to_perform)
+    #logging.debug(intersections_to_perform)
 
     intersections_results = Parallel(n_jobs=n_cores)(
         delayed(lambda bi: bi.intersection)(intersection)
@@ -162,6 +164,7 @@ def annotate(
         .rename(columns={"name": "slice_name"})
     )
 
+
     del intersections_results
     logging.info("Writing annotations to file.")
 
@@ -169,4 +172,6 @@ def annotate(
     if output.endswith(".tsv"):
         df_annotation.to_csv(output, sep="\t", index=False)
     elif output.endswith(".hdf5"):
+        # Need to convert dtypes to ones that are supported
+        df_annotation.loc[:, lambda df: df.select_dtypes("Int64").columns] = df_annotation.select_dtypes("Int64").astype(np.float64)
         df_annotation.to_hdf(output, key="/annotation", format="table", complib='blosc', complevel=2)
