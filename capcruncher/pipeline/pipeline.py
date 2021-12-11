@@ -1023,7 +1023,7 @@ def annotate_sort_blacklist(outfile):
                 "fn": "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
                 "action": "get",
                 "fraction": 0.2,
-                "dtype": "int",
+                "dtype": "Int64",
             },
             {
                 "name": "capture",
