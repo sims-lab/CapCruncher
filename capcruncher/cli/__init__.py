@@ -64,7 +64,7 @@ def cli():
 @cli.command(context_settings=dict(ignore_unknown_options=True))
 @click.option("-h", "--help", is_flag=True)
 @click.version_option(metadata.version(distribution_name="capcruncher"))
-@click.argument("mode", type=click.Choice(["make", "plot", "show", "clone", "touch"]))
+@click.argument("mode", type=click.Choice(["make", "run", "plot", "show", "clone", "touch"]))
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
 def pipeline(mode, pipeline_options, help=False, version=False):
 
@@ -77,7 +77,7 @@ def pipeline(mode, pipeline_options, help=False, version=False):
     cmd = [
         "python",
         f"{dir_package}/pipeline/pipeline.py",
-        mode,
+        mode.replace("run", "make"),
     ]
 
     if help:
