@@ -5,11 +5,11 @@ from typing import Tuple, Union
 import logging
 import numpy as np
 # import dask.dataframe as dd
+# import dask.distributed
 
-#logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 from joblib.parallel import Parallel, delayed
-import pybedtools
 
 warnings.simplefilter("ignore")
 import os
@@ -54,6 +54,20 @@ def remove_duplicates_from_bed(bed: Union[str, BedTool, pd.DataFrame]) -> BedToo
     )
 
 
+# @numba.jit
+# def merge_intersections(df, intersections):
+
+#     for intersection in intersections:
+#         intersection = intersection.to_frame(intersection.name)
+#         df = df.merge(intersection, how="left")
+
+#     return df.reset_index()
+
+
+def get_intersection(intersector: BedIntersection):
+    return intersector.get_intersection()
+
+
 def annotate(
     slices: os.PathLike,
     actions: Tuple = None,
@@ -94,17 +108,27 @@ def annotate(
      NotImplementedError: Only supported option for duplicate bed names is remove.
     """
 
+    # client = dask.distributed.Client(dask.distributed.LocalCluster(n_workers=n_cores))
+
     logging.info("Validating commandline arguments")
     len_bed_files = len(bed_files)
-    if not all([len(arg)==len_bed_files for arg in [actions, names]]):
-        raise ValueError("The lengths of the supplied bed files actions and names do not match")
+    if not all([len(arg) == len_bed_files for arg in [actions, names]]):
+        raise ValueError(
+            "The lengths of the supplied bed files actions and names do not match"
+        )
 
-
-    logging.info("Reading slices from stdin")
     if slices == "-":
-        slices = pd.read_csv(sys.stdin, sep="\t", header=None).pipe(BedTool.from_dataframe)
+        logging.info("Reading slices from stdin")
+        slices = pd.read_csv(sys.stdin, sep="\t", header=None).pipe(
+            BedTool.from_dataframe
+        )
+
     elif slices.endswith(".bam"):
+        logging.info("Converting bam to bed")
         slices = BedTool(slices).bam_to_bed()
+
+    else:
+        slices = BedTool(slices)
 
     logging.info("Validating input bed file before annotation")
     if not is_valid_bed(slices):
@@ -121,7 +145,6 @@ def annotate(
         raise NotImplementedError(
             "Only supported option at present is to remove duplicates"
         )
-
 
     logging.info("Performing intersection")
     intersections_to_perform = []
@@ -145,24 +168,22 @@ def annotate(
             )
         )
 
-    #logging.debug(intersections_to_perform)
+    logging.debug(intersections_to_perform)
 
     intersections_results = Parallel(n_jobs=n_cores)(
-        delayed(lambda bi: bi.intersection)(intersection)
+        delayed(get_intersection)(intersection)
         for intersection in intersections_to_perform
     )
 
     logging.info("Merging annotations")
-    # Merge intersections with slices
 
+    # Merge intersections with slices
     df_annotation = (
         convert_bed_to_dataframe(slices)
         .set_index("name")
-        .join(intersections_results)
-        .rename_axis(index="slice_name")
-        .reset_index()
+        .sort_index()
+        .join(intersections_results, how="left")
     )
-
 
     del intersections_results
     logging.info("Writing annotations to file.")
@@ -172,5 +193,11 @@ def annotate(
         df_annotation.to_csv(output, sep="\t", index=False)
     elif output.endswith(".hdf5"):
         # Need to convert dtypes to ones that are supported
-        df_annotation.loc[:, lambda df: df.select_dtypes("Int64").columns] = df_annotation.select_dtypes("Int64").astype(np.float64)
-        df_annotation.to_hdf(output, key="/annotation", format="table", complib='blosc', complevel=2)
+        df_annotation.loc[
+            :, lambda df: df.select_dtypes("Int64").columns
+        ] = df_annotation.select_dtypes("Int64").astype(np.float64)
+        df_annotation.to_hdf(
+            output, key="/annotation", format="table", complib="blosc", complevel=2
+        )
+
+    # client.shutdown()
