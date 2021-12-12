@@ -1178,7 +1178,7 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_total_memory=P.PARAMS["pipeline_memory"],
+        job_total_memory="8G",
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1269,9 +1269,9 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # Zero non-deduplicated reporters
-    # for s in slices:
-    #     zap_file(s)
+    #Zero non-deduplicated reporters
+    for s in slices:
+        zap_file(s)
 
 
 @transform(
@@ -1342,8 +1342,8 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # for fn in infiles:
-    #     zap_file(fn)
+    for fn in infiles:
+        zap_file(fn)
 
 
 @follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
