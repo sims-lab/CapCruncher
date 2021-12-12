@@ -1,4 +1,5 @@
 from logging import disable
+import logging
 from typing import Union, Literal
 import warnings
 import numpy as np
@@ -123,15 +124,16 @@ class BedIntersection:
     def _format_invalid_intersection(self, bed):
         return (
             convert_bed_to_dataframe(bed)
-            .assign(**{self.intersection_name: pd.NA})
+            .assign(**{self.intersection_name: np.nan})
             .set_index("name")
             .loc[:, self.intersection_name]
             .astype(float)
         )
 
-    @property
-    def intersection(self) -> pd.Series:
+    def get_intersection(self, sort_index: bool = True) -> pd.Series:
         """Intersects the two bed files and returns a pd.Series."""
+
+        logging.info(f"Performing {self.intersection_name} intersection.")
 
         if all([self.bed1_valid, self.bed2_valid]):
 
@@ -147,4 +149,4 @@ class BedIntersection:
                 f"Slices valid: {self.bed1_valid}\n {self.intersection_name} .bed file valid: {self.bed2_valid}"
             )
 
-        return intersection
+        return intersection.sort_index() if sort_index else intersection
