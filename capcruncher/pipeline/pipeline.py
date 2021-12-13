@@ -1085,14 +1085,14 @@ def annotate_alignments(infile, outfile):
         "fraction": "-f",
         "dtype": "-t",
     }
-    statement_bamtobed = " ".join(["bedtools", "bamtobed", "-i", infile[0]])
-    statement_sort = " ".join(["sort", "-k1,1", "-k2,2n"])
+    # statement_bamtobed = " ".join(["bedtools", "bamtobed", "-i", infile[0]])
+    # statement_sort = " ".join(["sort", "-k1,1", "-k2,2n"])
     statement_annotate = " ".join(
         [
             "capcruncher",
             "alignments",
             "annotate",
-            "-",
+            infile[0],
             *[
                 f"{flags[k]} {v}"
                 for annotation in infile[1]
@@ -1108,7 +1108,7 @@ def annotate_alignments(infile, outfile):
     )
 
     P.run(
-        " ".join([statement_bamtobed, "|", statement_sort, "|", statement_annotate]),
+        statement_annotate,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
