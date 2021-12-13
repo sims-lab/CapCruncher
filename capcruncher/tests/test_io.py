@@ -1,60 +1,103 @@
+import multiprocessing
+import queue
 from capcruncher.utils import PysamFakeEntry
 import os
 from multiprocessing import SimpleQueue
-from capcruncher.tools.io import FastqReaderProcess, FastqWriterProcess, FastqWriterSplitterProcess
+from capcruncher.tools.io import (
+    FastqReaderProcess,
+    FastqWriterProcess,
+    FastqWriterSplitterProcess,
+)
 import itertools
 import pysam
+import pytest
+import xopen
+multiprocessing.set_start_method("fork")
+import gzip
 
 # Pre-run setup
 dir_test = os.path.realpath(os.path.dirname(__file__))
 dir_package = os.path.dirname(dir_test)
-dir_data = os.path.join(dir_package, "data")
+dir_data = os.path.join(dir_package, "data", "test", "io")
 
-def test_fq_reader():
 
-    fq1 = os.path.join(dir_data, 'test', 'Slc25A37-test_1_1.fastq.gz')
-    fq2 = os.path.join(dir_data, 'test', 'Slc25A37-test_1_2.fastq.gz')
+@pytest.mark.parametrize(
+    "fastq_files,n_records",
+    [
+        (
+            (
+                os.path.join(dir_data, "Slc25A37-test_1_1.fastq.gz"),
+                os.path.join(dir_data, "Slc25A37-test_1_2.fastq.gz"),
+            ),
+            1001,
+        ),
+        (
+            (os.path.join(dir_data, "Slc25A37-test_1_1.fastq.gz"),),
+            1001,
+        ),
+    ],
+)
+def test_fq_reader(fastq_files, n_records):
 
-    outq = SimpleQueue()
-    reader = FastqReaderProcess(input_files=[fq1, fq2], outq=outq)
+    outq = multiprocessing.Queue()
+    reader = FastqReaderProcess(input_files=fastq_files, outq=outq)
     reader.start()
+
+
 
     reads = []
     while True:
-        r = outq.get()
-        if not r == "END":
+
+        try:
+            r = outq.get(block=True, timeout=0.01)
+        except queue.Empty:
+            continue
+
+        if r:
             reads.append(r)
         else:
             break
     
     reader.join()
 
-    n_reads = sum(1 for read in itertools.chain.from_iterable(reads))
-    assert n_reads == 1001
-    
-def test_fq_writer():
+    n_reads = len(list(itertools.chain.from_iterable(reads)))
+    assert n_reads == n_records
 
 
-    fq1 = os.path.join(dir_data, 'test', 'Slc25A37-test_1_1.fastq.gz')
-    fq2 = os.path.join(dir_data, 'test', 'Slc25A37-test_1_2.fastq.gz')
-    fq_output = os.path.join(dir_test, 'test', 'test_fq_write.fastq')
+@pytest.mark.parametrize(
+    "in_files,out_files,n_records_expected",
+    [
+        (
+            (
+                os.path.join(dir_data, "Slc25A37-test_1_1.fastq.gz"),
+                os.path.join(dir_data, "Slc25A37-test_1_2.fastq.gz"),
+            ),
+            (
+                os.path.join(dir_test, "written_Slc25A37-test_1_1.fastq.gz"),
+                os.path.join(dir_test, "written_Slc25A37-test_1_2.fastq.gz"),
+            ),
+            1001,
+        ),
+        (
+            (os.path.join(dir_data, "Slc25A37-test_1_1.fastq.gz"),),
+            (os.path.join(dir_test, "written_Slc25A37-test_single.fastq.gz"),),
+            1001,
+        ),
+    ],
+)
+def test_fq_writer(in_files, out_files, n_records_expected):
 
-    writeq = SimpleQueue()
-    reader = FastqReaderProcess(input_files=[fq1, fq2], outq=writeq)
-    writer = FastqWriterProcess(inq=writeq, output=fq_output)
-    writer.start()
+    outq = multiprocessing.Queue()
+    reader = FastqReaderProcess(input_files=in_files, outq=outq)
+    writer = FastqWriterProcess(inq=outq, output=out_files)
+
     reader.start()
+    writer.start()
 
     reader.join()
     writer.join()
-
-    assert sum(1 for r in pysam.FastxFile(fq_output)) == 1001
-
-
-
-
-
-
-
-
+ 
+    n_records_test = len([rec.name for rec in pysam.FastxFile(out_files[0])])  
+    assert n_records_test == n_records_expected
+    
 
