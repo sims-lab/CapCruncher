@@ -10,7 +10,7 @@ import logging
 # create logger
 logger = logging.getLogger("capcruncher")
 logger.setLevel(logging.INFO)
-logging.basicConfig(format='%(levelname)s:%(asctime)s %(module)-20s %(message)s', level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(asctime)s %(module)-20s %(message)s', level=logging.INFO)
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
