@@ -3,6 +3,7 @@ import multiprocessing
 from typing import Dict, Union
 import traceback
 import tqdm
+import logging
 
 import pandas as pd
 from pysam import FastxFile
@@ -36,9 +37,6 @@ class FastqReaderProcess(multiprocessing.Process):
         input_files: Union[str, list],
         outq: multiprocessing.Queue,
         read_buffer: int = 100000,
-        read_counter: multiprocessing.Manager().Value = None,
-        n_subprocesses: int = 1,
-        statq: multiprocessing.Queue = None,
     ) -> None:
 
         # Input variables
@@ -54,12 +52,9 @@ class FastqReaderProcess(multiprocessing.Process):
 
         # Multiprocessing variables
         self.outq = outq
-        self.statq = statq
-        self.n_subprocesses = n_subprocesses
 
         # Reader variables
         self.read_buffer = read_buffer
-        self.read_counter = read_counter
 
         super(FastqReaderProcess, self).__init__()
 
@@ -79,27 +74,20 @@ class FastqReaderProcess(multiprocessing.Process):
             for read_counter, read in enumerate(zip(*self._input_files_pysam)):
 
                 buffer.append(read)
-
                 if read_counter % self.read_buffer == 0 and not read_counter == 0:
                     self.outq.put(buffer)
                     buffer = []
-                    print(f"Read {read_counter} reads")
+                    logging.info(f"{read_counter} reads parsed")
 
-            self.outq.put(buffer)
-            print(f"Number of reads processed: {read_counter + 1}")
-
-            for i in range(self.n_subprocesses):
-                self.outq.put("END")
-
-            # Deal with number of reads that have been read
-            if self.read_counter:
-                self.read_counter.value = read_counter
-            elif self.statq:
-                self.statq.put({"reads_total": read_counter})
+            self.outq.put(buffer)  # Deal with remainder
+            self.outq.put_nowait(None)  # Poison pill to terminate queue
+            logging.info(f"{read_counter + 1} reads parsed")
 
         except Exception as e:
-            traceback.format_exc()
-            self.outq.put("END")
+            logging.info(f"Reader failed with exception: {e}")
+        
+        for fh in self._input_files_pysam:
+            fh.close()
 
 
 class FastqReadFormatterProcess(multiprocessing.Process):
@@ -238,7 +226,6 @@ class FastqWriterProcess(multiprocessing.Process):
         inq: multiprocessing.Queue,
         output: Union[str, list],
         compression_level: int = 5,
-        n_subprocesses: int = 1,
     ):
 
         super(FastqWriterProcess, self).__init__()
@@ -246,8 +233,6 @@ class FastqWriterProcess(multiprocessing.Process):
         self.inq = inq
         self.output = output
         self.compression_level = compression_level
-        self.n_workers_terminated = 0
-        self.n_subprocesses = n_subprocesses
         self.file_handles = self._get_filehandles()
         self.name = "FastqWriter"
 
@@ -255,12 +240,12 @@ class FastqWriterProcess(multiprocessing.Process):
         if isinstance(self.output, str):
             return [
                 xopen(
-                    self.output, "w", compresslevel=self.compression_level, threads=2
+                    self.output, "w", compresslevel=self.compression_level, threads=0
                 ),
             ]
         elif isinstance(self.output, (list, tuple, pd.Series)):
             return [
-                xopen(fn, "w", compresslevel=self.compression_level, threads=2)
+                xopen(fn, "w", compresslevel=self.compression_level, threads=0)
                 for fn in self.output
             ]
 
@@ -270,39 +255,36 @@ class FastqWriterProcess(multiprocessing.Process):
 
     def run(self):
 
-        try:
+        while True:
 
-            reads = self.inq.get()
-            is_string_input = True if isinstance(reads, str) else False
+            try:
+                reads = self.inq.get(block=True, timeout=0.01)
+                if reads:
+                    is_string_input = True if isinstance(reads, str) else False
+                    
+                    if is_string_input:
+                        for fh in self.file_handles:
+                            fh.write(reads)
 
-            counter = 0
-            while self.n_workers_terminated < self.n_subprocesses:
+                    else:
+                        reads_str = [
+                            "\n".join([str(r) for r in read_glob])
+                            for read_glob in zip(*reads)
+                        ]
 
-                if reads == "END":
-                    self.n_workers_terminated += 1
-                    continue
-
-                elif is_string_input:
-                    for fh in self.file_handles:
-                        fh.write(reads)
-
+                        for fh, read_set in zip(self.file_handles, reads_str):
+                            fh.write((read_set + "\n"))
+                
                 else:
-                    reads_str = [
-                        "\n".join([str(r) for r in read_glob])
-                        for read_glob in zip(*reads)
-                    ]
 
-                    for fh, read_set in zip(self.file_handles, reads_str):
-                        fh.write((read_set + "\n"))
+                    for fh in self.file_handles:
+                        fh.close()
 
-                reads = self.inq.get()
-
-            for fh in self.file_handles:
-                fh.close()
-
-        except Exception as e:
-            traceback.format_exc()
-            self.outq.put("END")
+                    break
+            
+            except queue.Empty:
+                pass
+    
 
 
 def parse_alignment(aln):
@@ -449,20 +431,17 @@ class CCHDF5ReaderProcess(multiprocessing.Process):
 
         viewpoint = viewpoint
         df = store.select(
-                        self.key,
-                        where="viewpoint in viewpoint",
-                        columns=[
-                            "parent_id",
-                            "restriction_fragment",
-                            "viewpoint",
-                            "capture",
-                            "exclusion",
-                        ],
-                    )
+            self.key,
+            where="viewpoint in viewpoint",
+            columns=[
+                "parent_id",
+                "restriction_fragment",
+                "viewpoint",
+                "capture",
+                "exclusion",
+            ],
+        )
         return df
-
-
-
 
     def run(self):
 
@@ -608,10 +587,8 @@ class CCHDF5WriterProcess(multiprocessing.Process):
                             raise ValueError(
                                 "Restriction fragment map or path to viewpoints not supplied"
                             )
-                    
 
                     pbar.update()
-                    
 
                 except queue.Empty:
                     pass
