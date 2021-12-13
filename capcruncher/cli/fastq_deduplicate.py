@@ -44,12 +44,11 @@ def parse(input_files: Tuple, output: os.PathLike = "out.json", read_buffer: int
     reader = FastqReaderProcess(
         input_files=input_files,
         outq=inputq,
-        n_subprocesses=1,
         read_buffer=read_buffer,
     )
 
     parser = ReadDeduplicationParserProcess(
-        inq=inputq, outq=writeq, save_hashed_dict_path=output
+        inq=inputq, outq=writeq, output_path=output
     )
 
     processes = [reader, parser]
