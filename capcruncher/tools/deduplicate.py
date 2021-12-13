@@ -21,9 +21,8 @@ class ReadDeduplicationParserProcess(Process):
     def __init__(
         self,
         inq: multiprocessing.SimpleQueue,
-        outq: multiprocessing.SimpleQueue,
         hash_seed: int = 42,
-        save_hashed_dict_path: os.PathLike = "parsed.json",
+        output_path: os.PathLike = "parsed.json",
     ):
         """
         Args:
@@ -35,16 +34,15 @@ class ReadDeduplicationParserProcess(Process):
         """    
 
         self.inq = inq
-        self.outq = outq
         self.hash_seed = hash_seed
-        self.save_hashed_dict_path = save_hashed_dict_path
+        self.output_path = output_path
         self.read_data = dict()
 
         super(ReadDeduplicationParserProcess, self).__init__()
 
     def _save_dict(self, d):
-        if self.save_hashed_dict_path:
-            with xopen(self.save_hashed_dict_path, "w") as w:
+        if self.output_path:
+            with xopen(self.output_path, "w") as w:
                 ujson.dump(d, w)
 
     def run(self):
