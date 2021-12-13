@@ -49,7 +49,8 @@ def remove_duplicates_from_bed(bed: Union[str, BedTool, pd.DataFrame]) -> BedToo
 
     return (
         df.drop_duplicates(subset="name", keep="first")
-        .sort_values(["chrom", "start"])[["chrom", "start", "end", "name"]]
+        .sort_values(["chrom", "start"])
+        [["chrom", "start", "end", "name"]]
         .pipe(BedTool.from_dataframe)
     )
 
@@ -182,7 +183,9 @@ def annotate(
         convert_bed_to_dataframe(slices)
         .set_index("name")
         .sort_index()
+        .rename_axis(index="slice_name")
         .join(intersections_results, how="left")
+        .reset_index()
     )
 
     del intersections_results
