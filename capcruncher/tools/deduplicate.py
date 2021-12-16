@@ -168,8 +168,8 @@ class ReadDuplicateRemovalProcess(Process):
                             if hash_read_name:
                                 for r in read_glob:
                                     r.name = str(hash_function(r.name))
-                            else:
-                                reads_unique.append(read_glob)
+                                
+                            reads_unique.append(read_glob)
                     
                     self.reads_total += len(reads)
                     self.reads_unique += len(reads_unique)
