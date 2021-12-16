@@ -47,6 +47,7 @@ import warnings
 import glob
 import shutil
 from pybedtools.bedtool import BedTool
+import logging
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
@@ -2087,7 +2088,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
         )
 
     else:
-        print("Not enough replicates for differential testing")
+        logging.warn("Not enough replicates for differential testing")
 
     touch_file(outfile)
 
