@@ -113,6 +113,7 @@ class ReadDuplicateRemovalProcess(Process):
         stats_tx: multiprocessing.Pipe, 
         duplicated_ids: set,
         hash_seed: int = 42,
+        hash_read_name: bool = True,
     ):
         """
         Args:
@@ -127,6 +128,9 @@ class ReadDuplicateRemovalProcess(Process):
         self.outq = outq
         self.hash_seed = hash_seed
         self.duplicated_ids = duplicated_ids
+
+        #Misc
+        self.hash_read_name = hash_read_name
 
         # Stats
         self.stats_tx = stats_tx 
@@ -144,6 +148,7 @@ class ReadDuplicateRemovalProcess(Process):
         """         
 
         hash_seed = self.hash_seed
+        hash_read_name = self.hash_read_name
         hash_function = functools.partial(xxhash.xxh64_intdigest, seed=hash_seed)
         duplicated_ids = self.duplicated_ids
         reads_unique = list()
@@ -160,7 +165,11 @@ class ReadDuplicateRemovalProcess(Process):
                         hash_id = hash_function("".join([r.name for r in read_glob]))
 
                         if not hash_id in duplicated_ids:
-                            reads_unique.append(read_glob)
+                            if hash_read_name:
+                                for r in read_glob:
+                                    r.name = str(hash_function(r.name))
+                            else:
+                                reads_unique.append(read_glob)
                     
                     self.reads_total += len(reads)
                     self.reads_unique += len(reads_unique)
