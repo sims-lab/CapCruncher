@@ -371,4 +371,4 @@ def remove(
     df_stats["stage"] = "deduplicate_slices"
     df_stats.to_csv(f"{stats_prefix}.read.stats.csv", index=False)
 
-    print(df_stats)
+    return df_stats
