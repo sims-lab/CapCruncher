@@ -58,11 +58,7 @@ jobs:
     - name: Conda list
       shell: pwsh
       run: mamba list
-    - name: Test with pytest
-      shell: pwsh
-      run: |
-        pytest
-    - name: Generate coverage report
+    - name: Test with pytest and generate report
       shell: pwsh
       run: |
         pytest --cov=./ --cov-report=xml
