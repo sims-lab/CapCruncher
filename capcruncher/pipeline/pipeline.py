@@ -398,7 +398,7 @@ def fastq_split(infiles, outfile):
 @collate(
     "capcruncher_preprocessing/split/*.fastq*",
     regex(r"capcruncher_preprocessing/split/(.*)_part(\d+)_[12].fastq(?:.gz)?"),
-    r"capcruncher_preprocessing/deduplicated/deduplicated_ids/\1_\2.json.gz",
+    r"capcruncher_preprocessing/deduplicated/deduplicated_ids/\1_\2.pkl",
     extras=[r"\1", r"\2"],
 )
 def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
@@ -430,8 +430,8 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
 
 @collate(
     fastq_duplicates_parse,
-    regex(r"capcruncher_preprocessing/deduplicated/deduplicated_ids/(.*)_\d*.json.gz"),
-    r"capcruncher_preprocessing/deduplicated/deduplicated_ids/\1.json.gz",
+    regex(r"capcruncher_preprocessing/deduplicated/deduplicated_ids/(.*)_\d*.pkl"),
+    r"capcruncher_preprocessing/deduplicated/deduplicated_ids/\1.pkl",
 )
 def fastq_duplicates_identify(infiles, outfile):
 
@@ -496,13 +496,15 @@ def fastq_duplicates_remove(infiles, outfile):
                 "remove",
                 *infiles,
                 "-d",
-                f"capcruncher_preprocessing/deduplicated/deduplicated_ids/{sample_name}.json.gz",
+                f"capcruncher_preprocessing/deduplicated/deduplicated_ids/{sample_name}.pkl",
                 "--sample-name",
                 sample_name,
                 "--stats-prefix",
                 stats_prefix,
                 "-o",
                 output_prefix,
+                "-p",
+                str(P.PARAMS.get("pipeline_n_cores", "4"))
             ]
         )
 
@@ -519,6 +521,7 @@ def fastq_duplicates_remove(infiles, outfile):
 
     P.run(
         statement,
+        job_threads=P.PARAMS["pipeline_n_cores"],
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_memory="6G",
         job_condaenv=P.PARAMS["conda_env"],
