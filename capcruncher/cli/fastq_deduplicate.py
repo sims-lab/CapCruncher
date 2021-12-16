@@ -119,6 +119,7 @@ def remove(
     sample_name: str = "",
     stats_prefix: os.PathLike = "",
     hash_read_name: bool = True,
+    n_cores: int = 1,
 ):
     """
     Removes fragments with duplicated sequences from fastq files.
@@ -142,7 +143,6 @@ def remove(
 
     """
 
-    N_CORES = 4
     id_format = get_file_type(duplicated_ids)
     duplicated_ids_dict = load_dict(duplicated_ids, id_format)
 
@@ -159,7 +159,7 @@ def remove(
     ]
 
     deduplicator = list()
-    for ii in range(N_CORES):
+    for ii in range(n_cores):
         stats_pipe = multiprocessing.Pipe()
         removal_process = ReadDuplicateRemovalProcess(
             inq=readq,
@@ -194,7 +194,7 @@ def remove(
 
     reader.join()
 
-    for _ in range(N_CORES):
+    for _ in range(n_cores):
         readq.put_nowait(None)
 
     stats = list()
@@ -211,6 +211,7 @@ def remove(
     df_stats = df_stats.to_frame("stat").rename_axis(index="stat_type").reset_index()
     df_stats["sample_name"] = sample_name
     df_stats["read_type"] = 0
+    df_stats["read_number"] = 0
     df_stats.to_csv(f"{stats_prefix}.deduplication.csv", index=False)
 
     return df_stats
