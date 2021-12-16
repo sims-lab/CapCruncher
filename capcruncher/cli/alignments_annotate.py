@@ -183,9 +183,9 @@ def annotate(
         convert_bed_to_dataframe(slices)
         .set_index("name")
         .sort_index()
-        .rename_axis(index="slice_name")
         .join(intersections_results, how="left")
         .reset_index()
+        .rename(columns={"index": "slice_name"})
     )
 
     del intersections_results
