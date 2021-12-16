@@ -8,15 +8,15 @@ from collections import OrderedDict
 from datetime import timedelta
 from functools import wraps
 from itertools import cycle, groupby
-from typing import Callable, IO, Iterable, Literal, Tuple, Union, Generator, List
+from typing import Any, Callable, IO, Iterable, Literal, Tuple, Union, Generator, List
 import numpy as np
 
-import click
 import pandas as pd
 import ujson
 import xxhash
 from pybedtools import BedTool
 import pybedtools
+import pickle
 
 
 def read_dataframes(filenames: Iterable, **kwargs):
@@ -105,17 +105,20 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
 
         if isinstance(e, FileNotFoundError):
             if verbose:
-                print("Bed file not found")
+                logging.debug("Bed file not found")
+                raise e
 
         elif isinstance(e, IndexError):
             if verbose:
-                print(
+                logging.debug(
                     "Wrong number of fields detected, check separator/ number of columns"
                 )
+                raise e
 
         else:
             if verbose:
-                print(e)
+                logging.debug(e)
+                raise e
 
 
 def bed_has_name(bed: Union[str, BedTool]) -> bool:
@@ -232,15 +235,46 @@ def intersect_bins(
     return df_intersect
 
 
-def load_json(fn, dtype: str = "int") -> dict:
-    """Convinence function to load gziped json file using xopen."""
+def load_dict(fn, format: str, dtype: str = "int") -> dict:
+    """Convinence function to load gziped json/pickle file using xopen."""
 
     from xopen import xopen
+    import itertools
 
-    with xopen(fn) as r:
-        d = ujson.load(r)
+    
+    if format == "json":
+        with xopen(fn) as r:
+            d = ujson.load(r)
+    elif format == "pickle":
+        with xopen(fn, "rb") as r:
+            d = pickle.load(r)
 
-    return {int(k): int(v) for k, v in d.items()}
+    key_sample = list(itertools.islice(d, 50))
+    required_dtype = eval(dtype)
+
+    if all(isinstance(k, required_dtype) for k in key_sample):
+        return d
+    elif isinstance(d, set):
+        return {required_dtype(k) for k in d}
+    elif isinstance(d, dict):
+        return {required_dtype(k): required_dtype(v) if v else None for k,v in d.items()}
+
+
+def save_dict(obj: Union[dict, set], fn: os.PathLike, format: str, dtype: str = "int") -> dict:
+    """Convinence function to load gziped json/pickle file using xopen."""
+
+    from xopen import xopen
+    
+    if format == "json":
+        with xopen(fn, "w") as w:
+            d = ujson.dump(obj, w)
+    elif format == "pickle":
+        with xopen(fn, "wb") as w:
+            d = pickle.dump(obj, w)
+
+    return fn
+
+
 
 
 def get_timing(task_name=None) -> Callable:
@@ -256,7 +290,7 @@ def get_timing(task_name=None) -> Callable:
             time_end = time.perf_counter()
 
             time_taken = timedelta(seconds=(time_end - time_start))
-            print(f"Completed {task_name} in {time_taken} (hh:mm:ss.ms)")
+            logging.info(f"Completed {task_name} in {time_taken} (hh:mm:ss.ms)")
             return result
 
         return wrapped
@@ -439,13 +473,16 @@ def get_file_type(fn: os.PathLike) -> str:
         "json": "json",
         "tsv": "tsv",
         "h5": "hdf5",
+        "pkl": "pickle",
+        "pickle": "pickle"
     }
     ext = os.path.splitext(os.path.basename(fn).replace(".gz", ""))[-1].strip(".")
 
     try:
         return file_types[ext]
     except KeyError as e:
-        print(f"File extension {ext} is not supported")
+        logging.debug(f"File extension {ext} is not supported")
+        raise e
 
 
 def get_categories_from_hdf5_column(
@@ -523,7 +560,7 @@ def get_cooler_uri(store: os.PathLike, viewpoint: str, resolution: Union[str, in
     
 
 
-class PysamFakeEntry:
+class MockFastqRecord:
     """Testing class used to supply a pysam FastqProxy like object"""
 
     def __init__(self, name, sequence, quality):
@@ -534,3 +571,14 @@ class PysamFakeEntry:
 
     def __repr__(self) -> str:
         return "|".join([self.name, self.sequence, "+", self.quality])
+    
+
+class MockFastaRecord:
+    """Testing class used to supply a pysam FastqProxy like object"""
+
+    def __init__(self, name, sequence):
+        self.name = name
+        self.sequence = sequence
+
+    def __repr__(self) -> str:
+        return f">{self.name}\n{self.sequence}\n"
