@@ -69,22 +69,25 @@ class FastqReaderProcess(multiprocessing.Process):
     def run(self):
         """Performs reading and chunking of fastq file(s)."""
 
+
         try:
             buffer = []
-            for read_counter, read in enumerate(zip(*self._input_files_pysam)):
+            for (read_counter, read) in enumerate(zip(*self._input_files_pysam)):
 
+                # print(f"read_counter: {read_counter}, read: {read}, read_buffer: {self.read_buffer}")
                 buffer.append(read)
                 if read_counter % self.read_buffer == 0 and not read_counter == 0:
-                    self.outq.put(buffer)
-                    buffer = []
-                    logging.info(f"{read_counter} reads parsed")
+                    self.outq.put(buffer.copy())
+                    buffer.clear()
+                    logging.info(f"{read_counter} reads parsed (batch)")
 
             self.outq.put(buffer)  # Deal with remainder
             self.outq.put_nowait(None)  # Poison pill to terminate queue
-            logging.info(f"{read_counter + 1} reads parsed")
+            logging.info(f"{read_counter} reads parsed (final)")
 
         except Exception as e:
             logging.info(f"Reader failed with exception: {e}")
+            raise Exception(e)
         
         for fh in self._input_files_pysam:
             fh.close()
@@ -254,9 +257,8 @@ class FastqWriterProcess(multiprocessing.Process):
             return True
 
     def run(self):
-
+       
         while True:
-
             try:
                 reads = self.inq.get(block=True, timeout=0.01)
                 if reads:
@@ -283,7 +285,7 @@ class FastqWriterProcess(multiprocessing.Process):
                     break
             
             except queue.Empty:
-                pass
+                continue
     
 
 

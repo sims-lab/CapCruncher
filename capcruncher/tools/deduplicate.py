@@ -1,3 +1,5 @@
+import queue
+from typing import NamedTuple
 import ujson
 import multiprocessing
 from multiprocessing import Process, Queue, SimpleQueue
@@ -5,6 +7,8 @@ from xopen import xopen
 import xxhash
 import functools
 import os
+import pickle
+from collections import namedtuple
 
 #TODO: Look at https://github.com/realead/cykhash/blob/master/doc/README_API.md
 class ReadDeduplicationParserProcess(Process):
@@ -20,7 +24,7 @@ class ReadDeduplicationParserProcess(Process):
 
     def __init__(
         self,
-        inq: multiprocessing.SimpleQueue,
+        inq: multiprocessing.Queue,
         hash_seed: int = 42,
         output_path: os.PathLike = "parsed.json",
     ):
@@ -36,14 +40,18 @@ class ReadDeduplicationParserProcess(Process):
         self.inq = inq
         self.hash_seed = hash_seed
         self.output_path = output_path
-        self.read_data = dict()
 
         super(ReadDeduplicationParserProcess, self).__init__()
 
     def _save_dict(self, d):
-        if self.output_path:
+
+        if ".json" in self.output_path:
             with xopen(self.output_path, "w") as w:
                 ujson.dump(d, w)
+        elif any(ext in self.output_path for ext in [".pkl",".pickle"]):
+            with open(self.output_path, "wb") as w:
+                pickle.dump(d, w)
+
 
     def run(self):
         """Processes fastq reads from multiple files and generates a hashed json dictionary.
@@ -56,22 +64,32 @@ class ReadDeduplicationParserProcess(Process):
 
         hash_seed = self.hash_seed
         hash_function = functools.partial(xxhash.xxh64_intdigest, seed=hash_seed)
-        reads = self.inq.get()
-        read_data = self.read_data
+        records = dict()
 
-        while not reads == "END":
+        while True:
 
-            for read_glob in reads:
-                hash_sequence = hash_function("".join([r.sequence for r in read_glob]))
-                hash_id = hash_function("".join([r.name for r in read_glob]))
+            try:
+                reads = self.inq.get(block=True, timeout=0.01)
 
-                read_data[hash_id] = hash_sequence
-                # read_data["".join([r.name for r in read_glob])] = "".join([r.sequence for r in read_glob])
+                if reads:
+                    
+                    for read_set in reads:
+                        hash_sequence = hash_function("".join([r.sequence for r in read_set]))
+                        hash_id = hash_function("".join([r.name for r in read_set]))
+                        records[hash_id] = hash_sequence
+                
+                else:
+                    break
+            
+            except queue.Empty:
+                continue
 
-            reads = self.inq.get()
+            
+        self._save_dict(records)
 
-        self._save_dict(read_data)
-        self.outq.put("END")
+
+
+RemovalStatistics = namedtuple('RemovalStatistics', ["reads_total", "reads_unique", "reads_removed"])
 
 
 class ReadDuplicateRemovalProcess(Process):
@@ -90,10 +108,10 @@ class ReadDuplicateRemovalProcess(Process):
     
     def __init__(
         self,
-        inq: multiprocessing.SimpleQueue,
-        outq: multiprocessing.SimpleQueue,
+        inq: multiprocessing.Queue,
+        outq: multiprocessing.Queue,
+        stats_tx: multiprocessing.Pipe, 
         duplicated_ids: set,
-        statq: multiprocessing.Queue = None,
         hash_seed: int = 42,
     ):
         """
@@ -109,7 +127,9 @@ class ReadDuplicateRemovalProcess(Process):
         self.outq = outq
         self.hash_seed = hash_seed
         self.duplicated_ids = duplicated_ids
-        self.statq = statq
+
+        # Stats
+        self.stats_tx = stats_tx 
         self.reads_total = 0
         self.reads_unique = 0
 
@@ -128,26 +148,31 @@ class ReadDuplicateRemovalProcess(Process):
         duplicated_ids = self.duplicated_ids
         reads_unique = list()
 
-        reads = self.inq.get()
-        while not reads == "END":
-            for read_glob in reads:
 
-                hash_id = hash_function("".join([r.name for r in read_glob]))
+        while True:
+            
+            try:
+                reads = self.inq.get(block=True, timeout=0.01)
 
-                if not hash_id in duplicated_ids:
-                    reads_unique.append(read_glob)
+                if reads:
+                    for read_glob in reads:
 
-            self.outq.put(reads_unique)
+                        hash_id = hash_function("".join([r.name for r in read_glob]))
 
-            self.reads_total += len(reads)
-            self.reads_unique += len(reads_unique)
-            reads_unique = list()
-            reads = self.inq.get()
+                        if not hash_id in duplicated_ids:
+                            reads_unique.append(read_glob)
+                    
+                    self.reads_total += len(reads)
+                    self.reads_unique += len(reads_unique)
+                    self.outq.put(reads_unique.copy())
+                    reads_unique.clear()
+            
+                else:
+                    break
 
-        self.outq.put("END")
+            except queue.Empty:
+                continue
+        
+        stats = RemovalStatistics(self.reads_total, self.reads_unique, self.reads_total - self.reads_unique)
+        self.stats_tx.send(stats)
 
-        if self.statq:
-            self.statq.put(
-                {"reads_total": self.reads_total, "reads_unique": self.reads_unique}
-            )
-            self.statq.put("END")

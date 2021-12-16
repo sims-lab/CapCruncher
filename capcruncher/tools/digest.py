@@ -1,11 +1,12 @@
+import queue
 import re
 import pysam
 import multiprocessing
-from multiprocessing import Queue, Process, SimpleQueue
 import numpy as np
 from typing import Iterable, Union, List
-import traceback
 from capcruncher.tools.statistics import DigestionStats
+import pandas as pd
+
 
 class DigestedChrom:
     """
@@ -22,7 +23,7 @@ class DigestedChrom:
      fragment_indexes (List[int]): Indexes of fragment(s) start and end positions.
      fragment_number_offset (int): Starting fragment number.
      fragment_min_len (int): Minimum fragment length required to report fragment
-           
+
     """
 
     def __init__(
@@ -38,7 +39,7 @@ class DigestedChrom:
          cutsite (str): Restriction enzyme recognition sequence.
          fragment_number_offset (int, optional): Changes the fragment number output. Useful for multiple digests. Defaults to 0.
          fragment_min_len (int, optional): Minimum length of a fragment required to output. Defaults to 1.
-        """        
+        """
 
         self.chrom = chrom
         self.recognition_seq = cutsite.upper()
@@ -71,7 +72,7 @@ class DigestedChrom:
         indexes.append(len(self.chrom.sequence))
 
         return indexes
-    
+
     @property
     def fragments(self) -> Iterable[str]:
         """
@@ -90,7 +91,7 @@ class DigestedChrom:
             # If this is not the first fragment
             if ii > 0:
                 fragment_start += self.recognition_len
-            
+
             # Check to see if the fragment is long enough to be recorded (default 1bp)
             if (fragment_end - fragment_start) >= self.fragment_min_len:
                 yield self._prepare_fragment(fragment_start, fragment_end, fragment_no)
@@ -107,7 +108,11 @@ class DigestedChrom:
         Returns:
          str: Bed formatted coordinates.
         """
-        return '\t'.join([str(x) for x in (self.chrom.name, start, end, fragment_no)]) + '\n'
+        return (
+            "\t".join([str(x) for x in (self.chrom.name, start, end, fragment_no)])
+            + "\n"
+        )
+
 
 class DigestedRead:
     """
@@ -121,15 +126,16 @@ class DigestedRead:
      recognition_seq (str): Sequence of restriction recognition site.
      recognition_len (int): Length of restriction recognition site.
      recognition_seq (re.Pattern): Regular expression for restriction recognition site.
-     slices (List[str]): List of Fastq formatted digested reads (slices).  
+     slices (List[str]): List of Fastq formatted digested reads (slices).
      slice_indexes (List[int]): Indexes of fragment(s) start and end positions.
      slice_number_offset (int): Starting fragment number.
      min_slice_len (int): Minimum fragment length required to report fragment.
      has_slices (bool): Recognition site(s) present within sequence.
 
 
-           
+
     """
+
     def __init__(
         self,
         read: pysam.FastqProxy,
@@ -147,7 +153,7 @@ class DigestedRead:
          slice_number_offset (int, optional): Increases the reported output slice number. Defaults to 0.
          allow_undigested (bool, optional): If True slices without a restriction site are not filtered out. Defaults to False.
          read_type (str, optional): Combined (flashed) or non-combined (pe). Choose from (flashed|pe). Defaults to "flashed".
-        """    
+        """
 
         self.read = read
         self.min_slice_length = min_slice_length
@@ -162,7 +168,7 @@ class DigestedRead:
         self.slice_indexes = self.get_recognition_site_indexes()
         self.slices_unfiltered = len(self.slice_indexes) - 1
         self.slices_filtered = 0
-        self.has_slices = self.slices_unfiltered > 1 
+        self.has_slices = self.slices_unfiltered > 1
         self.slices = self._get_slices()
         self.has_valid_slices = True if self.slices else False
 
@@ -221,55 +227,53 @@ class DigestedRead:
          end (int): Slice end position.
 
         Returns:
-         bool: True if greater than minimum slice length  
-        
-        """    
+         bool: True if greater than minimum slice length
+
+        """
 
         if (end - start) >= self.min_slice_length:
             return True
-    
+
     def __str__(self):
         return ("\n".join(self.slices) + "\n") if self.slices else ""
 
-class ReadDigestionProcess(Process):
+
+class ReadDigestionProcess(multiprocessing.Process):
     """
     Process subclass for multiprocessing fastq digestion.
 
     """
+
     def __init__(
         self,
-        inq: multiprocessing.SimpleQueue,
-        outq: multiprocessing.SimpleQueue,
-        statq: multiprocessing.Queue = None,
-        **digestion_kwargs
+        inq: multiprocessing.Queue,
+        outq: multiprocessing.Queue,
+        stats_pipe: multiprocessing.Pipe = None,
+        **digestion_kwargs,
     ) -> None:
-        
+
         """
         Args:
          inq (multiprocessing.SimpleQueue): Queue to hold list of reads to digest.
          outq (multiprocessing.SimpleQueue): Queue to hold list of digested reads.
          statq (multiprocessing.Queue, optional): Queue to use for aggregating statistics from digestion processes. Defaults to None.
          **digestion_kwargs: Kwargs passed to DigestedRead.
-        
+
         Raises:
             KeyError: digestion_kwargs must contain: cutsite
-        """    
+        """
 
         super(ReadDigestionProcess, self).__init__()
 
         self.inq = inq
         self.outq = outq
-        self.statq = statq
+        self.stats_pipe = stats_pipe
         self.digestion_kwargs = digestion_kwargs
-        self.read_type = digestion_kwargs.get("read_type", 'flashed')
+        self.read_type = digestion_kwargs.get("read_type", "flashed")
         self._stat_container = DigestionStats
 
-        
-        if not 'cutsite' in digestion_kwargs:
-            raise KeyError('Cutsite is required to be present in digestion arguments')
-            traceback.format_exc()
-            self.outq.put('END')
-
+        if not "cutsite" in digestion_kwargs:
+            raise KeyError("Cutsite is required to be present in digestion arguments")
 
     def _digest_reads(self, reads, **digestion_kwargs):
         digested = []
@@ -284,58 +288,81 @@ class ReadDigestionProcess(Process):
 
         return digested
 
+    def _aggregate_stats(self, df, stats: List[DigestionStats]):
+
+        if stats:
+
+
+            df_2 = pd.DataFrame(stats)
+            df_2 = (
+                df_2.groupby(["read_type", "read_number", "unfiltered", "filtered"])
+                .size()
+                .to_frame("count")
+                .reset_index()
+            )
+
+            df_stats = (
+                pd.concat([df, df_2])
+                .groupby(["read_type", "read_number", "unfiltered", "filtered"])
+                .sum()
+                .reset_index()
+            )
+        
+        else:
+            df_stats = df
+
+
+        return df_stats
+
     def run(self):
         """
         Performs read digestion.
-        
+
         Reads to digest are pulled from inq, digested with the DigestedRead class
         and the results placed on outq for writing.
 
-        If a statq is provided, read digestion stats are placed into this queue for 
+        If a statq is provided, read digestion stats are placed into this queue for
         aggregation.
 
-        """        
-        try:
-            read_type = self.read_type
-            reads = self.inq.get()
-            buffer_reads = []
-            buffer_stats = []
+        """
 
-            while not reads == "END":
+        buffer_stats = list()
+        buffer_reads = list()
+        df_stats = pd.DataFrame()
 
-                for read in reads:
-                    digested = self._digest_reads(read, **self.digestion_kwargs)
+        while True:
+            try:
+                reads = self.inq.get(block=True, timeout=0.01)
 
-                    for read_number, digested_read in enumerate(digested):
+                if reads:
+                    for read in reads:
+                        digested = self._digest_reads(read, **self.digestion_kwargs)
 
-                        if digested_read.has_valid_slices:
-                            buffer_reads.append(str(digested_read))
+                        for read_number, digested_read in enumerate(digested):
 
-                        digested_read_stats = self._stat_container(read_type=read_type,
-                                                                   read_number=read_number + 1 if not read_type == 'flashed' else read_number,
-                                                                   unfiltered=digested_read.slices_unfiltered,
-                                                                   filtered=digested_read.slices_filtered)
-                        
-                        buffer_stats.append(digested_read_stats)
+                            if digested_read.has_valid_slices:
+                                buffer_reads.append(str(digested_read))
 
-                self.outq.put("".join(buffer_reads))
+                            digested_read_stats = self._stat_container(
+                                read_type=self.read_type,
+                                read_number=read_number + 1
+                                if not self.read_type == "flashed"
+                                else read_number,
+                                unfiltered=digested_read.slices_unfiltered,
+                                filtered=digested_read.slices_filtered,
+                            )
 
-                if self.statq:
-                    self.statq.put(buffer_stats)
+                            buffer_stats.append(digested_read_stats)
 
-                buffer_reads = []
-                buffer_stats = []
+                    df_stats = self._aggregate_stats(df_stats, buffer_stats)
+                    self.outq.put("".join(buffer_reads.copy()))
+                    buffer_reads.clear()
 
-                reads = self.inq.get()
+                else:
+                    break
 
-            self.outq.put("END")
-
-            if self.statq:
-                self.statq.put('END')
-
-
-        except Exception as e:
-            traceback.format_exc()
-            self.outq.put('END')
-
-  
+            except queue.Empty:
+                continue
+        
+        if self.stats_pipe:
+            self.stats_pipe.send(df_stats)
