@@ -209,7 +209,7 @@ def remove(
     df_stats = pd.DataFrame(stats)
     df_stats = df_stats.sum()
     df_stats = df_stats.to_frame("stat").rename_axis(index="stat_type").reset_index()
-    df_stats["sample_name"] = sample_name
+    df_stats["sample"] = sample_name
     df_stats["read_type"] = 0
     df_stats["read_number"] = 0
     df_stats.to_csv(f"{stats_prefix}.deduplication.csv", index=False)
