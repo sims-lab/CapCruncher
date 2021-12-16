@@ -11,6 +11,7 @@ from typing import Union, Literal
 from natsort import natsorted, natsort_key
 from capcruncher.utils import split_intervals_on_chrom, intersect_bins
 import itertools
+import logging
 
 
 def get_viewpoint_coords(viewpoint_file: str, viewpoint_name: str):
@@ -20,7 +21,7 @@ def get_viewpoint_coords(viewpoint_file: str, viewpoint_name: str):
     try:
         viewpoints = [row for index, row in df_viewpoints.iterrows()]
     except IndexError:
-        print("Oligo name cannot be found within viewpoints")
+        logging.error("Oligo name cannot be found within viewpoints")
         viewpoints = None
 
     return viewpoints
