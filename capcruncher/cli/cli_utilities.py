@@ -191,7 +191,8 @@ def merge_capcruncher_hdfs(
     if category_cols:
         ddf = ddf.categorize(columns=[*category_cols])
     
-    ddf = ddf.sort_values([*index_cols])
+    # breakpoint()
+    ddf = ddf.sort_values([*index_cols], npartitions="auto")
 
     ddf.to_hdf(
         outfile,
