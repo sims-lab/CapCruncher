@@ -382,7 +382,7 @@ class SliceFilter:
 
     def remove_blacklisted_slices(self):
         """Removes slices marked as being within blacklisted regions"""
-        self.slices = self.slices.query("blacklist < 1")
+        self.slices = self.slices.query("(blacklist < 0) or (blacklist != blacklist)")
 
 
 class CCSliceFilter(SliceFilter):
