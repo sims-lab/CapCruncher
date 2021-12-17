@@ -181,7 +181,8 @@ def annotate(
     # Merge intersections with slices
     df_annotation = (
         convert_bed_to_dataframe(slices)
-        .set_index("name")
+        .rename(columns={"name": "slice_name"})
+        .set_index("slice_name")
         .sort_index()
         .join(intersections_results, how="left")
         .reset_index()
