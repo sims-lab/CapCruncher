@@ -5,6 +5,7 @@ import ast
 import pandas as pd
 from cgatcore.iotools import touch_file
 import os
+import logging
 
 
 def strip_cmdline_args(args):
@@ -102,8 +103,6 @@ def cis_and_trans_stats(
         TriCSliceFilter,
         TiledCSliceFilter,
     )
-    import dask.dataframe as dd
-    import dask.distributed
 
     filters = {
         "capture": CCSliceFilter,
@@ -119,28 +118,27 @@ def cis_and_trans_stats(
             slice_filterer(
                 df_slices, sample_name=sample_name, read_type=read_type
             ).cis_or_trans_stats.to_csv(output, index=False)
-        except:
+        except Exception as e:
+            logging.info(f"Exception: {e} occured with {slices}")
             touch_file(output)
 
     elif file_type == "hdf5":
-        client = dask.distributed.Client(processes=True)
 
-        ddf = (
-            dd.read_hdf(slices, key="slices", mode="r")
-            .shuffle("parent_id")
-            .map_partitions(
-                lambda df: slice_filterer(
-                    df, sample_name=sample_name, read_type=read_type
-                ).cis_or_trans_stats
+        slices_iterator = pd.read_hdf(slices, "slices", chunksize=1e6, iterator=True)
+        slice_stats = pd.DataFrame()
+
+        for df in slices_iterator:
+            sf = slice_filterer(df, sample_name=sample_name, read_type=read_type)
+            stats = sf.cis_or_trans_stats
+
+            slice_stats = (
+                pd.concat([slice_stats, stats])
+                .groupby(["viewpoint", "cis/trans", "sample", "read_type"])
+                .sum()
+                .reset_index()
             )
-            .groupby(["viewpoint", "cis/trans", "sample", "read_type"])
-            .sum()
-            .reset_index()
-            .query("viewpoint != '.'")
-            .to_csv(output, single_file=True, index=False)
-        )
-
-        client.shutdown()
+        
+        slice_stats.to_csv(output, index=False)
 
 
 @cli.command()
@@ -175,7 +173,7 @@ def merge_capcruncher_hdfs(
 
     ddf = dd.read_hdf(infiles, key="slices")
 
-    #TODO: Bug when selecting columns using a string category
+    # TODO: Bug when selecting columns using a string category
     # To fix, explicitly convert to string before writing
     transform_to_string = dict()
     transformed_categories = dict()
@@ -185,12 +183,12 @@ def merge_capcruncher_hdfs(
             transform_to_string[col] = str
             transformed_categories[col] = list(ddf[col].cat.categories)
             max_len[col] = max([len(cat) for cat in ddf[col].cat.categories])
-        
+
     ddf = ddf.astype(transform_to_string)
 
     if category_cols:
         ddf = ddf.categorize(columns=[*category_cols])
-    
+
     # breakpoint()
     ddf = ddf.sort_values([*index_cols], npartitions="auto")
 
@@ -208,7 +206,5 @@ def merge_capcruncher_hdfs(
 
         if transformed_categories:
             store.put("/slices_category_metadata", pd.DataFrame(transformed_categories))
-        
-            
 
     client.shutdown()
