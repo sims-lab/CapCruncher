@@ -614,9 +614,7 @@ class CCSliceFilter(SliceFilter):
         reporters = self.reporters.set_index("parent_read").add_prefix("reporter_")
 
         # Join reporters to captures using the parent read name
-        captures_and_reporters = (
-            captures.join(reporters).dropna(axis=0, how="any").reset_index()
-        )
+        captures_and_reporters = (captures.join(reporters).reset_index())
 
         return captures_and_reporters
 
