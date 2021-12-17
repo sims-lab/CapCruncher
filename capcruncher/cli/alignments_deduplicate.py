@@ -6,7 +6,7 @@ import pandas as pd
 import click
 import xopen
 from capcruncher.cli.cli_alignments import cli
-from capcruncher.utils import hash_column, load_json, get_file_type
+from capcruncher.utils import hash_column, get_file_type
 import ujson
 import os
 import numpy as np
@@ -73,32 +73,40 @@ def identify_duplicates_from_hdf5(
     fragments: list, read_type: Literal["flashed", "pe"]
 ) -> dd.Series:
 
-    df_fragments_coords = dd.read_hdf(
-        fragments, key=f"/fragments", columns=["id", "coordinates"]
-    )
-
-    if read_type == "flashed":
-
-        return (
-            df_fragments_coords.map_partitions(
-                lambda df: df.assign(coordinates=hash_column(df["coordinates"]))
-            )
-            .shuffle(on="coordinates")
-            .map_partitions(lambda df: df[df.duplicated(subset="coordinates")])["id"]
+    try:
+        df_fragments_coords = dd.read_hdf(
+            fragments, key=f"/fragments", columns=["id", "coordinates"]
         )
 
-    elif read_type == "pe":
+        if read_type == "flashed":
 
-        return (
-            df_fragments_coords.map_partitions(
-                lambda df: df.join(extract_start_and_end_slice_coords_pe(df))[
-                    ["id", "coordinates_pe"]
-                ]
-                # .assign(coordinates_pe=lambda df: hash_column(df["coordinates_pe"]))
+            duplicated_ids = (
+                df_fragments_coords.map_partitions(
+                    lambda df: df.assign(coordinates=hash_column(df["coordinates"]))
+                )
+                .shuffle(on="coordinates")
+                .map_partitions(lambda df: df[df.duplicated(subset="coordinates")])["id"]
             )
-            .shuffle(on="coordinates_pe")
-            .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])["id"]
-        )
+
+        elif read_type == "pe":
+
+            duplicated_ids = (
+                df_fragments_coords.map_partitions(
+                    lambda df: df.join(extract_start_and_end_slice_coords_pe(df))[
+                        ["id", "coordinates_pe"]
+                    ]
+                    # .assign(coordinates_pe=lambda df: hash_column(df["coordinates_pe"]))
+                )
+                .shuffle(on="coordinates_pe")
+                .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])["id"]
+            )
+    
+    except KeyError as e:
+        logging.warn("{e}")
+        duplicated_ids = dd.from_pandas(pd.Series(data=[], name="id"), npartitions=1)
+    
+    return duplicated_ids
+    
 
 
 def identify_duplicates_from_parquet(
@@ -181,30 +189,35 @@ def remove_duplicates_from_hdf5(
     n_slices_total = 0
     duplicated_ids = read_duplicated_ids(duplicated_ids)
 
-    # Need to get total number of slices
-    for slice_file in slices:
-        with pd.HDFStore(slice_file, "r") as store:
-            n_slices_total += store.get_storer("slices").nrows
+    try:
+        # Need to get total number of slices
+        for slice_file in slices:
+            with pd.HDFStore(slice_file, "r") as store:
+                n_slices_total += store.get_storer("slices").nrows
 
-    ddf = dd.read_hdf(slices, "slices").map_partitions(
-        lambda df: df.loc[~(df["parent_id"].isin(duplicated_ids))]
-    )
+        ddf = dd.read_hdf(slices, "slices").map_partitions(
+            lambda df: df.loc[~(df["parent_id"].isin(duplicated_ids))]
+        )
 
-    ddf.to_hdf(
-        output,
-        key="slices",
-        format="table",
-        data_columns=["viewpoint"],
-        mode="w",
-        min_itemsize={"slice_name": 75, "parent_read": 75, "coordinates": 75, "chrom": 25},
-        complib="blosc",
-        complevel=2,
-    )
+        ddf.to_hdf(
+            output,
+            key="slices",
+            format="table",
+            data_columns=["viewpoint"],
+            mode="w",
+            min_itemsize={"slice_name": 75, "parent_read": 75, "coordinates": 75, "chrom": 25},
+            complib="blosc",
+            complevel=2,
+        )
 
-    # Need to get final number of slices
-    with pd.HDFStore(output, "r") as store:
-        n_slices_unique = store.get_storer(f"slices").nrows
+        # Need to get final number of slices
+        with pd.HDFStore(output, "r") as store:
+            n_slices_unique = store.get_storer(f"slices").nrows
 
+    except KeyError as e:
+        # Obviously missing any data (due to filtering)
+        n_slices_total = 0
+        n_slices_unique = 0   
     return (n_slices_total, n_slices_unique)
 
 
@@ -222,6 +235,9 @@ def read_duplicated_ids(path: os.PathLike):
             ids_duplicated = pd.read_hdf(path, key="/duplicated_ids")
         except KeyError:
             ids_duplicated = pd.Series(data=["NO_DATA"], name="/duplicated_ids")
+    
+    elif file_type == "pickle":
+        ids_duplicated = pd.read_pickle(path)
 
     return ids_duplicated
 
@@ -279,6 +295,8 @@ def identify(
         duplicated_fragments = identify_duplicates_from_hdf5(
             fragments, read_type=read_type
         )
+    
+       
 
     # Output
     if output_file_type == "json":
@@ -298,6 +316,9 @@ def identify(
         )
 
         client.shutdown()
+    
+    elif output_file_type == "pickle":
+        duplicated_fragments.compute().to_pickle(output) 
 
 
 def remove(
@@ -331,7 +352,7 @@ def remove(
     """
 
     input_file_type = (
-        get_file_type(slices if not len(slices) > 1 else slices[0])
+        get_file_type(slices if isinstance(slices, str) else slices[0])
         if file_type == "auto"
         else file_type
     )
