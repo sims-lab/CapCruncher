@@ -1,6 +1,6 @@
 import pathlib
 import multiprocessing
-from typing import Dict, Union
+from typing import Dict, Union, final
 import traceback
 import tqdm
 import logging
@@ -69,9 +69,9 @@ class FastqReaderProcess(multiprocessing.Process):
     def run(self):
         """Performs reading and chunking of fastq file(s)."""
 
-
         try:
             buffer = []
+            rc = 0
             for (read_counter, read) in enumerate(zip(*self._input_files_pysam)):
 
                 # print(f"read_counter: {read_counter}, read: {read}, read_buffer: {self.read_buffer}")
@@ -80,17 +80,20 @@ class FastqReaderProcess(multiprocessing.Process):
                     self.outq.put(buffer.copy())
                     buffer.clear()
                     logging.info(f"{read_counter} reads parsed (batch)")
+                    rc = read_counter
 
             self.outq.put(buffer)  # Deal with remainder
             self.outq.put_nowait(None)  # Poison pill to terminate queue
-            logging.info(f"{read_counter} reads parsed (final)")
+            logging.info(f"{rc} reads parsed (final)")
 
         except Exception as e:
             logging.info(f"Reader failed with exception: {e}")
-            raise Exception(e)
+            raise
         
-        for fh in self._input_files_pysam:
-            fh.close()
+        finally:
+        
+            for fh in self._input_files_pysam:
+                fh.close()
 
 
 class FastqReadFormatterProcess(multiprocessing.Process):
