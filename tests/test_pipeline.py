@@ -1,23 +1,22 @@
 import os
-import sys
 import subprocess
 import shutil
 import glob
 import pytest
-import tempfile
 
-@pytest.fixture(scope="session")
+
+@pytest.fixture(scope="module")
 def data_path():
     fn = os.path.realpath(__file__)
     dirname = os.path.dirname(fn)
     data_dir = os.path.join(dirname, "data", "data_for_pipeline_run")
     return data_dir
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def genome(data_path):
     return os.path.join(data_path, 'chr14.fa.gz')
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def indicies(data_path, genome):
 
     indicies = os.path.join(data_path, 'chr14_bowtie2_indicies')
@@ -28,7 +27,7 @@ def indicies(data_path, genome):
     
     return os.path.join(indicies, "bt2")
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def config_yaml(data_path):
     current_dir = os.path.dirname(os.path.realpath(__file__))
     repo_dir = os.path.dirname(current_dir)
@@ -36,13 +35,13 @@ def config_yaml(data_path):
     return config
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def run_directory(tmpdir_factory):
     fn = tmpdir_factory.mktemp("data")
     return fn
 
     
-@pytest.fixture()
+@pytest.fixture(autouse=True, scope="module")
 def setup_pipeline_run(data_path, run_directory, genome, indicies, config_yaml):
 
     oligos = os.path.join(data_path, 'mm9_capture_oligos_Slc25A37.bed')
@@ -83,46 +82,24 @@ def setup_pipeline_run(data_path, run_directory, genome, indicies, config_yaml):
 #     completed = subprocess.run(cmd.split())
 #     assert completed.returncode == 0
 
-def test_pipeline_fastq_preprocessing(setup_pipeline_run):
-
-    cmd = f'capcruncher pipeline make fastq_preprocessing --local -p 4'
-    completed = subprocess.run(cmd.split())
-    assert completed.returncode == 0
-    assert len(glob.glob('capcruncher_preprocessing/digested/*.fastq.gz')) == 12
-
-def test_pipeline_pre_annotation(setup_pipeline_run):
-
-    cmd = f'capcruncher pipeline make pre_annotation --local -p 4'
-    completed = subprocess.run(cmd.split())
-    assert completed.returncode == 0
-
-def test_pipeline_post_annotation(setup_pipeline_run):
-    cmd = f'capcruncher pipeline make post_annotation --local -p 4'
-    completed = subprocess.run(cmd.split())
-    assert completed.returncode == 0
-
-def test_pipeline_post_capcruncher_analysis(setup_pipeline_run):
-    cmd = f'capcruncher pipeline make post_capcruncher_analysis --local -p 4'
-    completed = subprocess.run(cmd.split())
-    breakpoint()
-    assert completed.returncode == 0
-
-def test_pipeline_all(setup_pipeline_run):
+def test_pipeline_all():
 
     cmd = f'capcruncher pipeline make full --local -p 4'
     completed = subprocess.run(cmd.split())
-    breakpoint()
     assert completed.returncode == 0
+
+def test_digested_exists():
+    assert len(glob.glob('capcruncher_preprocessing/digested/*.fastq.gz')) == (4 * 2)
 
 def test_stats_exist():
 
     assert os.path.exists('capcruncher_statistics/capcruncher_statistics.html')
 
 def test_bigwigs_exist():
-    assert len(glob.glob('capcruncher_analysis/bigwigs/*.bigWig')) == 16
+    assert len(glob.glob('capcruncher_analysis/bigwigs/*.bigWig')) == (4 * 2)
 
 def test_hub_exists():
-    assert os.path.exists('capturec_test.hub.txt')
+    assert os.path.exists('hub_directory')
 
 def test_plot_template_exists():
     try:
