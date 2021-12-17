@@ -181,7 +181,7 @@ def deduplicate_identify(*args, **kwargs):
 )
 @click.option("--sample-name", help="Name of sample e.g. DOX_treated_1", default='sampleX')
 @click.option("--stats-prefix", help="Output prefix for stats file", default='stats')
-@click.option("--hash-read-name/--no-hash-read-name", help="Hashes the read id to save memory", default=True)
+@click.option("--hash-read-name/--no-hash-read-name", help="Hashes the read id to save memory", default=False)
 @click.option("-p", "--n_cores", default=4, type=click.INT)
 def deduplicate_remove(*args, **kwargs):
     """
