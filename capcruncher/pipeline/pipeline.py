@@ -353,7 +353,7 @@ def fastq_multiqc(infile, outfile):
 
 @follows(mkdir("capcruncher_preprocessing/split"))
 @collate(
-    "*.fastq.gz",
+    "*.fastq*",
     regex(r"(.*)_R*[12].fastq.*"),
     r"capcruncher_preprocessing/split/\1.completed",
 )
@@ -1195,7 +1195,7 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
 @collate(
     alignments_filter,
     regex(r".*/(?P<sample>.*).part\d+.(flashed|pe).hdf5"),
-    r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\2.hdf5",
+    r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\2.pkl",
     extras=[r"\2"],
 )
 def alignments_deduplicate_fragments(infiles, outfile, read_type):
@@ -1231,7 +1231,7 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
 @collate(
     alignments_filter,
     regex(r".*/(?P<sample>.*).part(?P<part>\d+)\.(?P<read_type>flashed|pe)\.hdf5"),
-    add_inputs(r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\3.hdf5"),
+    add_inputs(r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\3.pkl"),
     r"capcruncher_analysis/reporters/deduplicated/\1.\3.hdf5",
     extras=[
         r"\1",
@@ -1346,8 +1346,8 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    for fn in infiles:
-        zap_file(fn)
+    # for fn in infiles:
+    #     zap_file(fn)
 
 
 @follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
