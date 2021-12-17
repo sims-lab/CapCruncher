@@ -194,7 +194,7 @@ def deduplicate():
     "-o",
     "--output",
     help="Path for outputting fragments with duplicated coordinates in json format.",
-    default="duplicated_ids.json.gz",
+    default="duplicated_ids.pickle",
 )
 @click.option(
     "--buffer",
