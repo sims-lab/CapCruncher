@@ -6,23 +6,21 @@ Created on Fri Oct  4 13:47:20 2019
 """
 import multiprocessing
 import os
+import sys
 from collections import Counter
 from multiprocessing import SimpleQueue
 from typing import List, Tuple, Union
-import pandas as pd
 
 import click
 import numpy as np
-import ujson
-from capcruncher.tools.deduplicate import (
-    ReadDeduplicationParserProcess,
-    ReadDuplicateRemovalProcess,
-)
+import pandas as pd
+import tqdm
+from capcruncher.tools.deduplicate import (ReadDeduplicationParserProcess,
+                                           ReadDuplicateRemovalProcess)
 from capcruncher.tools.io import FastqReaderProcess, FastqWriterProcess
 from capcruncher.tools.statistics import DeduplicationStatistics
-from capcruncher.utils import load_dict, save_dict, get_file_type
+from capcruncher.utils import get_file_type, load_dict, save_dict
 from xopen import xopen
-import tqdm
 
 
 def parse(input_files: Tuple, output: os.PathLike = "out.json", read_buffer: int = 1e5):
@@ -45,9 +43,6 @@ def parse(input_files: Tuple, output: os.PathLike = "out.json", read_buffer: int
     inputq = (
         multiprocessing.Queue()
     )  # Reads are placed into this queue for deduplication
-    writeq = (
-        multiprocessing.SimpleQueue()
-    )  # Deduplicated reads are placed into the queue for writing
 
     reader = FastqReaderProcess(
         input_files=input_files,
@@ -81,8 +76,6 @@ def identify(input_files: Tuple, output: os.PathLike = "duplicates.json"):
      output (os.PathLike, optional): Duplicate read ids identified. Defaults to "duplicates.json".
     """
 
-    dedup_sequences = dict()
-    read_ids = set()
     input_files = np.array(input_files)
     np.random.shuffle(input_files)
     sequences_dedup = set()
@@ -101,8 +94,6 @@ def identify(input_files: Tuple, output: os.PathLike = "duplicates.json"):
                 reads_duplicated.add(name_hash)
 
     del sequences_dedup
-    # duplicated_ids_dict = dict.fromkeys(reads_duplicated)
-
     output_format = get_file_type(output)
     save_dict(reads_duplicated, output, format=output_format)
 
@@ -191,8 +182,8 @@ def remove(
         dedup.start()
 
     writer.start()
-
     reader.join()
+
 
     for _ in range(n_cores):
         readq.put_nowait(None)
@@ -209,6 +200,7 @@ def remove(
     df_stats = pd.DataFrame(stats)
     df_stats = df_stats.sum()
     df_stats = df_stats.to_frame("stat").rename_axis(index="stat_type").reset_index()
+    df_stats["stage"] = "deduplication"
     df_stats["sample"] = sample_name
     df_stats["read_type"] = 0
     df_stats["read_number"] = 0
