@@ -333,6 +333,7 @@ class ReadDigestionProcess(multiprocessing.Process):
         while True:
             try:
                 reads = self.inq.get(block=True, timeout=0.01)
+                
 
                 if reads:
                     for read in reads:
