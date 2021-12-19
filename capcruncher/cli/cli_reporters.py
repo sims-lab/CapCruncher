@@ -396,8 +396,8 @@ def bedgraphs_concat(*args, **kwargs):
 
 @compare.command(name="summarise")
 @click.argument("infile", required=True)
-@click.option("-o", "--output_prefix", help="Output file prefix")
-@click.option("-f", "--ouput_format", type=click.Choice(["bedgraph", "tsv"]))
+@click.option("-o", "--output-prefix", help="Output file prefix")
+@click.option("-f", "--output-format", type=click.Choice(["bedgraph", "tsv"]))
 @click.option(
     "-m",
     "--summary-methods",
