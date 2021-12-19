@@ -1770,10 +1770,10 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
         df_design["sample"] = samples
         df_design["condition"] = condition
     else:
-        df_design = pd.read_csv(P.PARAMS["analysis_design"], sep="\t")
+        df_design = pd.read_csv(P.PARAMS["analysis_design"], sep=r"\s+|;|:\t|,", engine="python")
 
     groups = df_design.groupby("condition").groups
-
+    
     statement = [
         "capcruncher",
         "reporters",
@@ -1786,7 +1786,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
         "bedgraph",
         *[f"-m {m}" for m in summary_methods],
         *[f"-n {n}" for n in groups.keys()],
-        *[f"-c {','.join(cols)}" for cols in groups.values()],
+        *[f"-c {','.join([str(c) for c in cols])}" for cols in groups.values()],
         "--subtraction"
     ]
 
