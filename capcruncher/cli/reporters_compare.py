@@ -14,12 +14,10 @@ from collections import defaultdict
 
 
 def get_bedgraph_name_from_cooler(cooler_filename):
-    
+
     filename = os.path.basename(cooler_filename.split(".hdf5")[0])
     viewpoint = cooler_filename.split("::/")[1]
     return f"{filename}_{viewpoint}"
-
-
 
 
 def concat(
@@ -84,7 +82,7 @@ def get_summary_functions(methods):
         summary_functions = dict()
         for method in methods:
             for package in [np, scipy.stats]:
-                
+
                 if not summary_functions.get(method):
                     try:
                         summary_functions[method] = getattr(package, method)
@@ -98,20 +96,26 @@ def get_summary_functions(methods):
 
 def get_groups(columns, group_names, group_columns):
 
-    groups = defaultdict(list)
+    groups = dict()
 
-    for name, col in zip(group_names, group_columns):
-        for c in re.split(r"[,;\s+]", col):
+    for group_name, group_col in zip(group_names, group_columns):
+        for col in re.split(r"[,;\s+]", group_col):
 
             try:
-                c = int(c)
-                col_name = columns[c]
+                col = int(col)
+                col_name = columns[col]
             except Exception as e:
-                col_name = c
+                col_name = col
 
-            groups[name].append(col_name)
+            groups[col_name] = group_name
 
     return groups
+
+
+# def get_grouped_dataframe(
+#     df: pd.DataFrame, group_name: str, groups: dict, agg_func: function
+# ):
+#     return df.loc[:, groups[group_name]].pipe(agg_func, axis=1)
 
 
 def summarise(
@@ -133,49 +137,109 @@ def summarise(
         else {col: "summary" for col in df_counts.columns}
     )  # Use all columns if no groups provided
 
-    summary_performed = set()
-    for group_a, group_b in itertools.permutations(groups, 2):
 
-        df_a = df_counts.loc[:, groups[group_a]]
-        df_b = df_counts.loc[:, groups[group_b]]
+    # Perform all groupby aggregations.
+    df_agg = (
+        df_union.iloc[:, 3:]
+        .transpose() # Transpose to enable groupby funcs
+        .groupby(groups)
+        .agg([*summary_functions]) # Apply all aggregaions
+        .transpose()
+        .reset_index()
+        .rename(columns={"level_0": "index", "level_1": "aggregation"})
+        .set_index("index")
+        .join(df_union.iloc[:, :3])
+    )
 
-        counts_for_comparison = list()
-        for (group, df) in zip([group_a, group_b], [df_a, df_b]):
+    # Write out groupby aggregations
+    for group in group_names:
+        if output_format == "bedgraph":
+            df_output = df_agg[["chrom", "start", "end", group, "aggregation"]]
+            for aggregation, df in df_output.groupby("aggregation"):
+                df.to_csv(f"{output_prefix}.{group}.{aggregation}.bedgraph")
+        elif output_format == "tsv":
+            df_output = df_agg[["chrom", "start", "end", "aggregation", group]]
+            df_output.to_csv(f"{output_prefix}.{group}.aggregated.tsv")
+    
 
-            df_summary = pd.concat(
-                [
-                    pd.Series(df.pipe(summary_functions[summary], axis=1), name=summary)
-                    for summary in summary_functions
-                ],
-                axis=1,
-            )
-
-            counts_for_comparison.append(df_summary)
-
-            if not (group, summary_methods) in summary_performed:
-                if output_format == "bedgraph":
-
-                    for summary in summary_functions:
-                        df_bedgraph = pd.concat([df_union.iloc[:, :3], df_summary.loc[:, summary]], axis=1)
-                        df_bedgraph.to_csv(f"{output_prefix.replace('.bedgraph', '')}{group}.{summary}.bedgraph", sep="\t", header=False, index=False)
-                
-                elif output_format == "tsv":
-                    df_bedgraph = pd.concat([df_union.iloc[:, :3], df_summary], axis=1)
-                    df_bedgraph.to_csv(f"{output_prefix.replace('.bedgraph', '')}.{group}.summarised.tsv", sep="\t", index=False)
-                
-                summary_performed.add((group, summary_methods))
-
-
-        if subtraction:
-
-            df_subtraction = counts_for_comparison[0] - counts_for_comparison[1]
+    # Perform permutations
+    if subtraction:
+        subtractions_performed = list()
+        for group_a, group_b in itertools.permutations(group_names, 2):
             
-            if output_format == "bedgraph":
+            subtraction_name = f"{group_a}-{group_b}"
+            df_agg[subtraction_name] = df_agg[group_a] - df_agg[group_b]
+            subtractions_performed.append(subtraction_name)
 
-                for summary in summary_functions:
-                    df_bedgraph = pd.concat([df_union.iloc[:, :3], df_subtraction.loc[:, summary]], axis=1)
-                    df_bedgraph.to_csv(f"{output_prefix.replace('.bedgraph', '').strip('.')}.{group_a}-{group_b}.{summary}-subtraction.bedgraph", sep="\t", header=False, index=False)
+        if output_format == "bedgraph":
+            for sub in subtractions_performed:
+                df_output = df_agg[["chrom", "start", "end", group, "aggregation"]]
+                for aggregation, df in df_output.groupby("aggregation"):
+                    df.to_csv(f"{output_prefix}.{sub}.{aggregation}.bedgraph")
+        
+        elif output_format == "tsv":
+            df_output = df_agg[["chrom", "start", "end", "aggregation", *group_names, *subtractions_performed]]
+            df_output.to_csv(f"{output_prefix}.subtractions.tsv")
+
                 
-            elif output_format == "tsv":
-                df_bedgraph = pd.concat([df_union.iloc[:, :3], df_subtraction], axis=1)
-                df_bedgraph.to_csv(f"{output_prefix.replace('.bedgraph', '').strip('.')}.{group_a}-{group_b}.{summary}-subtraction.tsv", sep="\t", index=False)
+
+
+    
+
+
+
+
+    # dataframes_grouped = dict()
+    # 
+    #     for g in [group_a, group_b]:
+    #         for func_name, func in summary_functions:
+    #             df_grouped = get_grouped_dataframe(df=df_counts,groups=groups, group_name=g, agg_func=func)
+    #             df_grouped.to_csv(f"{output_prefix}.{g}.{}")
+
+    # # summary_performed = set()
+    # # for group_a, group_b in itertools.permutations(groups, 2):
+
+    # #     df_a = df_counts.loc[:, groups[group_a]]
+    # #     df_b = df_counts.loc[:, groups[group_b]]
+
+    # #     counts_for_comparison = list()
+    # #     for (group, df) in zip([group_a, group_b], [df_a, df_b]):
+
+    # #         df_summary = pd.concat(
+    # #             [
+    # #                 pd.Series(df.pipe(summary_functions[summary], axis=1), name=summary)
+    # #                 for summary in summary_functions
+    # #             ],
+    # #             axis=1,
+    # #         )
+
+    # #         counts_for_comparison.append(df_summary)
+
+    # #         if not (group, summary_methods) in summary_performed:
+
+    # #             breakpoint()
+    # #             if output_format == "bedgraph":
+
+    # #                 for summary in summary_functions:
+    # #                     df_bedgraph = pd.concat([df_union.iloc[:, :3], df_summary.loc[:, summary]], axis=1)
+    # #                     df_bedgraph.to_csv(f"{output_prefix.replace('.bedgraph', '')}{group}.{summary}.bedgraph", sep="\t", header=False, index=False)
+
+    # #             elif output_format == "tsv":
+    # #                 df_bedgraph = pd.concat([df_union.iloc[:, :3], df_summary], axis=1)
+    # #                 df_bedgraph.to_csv(f"{output_prefix.replace('.bedgraph', '')}.{group}.summarised.tsv", sep="\t", index=False)
+
+    # #             summary_performed.add((group, summary_methods))
+
+    # #     if subtraction:
+
+    # #         df_subtraction = counts_for_comparison[0] - counts_for_comparison[1]
+
+    # #         if output_format == "bedgraph":
+
+    # #             for summary in summary_functions:
+    # #                 df_bedgraph = pd.concat([df_union.iloc[:, :3], df_subtraction.loc[:, summary]], axis=1)
+    # #                 df_bedgraph.to_csv(f"{output_prefix.replace('.bedgraph', '').strip('.')}.{group_a}-{group_b}.{summary}-subtraction.bedgraph", sep="\t", header=False, index=False)
+
+    # #         elif output_format == "tsv":
+    # #             df_bedgraph = pd.concat([df_union.iloc[:, :3], df_subtraction], axis=1)
+    # #             df_bedgraph.to_csv(f"{output_prefix.replace('.bedgraph', '').strip('.')}.{group_a}-{group_b}.{summary}-subtraction.tsv", sep="\t", index=False)
