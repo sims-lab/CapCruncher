@@ -470,7 +470,9 @@ def get_file_type(fn: os.PathLike) -> str:
         "pkl": "pickle",
         "pickle": "pickle"
     }
+
     ext = os.path.splitext(os.path.basename(fn).replace(".gz", ""))[-1].strip(".")
+
 
     try:
         return file_types[ext]
