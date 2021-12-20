@@ -1397,7 +1397,7 @@ def post_capcruncher_analysis():
     alignments_deduplicate_collate,
     regex(r".*/(?P<sample>.*?)\.hdf5"),
     add_inputs(genome_digest, P.PARAMS["analysis_viewpoints"]),
-    r"capcruncher_analysis/reporters/counts/\1.hdf5",
+    r"capcruncher_analysis/reporters/counts/\1.completed",
 )
 def reporters_count(infile, outfile):
 
@@ -1406,6 +1406,8 @@ def reporters_count(infile, outfile):
     infile, restriction_fragment_map, viewpoints = infile
     n_counting_processes = P.PARAMS["pipeline_n_cores"] - 2
     n_counting_processes = n_counting_processes if n_counting_processes > 0 else 1
+    output_counts = outfile.replace("completed", "hdf5")
+    
 
     statement = [
         "capcruncher",
@@ -1413,7 +1415,7 @@ def reporters_count(infile, outfile):
         "count",
         infile,
         "-o",
-        outfile,
+        output_counts,
         "-f",
         restriction_fragment_map,
         "-v",
@@ -1421,8 +1423,6 @@ def reporters_count(infile, outfile):
         "--cooler-output",
         "-p",
         str(n_counting_processes),
-        ">",
-        f"{outfile}.log",
     ]
 
     P.run(
@@ -1435,7 +1435,8 @@ def reporters_count(infile, outfile):
     # Link bin tables to conserve space
     from capcruncher.tools.storage import link_bins
 
-    link_bins(outfile)
+    link_bins(output_counts)
+    touch_file(outfile)
 
 
 @active_if(P.PARAMS.get("analysis_bin_size"))
@@ -1479,7 +1480,7 @@ def generate_bin_conversion_tables(outfile):
     generate_bin_conversion_tables,
 )
 @transform(
-    reporters_count,
+    "capcruncher_analysis/reporters/counts/(.*).hdf5",
     regex(r"capcruncher_analysis/reporters/counts/(.*).hdf5"),
     add_inputs(generate_bin_conversion_tables),
     r"capcruncher_analysis/reporters/counts/\1.complete",
@@ -1491,7 +1492,7 @@ def reporters_store_binned(infile, outfile):
     """
 
     clr, conversion_tables = infile
-    sentinel_file = outfile
+    sentinel_file = outfile.copy()
     outfile = outfile.replace(".complete", ".hdf5")
 
     statement = [
@@ -1754,7 +1755,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
 def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
     df_bdg = pd.read_csv(infile, sep="\t", nrows=10)
-    dir_output = os.path.dirname(outfile)
+    output_prefix = f"{os.path.dirname(outfile)}/"
 
     summary_methods = [
         m
@@ -1781,13 +1782,15 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
         "summarise",
         infile,
         "-o",
-        dir_output,
+        output_prefix,
         "-f",
         "bedgraph",
         *[f"-m {m}" for m in summary_methods],
         *[f"-n {n}" for n in groups.keys()],
         *[f"-c {','.join([str(c) for c in cols])}" for cols in groups.values()],
-        "--subtraction"
+        "--subtraction",
+        "--suffix",
+        f".{viewpoint}"
     ]
 
     P.run(
@@ -1881,6 +1884,7 @@ def hub_make(infiles, outfile):
     attributes = df_bigwigs["basename"].str.extract(
         r"(?P<samplename>.*?)\.(?P<method>.*?)\.(?P<viewpoint>.*?)\.(?P<file_type>.*)"
     )
+
     df_bigwigs = (
         df_bigwigs.join(attributes)
         .assign(track_categories=lambda df: categorise_tracks(df["method"]))
