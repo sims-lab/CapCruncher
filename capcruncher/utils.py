@@ -265,8 +265,7 @@ def save_dict(obj: Union[dict, set], fn: os.PathLike, format: str) -> dict:
                 d = dict.fromkeys(obj)
             else:
                 d = obj
-
-            ujson.dump(obj, w)
+            ujson.dump(d, w)
     elif format == "pickle":
         with xopen(fn, "wb") as w:
             pickle.dump(obj, w)
