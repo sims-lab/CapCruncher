@@ -1,0 +1,13 @@
+CUSTOM_FILTERING_STAGE_NAME:
+  - remove_unmapped_slices
+  - remove_orphan_slices
+  - remove_multi_capture_fragments
+  - remove_excluded_slices
+  - remove_blacklisted_slices
+  - remove_non_reporter_fragments
+  - remove_multicapture_reporters
+  - remove_slices_without_re_frag_assigned
+  - remove_duplicate_re_frags
+  - remove_duplicate_slices
+  - remove_duplicate_slices_pe
+  - remove_non_reporter_fragments
