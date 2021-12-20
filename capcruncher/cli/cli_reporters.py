@@ -414,6 +414,9 @@ def bedgraphs_concat(*args, **kwargs):
 @click.option(
     "--subtraction", is_flag=True, help="Perform subtration between aggregated groups"
 )
+@click.option(
+    "--suffix", help="Add a suffix before the file extension"
+)
 def bedgraphs_summarise(*args, **kwargs):
 
     from capcruncher.cli.reporters_compare import summarise
