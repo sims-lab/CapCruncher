@@ -254,17 +254,22 @@ def load_dict(fn, format: str, dtype: str = "int") -> dict:
         return {required_dtype(k): required_dtype(v) if v else None for k,v in d.items()}
 
 
-def save_dict(obj: Union[dict, set], fn: os.PathLike, format: str, dtype: str = "int") -> dict:
-    """Convinence function to load gziped json/pickle file using xopen."""
+def save_dict(obj: Union[dict, set], fn: os.PathLike, format: str) -> dict:
+    """Convinence function to save [gziped] json/pickle file using xopen."""
 
     from xopen import xopen
     
     if format == "json":
         with xopen(fn, "w") as w:
-            d = ujson.dump(obj, w)
+            if isinstance(obj, set):
+                d = dict.fromkeys(obj)
+            else:
+                d = obj
+
+            ujson.dump(obj, w)
     elif format == "pickle":
         with xopen(fn, "wb") as w:
-            d = pickle.dump(obj, w)
+            pickle.dump(obj, w)
 
     return fn
 
