@@ -166,7 +166,7 @@ def merge_capcruncher_hdfs(
     import dask.dataframe as dd
     import dask.distributed
 
-    client = dask.distributed.Client(processes=True)
+    client = dask.distributed.Client(n_workers=4, dashboard_address=None, processes=True)
 
     kwargs = {}
     kwargs.update({"data_columns": index_cols} if index_cols else {})

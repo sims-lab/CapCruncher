@@ -305,7 +305,7 @@ def identify(
 
     elif output_file_type == "hdf5":
 
-        cluster = dask.distributed.LocalCluster(n_workers=8)
+        cluster = dask.distributed.LocalCluster(n_workers=4, dashboard_address=None, processes=True)
         client = dask.distributed.Client(cluster)
 
         duplicated_fragments.to_hdf(
@@ -370,7 +370,7 @@ def remove(
 
     elif input_file_type == "hdf5":
 
-        cluster = dask.distributed.LocalCluster(n_workers=8)
+        cluster = dask.distributed.LocalCluster(n_workers=4, dashboard_address=None, processes=True)
         client = dask.distributed.Client(cluster)
 
         if not output_file_type == "hdf5":
