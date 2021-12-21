@@ -37,7 +37,7 @@ analysis:
     # into even genomic windows. Only bin sizes that are present here will be allowed 
     # to be used for heatmap generation.
     # (Optional) Leave blank to prevent binning
-    bin_size: 2500
+    bin_size: 0
 
 genome:
     
@@ -146,6 +146,12 @@ analysis_optional:
     # In these situations it is advised to manually select the viewpoints for visualisation.
     # (Optional)
     force_bigwig_generation: False
+
+    # Changes the storage format used for slices.
+    # Options: tsv, hdf5, parquet
+    # Highly recomended to leave this as the default as other options may not be as robust
+    # (Optional)
+    storage_format: parquet 
    
 
 deduplication:
