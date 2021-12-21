@@ -472,7 +472,8 @@ def get_file_type(fn: os.PathLike) -> str:
         "tsv": "tsv",
         "h5": "hdf5",
         "pkl": "pickle",
-        "pickle": "pickle"
+        "pickle": "pickle",
+        "parquet": "parquet",
     }
 
     ext = os.path.splitext(os.path.basename(fn).replace(".gz", ""))[-1].strip(".")
