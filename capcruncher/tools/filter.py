@@ -228,6 +228,10 @@ class SliceFilter:
         raise NotImplementedError("Override this property")
 
     @property
+    def captures(self) -> pd.DataFrame:
+        raise NotImplementedError("Override this property")
+
+    @property
     def reporters(self) -> pd.DataFrame:
         """
         Extracts reporter slices from slices dataframe i.e. non-capture slices
@@ -384,11 +388,34 @@ class SliceFilter:
 
     def remove_excluded_slices(self):
         """Removes any slices in the exclusion region (default 1kb) (V. Common)"""
-        self.slices = self.slices.query("exclusion_count < 1")
+
+        slices_with_viewpoint = self.slices_with_viewpoint
+
+        slices_passed = slices_with_viewpoint.loc[
+            lambda df: (df["exclusion_count"] < 1)
+            & (df["exclusion"] != df["viewpoint"])
+        ]
+
+        self.slices = self.slices.loc[
+            lambda df: df["parent_id"].isin(slices_passed["parent_id"])
+        ]
 
     def remove_blacklisted_slices(self):
         """Removes slices marked as being within blacklisted regions"""
         self.slices = self.slices.query("(blacklist < 0) or (blacklist != blacklist)")
+
+    @property
+    def slices_with_viewpoint(self):
+
+        slices = self.slices.set_index("parent_id")
+        captures = self.captures.set_index("parent_id")
+        return (
+            slices.join(captures["capture"], lsuffix="_slices", rsuffix="_capture")
+            .rename(
+                columns={"capture_slices": "capture", "capture_capture": "viewpoint"}
+            )
+            .reset_index()
+        )
 
 
 class CCSliceFilter(SliceFilter):
@@ -405,7 +432,7 @@ class CCSliceFilter(SliceFilter):
      - remove_excluded_slices
      - remove_blacklisted_slices
      - remove_non_reporter_fragments
-     - remove_multicapture_reporters
+     - remove_viewpoint_adjacent_restriction_fragments
      - remove_slices_without_re_frag_assigned
      - remove_duplicate_re_frags
      - remove_duplicate_slices
@@ -442,7 +469,7 @@ class CCSliceFilter(SliceFilter):
                     "remove_excluded_slices",
                     "remove_blacklisted_slices",
                     "remove_non_reporter_fragments",
-                    "remove_multicapture_reporters",
+                    "remove_viewpoint_adjacent_restriction_fragments",
                 ],
                 "duplicate_filtered": [
                     "remove_slices_without_re_frag_assigned",
@@ -690,7 +717,7 @@ class CCSliceFilter(SliceFilter):
             .reset_index()
         )
 
-    def remove_multicapture_reporters(self, n_adjacent: int = 1):
+    def remove_viewpoint_adjacent_restriction_fragments(self, n_adjacent: int = 1):
         """
         Deals with an odd situation in which a reporter spanning two adjacent capture sites is not removed.
 
@@ -708,21 +735,35 @@ class CCSliceFilter(SliceFilter):
 
         """
 
-        captures = self.captures
-        re_frags = captures["restriction_fragment"].unique()
+        slices_with_viewpoint = self.slices_with_viewpoint
 
-        # Generates a list of restriction fragments to be excluded from further analysis
-        excluded_fragments = [
-            frag + modifier
-            for frag in re_frags
-            for modifier in range(-n_adjacent, n_adjacent + 1)
-        ]
+        # Create a per viewpoint dataframe of adjacent fragment ranges
+        restriction_fragments_viewpoint = (
+            self.captures.set_index("capture")["restriction_fragment"]
+            .drop_duplicates()
+            .reset_index()
+            .assign(
+                exclusion_start=lambda df: df["restriction_fragment"] - n_adjacent,
+                exclusion_end=lambda df: df["restriction_fragment"] + n_adjacent,
+            )
+        )
 
-        # Remove non-capture slices (reporters) in excluded regions
-        self.slices = self.slices[
-            (self.slices["capture_count"] > 0)
-            | (~self.slices["restriction_fragment"].isin(excluded_fragments))
-        ]
+        slices_with_viewpoint = slices_with_viewpoint.merge(
+            restriction_fragments_viewpoint[
+                ["capture", "exclusion_start", "exclusion_end"]
+            ],
+            left_on="viewpoint",
+            right_on="capture",
+        )
+
+        # Mark slices between the exclusion zones but ignore capture slices
+        slices_with_viewpoint = slices_with_viewpoint.query(
+            "~(exclusion_start <= restriction_fragment <= exclusion_end) or (capture_count == 1)"
+        )
+
+        self.slices = (
+            self.slices.loc[lambda df: df["parent_id"].isin(slices_with_viewpoint["parent_id"])]
+        )
 
 
 class TriCSliceFilter(CCSliceFilter):
@@ -739,7 +780,7 @@ class TriCSliceFilter(CCSliceFilter):
      - remove_multi_capture_fragments
      - remove_blacklisted_slices
      - remove_non_reporter_fragments
-     - remove_multicapture_reporters
+     - remove_viewpoint_adjacent_restriction_fragments
      - remove_duplicate_re_frags
      - remove_duplicate_slices
      - remove_duplicate_slices_pe
@@ -960,7 +1001,7 @@ class TiledCSliceFilter(SliceFilter):
 
     def remove_slices_outside_capture(self):
         """Removes slices outside of capture region(s)"""
-        self.slices = self.slices.query('capture_count != 0')
+        self.slices = self.slices.query("capture_count != 0")
 
     def remove_non_capture_fragments(self):
         """Removes fragments without a capture assigned"""
