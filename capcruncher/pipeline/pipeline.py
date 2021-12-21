@@ -108,6 +108,9 @@ for key in P.PARAMS:
 # Method of analysis
 ANALYSIS_METHOD = P.PARAMS.get("analysis_method", "capture")
 
+# Defines storage format for slices. Defaults to parquet.
+STORAGE_FORMAT = P.PARAMS.get("analysis_optional_storage_format", "parquet")
+
 # Determines the number of samples being processed
 N_SAMPLES = len(
     {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) for fn in glob.glob("*.fastq*")}
@@ -271,8 +274,6 @@ def genome_digest(infile, outfile):
             P.PARAMS["analysis_restriction_enzyme"],
             "-o",
             tmp,
-            "-l",
-            f"{tmp}.log",
             "--sort",
         ]
     )
@@ -355,7 +356,7 @@ def fastq_multiqc(infile, outfile):
 @collate(
     "*.fastq*",
     regex(r"(.*)_R*[12].fastq.*"),
-    r"capcruncher_preprocessing/split/\1.completed",
+    r"capcruncher_preprocessing/split/\1.sentinel",
 )
 def fastq_split(infiles, outfile):
     """
@@ -373,7 +374,7 @@ def fastq_split(infiles, outfile):
         "-m",
         "unix",
         "-o",
-        outfile.replace(".completed", ""),
+        outfile.replace(".sentinel", ""),
         "-n",
         str(P.PARAMS.get("split_n_reads", 1e6)),
         "--no-gzip",
@@ -471,7 +472,7 @@ def fastq_duplicates_identify(infiles, outfile):
 @collate(
     "capcruncher_preprocessing/split/*.fastq*",
     regex(r".*/(.*_part\d+)_[12].fastq(?:.gz)?"),
-    r"capcruncher_preprocessing/deduplicated/\1.completed",
+    r"capcruncher_preprocessing/deduplicated/\1.sentinel",
 )
 def fastq_duplicates_remove(infiles, outfile):
 
@@ -482,7 +483,7 @@ def fastq_duplicates_remove(infiles, outfile):
     sample = re.match(r".*/(.*)(_part\d+)_[12].fastq(?:.gz)?", infiles[0])
     sample_name = sample.group(1)
     sample_part = sample.group(2)
-    output_prefix = outfile.replace(".completed", "")
+    output_prefix = outfile.replace(".sentinel", "")
     stats_prefix = (
         f"capcruncher_statistics/deduplication/data/{sample_name}{sample_part}"
     )
@@ -504,7 +505,7 @@ def fastq_duplicates_remove(infiles, outfile):
                 "-o",
                 output_prefix,
                 "-p",
-                str(P.PARAMS.get("pipeline_n_cores", "4"))
+                str(P.PARAMS.get("pipeline_n_cores", "4")),
             ]
         )
 
@@ -565,7 +566,7 @@ def stats_deduplication_collate(infiles, outfile):
 @collate(
     "capcruncher_preprocessing/deduplicated/*.fastq*",
     regex(r"capcruncher_preprocessing/deduplicated/(.*)_[12].fastq(?:.gz)?"),
-    r"capcruncher_preprocessing/trimmed/\1.completed",
+    r"capcruncher_preprocessing/trimmed/\1.sentinel",
 )
 def fastq_trim(infiles, outfile):
 
@@ -649,7 +650,7 @@ def stats_trim_collate(infiles, outfile):
 @collate(
     "capcruncher_preprocessing/trimmed/*.fq*",
     regex(r"capcruncher_preprocessing/trimmed/(.*)_[12]_.*.fq(?:.gz)?"),
-    r"capcruncher_preprocessing/flashed/\1.completed",
+    r"capcruncher_preprocessing/flashed/\1.sentinel",
 )
 def fastq_flash(infiles, outfile):
 
@@ -659,7 +660,7 @@ def fastq_flash(infiles, outfile):
         "flash",
         " ".join(infiles),
         "-o",
-        outfile.replace(".completed", ""),
+        outfile.replace(".sentinel", ""),
         "-t",
         str(P.PARAMS.get("pipeline_n_cores", 1)),
         "-z",
@@ -1048,14 +1049,14 @@ def annotate_sort_blacklist(outfile):
                 "fn": "capcruncher_analysis/annotations/exclude.bed",
                 "action": "count",
                 "fraction": 1e-9,
-                "dtype": "int",
+                "dtype": "Int8",
             },
             {
                 "name": "capture_count",
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "count",
                 "fraction": 0.9,
-                "dtype": "int",
+                "dtype": "Int8",
             },
             {
                 "name": "blacklist",
@@ -1066,7 +1067,7 @@ def annotate_sort_blacklist(outfile):
             },
         ]
     ),
-    r"capcruncher_analysis/annotations/\1.annotations.hdf5",
+    r"capcruncher_analysis/annotations/\1.annotations.parquet",
 )
 def annotate_alignments(infile, outfile):
 
@@ -1089,8 +1090,6 @@ def annotate_alignments(infile, outfile):
         "fraction": "-f",
         "dtype": "-t",
     }
-    # statement_bamtobed = " ".join(["bedtools", "bamtobed", "-i", infile[0]])
-    # statement_sort = " ".join(["sort", "-k1,1", "-k2,2n"])
     statement_annotate = " ".join(
         [
             "capcruncher",
@@ -1130,25 +1129,34 @@ def post_annotation():
 ###########################
 
 
+@follows(mkdir("capcruncher_analysis/reporters/identified"), fastq_alignment)
+@collate(
+    fastq_alignment,
+    regex(r".*/(.*)_(?!part\d+).(?!flashed|pe).bam"),
+    r"capcruncher_analysis/reporters/identified/\1",
+)
+def make_alignment_filter_dirs(infile, outfile):
+    os.mkdir(outfile)
+
+
 @follows(
     post_annotation,
     annotate_alignments,
-    mkdir("capcruncher_analysis/reporters/identified"),
     mkdir("capcruncher_statistics/reporters/data"),
+    make_alignment_filter_dirs,
 )
 @transform(
     fastq_alignment,
     regex(r".*/(.*)_(part\d+).(flashed|pe).bam"),
-    add_inputs(r"capcruncher_analysis/annotations/\1_\2.\3.annotations.hdf5"),
-    r"capcruncher_analysis/reporters/identified/\1.\2.\3.hdf5",
+    add_inputs(r"capcruncher_analysis/annotations/\1_\2.\3.annotations.parquet"),
+    r"capcruncher_analysis/reporters/identified/\1/\1.\2.\3.sentinel",
     extras=[r"\1", r"\2", r"\3"],
 )
 def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_type):
     """Filteres slices and outputs reporter slices for each capture site"""
 
     bam, annotations = infiles
-    output_prefix = outfile.replace(".hdf5", "")
-    output_log_file = f"{output_prefix}.log"
+    output_prefix = outfile.replace(".sentinel", "")
     stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
     custom_filtering = P.PARAMS.get(
         "analysis_optional_custom_filtering", "NO_PATH_PROVIDED"
@@ -1175,8 +1183,8 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
         f"--custom-filtering {custom_filtering}"
         if os.path.exists(custom_filtering)
         else "",
-        ">",
-        output_log_file,
+        "--output-format",
+        STORAGE_FORMAT
     ]
 
     P.run(
@@ -1190,11 +1198,14 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
     if not P.PARAMS.get("analysis_optional_keep_annotations", False):
         zap_file(annotations)
 
+    # Make sentinel file
+    touch_file(outfile)
+
 
 @follows(mkdir("capcruncher_analysis/reporters/deduplicated/fragments"))
 @collate(
     alignments_filter,
-    regex(r".*/(?P<sample>.*).part\d+.(flashed|pe).hdf5"),
+    regex(r".*/(?P<sample>.*).part\d+.(flashed|pe).sentinel"),
     r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\2.pkl",
     extras=[r"\2"],
 )
@@ -1209,13 +1220,13 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         "alignments",
         "deduplicate",
         "identify",
-        *infiles,
+        *[infile.replace('sentinel', f"fragments.{STORAGE_FORMAT}") for infile in infiles],
         "--read-type",
         read_type,
         "-o",
         outfile,
         "--file-type",
-        "hdf5",
+        STORAGE_FORMAT,
     ]
 
     P.run(
@@ -1230,9 +1241,9 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
 @follows(alignments_deduplicate_fragments)
 @collate(
     alignments_filter,
-    regex(r".*/(?P<sample>.*).part(?P<part>\d+)\.(?P<read_type>flashed|pe)\.hdf5"),
+    regex(r".*/(?P<sample>.*).part(?P<part>\d+)\.(?P<read_type>flashed|pe)\.sentinel"),
     add_inputs(r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\3.pkl"),
-    r"capcruncher_analysis/reporters/deduplicated/\1.\3.hdf5",
+    r"capcruncher_analysis/reporters/deduplicated/\1.\3.sentinel",
     extras=[
         r"\1",
         r"\3",
@@ -1243,6 +1254,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
     """Removes reporters with duplicate coordinates and merges partitions."""
 
     slices, duplicated_ids = list(zip(*infile))
+    slices = [fn.replace("sentinel", f"slices.{STORAGE_FORMAT}") for fn in slices]
     duplicated_ids = duplicated_ids[0]  # All id paths are the same, just need one.
 
     stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}"
@@ -1256,7 +1268,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         "-d",
         duplicated_ids,
         "-o",
-        outfile,
+        outfile.replace("sentinel", STORAGE_FORMAT),
         "--stats-prefix",
         stats_prefix,
         "--sample-name",
@@ -1273,14 +1285,16 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    #Zero non-deduplicated reporters
+    # Zero non-deduplicated reporters
     for s in slices:
         zap_file(s)
+    
+    touch_file(outfile)
 
 
 @transform(
     alignments_deduplicate_slices,
-    regex(r".*/(.*?)\.(.*?)\.hdf5"),
+    regex(r".*/(.*?)\.(.*?)\.sentinel"),
     r"capcruncher_statistics/reporters/data/\1_\2.reporter.stats.csv",
     extras=[r"\1", r"\2"],
 )
@@ -1293,11 +1307,13 @@ def alignments_deduplicate_slices_statistics(
 
     """Generates reporter statistics from de-duplicated files"""
 
+    slices = infile.replace("sentinel", STORAGE_FORMAT)
+
     statement = [
         "capcruncher",
         "utilities",
         "cis-and-trans-stats",
-        infile,
+        slices,
         "-m",
         P.PARAMS["analysis_method"],
         "-o",
@@ -1307,7 +1323,7 @@ def alignments_deduplicate_slices_statistics(
         "--read-type",
         read_type,
         "--file-type",
-        "hdf5",
+        STORAGE_FORMAT,
     ]
 
     P.run(
@@ -1397,7 +1413,7 @@ def post_capcruncher_analysis():
     alignments_deduplicate_collate,
     regex(r".*/(?P<sample>.*?)\.hdf5"),
     add_inputs(genome_digest, P.PARAMS["analysis_viewpoints"]),
-    r"capcruncher_analysis/reporters/counts/\1.completed",
+    r"capcruncher_analysis/reporters/counts/\1.sentinel",
 )
 def reporters_count(infile, outfile):
 
@@ -1407,7 +1423,6 @@ def reporters_count(infile, outfile):
     n_counting_processes = P.PARAMS["pipeline_n_cores"] - 2
     n_counting_processes = n_counting_processes if n_counting_processes > 0 else 1
     output_counts = outfile.replace("completed", "hdf5")
-    
 
     statement = [
         "capcruncher",
@@ -1483,7 +1498,7 @@ def generate_bin_conversion_tables(outfile):
     "capcruncher_analysis/reporters/counts/(.*).hdf5",
     regex(r"capcruncher_analysis/reporters/counts/(.*).hdf5"),
     add_inputs(generate_bin_conversion_tables),
-    r"capcruncher_analysis/reporters/counts/\1.complete",
+    r"capcruncher_analysis/reporters/counts/\1.sentinel",
 )
 def reporters_store_binned(infile, outfile):
 
@@ -1493,7 +1508,7 @@ def reporters_store_binned(infile, outfile):
 
     clr, conversion_tables = infile
     sentinel_file = outfile.copy()
-    outfile = outfile.replace(".complete", ".hdf5")
+    outfile = outfile.replace(".sentinel", ".hdf5")
 
     statement = [
         "capcruncher",
@@ -1618,7 +1633,7 @@ def pipeline_make_report(infile, outfile):
 @transform(
     "capcruncher_analysis/reporters/counts/*.hdf5",
     regex(r".*/(.*).hdf5"),
-    r"capcruncher_analysis/bedgraphs/\1.raw.completed",
+    r"capcruncher_analysis/bedgraphs/\1.raw.sentinel",
     extras=[r"\1"],
 )
 def reporters_make_bedgraph(infile, outfile, sample_name):
@@ -1654,7 +1669,7 @@ def reporters_make_bedgraph(infile, outfile, sample_name):
 @transform(
     "capcruncher_analysis/reporters/counts/*.hdf5",
     regex(r".*/(.*).hdf5"),
-    r"capcruncher_analysis/bedgraphs/\1.normalised.completed",
+    r"capcruncher_analysis/bedgraphs/\1.normalised.sentinel",
     extras=[r"\1"],
 )
 def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
@@ -1749,7 +1764,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
 @transform(
     reporters_make_union_bedgraph,
     regex(r"capcruncher_compare/bedgraphs_union/(.*)\.normalised\.tsv"),
-    r"capcruncher_compare/bedgraphs_comparison/\1.completed",
+    r"capcruncher_compare/bedgraphs_comparison/\1.sentinel",
     extras=[r"\1"],
 )
 def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
@@ -1771,10 +1786,12 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
         df_design["sample"] = samples
         df_design["condition"] = condition
     else:
-        df_design = pd.read_csv(P.PARAMS["analysis_design"], sep=r"\s+|;|:\t|,", engine="python")
+        df_design = pd.read_csv(
+            P.PARAMS["analysis_design"], sep=r"\s+|;|:\t|,", engine="python"
+        )
 
     groups = df_design.groupby("condition").groups
-    
+
     statement = [
         "capcruncher",
         "reporters",
@@ -1790,7 +1807,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
         *[f"-c {','.join([str(c) for c in cols])}" for cols in groups.values()],
         "--subtraction",
         "--suffix",
-        f".{viewpoint}"
+        f".{viewpoint}",
     ]
 
     P.run(
@@ -1798,7 +1815,6 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
     )
-
 
     touch_file(outfile)
 
@@ -2066,14 +2082,14 @@ def hub_make(infiles, outfile):
 @transform(
     reporters_make_union_bedgraph,
     regex(r".*/(.*)\.raw\.tsv"),
-    r"capcruncher_compare/differential/\1.completed",
+    r"capcruncher_compare/differential/\1.sentinel",
     extras=[r"\1"],
 )
 def identify_differential_interactions(infile, outfile, capture_name):
 
     if len(pd.read_csv(infile, sep="\t", nrows=5).columns) >= 4:
 
-        output_prefix = outfile.replace(".log", "")
+        output_prefix = outfile.replace(".sentinel", "")
 
         statement = [
             "capcruncher",
@@ -2085,7 +2101,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
             "-c",
             P.PARAMS["analysis_viewpoints"],
             "-o",
-            outfile.replace(".log", ""),
+            output_prefix,
         ]
 
         P.run(
@@ -2109,7 +2125,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
 @active_if(ANALYSIS_METHOD in ["tri", "tiled"] and MAKE_PLOTS)
 @merge(
     "capcruncher_analysis/reporters/*.hdf5",
-    r"capcruncher_plots/templates/heatmaps.complete",
+    r"capcruncher_plots/templates/heatmaps.sentinel",
 )
 def plot_heatmaps_make_templates(infiles, outfile):
 
@@ -2134,7 +2150,7 @@ def plot_heatmaps_make_templates(infiles, outfile):
                     "-b",
                     str(P.PARAMS["analysis_bin_size"]),
                     "-o",
-                    outfile.replace("heatmaps.complete", f"{viewpoint}.heatmap.yml"),
+                    outfile.replace("heatmaps.sentinel", f"{viewpoint}.heatmap.yml"),
                 ]
             )
         )
@@ -2193,7 +2209,7 @@ def plot_pileups_make_templates(infiles, outfile):
 @transform(
     "capcruncher_plots/templates/*.yml",
     regex(r".*/(.*)\.(.*).yml"),
-    r"capcruncher_plots/templates/\1.complete",
+    r"capcruncher_plots/templates/\1.sentinel",
     extras=[r"\1"],
 )
 def make_plots(infile, outfile, viewpoint):
