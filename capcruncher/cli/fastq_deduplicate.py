@@ -202,7 +202,7 @@ def remove(
     df_stats = df_stats.to_frame("stat").rename_axis(index="stat_type").reset_index()
     df_stats["stage"] = "deduplication"
     df_stats["sample"] = sample_name
-    df_stats["read_type"] = 0
+    df_stats["read_type"] = "pe"
     df_stats["read_number"] = 0
     df_stats.to_csv(f"{stats_prefix}.deduplication.csv", index=False)
 
