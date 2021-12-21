@@ -192,16 +192,18 @@ def annotate(
     del intersections_results
     logging.info("Writing annotations to file.")
 
+
+    df_annotation.loc[:, lambda df: df.select_dtypes("number").columns] = df_annotation.select_dtypes("number").astype("float")
+
     # Export to tsv
     if output.endswith(".tsv"):
         df_annotation.to_csv(output, sep="\t", index=False)
     elif output.endswith(".hdf5"):
         # Need to convert dtypes to ones that are supported
-        df_annotation.loc[
-            :, lambda df: df.select_dtypes("Int64").columns
-        ] = df_annotation.select_dtypes("Int64").astype(np.float64)
         df_annotation.to_hdf(
             output, key="/annotation", format="table", complib="blosc", complevel=2
         )
+    elif output.endswith(".parquet"):
+        df_annotation.to_parquet(output)
 
     # client.shutdown()

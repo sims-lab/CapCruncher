@@ -104,7 +104,7 @@ class BedIntersection:
         return self._extract_intersection_result(
             a.intersect(b, loj=True, c=True, f=self.min_frac, sorted=True),
             intersection_id=self.intersection_name,
-            dtype="Int64",
+            dtype=self.dtype,
         )
 
     def _intersections_get(self, a, b):

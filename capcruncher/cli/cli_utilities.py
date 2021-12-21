@@ -6,6 +6,7 @@ import pandas as pd
 from cgatcore.iotools import touch_file
 import os
 import logging
+import glob
 
 
 def strip_cmdline_args(args):
@@ -76,12 +77,11 @@ def repartition_csvs(
         .to_csv(out_glob, **write_args)
     )
 
-
 @cli.command()
 @click.argument("slices")
 @click.option("-o", "--output", help="Output file name")
 @click.option("-m", "--method", type=click.Choice(["capture", "tri", "tiled"]))
-@click.option("--file-type", type=click.Choice(["hdf5", "tsv"]))
+@click.option("--file-type", type=click.Choice(["parquet", "hdf5", "tsv"]))
 @click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
 @click.option(
     "--read-type",
@@ -139,6 +139,29 @@ def cis_and_trans_stats(
             )
         
         slice_stats.to_csv(output, index=False)
+
+    elif file_type == "parquet":
+        
+        slice_stats = pd.DataFrame()
+        for parquet_file in glob.glob(f"{slices}/*.parquet"):
+            df = pd.read_parquet(parquet_file)
+        
+            sf = slice_filterer(df, sample_name=sample_name, read_type=read_type)
+            stats = sf.cis_or_trans_stats
+
+            slice_stats = (
+                pd.concat([slice_stats, stats])
+                .groupby(["viewpoint", "cis/trans", "sample", "read_type"])
+                .sum()
+                .reset_index()
+            )
+        
+        slice_stats.to_csv(output, index=False)
+
+
+            
+
+
 
 
 @cli.command()

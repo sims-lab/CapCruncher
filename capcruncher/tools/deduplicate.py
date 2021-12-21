@@ -1,5 +1,5 @@
 import queue
-from typing import NamedTuple
+from typing import NamedTuple, Literal, Tuple, List, Union, Iterable
 import ujson
 import multiprocessing
 from multiprocessing import Process, Queue, SimpleQueue
@@ -9,8 +9,10 @@ import functools
 import os
 import pickle
 from collections import namedtuple
+from capcruncher.utils import hash_column, get_file_type
+import logging
+import pandas as pd
 
-#TODO: Look at https://github.com/realead/cykhash/blob/master/doc/README_API.md
 class ReadDeduplicationParserProcess(Process):
     """
     Process subclass for parsing fastq file(s) into a hashed {id:sequence} json format.
@@ -87,10 +89,7 @@ class ReadDeduplicationParserProcess(Process):
             
         self._save_dict(records)
 
-
-
 RemovalStatistics = namedtuple('RemovalStatistics', ["reads_total", "reads_unique", "reads_removed"])
-
 
 class ReadDuplicateRemovalProcess(Process):
     """
@@ -184,4 +183,244 @@ class ReadDuplicateRemovalProcess(Process):
         
         stats = RemovalStatistics(self.reads_total, self.reads_unique, self.reads_total - self.reads_unique)
         self.stats_tx.send(stats)
+
+
+def extract_fragment_coordinates(df):
+    coords = df["coordinates"].str.extract(
+        r"^chr(?P<chrom1>.*?):(?P<start>\d+).*\|chr(?P<chrom2>.*?):\d+-(?P<end>\d+)"
+    )
+    coords = coords["chrom1"].str.cat(coords.iloc[:, 1:])
+    coords.name = "coordinates_pe"
+    return coords
+
+
+def identify_coordinate_duplicates_from_tsv(
+    fragments: pd.DataFrame, read_type: Literal["flashed", "pe"], buffer: float = 1e6
+):
+
+    df_fragments = pd.read_csv(
+        fragments,
+        sep="\t",
+        chunksize=buffer,
+        usecols=["parent_read", "coordinates"],
+    )
+
+    unique_coordinates = set()
+    duplicated_fragments = set()
+
+    for ii, df in enumerate(fragments):
+
+        # Shuffle to stop fragments at the end of the sample always being removed
+        df = df.sample(frac=1)
+
+        if read_type == "flashed":
+
+            lst_id = hash_column(df["parent_read"])
+            lst_coords = hash_column(df["coordinates"])
+
+        else:
+            # Extract chrom1 + start1 + chrom(last entry) + end(last entry)
+            coords_df = df["coordinates"].str.extract(
+                r"^chr(?P<chrom1>.*?):(?P<start>\d+).*\|chr(?P<chrom2>.*?):\d+-(?P<end>\d+)"
+            )
+
+            lst_id = hash_column(df["parent_read"])
+
+            # chrom1+start1+chrom-1+end-1(hashed)
+            lst_coords = hash_column(coords_df["chrom1"].str.cat(coords_df.iloc[:, 1:]))
+
+        for id, coord in zip(lst_id, lst_coords):
+            if not coord in unique_coordinates:
+                unique_coordinates.add(coord)
+            else:
+                duplicated_fragments.add(id)
+
+    return duplicated_fragments
+
+def identify_coordinate_duplicates_from_hdf5(
+    fragments: list, read_type: Literal["flashed", "pe"]
+):
+
+    import dask.dataframe as dd
+
+    try:
+        df_fragments_coords = dd.read_hdf(
+            fragments, key=f"/fragments", columns=["id", "coordinates"]
+        )
+
+        if read_type == "flashed":
+
+            duplicated_ids = (
+                df_fragments_coords.map_partitions(
+                    lambda df: df.assign(coordinates=hash_column(df["coordinates"]))
+                )
+                .shuffle(on="coordinates")
+                .map_partitions(lambda df: df[df.duplicated(subset="coordinates")])["id"]
+            )
+
+        elif read_type == "pe":
+
+            duplicated_ids = (
+                df_fragments_coords.map_partitions(
+                    lambda df: df.join(extract_fragment_coordinates(df))[
+                        ["id", "coordinates_pe"]
+                    ]
+                    # .assign(coordinates_pe=lambda df: hash_column(df["coordinates_pe"]))
+                )
+                .shuffle(on="coordinates_pe")
+                .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])["id"]
+            )
+    
+    except KeyError as e:
+        logging.warn("{e}")
+        duplicated_ids = dd.from_pandas(pd.Series(data=[], name="id"), npartitions=1)
+    
+    return duplicated_ids
+    
+def identify_coordinate_duplicates_from_parquet(
+    fragments: list, read_type: Literal["flashed", "pe"]
+):
+
+    import dask.dataframe as dd
+
+    df_fragments_coords = dd.read_parquet(
+        fragments,
+        columns=["id", "coordinates"],
+    )
+
+    if read_type == "flashed":
+
+        ids_duplicated = df_fragments_coords.shuffle(on="coordinates").map_partitions(
+            lambda df: df[df.duplicated(subset="coordinates")]
+        )["id"]
+
+    elif read_type == "pe":
+
+        ids_duplicated = (
+            df_fragments_coords.map_partitions(
+                lambda df: df.join(extract_fragment_coordinates(df))[
+                    ["id", "coordinates_pe"]
+                ]
+            )
+            .shuffle(on="coordinates_pe")
+            .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])["id"]
+        )
+
+    return ids_duplicated
+
+def remove_duplicates_from_tsv(
+    slices: os.PathLike, output: os.PathLike, duplicated_ids: os.PathLike, buffer=1e6
+):
+
+    # Remove output if it exist as will need to append to file.
+    if os.path.exists(output):
+        os.unlink(output)
+
+    df_slices = pd.read_csv(slices, sep="\t", chunksize=buffer)
+    ids_duplicated = read_duplicated_ids(duplicated_ids)
+
+    n_reads_total = 0
+    n_reads_unique = 0
+
+    # Iterate slices in chunks
+    for ii, df in enumerate(df_slices):
+
+        logging.info(f"Processed {(ii + 1) * buffer} slices")
+
+        n_reads_total += df["parent_read"].nunique()
+
+        # Hash the parent_read column and remove any duplicated ids.
+        df = (
+            df.assign(parent_read_hashed=lambda df: hash_column(df["parent_read"]))
+            .set_index("parent_read_hashed")
+            .loc[lambda df: ~df.index.isin(ids_duplicated)]
+        )
+
+        n_reads_unique += df["parent_read"].nunique()
+
+        # Append to file.
+        df.reset_index(drop=True).to_csv(
+            output, sep="\t", index=None, header=True if ii < 1 else False, mode="a"
+        )
+
+    return (n_reads_total, n_reads_unique)
+
+def remove_duplicates_from_hdf5(
+    slices: Iterable, duplicated_ids: pd.Series, output: os.PathLike
+) -> Tuple[int, int]:
+
+    import dask.dataframe as dd
+
+
+    n_slices_total = 0
+
+    try:
+        # Need to get total number of slices
+        for slice_file in slices:
+            with pd.HDFStore(slice_file, "r") as store:
+                n_slices_total += store.get_storer("slices").nrows
+
+        ddf = dd.read_hdf(slices, "slices").map_partitions(
+            lambda df: df.loc[~(df["parent_id"].isin(duplicated_ids))]
+        )
+
+        ddf.to_hdf(
+            output,
+            key="slices",
+            format="table",
+            data_columns=["viewpoint"],
+            mode="w",
+            min_itemsize={"slice_name": 75, "parent_read": 75, "coordinates": 75, "chrom": 25},
+            complib="blosc",
+            complevel=2,
+        )
+
+        # Need to get final number of slices
+        with pd.HDFStore(output, "r") as store:
+            n_slices_unique = store.get_storer(f"slices").nrows
+
+    except KeyError as e:
+        # Obviously missing any data (due to filtering)
+        n_slices_total = 0
+        n_slices_unique = 0   
+    return (n_slices_total, n_slices_unique)
+
+
+def remove_duplicates_from_parquet(slices: Iterable, duplicated_ids: pd.Series, output: os.PathLike
+) -> Tuple[int, int]:
+    
+    import dask.dataframe as dd
+
+    duplicates = tuple(duplicated_ids.values)
+    n_slices_total = dd.read_parquet(slices, columns=["parent_id"]).shape[0].compute()
+    dd.read_parquet(slices, filters=[[("parent_id", "not in", duplicates)]]).to_parquet(output)
+    n_slices_unique = dd.read_parquet(output, columns=["parent_id"]).shape[0].compute()
+    return (n_slices_total, n_slices_unique)
+
+
+
+
+
+
+def read_duplicated_ids(path: os.PathLike):
+
+    from xopen import xopen
+
+    file_type = get_file_type(path)
+
+    if file_type == "json":
+        with xopen.xopen(path, "r") as r:
+            ids_duplicated = {int(x) for x in ujson.load(r)}
+
+    elif file_type == "hdf5":
+
+        try:
+            ids_duplicated = pd.read_hdf(path, key="/duplicated_ids")
+        except KeyError:
+            ids_duplicated = pd.Series(data=["NO_DATA"], name="/duplicated_ids")
+    
+    elif file_type == "pickle":
+        ids_duplicated = pd.read_pickle(path)
+
+    return ids_duplicated
 

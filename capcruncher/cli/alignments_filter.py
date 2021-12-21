@@ -1,12 +1,11 @@
 import os
+from typing import Literal
 import pandas as pd
-import xxhash
 import logging
 
 
 from capcruncher.tools.io import parse_bam
 from capcruncher.tools.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
-from capcruncher.utils import get_timing
 
 SLICE_FILTERS = {
     "capture": CCSliceFilter,
@@ -34,7 +33,6 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
      pd.DataFrame: Merged dataframe
     """
     if annotations.endswith(".tsv"):
-        # TODO: Ensure that restriction fragment number is an int. No "."
         df_ann = pd.read_csv(
             annotations,
             sep="\t",
@@ -45,6 +43,11 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
 
     elif annotations.endswith(".hdf5"):
         df_ann = pd.read_hdf(annotations, "annotation").set_index(
+            ["slice_name", "chrom", "start"]
+        )
+
+    elif annotations.endswith(".parquet"):
+        df_ann = pd.read_parquet(annotations).set_index(
             ["slice_name", "chrom", "start"]
         )
 
@@ -63,11 +66,11 @@ def filter(
     annotations: os.PathLike,
     custom_filtering: os.PathLike = None,
     output_prefix: os.PathLike = "reporters",
+    output_format: Literal["tsv", "hdf5", "parquet"] = "parquet",
     stats_prefix: os.PathLike = "",
     method: str = "capture",
     sample_name: str = "",
     read_type: str = "",
-    gzip: bool = False,
     fragments: bool = True,
     read_stats: bool = True,
     slice_stats: bool = True,
@@ -161,46 +164,52 @@ def filter(
 
     # Output slices filtered by viewpoint
 
-    df_slices = slice_filter.slices.set_index("parent_id")
-    df_capture = df_slices.query("capture_count == 1")
-
-    df_slices = (
-        df_slices.assign(partition=xxhash.xxh32_intdigest(bam, seed=42))
-        .join(df_capture["capture"], lsuffix="_slices", rsuffix="_capture")
-        .rename(columns={"capture_slices": "capture", "capture_capture": "viewpoint"})
-    )
+    df_slices = slice_filter.slices
+    df_slices_with_viewpoint = slice_filter.slices_with_viewpoint
+    df_capture = slice_filter.captures
 
     if fragments:
         logging.info(f"Writing reporters at the fragment level")
         df_fragments = (
-            slice_filter_class(df_slices.reset_index())
-            .fragments.assign(
-                partition=xxhash.xxh32_intdigest(bam, seed=42),
+            slice_filter_class(df_slices)
+            .fragments.join(
+                df_capture["capture"], lsuffix="_slices", rsuffix="_capture"
             )
-            .join(df_capture["capture"], lsuffix="_slices", rsuffix="_capture")
             .rename(
                 columns={"capture_slices": "capture", "capture_capture": "viewpoint"}
             )
         )
 
-        df_fragments.to_hdf(
-            f"{output_prefix}.hdf5",
-            key="fragments",
+        if output_format == "tsv":
+            df_fragments.to_csv(f"{output_prefix}.fragments.tsv", sep="\t", index=False)
+        elif output_format == "hdf5":
+            df_fragments.to_hdf(
+                f"{output_prefix}.slices.hdf5",
+                key="fragments",
+                data_columns=["viewpoint"],
+                format="table",
+                complib="blosc",
+                complevel=2,
+            )
+        elif output_format == "parquet":
+            df_fragments.to_parquet(f"{output_prefix}.fragments.parquet")
+
+    logging.info(f"Writing reporters slices")
+
+    if output_format == "tsv":
+        df_slices_with_viewpoint.to_csv(
+            f"{output_prefix}.slices.tsv", sep="\t", index=False
+        )
+    elif output_format == "hdf5":
+        df_slices_with_viewpoint.to_hdf(
+            f"{output_prefix}.slices.hdf5",
+            key="slices",
             data_columns=["viewpoint"],
             format="table",
             complib="blosc",
             complevel=2,
         )
-
-    logging.info(f"Writing reporters slices")
-
-    df_slices.reset_index().to_hdf(
-        f"{output_prefix}.hdf5",
-        key="slices",
-        data_columns=["viewpoint"],
-        format="table",
-        complib="blosc",
-        complevel=2,
-    )
+    elif output_format == "parquet":
+        df_slices_with_viewpoint.to_parquet(f"{output_prefix}.slices.parquet")
 
     logging.info(f"Completed analysis of bam file")

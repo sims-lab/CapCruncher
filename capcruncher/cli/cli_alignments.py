@@ -124,9 +124,9 @@ def annotate(*args, **kwargs):
     default="flashed",
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
 )
-@click.option(
-    "--gzip/--no-gzip", help="Determines if files are gziped or not", default=False
-)
+# @click.option(
+#     "--gzip/--no-gzip", help="Determines if files are gziped or not", default=False
+# )
 @click.option(
     "--fragments/--no-fragments",
     help="Determines if read fragment aggregations are produced",
@@ -146,6 +146,12 @@ def annotate(*args, **kwargs):
     "--cis-and-trans-stats/--no-cis-and-trans-stats",
     help="Determines cis/trans statistics are output",
     default=True,
+)
+@click.option(
+    "--output-format",
+    help="Determines file output format",
+    default="parquet",
+    type=click.Choice(["tsv", "hdf5", "parquet"])
 )
 def filter(*args, **kwargs):
     """
@@ -188,7 +194,7 @@ def deduplicate():
     "--file-type",
     help="File format for input",
     default="auto",
-    type=click.Choice(["auto", "tsv", "hdf5"], case_sensitive=False),
+    type=click.Choice(["auto", "tsv", "hdf5", "parquet"], case_sensitive=False),
 )
 @click.option(
     "-o",
@@ -232,7 +238,7 @@ def identify(*args, **kwargs):
     "--file-type",
     help="File format for input",
     default="auto",
-    type=click.Choice(["auto", "tsv", "hdf5"], case_sensitive=False),
+    type=click.Choice(["auto", "tsv", "hdf5", "parquet"], case_sensitive=False),
 )
 @click.option(
     "--buffer",
