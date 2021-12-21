@@ -1346,8 +1346,8 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # for fn in infiles:
-    #     zap_file(fn)
+    for fn in infiles:
+        zap_file(fn)
 
 
 @follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
