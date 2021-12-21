@@ -7,6 +7,7 @@ from typing import Literal, Union
 from capcruncher.tools.storage import CoolerBinner
 from capcruncher.utils import is_valid_bed
 import os
+import logging
 
 
 class CoolerBedGraph:
@@ -30,6 +31,7 @@ class CoolerBedGraph:
         self._only_cis = only_cis
 
         self._cooler = cooler.Cooler(uri)
+        logging.info("Loaded cooler group for processing")
         self.viewpoint_name = self._cooler.info["metadata"]["viewpoint_name"]
         self._viewpoint_bins = self._cooler.info["metadata"]["viewpoint_bins"]
         self.viewpoint_chrom = self._cooler.info["metadata"]["viewpoint_chrom"][0]
@@ -61,6 +63,7 @@ class CoolerBedGraph:
 
     def _get_reporters(self):
 
+        logging.info("Extracting reporters")
         concat_ids = pd.concat([self._pixels["bin1_id"], self._pixels["bin2_id"]])
         concat_ids_filt = concat_ids.loc[lambda ser: ser.isin(self._viewpoint_bins)]
         pixels = self._pixels.loc[concat_ids_filt.index]
@@ -87,6 +90,7 @@ class CoolerBedGraph:
     def extract_bedgraph(
         self, normalisation: Literal["raw", "n_cis", "region"] = "raw", **norm_kwargs)  -> pd.DataFrame:
 
+        logging.info("Generating bedgraph")
         df_bdg = (
             self._bins.merge(
                 self.reporters,
@@ -99,6 +103,7 @@ class CoolerBedGraph:
         )
 
         if not normalisation == "raw":
+            logging.info("Normalising bedgraph")
             self.normalise_bedgraph(df_bdg, method=normalisation, **norm_kwargs)
 
         

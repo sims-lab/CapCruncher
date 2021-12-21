@@ -7,6 +7,7 @@ from typing import Literal, Union
 import cooler
 from capcruncher.tools.pileup import CoolerBedGraph, CoolerBedGraphWindowed
 from capcruncher.tools.storage import CoolerBinner
+import logging
 
 
 def bedgraph(
@@ -43,6 +44,8 @@ def bedgraph(
      sparse (bool, optional): Produce bedgraph containing just positive bins (True) or all bins (False). Defaults to True.
     """
 
+
+    logging.info(f"Performing pileup for {viewpoint_names}")
     viewpoint_names = viewpoint_names or [
         v.strip("/") for v in cooler.fileops.list_coolers(uri) if not "resolutions" in v
     ]
@@ -55,7 +58,15 @@ def bedgraph(
 
         if bin_bedgraph:
             cooler_group = f"{cooler_group}/resolutions/{binsize}"
+        
 
+        try:
+            cooler.fileops.is_cooler(cooler_group)
+        except Exception as e:
+            logging.info(f"Exception {e} occured while looking for: {viewpoint_name}")
+            raise (f"Cannot find {viewpoint_name} in cooler file")
+
+        
         (
             CoolerBedGraph(uri=cooler_group, sparse=sparse)
             .extract_bedgraph(
@@ -70,3 +81,5 @@ def bedgraph(
                 index=False,
             )
         )
+
+        logging.info(f"Generated bedgraph for {viewpoint_name}")
