@@ -89,9 +89,9 @@ class FastqReaderProcess(multiprocessing.Process):
         except Exception as e:
             logging.info(f"Reader failed with exception: {e}")
             raise
-        
+
         finally:
-        
+
             for fh in self._input_files_pysam:
                 fh.close()
 
@@ -260,13 +260,13 @@ class FastqWriterProcess(multiprocessing.Process):
             return True
 
     def run(self):
-       
+
         while True:
             try:
                 reads = self.inq.get(block=True, timeout=0.01)
                 if reads:
                     is_string_input = True if isinstance(reads, str) else False
-                    
+
                     if is_string_input:
                         for fh in self.file_handles:
                             fh.write(reads)
@@ -279,17 +279,16 @@ class FastqWriterProcess(multiprocessing.Process):
 
                         for fh, read_set in zip(self.file_handles, reads_str):
                             fh.write((read_set + "\n"))
-                
+
                 else:
 
                     for fh in self.file_handles:
                         fh.close()
 
                     break
-            
+
             except queue.Empty:
                 continue
-    
 
 
 def parse_alignment(aln):
@@ -466,6 +465,56 @@ class CCHDF5ReaderProcess(multiprocessing.Process):
 
                 except queue.Empty:
                     pass
+
+
+class CCParquetReaderProcess(multiprocessing.Process):
+    def __init__(
+        self,
+        path: os.PathLike,
+        inq: multiprocessing.Queue,
+        outq: multiprocessing.Queue,
+    ):
+
+        # Reading vars
+        self.path = path
+
+        # Multiprocessing vars
+        self.inq = inq
+        self.outq = outq
+        self.block_period = 0.01
+
+        super(CCParquetReaderProcess, self).__init__()
+
+    def _select_by_viewpoint(self, path, viewpoint):
+
+        df = pd.read_parquet(
+            path,
+            columns=[
+                "parent_id",
+                "restriction_fragment",
+                "viewpoint",
+                "capture",
+                "exclusion",
+            ],
+            filters=[[("viewpoint", "==", viewpoint)]]
+        )
+        return df
+
+    def run(self):
+
+        while True:
+            try:
+                viewpoint_to_find = self.inq.get(block=True, timeout=self.block_period)
+
+                if viewpoint_to_find is None:
+                    break
+
+                df = self._select_by_viewpoint(self.path, viewpoint_to_find)
+                if not df.empty:
+                    self.outq.put((viewpoint_to_find, df))
+
+            except queue.Empty:
+                pass
 
 
 class FragmentCountingProcess(multiprocessing.Process):

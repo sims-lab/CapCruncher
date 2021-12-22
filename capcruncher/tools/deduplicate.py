@@ -257,7 +257,6 @@ def identify_coordinate_duplicates_from_hdf5(
                 .shuffle(on="coordinates")
                 .map_partitions(lambda df: df[df.duplicated(subset="coordinates")])["id"]
             )
-
         elif read_type == "pe":
 
             duplicated_ids = (
