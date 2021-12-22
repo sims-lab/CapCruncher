@@ -392,8 +392,9 @@ class SliceFilter:
         slices_with_viewpoint = self.slices_with_viewpoint
 
         slices_passed = slices_with_viewpoint.loc[
-            lambda df: (df["exclusion_count"] < 1)
-            & (df["exclusion"] != df["viewpoint"])
+            lambda df: ((df["exclusion_count"] < 1)
+            & (df["exclusion"] != df["viewpoint"]))
+            | (df["exclusion"].isna())
         ]
 
         self.slices = self.slices.loc[
