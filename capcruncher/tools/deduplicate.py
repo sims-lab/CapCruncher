@@ -392,7 +392,7 @@ def remove_duplicates_from_parquet(slices: Iterable, duplicated_ids: pd.Series, 
 
     duplicates = tuple(duplicated_ids.values)
     n_slices_total = dd.read_parquet(slices, columns=["parent_id"]).shape[0].compute()
-    dd.read_parquet(slices, filters=[[("parent_id", "not in", duplicates)]]).to_parquet(output)
+    dd.read_parquet(slices, filters=[[("parent_id", "not in", duplicates)]]).to_parquet(output, compression="snappy")
     n_slices_unique = dd.read_parquet(output, columns=["parent_id"]).shape[0].compute()
     return (n_slices_total, n_slices_unique)
 

@@ -204,5 +204,5 @@ def annotate(
             output, key="/annotation", format="table", complib="blosc", complevel=2
         )
     elif output.endswith(".parquet"):
-        df_annotation.to_parquet(output)
+        df_annotation.to_parquet(output, compression="snappy")
 
