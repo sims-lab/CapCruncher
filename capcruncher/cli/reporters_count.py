@@ -3,8 +3,10 @@ import os
 import tqdm
 import logging
 
+import pandas as pd
 from capcruncher.tools.io import (
     CCHDF5ReaderProcess,
+    CCParquetReaderProcess,
     FragmentCountingProcess,
     CCHDF5WriterProcess,
 )
@@ -82,16 +84,33 @@ def count(
 
         import multiprocessing
 
-        n_cores = 6
-        viewpoints = get_categories_from_hdf5_column(reporters, "slices", "viewpoint")
-
         viewpoints_queue = multiprocessing.Queue()
         slices_queue = multiprocessing.Queue()
         counts_queue = multiprocessing.Queue()
 
-        reader = CCHDF5ReaderProcess(
-            path=reporters, key="slices", inq=viewpoints_queue, outq=slices_queue
-        )
+        if input_file_type == "hdf5":
+            viewpoints = get_categories_from_hdf5_column(
+                reporters, "slices", "viewpoint"
+            )
+            reader = CCHDF5ReaderProcess(
+                path=reporters, key="slices", inq=viewpoints_queue, outq=slices_queue
+            )
+
+        elif input_file_type == "parquet":
+            # TODO: Improve throughput by creating multiple temporary coolers and merging!
+            # Unsure of the best way to do this. Will just load the first partion vp column and extract
+            viewpoints = list(
+                pd.read_parquet(
+                    path=f"{reporters}/part.0.parquet",
+                    columns=[
+                        "viewpoint",
+                    ],
+                )["viewpoint"].cat.categories
+            )
+            reader = CCParquetReaderProcess(
+                path=reporters, inq=viewpoints_queue, outq=slices_queue
+            )
+
         counters = [
             FragmentCountingProcess(
                 inq=slices_queue,
@@ -120,14 +139,13 @@ def count(
                 single_file=True,
             )
 
-
         processes = [writer, *counters, reader]
         for process in processes:
             process.start()
 
         for vp in viewpoints:
             viewpoints_queue.put(vp)
-        
+
         viewpoints_queue.put(None)
         reader.join()
 

@@ -206,4 +206,3 @@ def annotate(
     elif output.endswith(".parquet"):
         df_annotation.to_parquet(output)
 
-    # client.shutdown()

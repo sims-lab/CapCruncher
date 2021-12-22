@@ -46,6 +46,7 @@ import itertools
 import warnings
 import glob
 import shutil
+from cgatcore.pipeline.parameters import PARAMS
 from pybedtools.bedtool import BedTool
 import logging
 
@@ -275,6 +276,8 @@ def genome_digest(infile, outfile):
             "-o",
             tmp,
             "--sort",
+            "-l",
+            outfile.replace(".bed.gz", ".stats")
         ]
     )
 
@@ -393,13 +396,13 @@ def fastq_split(infiles, outfile):
 @active_if(FASTQ_DEDUPLICATE)
 @follows(
     mkdir("capcruncher_preprocessing/deduplicated"),
-    mkdir("capcruncher_preprocessing/deduplicated/deduplicated_ids"),
+    mkdir("capcruncher_preprocessing/deduplicated/duplicated_ids"),
     fastq_split,
 )
 @collate(
     "capcruncher_preprocessing/split/*.fastq*",
     regex(r"capcruncher_preprocessing/split/(.*)_part(\d+)_[12].fastq(?:.gz)?"),
-    r"capcruncher_preprocessing/deduplicated/deduplicated_ids/\1_\2.pkl",
+    r"capcruncher_preprocessing/deduplicated/duplicated_ids/\1_\2.pkl",
     extras=[r"\1", r"\2"],
 )
 def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
@@ -431,8 +434,8 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
 
 @collate(
     fastq_duplicates_parse,
-    regex(r"capcruncher_preprocessing/deduplicated/deduplicated_ids/(.*)_\d*.pkl"),
-    r"capcruncher_preprocessing/deduplicated/deduplicated_ids/\1.pkl",
+    regex(r"capcruncher_preprocessing/deduplicated/duplicated_ids/(.*)_\d*.pkl"),
+    r"capcruncher_preprocessing/deduplicated/duplicated_ids/\1.pkl",
 )
 def fastq_duplicates_identify(infiles, outfile):
 
@@ -497,7 +500,7 @@ def fastq_duplicates_remove(infiles, outfile):
                 "remove",
                 *infiles,
                 "-d",
-                f"capcruncher_preprocessing/deduplicated/deduplicated_ids/{sample_name}.pkl",
+                f"capcruncher_preprocessing/deduplicated/duplicated_ids/{sample_name}.pkl",
                 "--sample-name",
                 sample_name,
                 "--stats-prefix",
@@ -1184,7 +1187,7 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
         if os.path.exists(custom_filtering)
         else "",
         "--output-format",
-        STORAGE_FORMAT
+        STORAGE_FORMAT,
     ]
 
     P.run(
@@ -1220,7 +1223,10 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         "alignments",
         "deduplicate",
         "identify",
-        *[infile.replace('sentinel', f"fragments.{STORAGE_FORMAT}") for infile in infiles],
+        *[
+            infile.replace("sentinel", f"fragments.{STORAGE_FORMAT}")
+            for infile in infiles
+        ],
         "--read-type",
         read_type,
         "-o",
@@ -1288,7 +1294,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
     # Zero non-deduplicated reporters
     for s in slices:
         zap_file(s)
-    
+
     touch_file(outfile)
 
 
@@ -1337,22 +1343,35 @@ def alignments_deduplicate_slices_statistics(
 @follows(alignments_deduplicate_slices_statistics)
 @collate(
     alignments_deduplicate_slices,
-    regex(r".*/(?P<sample>.*)\.(?:flashed|pe)\.hdf5"),
-    r"capcruncher_analysis/reporters/\1.hdf5",
+    regex(r".*/(?P<sample>.*)\.(?:flashed|pe)\.sentinel"),
+    r"capcruncher_analysis/reporters/\1.sentinel",
 )
 def alignments_deduplicate_collate(infiles, outfile):
 
     """Final collation of reporters by sample"""
 
+    args = list()
+    if STORAGE_FORMAT == "hdf5":
+        slices = [fn.replace("sentinel", STORAGE_FORMAT) for fn in infiles]
+        args.extend(["-i", "viewpoint"])
+    elif STORAGE_FORMAT == "parquet":
+        slices = list(
+            itertools.chain.from_iterable(
+                glob.glob(f"{fn.replace('sentinel', 'parquet')}/*.parquet")
+                for fn in infiles
+            )
+        )
+
     statement_merge = [
         "capcruncher",
         "utilities",
-        "merge-capcruncher-hdfs",
-        *infiles,
+        "merge-capcruncher-slices",
+        *slices,
         "-o",
-        outfile,
-        "-i",
-        "viewpoint",
+        outfile.replace("sentinel", STORAGE_FORMAT),
+        *args,
+        "-p",
+        str(P.PARAMS.get("pipeline_n_cores", 4)),
     ]
 
     P.run(
@@ -1364,6 +1383,8 @@ def alignments_deduplicate_collate(infiles, outfile):
 
     for fn in infiles:
         zap_file(fn)
+
+    touch_file(outfile)
 
 
 @follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
@@ -1411,7 +1432,7 @@ def post_capcruncher_analysis():
 @follows(mkdir("capcruncher_analysis/reporters/counts"))
 @transform(
     alignments_deduplicate_collate,
-    regex(r".*/(?P<sample>.*?)\.hdf5"),
+    regex(r".*/(?P<sample>.*?)\.sentinel"),
     add_inputs(genome_digest, P.PARAMS["analysis_viewpoints"]),
     r"capcruncher_analysis/reporters/counts/\1.sentinel",
 )
@@ -1422,13 +1443,13 @@ def reporters_count(infile, outfile):
     infile, restriction_fragment_map, viewpoints = infile
     n_counting_processes = P.PARAMS["pipeline_n_cores"] - 2
     n_counting_processes = n_counting_processes if n_counting_processes > 0 else 1
-    output_counts = outfile.replace("completed", "hdf5")
+    output_counts = outfile.replace("sentinel", "hdf5")
 
     statement = [
         "capcruncher",
         "reporters",
         "count",
-        infile,
+        infile.replace("sentinel", STORAGE_FORMAT),
         "-o",
         output_counts,
         "-f",
