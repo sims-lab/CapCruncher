@@ -646,3 +646,75 @@ class CCHDF5WriterProcess(multiprocessing.Process):
 
                 except queue.Empty:
                     pass
+
+
+
+class CCCountsWriterProcess(multiprocessing.Process):
+    def __init__(
+        self,
+        inq: multiprocessing.Queue,
+        output_format: str = "cooler",
+        restriction_fragment_map: os.PathLike = None,
+        viewpoint_path: os.PathLike = None,
+        tmpdir: os.PathLike = ".",
+    ):
+
+        # Writing vars
+        self.output_format = output_format
+        self.restriction_fragment_map = restriction_fragment_map
+        self.viewpoint_path = viewpoint_path
+        self.tmpdir = tmpdir
+
+        if self.output_format == "cooler":
+            self.bins = pd.read_csv(
+                restriction_fragment_map,
+                sep="\t",
+                header=None,
+                names=["chrom", "start", "end", "name"],
+            )
+
+        # Multiprocessing vars
+        self.inq = inq
+        self.block_period = 0.01
+
+        super(CCCountsWriterProcess, self).__init__()
+
+    def run(self):
+
+        while True:
+            try:
+                vp, df = self.inq.get(block=True, timeout=self.block_period)
+                path = os.path.join(self.tmpdir, vp)
+
+                if df is None:
+                    break
+
+                if self.output_format == "tsv" and self.single_file:
+                    df.to_csv(path, sep="\t", mode="a")
+
+                elif self.output_format == "hdf5":
+                    df.to_hdf(path, vp, format="table", mode="a")
+
+                elif self.output_format == "cooler":
+
+                    if self.restriction_fragment_map and self.viewpoint_path:
+
+                        from capcruncher.tools.storage import create_cooler_cc
+
+                        create_cooler_cc(
+                            output_prefix=path,
+                            pixels=df,
+                            bins=self.bins,
+                            viewpoint_name=vp,
+                            viewpoint_path=self.viewpoint_path,
+                            ordered=True,
+                            dupcheck=False,
+                            triucheck=False,
+                        )
+                    else:
+                        raise ValueError(
+                            "Restriction fragment map or path to viewpoints not supplied"
+                        )
+
+            except queue.Empty:
+                pass
