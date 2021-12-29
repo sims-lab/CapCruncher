@@ -81,6 +81,8 @@ class FastqReaderProcess(multiprocessing.Process):
                     buffer.clear()
                     logging.info(f"{read_counter} reads parsed (batch)")
                     rc = read_counter
+                else:
+                    rc = read_counter
 
             self.outq.put(buffer)  # Deal with remainder
             self.outq.put_nowait(None)  # Poison pill to terminate queue
