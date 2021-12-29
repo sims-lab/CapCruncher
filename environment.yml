@@ -36,3 +36,4 @@ dependencies:
   - ucsc-bedtobigbed
   - pytables
   - blosc
+  - pyarrow
