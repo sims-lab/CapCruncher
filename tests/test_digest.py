@@ -210,7 +210,7 @@ def data_path():
         ),
     ],
 )
-def test_digest_cli(
+def test_digest_fastq(
     data_path, tmpdir, fastq_files, enzyme, mode, n_reads_raw, n_reads_filt
 ):
 
@@ -238,3 +238,27 @@ def test_digest_cli(
         stats.query("(stat_type == 'filtered') and (read_number < 2)")["stat"].values[0]
         == n_reads_filt
     )
+
+
+
+
+@pytest.mark.parametrize(
+    "fasta,enzyme,n_records_expected",
+    [
+        ("chrom_to_digest.fa", "dpnii", 2),
+    ],
+)
+def test_digest_genome(
+    data_path, tmpdir, fasta, enzyme, n_records_expected
+):
+
+    from capcruncher.cli.genome_digest import digest
+
+    infile = os.path.join(data_path, fasta)
+    outfile = os.path.join(tmpdir, "digested.bed")
+
+    digest(input_fasta=infile, recognition_site=enzyme, output_file=outfile)
+
+    assert os.path.exists(outfile)
+
+
