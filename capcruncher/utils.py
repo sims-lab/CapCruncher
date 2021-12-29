@@ -167,6 +167,7 @@ def get_re_site(recognition_site: str = None) -> str:
         cutsite = known_enzymes[recognition_site.lower()]
 
     else:
+        logging.error("No restriction site or recognised enzyme provided")
         raise ValueError("No restriction site or recognised enzyme provided")
 
     return cutsite
