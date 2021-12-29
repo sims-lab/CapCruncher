@@ -684,37 +684,38 @@ class CCCountsWriterProcess(multiprocessing.Process):
         while True:
             try:
                 vp, df = self.inq.get(block=True, timeout=self.block_period)
-                path = os.path.join(self.tmpdir, vp)
 
                 if df is None:
                     break
+                else:
+                    path = os.path.join(self.tmpdir, vp)
 
-                if self.output_format == "tsv" and self.single_file:
-                    df.to_csv(path, sep="\t", mode="a")
+                    if self.output_format == "tsv" and self.single_file:
+                        df.to_csv(path, sep="\t", mode="a")
 
-                elif self.output_format == "hdf5":
-                    df.to_hdf(path, vp, format="table", mode="a")
+                    elif self.output_format == "hdf5":
+                        df.to_hdf(path, vp, format="table", mode="a")
 
-                elif self.output_format == "cooler":
+                    elif self.output_format == "cooler":
 
-                    if self.restriction_fragment_map and self.viewpoint_path:
+                        if self.restriction_fragment_map and self.viewpoint_path:
 
-                        from capcruncher.tools.storage import create_cooler_cc
+                            from capcruncher.tools.storage import create_cooler_cc
 
-                        create_cooler_cc(
-                            output_prefix=path,
-                            pixels=df,
-                            bins=self.bins,
-                            viewpoint_name=vp,
-                            viewpoint_path=self.viewpoint_path,
-                            ordered=True,
-                            dupcheck=False,
-                            triucheck=False,
-                        )
-                    else:
-                        raise ValueError(
-                            "Restriction fragment map or path to viewpoints not supplied"
-                        )
+                            create_cooler_cc(
+                                output_prefix=path,
+                                pixels=df,
+                                bins=self.bins,
+                                viewpoint_name=vp,
+                                viewpoint_path=self.viewpoint_path,
+                                ordered=True,
+                                dupcheck=False,
+                                triucheck=False,
+                            )
+                        else:
+                            raise ValueError(
+                                "Restriction fragment map or path to viewpoints not supplied"
+                            )
 
             except queue.Empty:
                 pass
