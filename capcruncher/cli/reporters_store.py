@@ -14,7 +14,7 @@ from capcruncher.tools.storage import CoolerBinner, create_cooler_cc, link_bins
 
 
 def get_viewpoints(store: h5py.File):
-    
+
     keys = set()
     for k in store.keys():
         if "/" in k:
@@ -26,7 +26,7 @@ def get_viewpoints(store: h5py.File):
 
 def get_dataset_keys(f):
     keys = []
-    f.visit(lambda key : keys.append(key) if isinstance(f[key], h5py.Dataset) else None)
+    f.visit(lambda key: keys.append(key) if isinstance(f[key], h5py.Dataset) else None)
     return keys
 
 
@@ -69,7 +69,6 @@ def fragments(
     if counts.endswith(".hdf5"):
 
         with pd.HDFStore(counts) as store:
-               
 
             if not viewpoint_name:
                 viewpoints = {k.split("/")[1] for k in store.keys()}
@@ -184,53 +183,57 @@ def merge(coolers: Tuple, output: os.PathLike):
      output (os.PathLike): Path from merged cooler file.
     """
 
+    # TODO: Make this more extendable by allowing concatenation
+    import cooler
+    from collections import defaultdict
 
-    # # Get all keys from both hdf5 files
-    # all_dataset_keys = list()
-    # for cooler_path in coolers:
-    #     with h5py.File(cooler_path) as store:
-    #         dataset_keys = get_dataset_keys(store)
-    #         all_dataset_keys.extend(dataset_keys)
-    
-    
-    # with h5py.File(output, "w") as dest:
+    coolers_to_merge = defaultdict(list)
 
+    # Remove output file as need to append to it.
+    if os.path.exists(output):
+        os.unlink(output)
 
-    # #     for clr in coolers:
-    # #         with h5py.File(clr, "r") as src:
+    # Extract a list of coolers to merge, grouped by viewpoint name
+    for clr in coolers:
+        with h5py.File(clr, mode="r") as src:
+            viewpoints = list(src.keys())
 
-    # #             for viewpoint in src.keys():
+            for viewpoint in viewpoints:
+                if not "resolutions" in list(src[viewpoint].keys()):
+                    coolers_to_merge[viewpoint].append(f"{clr}::/{viewpoint}")
+                else:
+                    for resolution in src[viewpoint]["resolutions"].keys():
+                        coolers_to_merge[f"{viewpoint}::{resolution}"].append(
+                            f"{clr}::/{viewpoint}/resolutions/{resolution}"
+                        )
 
-    # #                 if 
+    # Initial pass to perform copying for all coolers without a matching group
+    need_merging = list()
+    with h5py.File(output, mode="a") as dest:
+        for ii, (viewpoint, cooler_uris) in enumerate(coolers_to_merge.items()):
+
+            if len(cooler_uris) < 2:  # Only merge if two or more, else just copy
+                    (file_path, group_path) = cooler_uris[0].split("::")
+
+                    with h5py.File(file_path) as src:
+                        src.copy(src[group_path], dest, group_path)
                     
-    # #                 # Copy the cooler groups if there is no cooler present here
-    # #                 if not isinstance(dest[f"/{viewpoint}/pixels"], h5py.Group):
-    # #                     for key in src[viewpoint].keys():
-    # #                         dest.copy(src[f"/{viewpoint}/{key}"], f"{viewpoint}/{key}")
-                
+                    # Link the bins and chroms tables together with hard link
+                    # Dramatically reduces the file size required 
+                    if ii == 0:
+                        bins_link = dest[f'{group_path}/bins']
+                        chroms_link = dest[f'{group_path}/chroms']
+                    
+                    else:
+                        dest[f"{group_path}/bins"] = bins_link 
+                        dest[f"{group_path}/chroms"] = chroms_link
+            
+            else:
+                need_merging.append(viewpoint)
 
-
-
-
-                
-                
-                
-                
-                
-                
-                
-    # #             if resolution == "fragments":  # i.e. Is a fragment cooler
-    # #                 dest_grp_name = capture
-    # #             else:
-    # #                 dest_grp_name = f"{capture}/resolutions/{resolution}"
-
-    # #             if not dest.get(dest_grp_name):
-    # #                 dest.copy(src.parent, dest_grp_name)
-    # #             else:
-    # #                 for key in src.keys():
-    # #                     dest.copy(src[key], f"{dest_grp_name}/{key}")
-
-    # #             attributes = {k: v for k, v in src.parent.attrs.items()}
-    # #             dest[dest_grp_name].attrs.update(attributes)
-
-    # # link_bins(output)
+    # Actually merge the coolers left over that do have duplicates
+    for viewpoint in need_merging:
+        cooler_uris = coolers_to_merge[viewpoint]
+        cooler.merge_coolers(
+                f"{output}::/{viewpoint.replace('::', '/resolutions/')}", cooler_uris
+            )
