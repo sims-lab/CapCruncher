@@ -2,6 +2,8 @@ import xopen
 import os
 import tqdm
 import logging
+import tempfile
+import glob
 
 import pandas as pd
 from capcruncher.tools.io import (
@@ -9,7 +11,9 @@ from capcruncher.tools.io import (
     CCParquetReaderProcess,
     FragmentCountingProcess,
     CCHDF5WriterProcess,
+    CCCountsWriterProcess,
 )
+from capcruncher.cli.reporters_store import merge
 from capcruncher.tools.count import get_counts_from_tsv, get_counts_from_tsv_by_batch
 from capcruncher.utils import get_categories_from_hdf5_column, get_file_type
 
@@ -97,7 +101,6 @@ def count(
             )
 
         elif input_file_type == "parquet":
-            # TODO: Improve throughput by creating multiple temporary coolers and merging!
             # Unsure of the best way to do this. Will just load the first partion vp column and extract
             viewpoints = list(
                 pd.read_parquet(
@@ -119,41 +122,55 @@ def count(
                 remove_exclusions=remove_exclusions,
                 subsample=subsample,
             )
-            for i in range(n_cores)
+            for i in range(n_cores // 2)
         ]
 
-        if output_as_cooler:
-            writer = CCHDF5WriterProcess(
+        tmpdir = tempfile.TemporaryDirectory()
+        writers = [
+            CCCountsWriterProcess(
                 inq=counts_queue,
-                output_path=output,
-                output_format="cooler",
+                output_format="cooler" if output_as_cooler else file_type,
                 restriction_fragment_map=fragment_map,
                 viewpoint_path=viewpoint_path,
+                tmpdir=tmpdir.name,
             )
-        else:
-            writer = CCHDF5WriterProcess(
-                inq=counts_queue,
-                output_path=output,
-                output_format=output_file_type,
-                output_key="slices",
-                single_file=True,
-            )
+            for i in range(n_cores // 2)
+        ]
 
-        processes = [writer, *counters, reader]
+
+        # Start all processes
+        processes = [*writers, *counters, reader]
         for process in processes:
             process.start()
 
+        # Add all viewpoints to queue
         for vp in viewpoints:
             viewpoints_queue.put(vp)
 
         viewpoints_queue.put(None)
         reader.join()
 
-        for i in range(n_cores):
+        # End the counting inqueue
+        for _ in range(n_cores):
             slices_queue.put((None, None))
 
+        # Join the counters
         for counter in counters:
             counter.join()
 
-        counts_queue.put((None, None))
-        writer.join()
+        # End the counting queue
+        for _ in range(n_cores):
+            counts_queue.put((None, None))
+
+        # Join the writers
+        for writer in writers:
+            writer.join()
+        
+        # Merge the output files together
+        # TODO: Allow other than cooler outputs
+        output_files = glob.glob(os.path.join(tmpdir.name, "*.hdf5"))
+        merge(output_files, output=output)
+        
+        tmpdir.cleanup()
+
+        
