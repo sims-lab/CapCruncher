@@ -144,22 +144,6 @@ def cis_and_trans_stats(
 
     elif file_type == "parquet":
 
-        # slice_stats = pd.DataFrame()
-        # for parquet_file in glob.glob(f"{slices}/*.parquet"):
-        #     df = pd.read_parquet(parquet_file)
-
-        #     sf = slice_filterer(df, sample_name=sample_name, read_type=read_type)
-        #     stats = sf.cis_or_trans_stats
-
-        #     slice_stats = (
-        #         pd.concat([slice_stats, stats])
-        #         .groupby(["viewpoint", "cis/trans", "sample", "read_type"])
-        #         .sum()
-        #         .reset_index()
-        #     )
-
-        # slice_stats.to_csv(output, index=False)#
-
         import dask.dataframe as dd
         import dask.distributed
 
@@ -171,7 +155,9 @@ def cis_and_trans_stats(
             lambda df: slice_filterer(
                 df, sample_name=sample_name, read_type=read_type
             ).cis_or_trans_stats
-        ).groupby(["viewpoint", "cis/trans", "sample", "read_type"]).sum()
+        ).groupby(["viewpoint", "cis/trans", "sample", "read_type"]).sum().reset_index().to_csv(
+            output, index=False, single_file=True
+        )
 
         client.shutdown()
 
@@ -255,6 +241,6 @@ def merge_capcruncher_slices(
     elif output_format == "parquet":
 
         ddf = dd.read_parquet(infiles)
-        ddf.to_parquet(outfile, compression='snappy')
+        ddf.to_parquet(outfile, compression="snappy")
 
     client.shutdown()
