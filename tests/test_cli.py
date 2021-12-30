@@ -5,6 +5,14 @@ import glob
 
 from capcruncher.cli import cli
 
+@pytest.fixture(scope="module", autouse=True)
+def setup_testing_dir(tmpdir_factory):
+    cwd = os.getcwd()
+    tmpdir = tmpdir_factory.mktemp("cli_testing")
+    os.chdir(tmpdir)
+    yield
+    os.chdir(cwd)
+
 
 @pytest.fixture
 def data_digestion():
