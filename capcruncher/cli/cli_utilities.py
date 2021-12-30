@@ -240,7 +240,7 @@ def merge_capcruncher_slices(
 
     elif output_format == "parquet":
 
-        ddf = dd.read_parquet(infiles)
-        ddf.to_parquet(outfile, compression="snappy")
+        ddf = dd.read_parquet(infiles, gather_statistics=True, chunksize="100MB", aggregate_files=True, index="parent_id")
+        ddf.to_parquet(outfile, compression="snappy", engine="fastparquet")
 
     client.shutdown()

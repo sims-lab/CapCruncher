@@ -492,13 +492,13 @@ class CCParquetReaderProcess(multiprocessing.Process):
         df = pd.read_parquet(
             path,
             columns=[
-                "parent_id",
                 "restriction_fragment",
                 "viewpoint",
                 "capture",
                 "exclusion",
             ],
-            filters=[[("viewpoint", "==", viewpoint)]]
+            filters=[[("viewpoint", "==", viewpoint)]],
+            engine="pyarrow",
         )
         return df
 
@@ -512,6 +512,7 @@ class CCParquetReaderProcess(multiprocessing.Process):
                     break
 
                 df = self._select_by_viewpoint(self.path, viewpoint_to_find)
+                df = df.reset_index()
                 if not df.empty:
                     self.outq.put((viewpoint_to_find, df))
 
