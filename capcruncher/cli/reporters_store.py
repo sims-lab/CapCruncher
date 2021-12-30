@@ -225,6 +225,8 @@ def merge(coolers: Tuple, output: os.PathLike):
                         chroms_link = dest[f'{group_path}/chroms']
                     
                     else:
+                        del dest[f"{group_path}/bins"]
+                        del dest[f"{group_path}/chroms"]
                         dest[f"{group_path}/bins"] = bins_link 
                         dest[f"{group_path}/chroms"] = chroms_link
             
