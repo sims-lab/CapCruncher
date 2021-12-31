@@ -254,7 +254,8 @@ def merge_capcruncher_slices(
             chunksize="100MB",
             aggregate_files=True,
             index="parent_id",
+            engine="pyarrow"
         )
-        ddf.to_parquet(outfile, compression="snappy", engine="fastparquet")
+        ddf.to_parquet(outfile, compression="snappy", engine="pyarrow")
 
     client.shutdown()
