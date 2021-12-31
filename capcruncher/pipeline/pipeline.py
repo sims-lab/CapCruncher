@@ -1292,8 +1292,8 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
     )
 
     # Zero non-deduplicated reporters
-    for s in slices:
-        zap_file(s)
+    # for s in slices:
+    #     zap_file(s)
 
     touch_file(outfile)
 
@@ -1355,6 +1355,7 @@ def alignments_deduplicate_collate(infiles, outfile):
         slices = [fn.replace("sentinel", STORAGE_FORMAT) for fn in infiles]
         args.extend(["-i", "viewpoint"])
     elif STORAGE_FORMAT == "parquet":
+        #slices = [fn.replace("sentinel", STORAGE_FORMAT) for fn in infiles]
         slices = list(
             itertools.chain.from_iterable(
                 glob.glob(f"{fn.replace('sentinel', 'parquet')}/*.parquet")
@@ -1381,8 +1382,8 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    for fn in infiles:
-        zap_file(fn)
+    # for fn in infiles:
+    #     zap_file(fn)
 
     touch_file(outfile)
 
