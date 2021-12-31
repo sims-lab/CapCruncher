@@ -527,8 +527,9 @@ class CCParquetReaderProcess(multiprocessing.Process):
                     break
 
                 df = self._select_by_viewpoint_batch(self.path, viewpoints_to_find)
-                if not df.empty:
-                    for vp, df_vp in df.groupby("viewpoint"):
+
+                for vp, df_vp in df.groupby("viewpoint"):
+                    if not df_vp.empty:
                         self.outq.put((vp, df_vp))
 
             except queue.Empty:

@@ -103,15 +103,17 @@ def count(
 
         elif input_file_type == "parquet":
             import dask.dataframe as dd
+
             # Unsure of the best way to do this. Will just load the first partion vp column and extract
-            viewpoints = list(
-                dd.read_parquet(
-                    reporters,
-                    columns=[
-                        "viewpoint",
-                    ],
-                )["viewpoint"].cat.categories
+            ddf = dd.read_parquet(
+                reporters,
+                columns=[
+                    "viewpoint",
+                ],
             )
+
+            viewpoints_col = ddf["viewpoint"].cat.as_known()
+            viewpoints = list(viewpoints_col.cat.categories)
             reader = CCParquetReaderProcess(
                 path=reporters, inq=viewpoints_queue, outq=slices_queue
             )
