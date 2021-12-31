@@ -13,6 +13,7 @@ from capcruncher.utils import hash_column, get_file_type
 import logging
 import pandas as pd
 
+
 class ReadDeduplicationParserProcess(Process):
     """
     Process subclass for parsing fastq file(s) into a hashed {id:sequence} json format.
@@ -37,7 +38,7 @@ class ReadDeduplicationParserProcess(Process):
                                              Only used if part of a pipeline of reader -> parser -> writer
          hash_seed (int, optional): Seed to use for hashing. Defaults to 42.
          save_hashed_dict_path (os.PathLike, optional): Path to save hashed reads in json format. Defaults to "parsed.json".
-        """    
+        """
 
         self.inq = inq
         self.hash_seed = hash_seed
@@ -50,19 +51,18 @@ class ReadDeduplicationParserProcess(Process):
         if ".json" in self.output_path:
             with xopen(self.output_path, "w") as w:
                 ujson.dump(d, w)
-        elif any(ext in self.output_path for ext in [".pkl",".pickle"]):
+        elif any(ext in self.output_path for ext in [".pkl", ".pickle"]):
             with open(self.output_path, "wb") as w:
                 pickle.dump(d, w)
 
-
     def run(self):
         """Processes fastq reads from multiple files and generates a hashed json dictionary.
-           
-           Dictionary is hashed and in the format {(read  1 name + read 2 name): (sequence 1 + sequence 2)}.
 
-           Output path is specified by save_hashed_dict_path.
+        Dictionary is hashed and in the format {(read  1 name + read 2 name): (sequence 1 + sequence 2)}.
 
-        """        
+        Output path is specified by save_hashed_dict_path.
+
+        """
 
         hash_seed = self.hash_seed
         hash_function = functools.partial(xxhash.xxh64_intdigest, seed=hash_seed)
@@ -74,22 +74,27 @@ class ReadDeduplicationParserProcess(Process):
                 reads = self.inq.get(block=True, timeout=0.01)
 
                 if reads:
-                    
+
                     for read_set in reads:
-                        hash_sequence = hash_function("".join([r.sequence for r in read_set]))
+                        hash_sequence = hash_function(
+                            "".join([r.sequence for r in read_set])
+                        )
                         hash_id = hash_function("".join([r.name for r in read_set]))
                         records[hash_id] = hash_sequence
-                
+
                 else:
                     break
-            
+
             except queue.Empty:
                 continue
 
-            
         self._save_dict(records)
 
-RemovalStatistics = namedtuple('RemovalStatistics', ["reads_total", "reads_unique", "reads_removed"])
+
+RemovalStatistics = namedtuple(
+    "RemovalStatistics", ["reads_total", "reads_unique", "reads_removed"]
+)
+
 
 class ReadDuplicateRemovalProcess(Process):
     """
@@ -104,12 +109,12 @@ class ReadDuplicateRemovalProcess(Process):
      reads_unique: Number of non-duplicated reads output.
      hash_seed: Seed for xxhash algorithm. MUST be the same as used by ReadDuplicationParserProcess.
     """
-    
+
     def __init__(
         self,
         inq: multiprocessing.Queue,
         outq: multiprocessing.Queue,
-        stats_tx: multiprocessing.Pipe, 
+        stats_tx: multiprocessing.Pipe,
         duplicated_ids: set,
         hash_seed: int = 42,
         hash_read_name: bool = True,
@@ -121,18 +126,18 @@ class ReadDuplicateRemovalProcess(Process):
          duplicated_ids (set): Hashed read ids to be removed if encountered.
          statq (multiprocessing.Queue, optional): Output queue for statistics. Defaults to None.
          hash_seed (int, optional): Seed for xxhash algorithm. Defaults to 42.
-        """    
+        """
 
         self.inq = inq
         self.outq = outq
         self.hash_seed = hash_seed
         self.duplicated_ids = duplicated_ids
 
-        #Misc
+        # Misc
         self.hash_read_name = hash_read_name
 
         # Stats
-        self.stats_tx = stats_tx 
+        self.stats_tx = stats_tx
         self.reads_total = 0
         self.reads_unique = 0
 
@@ -140,11 +145,11 @@ class ReadDuplicateRemovalProcess(Process):
 
     def run(self):
 
-        """Performs read deduplication based on sequence. 
+        """Performs read deduplication based on sequence.
 
-           Unique reads are placed on outq and deduplication statistics are placed on statq.
+        Unique reads are placed on outq and deduplication statistics are placed on statq.
 
-        """         
+        """
 
         hash_seed = self.hash_seed
         hash_read_name = self.hash_read_name
@@ -152,9 +157,8 @@ class ReadDuplicateRemovalProcess(Process):
         duplicated_ids = self.duplicated_ids
         reads_unique = list()
 
-
         while True:
-            
+
             try:
                 reads = self.inq.get(block=True, timeout=0.01)
 
@@ -167,21 +171,23 @@ class ReadDuplicateRemovalProcess(Process):
                             if hash_read_name:
                                 for r in read_glob:
                                     r.name = str(hash_function(r.name))
-                                
+
                             reads_unique.append(read_glob)
-                    
+
                     self.reads_total += len(reads)
                     self.reads_unique += len(reads_unique)
                     self.outq.put(reads_unique.copy())
                     reads_unique.clear()
-            
+
                 else:
                     break
 
             except queue.Empty:
                 continue
-        
-        stats = RemovalStatistics(self.reads_total, self.reads_unique, self.reads_total - self.reads_unique)
+
+        stats = RemovalStatistics(
+            self.reads_total, self.reads_unique, self.reads_total - self.reads_unique
+        )
         self.stats_tx.send(stats)
 
 
@@ -237,6 +243,7 @@ def identify_coordinate_duplicates_from_tsv(
 
     return duplicated_fragments
 
+
 def identify_coordinate_duplicates_from_hdf5(
     fragments: list, read_type: Literal["flashed", "pe"]
 ):
@@ -255,7 +262,9 @@ def identify_coordinate_duplicates_from_hdf5(
                     lambda df: df.assign(coordinates=hash_column(df["coordinates"]))
                 )
                 .shuffle(on="coordinates")
-                .map_partitions(lambda df: df[df.duplicated(subset="coordinates")])["id"]
+                .map_partitions(lambda df: df[df.duplicated(subset="coordinates")])[
+                    "id"
+                ]
             )
         elif read_type == "pe":
 
@@ -267,15 +276,18 @@ def identify_coordinate_duplicates_from_hdf5(
                     # .assign(coordinates_pe=lambda df: hash_column(df["coordinates_pe"]))
                 )
                 .shuffle(on="coordinates_pe")
-                .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])["id"]
+                .map_partitions(lambda df: df[df.duplicated(subset="coordinates_pe")])[
+                    "id"
+                ]
             )
-    
+
     except KeyError as e:
         logging.warn("{e}")
         duplicated_ids = dd.from_pandas(pd.Series(data=[], name="id"), npartitions=1)
-    
+
     return duplicated_ids
-    
+
+
 def identify_coordinate_duplicates_from_parquet(
     fragments: list, read_type: Literal["flashed", "pe"]
 ):
@@ -306,6 +318,7 @@ def identify_coordinate_duplicates_from_parquet(
         )
 
     return ids_duplicated
+
 
 def remove_duplicates_from_tsv(
     slices: os.PathLike, output: os.PathLike, duplicated_ids: os.PathLike, buffer=1e6
@@ -344,12 +357,12 @@ def remove_duplicates_from_tsv(
 
     return (n_reads_total, n_reads_unique)
 
+
 def remove_duplicates_from_hdf5(
     slices: Iterable, duplicated_ids: pd.Series, output: os.PathLike
 ) -> Tuple[int, int]:
 
     import dask.dataframe as dd
-
 
     n_slices_total = 0
 
@@ -369,7 +382,12 @@ def remove_duplicates_from_hdf5(
             format="table",
             data_columns=["viewpoint"],
             mode="w",
-            min_itemsize={"slice_name": 75, "parent_read": 75, "coordinates": 75, "chrom": 25},
+            min_itemsize={
+                "slice_name": 75,
+                "parent_read": 75,
+                "coordinates": 75,
+                "chrom": 25,
+            },
             complib="blosc",
             complevel=2,
         )
@@ -381,21 +399,25 @@ def remove_duplicates_from_hdf5(
     except KeyError as e:
         # Obviously missing any data (due to filtering)
         n_slices_total = 0
-        n_slices_unique = 0   
+        n_slices_unique = 0
     return (n_slices_total, n_slices_unique)
 
 
-def remove_duplicates_from_parquet(slices: Iterable, duplicated_ids: pd.Series, output: os.PathLike
+def remove_duplicates_from_parquet(
+    slices: Iterable, duplicated_ids: pd.Series, output: os.PathLike
 ) -> Tuple[int, int]:
-    
+
     import dask.dataframe as dd
 
     duplicates = tuple(duplicated_ids.values)
     n_slices_total = dd.read_parquet(slices, columns=["parent_id"]).shape[0].compute()
-    dd.read_parquet(slices, filters=[[("parent_id", "not in", duplicates)]]).to_parquet(output, compression="snappy")
+    dd.read_parquet(
+        slices,
+        filters=[[("parent_id", "not in", duplicates)]],
+        engine="pyarrow-dataset",
+    ).to_parquet(output, compression="snappy", engine="pyarrow")
     n_slices_unique = dd.read_parquet(output, columns=["parent_id"]).shape[0].compute()
     return (n_slices_total, n_slices_unique)
-
 
 
 def read_duplicated_ids(path: os.PathLike):
@@ -414,9 +436,8 @@ def read_duplicated_ids(path: os.PathLike):
             ids_duplicated = pd.read_hdf(path, key="/duplicated_ids")
         except KeyError:
             ids_duplicated = pd.Series(data=["NO_DATA"], name="/duplicated_ids")
-    
+
     elif file_type == "pickle":
         ids_duplicated = pd.read_pickle(path)
 
     return ids_duplicated
-

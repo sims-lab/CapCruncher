@@ -151,14 +151,22 @@ def cis_and_trans_stats(
             n_workers=4, dashboard_address=None, processes=True
         )
 
-        dd.read_parquet(slices).map_partitions(
+        # breakpoint()
+
+        ddf = dd.read_parquet(slices, engine="pyarrow")
+        ddf_cis_trans_stats = ddf.map_partitions(
             lambda df: slice_filterer(
                 df, sample_name=sample_name, read_type=read_type
             ).cis_or_trans_stats
-        ).groupby(["viewpoint", "cis/trans", "sample", "read_type"]).sum().reset_index().to_csv(
-            output, index=False, single_file=True
         )
-
+        ddf_cis_trans_stats_summary = (
+            ddf_cis_trans_stats.groupby(
+                ["viewpoint", "cis/trans", "sample", "read_type"]
+            )
+            .sum()
+            .reset_index()
+        )
+        ddf_cis_trans_stats_summary.to_csv(output, index=False, single_file=True)
         client.shutdown()
 
 
@@ -240,7 +248,13 @@ def merge_capcruncher_slices(
 
     elif output_format == "parquet":
 
-        ddf = dd.read_parquet(infiles, gather_statistics=True, chunksize="100MB", aggregate_files=True, index="parent_id")
+        ddf = dd.read_parquet(
+            infiles,
+            gather_statistics=True,
+            chunksize="100MB",
+            aggregate_files=True,
+            index="parent_id",
+        )
         ddf.to_parquet(outfile, compression="snappy", engine="fastparquet")
 
     client.shutdown()

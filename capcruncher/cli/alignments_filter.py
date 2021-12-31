@@ -192,7 +192,11 @@ def filter(
                 complevel=2,
             )
         elif output_format == "parquet":
-            df_fragments.to_parquet(f"{output_prefix}.fragments.parquet", compression="snappy", engine="fastparquet")
+            df_fragments.to_parquet(
+                f"{output_prefix}.fragments.parquet",
+                compression="snappy",
+                engine="pyarrow",
+            )
 
     logging.info(f"Writing reporters slices")
 
@@ -210,6 +214,8 @@ def filter(
             complevel=2,
         )
     elif output_format == "parquet":
-        df_slices_with_viewpoint.to_parquet(f"{output_prefix}.slices.parquet", compression="snappy", engine="fastparquet")
+        df_slices_with_viewpoint.to_parquet(
+            f"{output_prefix}.slices.parquet", compression="snappy", engine="pyarrow"
+        )
 
     logging.info(f"Completed analysis of bam file")

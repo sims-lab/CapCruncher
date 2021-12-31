@@ -501,20 +501,35 @@ class CCParquetReaderProcess(multiprocessing.Process):
             engine="pyarrow",
         )
         return df
+    
+    def _select_by_viewpoint_batch(self, path, viewpoints):
+
+        df = pd.read_parquet(
+            path,
+            columns=[
+                "restriction_fragment",
+                "viewpoint",
+                "capture",
+                "exclusion",
+            ],
+            filters=[("viewpoint", "in", viewpoints)],
+            engine="pyarrow",
+        )
+        return df
 
     def run(self):
 
         while True:
             try:
-                viewpoint_to_find = self.inq.get(block=True, timeout=self.block_period)
+                viewpoints_to_find = self.inq.get(block=True, timeout=self.block_period)
 
-                if viewpoint_to_find is None:
+                if viewpoints_to_find is None:
                     break
 
-                df = self._select_by_viewpoint(self.path, viewpoint_to_find)
-                df = df.reset_index()
+                df = self._select_by_viewpoint_batch(self.path, viewpoints_to_find)
                 if not df.empty:
-                    self.outq.put((viewpoint_to_find, df))
+                    for vp, df_vp in df.groupby("viewpoint"):
+                        self.outq.put((vp, df_vp))
 
             except queue.Empty:
                 pass
