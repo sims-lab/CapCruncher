@@ -4,6 +4,7 @@ import tqdm
 import logging
 import tempfile
 import glob
+import more_itertools
 
 import pandas as pd
 from capcruncher.tools.io import (
@@ -101,10 +102,11 @@ def count(
             )
 
         elif input_file_type == "parquet":
+            import dask.dataframe as dd
             # Unsure of the best way to do this. Will just load the first partion vp column and extract
             viewpoints = list(
-                pd.read_parquet(
-                    path=f"{reporters}/part.0.parquet",
+                dd.read_parquet(
+                    reporters,
                     columns=[
                         "viewpoint",
                     ],
@@ -137,15 +139,18 @@ def count(
             for i in range(n_cores // 2)
         ]
 
-
         # Start all processes
         processes = [*writers, *counters, reader]
         for process in processes:
             process.start()
 
         # Add all viewpoints to queue
-        for vp in viewpoints:
-            viewpoints_queue.put(vp)
+        if input_file_type == "hdf5":  # Not updated this to cope with batches
+            for vp in viewpoints:
+                viewpoints_queue.put(vp)
+        elif input_file_type == "parquet":
+            for vp_chunk in more_itertools.chunked(viewpoints, 10):
+                viewpoints_queue.put(vp_chunk)
 
         viewpoints_queue.put(None)
         reader.join()
@@ -165,12 +170,10 @@ def count(
         # Join the writers
         for writer in writers:
             writer.join()
-        
+
         # Merge the output files together
         # TODO: Allow other than cooler outputs
         output_files = glob.glob(os.path.join(tmpdir.name, "*.hdf5"))
         merge(output_files, output=output)
-        
-        tmpdir.cleanup()
 
-        
+        tmpdir.cleanup()
