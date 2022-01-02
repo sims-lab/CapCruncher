@@ -1,22 +1,25 @@
-import pathlib
-import multiprocessing
-from typing import Dict, Union, final
-import traceback
-import tqdm
+import glob
 import logging
+import multiprocessing
+import os
+import pathlib
+import queue
+import random
+import string
+import traceback
+from typing import Literal, Union
 
+import numpy as np
 import pandas as pd
-from pysam import FastxFile
-from xopen import xopen
+import pysam
+import tqdm
 from capcruncher.tools.count import (
-    preprocess_reporters_for_counting,
     get_fragment_combinations,
+    preprocess_reporters_for_counting,
 )
 from capcruncher.utils import get_timing, hash_column
-import pysam
-import numpy as np
-import queue
-import os
+from pysam import FastxFile
+from xopen import xopen
 
 
 class FastqReaderProcess(multiprocessing.Process):
@@ -475,10 +478,15 @@ class CCParquetReaderProcess(multiprocessing.Process):
         path: os.PathLike,
         inq: multiprocessing.Queue,
         outq: multiprocessing.Queue,
+        selection_mode: Literal["single", "batch", "partition"],
     ):
 
         # Reading vars
         self.path = path
+        self.partitions = glob.glob(f"{path}/*.parquet") or [
+            self.path,
+        ]
+        self.selection_mode = selection_mode
 
         # Multiprocessing vars
         self.inq = inq
@@ -487,10 +495,10 @@ class CCParquetReaderProcess(multiprocessing.Process):
 
         super(CCParquetReaderProcess, self).__init__()
 
-    def _select_by_viewpoint(self, path, viewpoint):
+    def _select_by_viewpoint(self, viewpoint):
 
         df = pd.read_parquet(
-            path,
+            self.path,
             columns=[
                 "restriction_fragment",
                 "viewpoint",
@@ -501,12 +509,13 @@ class CCParquetReaderProcess(multiprocessing.Process):
             engine="pyarrow",
         )
         return df
-    
-    def _select_by_viewpoint_batch(self, path, viewpoints):
+
+    def _select_by_viewpoint_batch(self, viewpoints):
 
         df = pd.read_parquet(
-            path,
+            self.path,
             columns=[
+                "parent_id",
                 "restriction_fragment",
                 "viewpoint",
                 "capture",
@@ -517,6 +526,22 @@ class CCParquetReaderProcess(multiprocessing.Process):
         )
         return df
 
+    def _select_by_viewpoint_batch_by_partition(self, viewpoints):
+
+        for part in self.partitions:
+            df = pd.read_parquet(
+                part,
+                columns=[
+                    "restriction_fragment",
+                    "viewpoint",
+                    "capture",
+                    "exclusion",
+                ],
+                filters=[("viewpoint", "in", viewpoints)],
+                engine="pyarrow",
+            )
+            yield df
+
     def run(self):
 
         while True:
@@ -526,11 +551,31 @@ class CCParquetReaderProcess(multiprocessing.Process):
                 if viewpoints_to_find is None:
                     break
 
-                df = self._select_by_viewpoint_batch(self.path, viewpoints_to_find)
-
-                for vp, df_vp in df.groupby("viewpoint"):
-                    if not df_vp.empty:
+                elif (
+                    self.selection_mode == "single"
+                ):  # Slower as need to read all partitions each time
+                    assert isinstance(viewpoints_to_find, str)
+                    df = self._select_by_viewpoint(viewpoints_to_find)
+                    if not df.empty:
                         self.outq.put((vp, df_vp))
+
+                elif (
+                    self.selection_mode == "batch"
+                ):  # Faster as very low overhead when increasing number of viewpoints
+                    df = self._select_by_viewpoint_batch(viewpoints_to_find)
+                    for vp, df_vp in df.groupby("viewpoint"):
+                        if not df_vp.empty:
+                            self.outq.put((vp, df_vp))
+
+                elif (
+                    self.selection_mode == "partition"
+                ):  # Low memory counting. Good for data rich viewpoints
+                    for df in self._select_by_viewpoint_batch_by_partition(
+                        viewpoints_to_find
+                    ):
+                        for vp, df_vp in df.groupby("viewpoint"):
+                            if not df_vp.empty:
+                                self.outq.put((vp, df_vp))
 
             except queue.Empty:
                 pass
@@ -667,7 +712,6 @@ class CCHDF5WriterProcess(multiprocessing.Process):
                     pass
 
 
-
 class CCCountsWriterProcess(multiprocessing.Process):
     def __init__(
         self,
@@ -707,7 +751,12 @@ class CCCountsWriterProcess(multiprocessing.Process):
                 if df is None:
                     break
                 else:
-                    path = os.path.join(self.tmpdir, vp)
+                    path = os.path.join(
+                        self.tmpdir,
+                        "".join(
+                            random.choices(string.ascii_uppercase + string.digits, k=6)
+                        ),
+                    )
 
                     if self.output_format == "tsv" and self.single_file:
                         df.to_csv(path, sep="\t", mode="a")
