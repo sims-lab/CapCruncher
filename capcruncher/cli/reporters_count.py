@@ -14,7 +14,8 @@ from capcruncher.tools.io import (
     CCHDF5WriterProcess,
     CCCountsWriterProcess,
 )
-from capcruncher.cli.reporters_store import merge
+import capcruncher.cli.reporters_store
+import capcruncher.tools.storage
 from capcruncher.tools.count import get_counts_from_tsv, get_counts_from_tsv_by_batch
 from capcruncher.utils import get_categories_from_hdf5_column, get_file_type
 
@@ -113,9 +114,24 @@ def count(
             )
 
             viewpoints_col = ddf["viewpoint"].cat.as_known()
+            viewpoint_sizes = viewpoints_col.value_counts().compute()
             viewpoints = list(viewpoints_col.cat.categories)
+
+            MAX_SLICE_NUMBER = 1e6
+
+            if (
+                viewpoint_sizes[viewpoint_sizes > MAX_SLICE_NUMBER].shape[0] == 0
+            ):  # Less than MAX_SLICE_NUMBER slices, read in batch
+                mode = "batch"
+            else:
+                # More than MAX_SLICE_NUMBER slices, read by partition
+                mode = "partition"
+
             reader = CCParquetReaderProcess(
-                path=reporters, inq=viewpoints_queue, outq=slices_queue
+                path=reporters,
+                inq=viewpoints_queue,
+                outq=slices_queue,
+                selection_mode=mode,
             )
 
         counters = [
@@ -176,6 +192,6 @@ def count(
         # Merge the output files together
         # TODO: Allow other than cooler outputs
         output_files = glob.glob(os.path.join(tmpdir.name, "*.hdf5"))
-        merge(output_files, output=output)
+        capcruncher.cli.reporters_store.merge(output_files, output=output)
 
         tmpdir.cleanup()
