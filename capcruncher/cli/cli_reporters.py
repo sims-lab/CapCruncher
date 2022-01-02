@@ -118,6 +118,14 @@ def differential(*args, **kwargs):
     help="Produce bedgraph containing just positive bins (sparse) or all bins (dense)",
     default=True,
 )
+@click.option(
+    "-f",
+    "--format",
+    help="Output file format",
+    type=click.Choice(["bedgraph", "bigwig"], case_sensitive=False),
+    default="bedgraph",
+)
+
 def pileup(*args, **kwargs):
     """
     Extracts reporters from a capture experiment and generates a bedgraph file.
@@ -129,9 +137,9 @@ def pileup(*args, **kwargs):
     inter experiment comparisons and/or extract pilups binned into even genomic windows.
     """
 
-    from capcruncher.cli.reporters_pileup import bedgraph
+    from capcruncher.cli.reporters_pileup import pileup
 
-    bedgraph(*args, **kwargs)
+    pileup(*args, **kwargs)
 
 
 @cli.command()
