@@ -1470,9 +1470,9 @@ def reporters_count(infile, outfile):
     )
 
     # Link bin tables to conserve space
-    from capcruncher.tools.storage import link_bins
+    from capcruncher.tools.storage import link_common_cooler_tables
 
-    link_bins(output_counts)
+    link_common_cooler_tables(output_counts)
     touch_file(outfile)
 
 
@@ -1561,9 +1561,9 @@ def reporters_store_binned(infile, outfile):
     )
 
     # Link bin tables to conserve space
-    from capcruncher.tools.storage import link_bins
+    from capcruncher.tools.storage import link_common_cooler_tables
 
-    link_bins(outfile)
+    link_common_cooler_tables(outfile)
 
     # Make sentinel file
     touch_file(sentinel_file)
