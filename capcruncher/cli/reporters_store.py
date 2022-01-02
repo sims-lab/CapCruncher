@@ -10,7 +10,7 @@ import click
 import h5py
 import pandas as pd
 from capcruncher.cli.cli_reporters import cli
-from capcruncher.tools.storage import CoolerBinner, create_cooler_cc, link_bins
+from capcruncher.tools.storage import CoolerBinner, create_cooler_cc, link_common_cooler_tables
 
 
 def get_viewpoints(store: h5py.File):
@@ -182,10 +182,9 @@ def merge(coolers: Tuple, output: os.PathLike):
      coolers (Tuple): Cooler files produced by either the fragments or bins subcommands.
      output (os.PathLike): Path from merged cooler file.
     """
-
-    # TODO: Make this more extendable by allowing concatenation
     import cooler
     from collections import defaultdict
+    #h5py._errors.unsilence_errors()
 
     coolers_to_merge = defaultdict(list)
 
@@ -209,26 +208,14 @@ def merge(coolers: Tuple, output: os.PathLike):
 
     # Initial pass to perform copying for all coolers without a matching group
     need_merging = list()
-    with h5py.File(output, mode="a") as dest:
+    with h5py.File(output, mode="w") as dest:
         for ii, (viewpoint, cooler_uris) in enumerate(coolers_to_merge.items()):
 
             if len(cooler_uris) < 2:  # Only merge if two or more, else just copy
                     (file_path, group_path) = cooler_uris[0].split("::")
 
-                    with h5py.File(file_path) as src:
+                    with h5py.File(file_path, mode="r") as src:
                         src.copy(src[group_path], dest, group_path)
-                    
-                    # Link the bins and chroms tables together with hard link
-                    # Dramatically reduces the file size required 
-                    if ii == 0:
-                        bins_link = dest[f'{group_path}/bins']
-                        chroms_link = dest[f'{group_path}/chroms']
-                    
-                    else:
-                        del dest[f"{group_path}/bins"]
-                        del dest[f"{group_path}/chroms"]
-                        dest[f"{group_path}/bins"] = bins_link 
-                        dest[f"{group_path}/chroms"] = chroms_link
             
             else:
                 need_merging.append(viewpoint)
@@ -239,3 +226,9 @@ def merge(coolers: Tuple, output: os.PathLike):
         cooler.merge_coolers(
                 f"{output}::/{viewpoint.replace('::', '/resolutions/')}", cooler_uris
             )
+    
+
+    # Reduce space by linking common tables (bins, chroms)
+    link_common_cooler_tables(output)
+
+

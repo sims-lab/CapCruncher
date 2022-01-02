@@ -528,7 +528,7 @@ class CoolerBinner:
         return cooler_fn
 
 
-def link_bins(clr: os.PathLike):
+def link_common_cooler_tables(clr: os.PathLike):
     """Reduces cooler storage space by linking "bins" table.
 
      All of the cooler "bins" tables containing the genomic coordinates of each bin
@@ -547,8 +547,10 @@ def link_bins(clr: os.PathLike):
         viewpoints = sorted(list(f.keys()))
 
         # Get all resolutions stored
-        resolutions_group = f[viewpoints[0]].get("resolutions")
-        resolutions = list(resolutions_group.keys()) if resolutions_group else None
+        try:
+            resolutions = [res for res in f[viewpoints[0]]["resolutions"]]
+        except KeyError:
+            resolutions = None
 
         for viewpoint in viewpoints[1:]:
 
