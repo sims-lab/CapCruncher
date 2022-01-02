@@ -410,12 +410,18 @@ def remove_duplicates_from_parquet(
     import dask.dataframe as dd
 
     duplicates = tuple(duplicated_ids.values)
+
     n_slices_total = dd.read_parquet(slices, columns=["parent_id"]).shape[0].compute()
-    dd.read_parquet(
+
+    ddf = dd.read_parquet(
         slices,
-        filters=[[("parent_id", "not in", duplicates)]],
+        filters=[("parent_id", "not in", duplicates)],
         engine="pyarrow-dataset",
-    ).to_parquet(output, compression="snappy", engine="pyarrow")
+    )
+
+    ddf = ddf.categorize()
+    ddf.to_parquet(output, compression="snappy", engine="pyarrow")
+    
     n_slices_unique = dd.read_parquet(output, columns=["parent_id"]).shape[0].compute()
     return (n_slices_total, n_slices_unique)
 
