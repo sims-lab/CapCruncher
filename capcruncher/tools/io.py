@@ -557,7 +557,7 @@ class CCParquetReaderProcess(multiprocessing.Process):
                     assert isinstance(viewpoints_to_find, str)
                     df = self._select_by_viewpoint(viewpoints_to_find)
                     if not df.empty:
-                        self.outq.put((vp, df_vp))
+                        self.outq.put((viewpoints_to_find, df_vp))
 
                 elif (
                     self.selection_mode == "batch"
