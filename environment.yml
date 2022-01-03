@@ -37,3 +37,4 @@ dependencies:
   - pytables
   - blosc
   - pyarrow
+  - more-itertools
