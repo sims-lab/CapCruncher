@@ -177,7 +177,7 @@ def summarise(
 
         if output_format == "bedgraph":
             for sub in subtractions_performed:
-                df_output = df_agg[["chrom", "start", "end", group, "aggregation"]]
+                df_output = df_agg[["chrom", "start", "end", sub, "aggregation"]]
                 for aggregation, df in df_output.groupby("aggregation"):
                     df.drop(columns="aggregation").to_csv(
                         f"{output_prefix}{sub}.{aggregation}-subtraction{suffix}.bedgraph",
