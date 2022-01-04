@@ -758,12 +758,12 @@ class CCSliceFilter(SliceFilter):
         )
 
         # Mark slices between the exclusion zones but ignore capture slices
-        slices_with_viewpoint = slices_with_viewpoint.query(
-            "~(exclusion_start <= restriction_fragment <= exclusion_end) or (capture_count == 1)"
+        excluded_slices = slices_with_viewpoint.query(
+            "(exclusion_start <= restriction_fragment <= exclusion_end) and (capture_count == 0)"
         )
 
         self.slices = (
-            self.slices.loc[lambda df: df["parent_id"].isin(slices_with_viewpoint["parent_id"])]
+            self.slices.loc[lambda df: ~df["parent_id"].isin(excluded_slices["parent_id"])]
         )
 
 
