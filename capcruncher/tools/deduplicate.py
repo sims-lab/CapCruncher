@@ -425,6 +425,8 @@ def remove_duplicates_from_parquet(
     logging.info("Loading and filtering slices")
     ddf = dd.read_parquet(
         slices,
+        chunksize="100MB",
+        aggregate_files=True,
         filters=[("parent_id", "not in", duplicates)],
         engine="pyarrow-dataset",
     )
