@@ -509,6 +509,7 @@ def fastq_duplicates_remove(infiles, outfile):
                 output_prefix,
                 "-p",
                 str(P.PARAMS.get("pipeline_n_cores", "4")),
+                "--hash-read-name", # Reduces memory by converting the readname to a 64bit hash
             ]
         )
 
@@ -1442,8 +1443,6 @@ def reporters_count(infile, outfile):
     """Counts the number of interactions identified between reporter restriction fragments"""
 
     infile, restriction_fragment_map, viewpoints = infile
-    n_counting_processes = P.PARAMS["pipeline_n_cores"] - 2
-    n_counting_processes = n_counting_processes if n_counting_processes > 0 else 1
     output_counts = outfile.replace("sentinel", "hdf5")
 
     statement = [
@@ -1459,7 +1458,7 @@ def reporters_count(infile, outfile):
         viewpoints,
         "--cooler-output",
         "-p",
-        str(n_counting_processes),
+        str(P.PARAMS["pipeline_n_cores"]),
     ]
 
     P.run(

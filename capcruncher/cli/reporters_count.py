@@ -105,6 +105,7 @@ def count(
         elif input_file_type == "parquet":
             import dask.dataframe as dd
 
+
             # Unsure of the best way to do this. Will just load the first partion vp column and extract
             ddf = dd.read_parquet(
                 reporters,
@@ -134,6 +135,9 @@ def count(
                 selection_mode=mode,
             )
 
+
+        n_counting_processes, n_writing_processes = ((n_cores - 1) // 2) if ((n_cores - 1) // 2) > 1 else 1
+
         counters = [
             FragmentCountingProcess(
                 inq=slices_queue,
@@ -142,7 +146,7 @@ def count(
                 remove_exclusions=remove_exclusions,
                 subsample=subsample,
             )
-            for i in range(n_cores // 2)
+            for i in range(n_counting_processes)
         ]
 
         tmpdir = tempfile.TemporaryDirectory()
@@ -154,7 +158,7 @@ def count(
                 viewpoint_path=viewpoint_path,
                 tmpdir=tmpdir.name,
             )
-            for i in range(n_cores // 2)
+            for i in range(n_writing_processes)
         ]
 
         # Start all processes
