@@ -192,11 +192,16 @@ class ReadDuplicateRemovalProcess(Process):
 
 
 def extract_fragment_coordinates(df):
-    coords = df["coordinates"].str.extract(
-        r"^chr(?P<chrom1>.*?):(?P<start>\d+).*\|chr(?P<chrom2>.*?):\d+-(?P<end>\d+)"
-    )
-    coords = coords["chrom1"].str.cat(coords.iloc[:, 1:])
-    coords.name = "coordinates_pe"
+
+    try:
+        coords = df["coordinates"].str.extract(
+            r"^chr(?P<chrom1>.*?):(?P<start>\d+).*\|chr(?P<chrom2>.*?):\d+-(?P<end>\d+)"
+        )
+        coords = coords["chrom1"].str.cat(coords.iloc[:, 1:])
+        coords.name = "coordinates_pe"
+    except AttributeError as e:  # Might not be any data
+        coords = pd.Series(data=[], name="coordinates_pe", dtype="object")
+
     return coords
 
 
@@ -411,7 +416,11 @@ def remove_duplicates_from_parquet(
 
     duplicates = tuple(duplicated_ids.values)
 
-    n_slices_total = dd.read_parquet(slices, columns=["parent_id"], engine="pyarrow").shape[0].compute()
+    n_slices_total = (
+        dd.read_parquet(slices, columns=["parent_id"], engine="pyarrow")
+        .shape[0]
+        .compute()
+    )
 
     logging.info("Loading and filtering slices")
     ddf = dd.read_parquet(
@@ -420,12 +429,18 @@ def remove_duplicates_from_parquet(
         engine="pyarrow-dataset",
     )
 
-    ddf = ddf.categorize(columns=["capture", "viewpoint", "exclusion", "chrom"], index=False)
+    ddf = ddf.categorize(
+        columns=["capture", "viewpoint", "exclusion", "chrom"], index=False
+    )
 
     logging.info("Writing unique slices")
     ddf.to_parquet(output, compression="snappy", engine="pyarrow")
-    
-    n_slices_unique = dd.read_parquet(output, columns=["parent_id"], engine="pyarrow").shape[0].compute()
+
+    n_slices_unique = (
+        dd.read_parquet(output, columns=["parent_id"], engine="pyarrow")
+        .shape[0]
+        .compute()
+    )
     return (n_slices_total, n_slices_unique)
 
 
