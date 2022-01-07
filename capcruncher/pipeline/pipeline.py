@@ -1031,14 +1031,14 @@ def annotate_sort_blacklist(outfile):
                 "name": "restriction_fragment",
                 "fn": "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
                 "action": "get",
-                "fraction": 0.2,
+                "fraction": 0.51,
                 "dtype": "Int64",
             },
             {
                 "name": "capture",
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "get",
-                "fraction": 0.9,
+                "fraction": P.PARAMS.get("analysis_optional_minimum_viewpoint_overlap", 0.75),
                 "dtype": "category",
             },
             {
@@ -1059,7 +1059,7 @@ def annotate_sort_blacklist(outfile):
                 "name": "capture_count",
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "count",
-                "fraction": 0.9,
+                "fraction": P.PARAMS.get("analysis_optional_minimum_viewpoint_overlap", 0.75),
                 "dtype": "Int8",
             },
             {
@@ -1117,7 +1117,7 @@ def annotate_alignments(infile, outfile):
     P.run(
         statement_annotate,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=1,
+        job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1133,21 +1133,10 @@ def post_annotation():
 ###########################
 
 
-@follows(mkdir("capcruncher_analysis/reporters/identified"), fastq_alignment)
-@collate(
-    fastq_alignment,
-    regex(r".*/(.*)_(?!part\d+).(?!flashed|pe).bam"),
-    r"capcruncher_analysis/reporters/identified/\1",
-)
-def make_alignment_filter_dirs(infile, outfile):
-    os.mkdir(outfile)
-
-
 @follows(
     post_annotation,
     annotate_alignments,
     mkdir("capcruncher_statistics/reporters/data"),
-    make_alignment_filter_dirs,
 )
 @transform(
     fastq_alignment,
@@ -1219,15 +1208,14 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
     Identifies duplicate fragments with the same coordinates and order.
     """
 
+    fragments = [infile.replace("sentinel", f"fragments.{STORAGE_FORMAT}")for infile in infiles]
+
     statement = [
         "capcruncher",
         "alignments",
         "deduplicate",
         "identify",
-        *[
-            infile.replace("sentinel", f"fragments.{STORAGE_FORMAT}")
-            for infile in infiles
-        ],
+        *[fn for fn in fragments if os.path.exists(fn)],
         "--read-type",
         read_type,
         "-o",
@@ -1271,7 +1259,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         "alignments",
         "deduplicate",
         "remove",
-        *slices,
+        *[fn for fn in slices if os.path.exists(fn)],
         "-d",
         duplicated_ids,
         "-o",
