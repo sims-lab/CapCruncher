@@ -135,8 +135,9 @@ def count(
                 selection_mode=mode,
             )
 
-
-        n_counting_processes, n_writing_processes = ((n_cores - 1) // 2) if ((n_cores - 1) // 2) > 1 else 1
+        n_worker_processes = ((n_cores - 1) // 2)
+        n_counting_processes = n_worker_processes if n_worker_processes > 1 else 1
+        n_writing_processes =  n_counting_processes
 
         counters = [
             FragmentCountingProcess(
