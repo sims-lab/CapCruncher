@@ -20,6 +20,8 @@ from capcruncher.tools.count import (
 from capcruncher.utils import get_timing, hash_column
 from pysam import FastxFile
 from xopen import xopen
+import xxhash
+from collections import namedtuple
 
 
 class FastqReaderProcess(multiprocessing.Process):
@@ -296,7 +298,27 @@ class FastqWriterProcess(multiprocessing.Process):
                 continue
 
 
-def parse_alignment(aln):
+CCAlignment = namedtuple(
+    "CCAlignment",
+    field_names=[
+        "slice_id",
+        "slice_name",
+        "parent_id",
+        "parent_read",
+        "pe",
+        "slice",
+        "uid",
+        "mapped",
+        "multimapped",
+        "chrom",
+        "start",
+        "end",
+        "coordinates",
+    ],
+)
+
+
+def parse_alignment(aln) -> CCAlignment:
     """Parses reads from a bam file into a list.
 
     Extracts:
@@ -321,6 +343,8 @@ def parse_alignment(aln):
 
     slice_name = aln.query_name
     parent_read, pe, slice_number, uid = slice_name.split("|")
+    parent_id = xxhash.xxh3_64_intdigest(parent_read, seed=42)
+    slice_id = xxhash.xxh3_64_intdigest(slice_name, seed=42)
     ref_name = aln.reference_name
     ref_start = aln.reference_start
     ref_end = aln.reference_end
@@ -328,9 +352,9 @@ def parse_alignment(aln):
     if aln.is_unmapped:
         mapped = 0
         multimapped = 0
-        ref_name = "unmapped"
-        ref_start = ""
-        ref_end = ""
+        ref_name = ""
+        ref_start = 0
+        ref_end = 0
         coords = ""
     else:
         mapped = 1
@@ -340,19 +364,22 @@ def parse_alignment(aln):
             multimapped = 1
         else:
             multimapped = 0
-    return [
-        slice_name,
-        parent_read,
-        pe,
-        slice_number,
-        uid,
-        mapped,
-        multimapped,
-        ref_name,
-        ref_start,
-        ref_end,
-        coords,
-    ]
+    
+    return CCAlignment(
+        slice_id=slice_id,
+        slice_name=slice_name,
+        parent_id=parent_id,
+        parent_read=parent_read,
+        pe=pe,
+        slice=int(slice_number),
+        uid=int(uid),
+        mapped=mapped,
+        multimapped=multimapped,
+        chrom=ref_name,
+        start=int(ref_start),
+        end=int(ref_end),
+        coordinates=coords,
+    )
 
 
 @get_timing(task_name="processing BAM file")
@@ -379,39 +406,21 @@ def parse_bam(bam):
 
     """
 
+    # Load reads into dataframe
     df_bam = pd.DataFrame(
         [
             parse_alignment(aln)
             for aln in pysam.AlignmentFile(bam, "rb").fetch(until_eof=True)
         ],
-        columns=[
-            "slice_name",
-            "parent_read",
-            "pe",
-            "slice",
-            "uid",
-            "mapped",
-            "multimapped",
-            "chrom",
-            "start",
-            "end",
-            "coordinates",
-        ],
     )
 
-    df_bam["parent_id"] = hash_column(df_bam["parent_read"])
-    df_bam["parent_id"] = df_bam["parent_id"]
+    # Perform dtype conversions
     df_bam["chrom"] = df_bam["chrom"].astype("category")
-
     pe_category = pd.CategoricalDtype(["flashed", "pe"])
     df_bam["pe"] = df_bam["pe"].astype(
         pe_category
     )  # Only the one type present so need to include both
 
-    df_bam["slice"] = df_bam["slice"].astype(int)
-    df_bam["uid"] = df_bam["uid"].astype(int)
-    df_bam["start"] = df_bam["start"].replace("", 0).astype(int)
-    df_bam["end"] = df_bam["end"].replace("", 0).astype(int)
     df_bam.set_index(["slice_name", "chrom", "start"], inplace=True)
     return df_bam
 
