@@ -53,9 +53,7 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
 
     df_ann = df_ann.drop(columns="end", errors="ignore")
 
-    df = (
-        df.join(df_ann, how="inner").reset_index().sort_values(["parent_read", "slice"])
-    )
+    df = df.join(df_ann, how="inner").reset_index()
 
     return df
 
@@ -178,6 +176,7 @@ def filter(
             .rename(
                 columns={"capture_slices": "capture", "capture_capture": "viewpoint"}
             )
+            .assign(id=lambda df: df["id"].astype("int64"))  # Enforce type
         )
 
         if output_format == "tsv":
@@ -192,13 +191,18 @@ def filter(
                 complevel=2,
             )
         elif output_format == "parquet":
-            df_fragments.to_parquet(
-                f"{output_prefix}.fragments.parquet",
-                compression="snappy",
-                engine="pyarrow",
-            )
+            if not df_fragments.empty:
+                df_fragments.to_parquet(
+                    f"{output_prefix}.fragments.parquet",
+                    compression="snappy",
+                    engine="pyarrow",
+                )
 
     logging.info(f"Writing reporters slices")
+    # Enforce dtype for parent_id
+    df_slices_with_viewpoint = df_slices_with_viewpoint.assign(
+        parent_id=lambda df: df["parent_id"].astype("int64")
+    )
 
     if output_format == "tsv":
         df_slices_with_viewpoint.to_csv(
@@ -214,8 +218,12 @@ def filter(
             complevel=2,
         )
     elif output_format == "parquet":
-        df_slices_with_viewpoint.to_parquet(
-            f"{output_prefix}.slices.parquet", compression="snappy", engine="pyarrow"
-        )
+
+        if not df_slices_with_viewpoint.empty:
+            df_slices_with_viewpoint.to_parquet(
+                f"{output_prefix}.slices.parquet",
+                compression="snappy",
+                engine="pyarrow",
+            )
 
     logging.info(f"Completed analysis of bam file")
