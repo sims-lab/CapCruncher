@@ -390,13 +390,8 @@ class SliceFilter:
         """Removes any slices in the exclusion region (default 1kb) (V. Common)"""
 
         slices_with_viewpoint = self.slices_with_viewpoint
-
-        slices_passed = slices_with_viewpoint.loc[
-            lambda df: ((df["exclusion_count"] < 1)
-            & (df["exclusion"] != df["viewpoint"]))
-            | (df["exclusion"].isna())
-        ]
-
+        slices_passed = slices_with_viewpoint.loc[lambda df: (df["exclusion_count"] < 1) | (df["exclusion"] != df["viewpoint"])] 
+        
         self.slices = self.slices.loc[
             lambda df: df["parent_id"].isin(slices_passed["parent_id"])
         ]
