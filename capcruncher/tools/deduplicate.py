@@ -302,6 +302,9 @@ def identify_coordinate_duplicates_from_parquet(
     df_fragments_coords = dd.read_parquet(
         fragments,
         columns=["id", "coordinates"],
+        chunksize="100MB",
+        aggregate_files=True,
+        engine="pyarrow",
     )
 
     if read_type == "flashed":
@@ -423,14 +426,17 @@ def remove_duplicates_from_parquet(
     )
 
     logging.info("Loading and filtering slices")
+    # Load and filter data
     ddf = dd.read_parquet(
         slices,
-        chunksize="100MB",
-        aggregate_files=True,
         filters=[("parent_id", "not in", duplicates)],
         engine="pyarrow-dataset",
+        
     )
+    # Repartition to reduce overhead
+    ddf = ddf.repartition(partition_size="100MB")
 
+    # Determine categories
     ddf = ddf.categorize(
         columns=["capture", "viewpoint", "exclusion", "chrom"], index=False
     )
