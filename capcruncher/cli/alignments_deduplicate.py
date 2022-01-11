@@ -20,7 +20,7 @@ from capcruncher.tools.deduplicate import (
 from capcruncher.utils import get_file_type
 
 def identify(
-    fragments: os.PathLike,
+    fragments: tuple,
     file_type: str = "auto",
     output: os.PathLike = "duplicated_ids.json",
     viewpoint: str = "",
@@ -52,9 +52,8 @@ def identify(
                                 Defaults to "flashed".
     """
 
-    input_file_type = get_file_type(fragments) if file_type == "auto" else file_type
+    input_file_type = get_file_type(fragments[0]) if file_type == "auto" else file_type
     output_file_type = get_file_type(output)
-
 
     if input_file_type in ["hdf5", "parquet"]:
         # Will use dask for these
@@ -86,6 +85,9 @@ def identify(
         duplicated_fragments = identify_coordinate_duplicates_from_parquet(
             fragments, read_type=read_type
         )
+
+    else:
+        raise ValueError(f"Input file type {file_type} not supported")
 
     # Output
     if output_file_type == "json":
