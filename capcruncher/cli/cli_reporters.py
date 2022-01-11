@@ -217,6 +217,9 @@ def count(*args, **kwargs):
     if kwargs.get("output_as_cooler"):
         if not kwargs.get("fragment_map"):
             raise ValueError("Restriction fragment map must be provided for cooler output")
+        elif not kwargs.get("viewpoint_path"):
+            raise ValueError("Viewpoint path must be provided for cooler output")
+
 
     from capcruncher.cli.reporters_count import count
 
