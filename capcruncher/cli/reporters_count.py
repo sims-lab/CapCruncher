@@ -112,6 +112,7 @@ def count(
                 columns=[
                     "viewpoint",
                 ],
+                engine="pyarrow"
             )
 
             viewpoints_col = ddf["viewpoint"].cat.as_known()
