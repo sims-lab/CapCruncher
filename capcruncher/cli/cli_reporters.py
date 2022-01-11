@@ -143,7 +143,7 @@ def pileup(*args, **kwargs):
 
 @cli.command()
 @click.argument("reporters")
-@click.option("-o", "--output", help="Name of output file", default="counts.tsv.gz")
+@click.option("-o", "--output", help="Name of output file", default="CC_cooler.hdf5")
 @click.option(
     "--remove_exclusions",
     default=False,
@@ -213,6 +213,11 @@ def count(*args, **kwargs):
     Options to ignore unwanted counts e.g. excluded regions or capture fragments are provided.
     In addition the number of reporter fragments can be subsampled if required.
     """
+    
+    if kwargs.get("output_as_cooler"):
+        if not kwargs.get("fragment_map"):
+            raise ValueError("Restriction fragment map must be provided for cooler output")
+
     from capcruncher.cli.reporters_count import count
 
     count(*args, **kwargs)
