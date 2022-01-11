@@ -398,7 +398,7 @@ class SliceFilter:
 
     def remove_blacklisted_slices(self):
         """Removes slices marked as being within blacklisted regions"""
-        self.slices = self.slices.query("(blacklist < 0) or (blacklist != blacklist)")
+        self.slices = self.slices.loc[lambda df: (df["blacklist"] == 0) | (df["blacklist"].isna())]
 
     @property
     def slices_with_viewpoint(self):
