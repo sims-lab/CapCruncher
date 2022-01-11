@@ -125,7 +125,6 @@ def differential(*args, **kwargs):
     type=click.Choice(["bedgraph", "bigwig"], case_sensitive=False),
     default="bedgraph",
 )
-
 def pileup(*args, **kwargs):
     """
     Extracts reporters from a capture experiment and generates a bedgraph file.
@@ -196,6 +195,13 @@ def pileup(*args, **kwargs):
     default=1,
     help="Number of cores to use for counting.",
     type=int,
+)
+@click.option(
+    "-t",
+    "--file-type",
+    help="File format for input",
+    default="auto",
+    type=click.Choice(["auto", "tsv", "hdf5", "parquet"], case_sensitive=False),
 )
 def count(*args, **kwargs):
     """
@@ -405,7 +411,9 @@ def bedgraphs_concat(*args, **kwargs):
 @compare.command(name="summarise")
 @click.argument("infile", required=True)
 @click.option("-o", "--output-prefix", help="Output file prefix")
-@click.option("-f", "--output-format", type=click.Choice(["bedgraph", "tsv"]), default="bedgraph")
+@click.option(
+    "-f", "--output-format", type=click.Choice(["bedgraph", "tsv"]), default="bedgraph"
+)
 @click.option(
     "-m",
     "--summary-methods",
@@ -422,9 +430,7 @@ def bedgraphs_concat(*args, **kwargs):
 @click.option(
     "--subtraction", is_flag=True, help="Perform subtration between aggregated groups"
 )
-@click.option(
-    "--suffix", help="Add a suffix before the file extension"
-)
+@click.option("--suffix", help="Add a suffix before the file extension")
 def bedgraphs_summarise(*args, **kwargs):
 
     from capcruncher.cli.reporters_compare import summarise
