@@ -1,4 +1,5 @@
 from configparser import DuplicateSectionError
+from build import logging
 import pytest
 import os
 from click.testing import CliRunner
@@ -412,5 +413,49 @@ def test_reporters_count(
             *flags,
         ],
     )
+
+    logging.debug(result.stdout)
+    logging.debug(result.exception)
     assert result.exit_code == 0
     assert os.path.exists(output)
+
+# @pytest.mark.parametrize(
+#     "cooler_fn,bin_size,output,flags",
+#     [
+#         "SAMPLE-A_REP1.hdf5", int(1e5), "binned.hdf5", []),
+#     ],
+# )
+# def test_reporters_store_binned(
+#     cli_runner,
+#     data_deduplication_alignments,
+#     data_reporters_count,
+#     tmpdir,
+#     slices,
+#     bins,
+#     viewpoints,
+#     output,
+#     flags,
+# ):
+
+#     slices = os.path.join(data_deduplication_alignments, slices)
+#     bins = os.path.join(data_reporters_count, bins)
+#     viewpoints = os.path.join(data_reporters_count, viewpoints)
+#     output = os.path.join(tmpdir, output)
+
+#     result = cli_runner.invoke(
+#         cli,
+#         [
+#             "reporters",
+#             "count",
+#             slices,
+#             "-o",
+#             output,
+#             "-f",
+#             bins,
+#             "-v",
+#             viewpoints,
+#             *flags,
+#         ],
+#     )
+#     assert result.exit_code == 0
+#     assert os.path.exists(output)
