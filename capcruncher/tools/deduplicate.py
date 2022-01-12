@@ -1,17 +1,18 @@
-import queue
-from typing import NamedTuple, Literal, Tuple, List, Union, Iterable
-import ujson
-import multiprocessing
-from multiprocessing import Process, Queue, SimpleQueue
-from xopen import xopen
-import xxhash
 import functools
+import logging
+import multiprocessing
 import os
 import pickle
+import queue
 from collections import namedtuple
-from capcruncher.utils import hash_column, get_file_type
-import logging
+from multiprocessing import Process, Queue, SimpleQueue
+from typing import Iterable, List, Literal, NamedTuple, Tuple, Union
+
 import pandas as pd
+import ujson
+import xxhash
+from capcruncher.utils import get_file_type, hash_column, save_dict
+from xopen import xopen
 
 
 class ReadDeduplicationParserProcess(Process):
@@ -46,15 +47,6 @@ class ReadDeduplicationParserProcess(Process):
 
         super(ReadDeduplicationParserProcess, self).__init__()
 
-    def _save_dict(self, d):
-
-        if ".json" in self.output_path:
-            with xopen(self.output_path, "w") as w:
-                ujson.dump(d, w)
-        elif any(ext in self.output_path for ext in [".pkl", ".pickle"]):
-            with open(self.output_path, "wb") as w:
-                pickle.dump(d, w)
-
     def run(self):
         """Processes fastq reads from multiple files and generates a hashed json dictionary.
 
@@ -87,8 +79,9 @@ class ReadDeduplicationParserProcess(Process):
 
             except queue.Empty:
                 continue
-
-        self._save_dict(records)
+        
+        output_format = get_file_type(self.output_path)
+        save_dict(records, self.output_path, output_format)
 
 
 RemovalStatistics = namedtuple(
