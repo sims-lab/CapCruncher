@@ -1,10 +1,11 @@
 import os
+from typing import Literal
 import pandas as pd
+import logging
 
 
 from capcruncher.tools.io import parse_bam
 from capcruncher.tools.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
-from capcruncher.utils import get_timing
 
 SLICE_FILTERS = {
     "capture": CCSliceFilter,
@@ -13,7 +14,7 @@ SLICE_FILTERS = {
 }
 
 
-@get_timing(task_name="merging annotations with BAM input")
+# @get_timing(task_name="merging annotations with BAM input")
 def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFrame:
     """Combines annotations with the parsed bam file output.
 
@@ -31,45 +32,47 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
     Returns:
      pd.DataFrame: Merged dataframe
     """
+    if annotations.endswith(".tsv"):
+        df_ann = pd.read_csv(
+            annotations,
+            sep="\t",
+            header=0,
+            index_col=["slice_name", "chrom", "start"],
+            low_memory=False,
+        )
 
-    df_ann = pd.read_csv(
-        annotations,
-        sep="\t",
-        header=0,
-        index_col=["slice_name", "chrom", "start"],
-        low_memory=False,
-    )
+    elif annotations.endswith(".hdf5"):
+        df_ann = pd.read_hdf(annotations, "annotation").set_index(
+            ["slice_name", "chrom", "start"]
+        )
+
+    elif annotations.endswith(".parquet"):
+        df_ann = pd.read_parquet(annotations).set_index(
+            ["slice_name", "chrom", "start"]
+        )
+
     df_ann = df_ann.drop(columns="end", errors="ignore")
 
-    return (
-        df.join(df_ann, how="inner")
-        .drop(columns=["slice_name.1"], errors="ignore")
-        .assign(
-            restriction_fragment=lambda df: df["restriction_fragment"]
-            .replace(".", -1)
-            .astype(int)
-        )
-        .reset_index()
-        .sort_values(["parent_read", "slice"])
-    )
+    df = df.join(df_ann, how="inner").reset_index()
+
+    return df
 
 
-@get_timing(task_name="analysis of bam file")
+# @get_timing(task_name="analysis of bam file")
 def filter(
     bam: os.PathLike,
     annotations: os.PathLike,
     custom_filtering: os.PathLike = None,
     output_prefix: os.PathLike = "reporters",
+    output_format: Literal["tsv", "hdf5", "parquet"] = "parquet",
     stats_prefix: os.PathLike = "",
     method: str = "capture",
     sample_name: str = "",
     read_type: str = "",
-    gzip: bool = False,
     fragments: bool = True,
     read_stats: bool = True,
     slice_stats: bool = True,
     cis_and_trans_stats: bool = True,
-
 ):
     """
     Removes unwanted aligned slices and identifies reporters.
@@ -125,15 +128,15 @@ def filter(
     """
 
     # Read bam file and merege annotations
+    logging.info("Loading bam file")
     df_alignment = parse_bam(bam)
+    logging.info("Merging bam file with annotations")
     df_alignment = merge_annotations(df_alignment, annotations)
 
     # Initialise SliceFilter
     # If no custom filtering, will use the class default.
-
-    print(f"Filtering slices with method: {method}")
-    slice_filter_type = SLICE_FILTERS[method]
-    slice_filter = slice_filter_type(
+    slice_filter_class = SLICE_FILTERS[method]
+    slice_filter = slice_filter_class(
         slices=df_alignment,
         sample_name=sample_name,
         read_type=read_type,
@@ -141,42 +144,86 @@ def filter(
     )
 
     # Filter slices using the slice_filter
+    logging.info(f"Filtering slices with method: {method}")
     slice_filter.filter_slices()
 
     if slice_stats:
         slice_filter.filter_stats.to_csv(f"{stats_prefix}.slice.stats.csv", index=False)
-    
+
     if read_stats:
         slice_filter.read_stats.to_csv(f"{stats_prefix}.read.stats.csv", index=False)
 
     # Save reporter stats
     if cis_and_trans_stats:
+        logging.info(f"Writing reporter statistics")
         slice_filter.cis_or_trans_stats.to_csv(
             f"{stats_prefix}.reporter.stats.csv", index=False
         )
 
-    # Output slices filtered by capture site
-    for capture_site, df_cap in slice_filter.slices.query('capture != "."').groupby(
-        "capture"
-    ):
+    # Output slices filtered by viewpoint
 
-        if fragments:
-            # Extract only fragments that appear in the capture dataframe
-            output_slices = slice_filter.slices.loc[
-                lambda df: df["parent_read"].isin(df_cap["parent_read"])
-            ]
-            # Generate a new slice filterer and extract the fragments
-            output_fragments = slice_filter_type(output_slices).fragments
+    df_slices = slice_filter.slices
+    df_slices_with_viewpoint = slice_filter.slices_with_viewpoint
+    df_capture = slice_filter.captures
 
-            # Output fragments and slices
-            output_fragments.sort_values("parent_read").to_csv(
-                f"{output_prefix}.{capture_site.strip()}.fragments.tsv{'.gz' if gzip else ''}",
-                sep="\t",
-                index=False,
+    if fragments:
+        logging.info(f"Writing reporters at the fragment level")
+        df_fragments = (
+            slice_filter_class(df_slices)
+            .fragments.join(
+                df_capture["capture"], lsuffix="_slices", rsuffix="_capture"
+            )
+            .rename(
+                columns={"capture_slices": "capture", "capture_capture": "viewpoint"}
+            )
+            .assign(id=lambda df: df["id"].astype("int64"))  # Enforce type
+        )
+
+        if output_format == "tsv":
+            df_fragments.to_csv(f"{output_prefix}.fragments.tsv", sep="\t", index=False)
+        elif output_format == "hdf5":
+            df_fragments.to_hdf(
+                f"{output_prefix}.slices.hdf5",
+                key="fragments",
+                data_columns=["viewpoint"],
+                format="table",
+                complib="blosc",
+                complevel=2,
+            )
+        elif output_format == "parquet":
+            if not df_fragments.empty:
+                df_fragments.to_parquet(
+                    f"{output_prefix}.fragments.parquet",
+                    compression="snappy",
+                    engine="pyarrow",
+                )
+
+    logging.info(f"Writing reporters slices")
+    # Enforce dtype for parent_id
+    df_slices_with_viewpoint = df_slices_with_viewpoint.assign(
+        parent_id=lambda df: df["parent_id"].astype("int64")
+    )
+
+    if output_format == "tsv":
+        df_slices_with_viewpoint.to_csv(
+            f"{output_prefix}.slices.tsv", sep="\t", index=False
+        )
+    elif output_format == "hdf5":
+        df_slices_with_viewpoint.to_hdf(
+            f"{output_prefix}.slices.hdf5",
+            key="slices",
+            data_columns=["viewpoint"],
+            format="table",
+            complib="blosc",
+            complevel=2,
+        )
+    elif output_format == "parquet":
+
+        if not df_slices_with_viewpoint.empty:
+            df_slices_with_viewpoint.to_parquet(
+                f"{output_prefix}.slices.parquet",
+                compression="snappy",
+                engine="pyarrow",
             )
 
-        output_slices.sort_values("slice_name").to_csv(
-            f"{output_prefix}.{capture_site.strip()}.slices.tsv{'.gz' if gzip else ''}",
-            sep="\t",
-            index=False,
-        )
+    logging.info(f"Completed analysis of bam file")

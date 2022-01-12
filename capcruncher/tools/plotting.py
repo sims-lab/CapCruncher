@@ -388,10 +388,14 @@ class CCBigWigCollection(Track):
         line_width = self.properties.get("line_width", 1)
         color = self.properties.get("color", "blue")
         alpha = self.properties.get("alpha", 0.2)
+        downsample = self.properties.get("downsample", 0)
+
+        if downsample:
+            rows = np.arange(0, data.shape[0], downsample)
+            data = data.iloc[rows]
 
         if self.properties.get("smooth_window"):
             scores = data["mean_smoothed"]
-
         else:
             scores = data["mean"]
 

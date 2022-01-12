@@ -11,6 +11,7 @@ from typing import Union, Literal
 from natsort import natsorted, natsort_key
 from capcruncher.utils import split_intervals_on_chrom, intersect_bins
 import itertools
+import logging
 
 
 def get_viewpoint_coords(viewpoint_file: str, viewpoint_name: str):
@@ -20,7 +21,7 @@ def get_viewpoint_coords(viewpoint_file: str, viewpoint_name: str):
     try:
         viewpoints = [row for index, row in df_viewpoints.iterrows()]
     except IndexError:
-        print("Oligo name cannot be found within viewpoints")
+        logging.error("Oligo name cannot be found within viewpoints")
         viewpoints = None
 
     return viewpoints
@@ -64,14 +65,14 @@ def create_cooler_cc(
      os.PathLike: Path of cooler hdf5 file.
     """
 
-    # Gets capture coordinates
+    # Gets viewpoint coordinates
     viewpoint_coords = get_viewpoint_coords(viewpoint_path, viewpoint_name)
 
-    # Make sure capture coordinates are returned correctly, if not, error.
+    # Make sure viewpoint coordinates are returned correctly, if not, error.
     if viewpoint_coords is None:
-        raise ValueError(f"Incorrect capture name specified: {viewpoint_name}.")
+        raise ValueError(f"Incorrect viewpoint name specified: {viewpoint_name}.")
 
-    # If capture bins not provided get them using the coordinates.
+    # If viewpoint bins not provided get them using the coordinates.
     if not viewpoint_bins:
         viewpoint_bins = list(
             itertools.chain.from_iterable(
@@ -120,7 +121,7 @@ def create_cooler_cc(
         cooler_fn = f"{output_prefix}::/{viewpoint_name}"
     else:
         append_to_file = False
-        cooler_fn = f"{output_prefix.replace('.hdf5', '')}.{viewpoint_name}{'.' + suffix if suffix else ''}.hdf5"
+        cooler_fn = f"{output_prefix.replace('.hdf5', '')}{'.' + suffix if suffix else ''}.hdf5::/{viewpoint_name}"
 
     cooler.create_cooler(
         cooler_fn,
@@ -323,21 +324,21 @@ class CoolerBinner:
      binner (capcruncher.storeage.GenomicBinner): Binner class to generate bin conversion tables
      binsize (int): Genomic bin size
      scale_factor (int): Scaling factor for normalising interaction counts.
-     n_cis_interactions (int): Number of cis interactions with the capture bins.
+     n_cis_interactions (int): Number of cis interactions with the viewpoint bins.
      n_cores (int): Number of cores to use for binning.
 
     """
 
     def __init__(
         self,
-        cooler_fn: os.PathLike,
+        cooler_group: os.PathLike,
         binsize: int = None,
         n_cores: int = 8,
         binner: GenomicBinner = None,
     ):
         """
         Args:
-         cooler_fn (os.PathLike): Path to cooler to bin. A cooler group can be specified with FN_PATH.hdf5::/PATH_TO_GROUP.
+         cooler_group (os.PathLike): Path to cooler to bin. A cooler group can be specified with FN_PATH.hdf5::/PATH_TO_GROUP.
          binsize (int, optional): Genomic binsize. Defaults to None.
          n_cores (int, optional): Number of cores to use for binning. Defaults to 8.
          binner (capcruncher.storage.GenomicBinner, optional): Binner object to produce conversion tables.
@@ -345,7 +346,7 @@ class CoolerBinner:
                                                                  Defaults to None.
         """
 
-        self.cooler = cooler.Cooler(cooler_fn)
+        self.cooler = cooler.Cooler(cooler_group)
         self.bins_fragments = self.cooler.bins()[:]
 
         self.binner = binner or GenomicBinner(
@@ -435,7 +436,7 @@ class CoolerBinner:
     def viewpoint_bins(self):
         """
         Returns:
-         pd.DataFrame: Capture bins converted to the new even genomic bin format.
+         pd.DataFrame: viewpoint bins converted to the new even genomic bin format.
         """
         viewpoint_frags = self.cooler.info["metadata"]["viewpoint_bins"]
         return self.bin_conversion_table.loc[
@@ -513,12 +514,7 @@ class CoolerBinner:
         metadata = {**self.cooler.info["metadata"]}
         metadata["viewpoint_bins"] = [int(x) for x in self.viewpoint_bins]
 
-        if os.path.exists(store):  # Will append to a prexisting file if one is supplied
-            cooler_fn = f"{store}::/{metadata['viewpoint_name']}/resolutions/{self.binsize}"
-        else:
-            cooler_fn = (
-                f"{store.replace('.hdf5', '')}.{metadata['viewpoint_name']}.{self.binsize}.hdf5"
-            )
+        cooler_fn = f"{store}::/{metadata['viewpoint_name']}/resolutions/{self.binsize}"
 
         cooler.create_cooler(
             cooler_fn,
@@ -532,7 +528,7 @@ class CoolerBinner:
         return cooler_fn
 
 
-def link_bins(clr: os.PathLike):
+def link_common_cooler_tables(clr: os.PathLike):
     """Reduces cooler storage space by linking "bins" table.
 
      All of the cooler "bins" tables containing the genomic coordinates of each bin
@@ -547,23 +543,25 @@ def link_bins(clr: os.PathLike):
 
     with h5py.File(clr, "a") as f:
 
-        # Get all captures stored
-        captures = list(f.keys())
+        # Get all viewpoints stored
+        viewpoints = sorted(list(f.keys()))
 
         # Get all resolutions stored
-        resolutions_group = f[captures[0]].get("resolutions")
-        resolutions = list(resolutions_group.keys()) if resolutions_group else None
+        try:
+            resolutions = [res for res in f[viewpoints[0]]["resolutions"]]
+        except KeyError:
+            resolutions = None
 
-        for capture in captures[1:]:
+        for viewpoint in viewpoints[1:]:
 
-            # Delete currenly stored bins group and replace with link to first capture "bins" group
-            del f[capture]["bins"]
-            f[capture]["bins"] = f[captures[0]]["bins"]
+            # Delete currenly stored bins group and replace with link to first viewpoint "bins" group
+            del f[viewpoint]["bins"]
+            f[viewpoint]["bins"] = f[viewpoints[0]]["bins"]
 
             if resolutions:
                 for resolution in resolutions:
                     # Repeat for resolutions i.e. binned coolers
-                    del f[capture]["resolutions"][resolution]["bins"]
-                    f[capture]["resolutions"][resolution]["bins"] = f[captures[0]][
+                    del f[viewpoint]["resolutions"][resolution]["bins"]
+                    f[viewpoint]["resolutions"][resolution]["bins"] = f[viewpoints[0]][
                         "resolutions"
                     ][resolution]["bins"]

@@ -1,17 +1,29 @@
-from typing import Iterable
+import logging
+from typing import Iterable, List, Literal, Tuple
+import dask
 import pandas as pd
-
-import click
 import xopen
-from capcruncher.cli.cli_alignments import cli
-from capcruncher.utils import hash_column, load_json
 import ujson
 import os
 import numpy as np
+import dask.distributed
+
+from capcruncher.tools.deduplicate import (
+    identify_coordinate_duplicates_from_tsv,
+    identify_coordinate_duplicates_from_hdf5,
+    identify_coordinate_duplicates_from_parquet,
+    remove_duplicates_from_parquet,
+    remove_duplicates_from_tsv,
+    remove_duplicates_from_hdf5,
+    read_duplicated_ids
+)
+from capcruncher.utils import get_file_type
 
 def identify(
-    fragments_fn: os.PathLike,
+    fragments: tuple,
+    file_type: str = "auto",
     output: os.PathLike = "duplicated_ids.json",
+    viewpoint: str = "",
     buffer: int = 1e6,
     read_type: str = "flashed",
 ):
@@ -40,55 +52,76 @@ def identify(
                                 Defaults to "flashed".
     """
 
-    fragments = pd.read_csv(
-        fragments_fn,
-        sep="\t",
-        chunksize=buffer,
-        usecols=["parent_read", "coordinates"],
-    )
+    input_file_type = get_file_type(fragments[0]) if file_type == "auto" else file_type
+    output_file_type = get_file_type(output)
 
-    unique_coordinates = set()
-    duplicated_fragments = set()
+    if input_file_type in ["hdf5", "parquet"]:
+        # Will use dask for these
+        cluster = dask.distributed.LocalCluster(
+            n_workers=4, dashboard_address=None, processes=True
+        )
+        client = dask.distributed.Client(cluster)
 
-    for ii, df in enumerate(fragments):
 
-        # Shuffle to stop fragments at the end of the sample always being removed
-        df = df.sample(frac=1)
 
-        if read_type == "flashed":
-
-            lst_id = hash_column(df["parent_read"])
-            lst_coords = hash_column(df["coordinates"])
-
+    # Extract duplicated fragment ids
+    if input_file_type == "tsv":
+        if len(fragments) > 1:
+            raise NotImplementedError("Currently just supports a single tsv input")
         else:
-            # Extract chrom1 + start1 + chrom(last entry) + end(last entry)
-            coords_df = df["coordinates"].str.extract(
-                r"^chr(?P<chrom1>.*?):(?P<start>\d+).*\|chr(?P<chrom2>.*?):\d+-(?P<end>\d+)"
+            duplicated_fragments = identify_coordinate_duplicates_from_tsv(
+                fragments[0], read_type=read_type, buffer=buffer
             )
+    elif input_file_type == "hdf5":
+        outfile = f"{output.replace('.hdf5', '')}.hdf5"
+        if os.path.exists(outfile):
+            os.remove(outfile)
 
-            lst_id = hash_column(df["parent_read"])
+        duplicated_fragments = identify_coordinate_duplicates_from_hdf5(
+            fragments, read_type=read_type
+        )
+    
+    elif input_file_type == "parquet":
+        duplicated_fragments = identify_coordinate_duplicates_from_parquet(
+            fragments, read_type=read_type
+        )
 
-            # chrom1+start1+chrom-1+end-1(hashed)
-            lst_coords = hash_column(coords_df["chrom1"].str.cat(coords_df.iloc[:, 1:]))
+    else:
+        raise ValueError(f"Input file type {file_type} not supported")
 
-        for id, coord in zip(lst_id, lst_coords):
-            if not coord in unique_coordinates:
-                unique_coordinates.add(coord)
-            else:
-                duplicated_fragments.add(id)
+    # Output
+    if output_file_type == "json":
+        with xopen.xopen(output, "w") as w:
+            ujson.dump(dict.fromkeys(duplicated_fragments), w)
 
-    with xopen.xopen(output, "w") as w:
-        ujson.dump(dict.fromkeys(duplicated_fragments), w)
+    elif output_file_type == "hdf5":
+
+        duplicated_fragments.to_hdf(
+            outfile, f"/duplicated_ids", min_itemsize={"id": 25}, index=False
+        )
+
+    elif output_file_type == "pickle":
+        duplicated_fragments = duplicated_fragments.compute()
+        duplicated_fragments.to_pickle(output)
+
+    
+    try:
+        cluster.close()
+        client.close()
+    except Exception as e:
+        print(e)
+
 
 
 def remove(
-    slices_fn: os.PathLike,
+    slices: os.PathLike,
     duplicated_ids: os.PathLike,
     output: os.PathLike = "dedup.slices.tsv.gz",
     buffer: int = 5e6,
     sample_name: str = "",
     read_type: str = "",
     stats_prefix: os.PathLike = "",
+    file_type: str = "hdf5",
 ):
     """
     Removes duplicated aligned fragments.
@@ -110,47 +143,62 @@ def remove(
      stats_prefix (os.PathLike, optional): Output path for deduplication statistics. Defaults to "".
     """
 
-    # Remove output if it exist as will need to append to file.
-    if os.path.exists(output):
-        os.unlink(output)
+    input_file_type = (
+        get_file_type(slices if isinstance(slices, str) else slices[0])
+        if file_type == "auto"
+        else file_type
+    )
+    output_file_type = get_file_type(output)
 
-    df_slices = pd.read_csv(slices_fn, sep="\t", chunksize=buffer)
+    duplicates = read_duplicated_ids(duplicated_ids)
 
-    with xopen.xopen(duplicated_ids, "r") as r:
-        ids_duplicated = {int(x) for x in ujson.load(r)}
+    if input_file_type in ["hdf5", "parquet"]:
+        # Will use dask for these
+        cluster = dask.distributed.LocalCluster(
+            n_workers=4, dashboard_address=None, processes=True
+        )
+        client = dask.distributed.Client(cluster)
 
-    n_reads_total = 0
-    n_reads_unique = 0
+    if input_file_type == "tsv":
 
-    # Iterate slices in chunks
-    for ii, df in enumerate(df_slices):
+        if not output_file_type == "tsv":
+            raise NotImplementedError("Currently only tsv -> tsv output supported")
 
-        print(f"Processed {(ii + 1) * buffer} slices")
-
-        n_reads_total += df["parent_read"].nunique()
-
-        # Hash the parent_read column and remove any duplicated ids.
-        df = (
-            df.assign(parent_read_hashed=lambda df: hash_column(df["parent_read"]))
-            .set_index("parent_read_hashed")
-            .loc[lambda df: ~df.index.isin(ids_duplicated)]
+        n_slices_total, n_slices_unique = remove_duplicates_from_tsv(
+            slices, output, duplicates, buffer=buffer
         )
 
-        n_reads_unique += df["parent_read"].nunique()
+    elif input_file_type == "hdf5":
+        if not output_file_type == "hdf5":
+            raise NotImplementedError("Currently only hdf5 -> hdf5 output supported")
 
-        # Append to file.
-        df.reset_index(drop=True).to_csv(
-            output, sep="\t", index=None, header=True if ii < 1 else False, mode="a"
+        n_slices_total, n_slices_unique = remove_duplicates_from_hdf5(
+            slices, duplicates, output
         )
+    
+    elif input_file_type == "parquet":
+        if not output_file_type == "parquet":
+            raise NotImplementedError("Currently only parquet -> parquet output supported")
+
+        n_slices_total, n_slices_unique = remove_duplicates_from_parquet(
+            slices, duplicates, output
+        )
+   
+    
+    try:
+        cluster.close()
+        client.close()
+    except Exception as e:
+        print(e)
 
     # Prepare stats
     df_stats = pd.DataFrame()
     df_stats["stat_type"] = ["not-deduplicated", "deduplicated"]
-    df_stats["stat"] = [n_reads_total, n_reads_unique]
+    df_stats["stat"] = [n_slices_total, n_slices_unique]
     df_stats["sample"] = sample_name
     df_stats["read_type"] = read_type
     df_stats["read_number"] = 0
     df_stats["stage"] = "deduplicate_slices"
     df_stats.to_csv(f"{stats_prefix}.read.stats.csv", index=False)
 
-    print(df_stats)
+    return df_stats
