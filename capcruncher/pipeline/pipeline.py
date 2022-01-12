@@ -1192,8 +1192,13 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
     )
 
     # Zero annotations
+<<<<<<< HEAD
     # if not P.PARAMS.get("analysis_optional_keep_annotations", False):
     #     zap_file(annotations)
+=======
+    if not P.PARAMS.get("analysis_optional_keep_annotations", False):
+        zap_file(annotations)
+>>>>>>> master
 
     # Make sentinel file
     touch_file(outfile)
