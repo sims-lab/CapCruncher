@@ -37,3 +37,4 @@ dependencies:
   - ucsc-bedtobigbed
   - ucsc-fatotwobit
   - ucsc-fetchchromsizes
+  - ujson
