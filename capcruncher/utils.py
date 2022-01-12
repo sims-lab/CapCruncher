@@ -12,7 +12,6 @@ from typing import Any, Callable, IO, Iterable, Literal, Tuple, Union, Generator
 import numpy as np
 
 import pandas as pd
-import ujson
 import xxhash
 from pybedtools import BedTool
 import pybedtools
@@ -238,6 +237,7 @@ def load_dict(fn, format: str, dtype: str = "int") -> dict:
 
     
     if format == "json":
+        import ujson
         with xopen(fn) as r:
             d = ujson.load(r)
     elif format == "pickle":

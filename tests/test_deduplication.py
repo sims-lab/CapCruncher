@@ -4,7 +4,6 @@ import pickle
 
 import pandas as pd
 import pytest
-import ujson
 from capcruncher.cli import fastq_deduplicate
 from capcruncher.tools.deduplicate import (
     ReadDeduplicationParserProcess,
@@ -55,6 +54,7 @@ def test_fastq_parsing(
 
     with open(outfile_path, "rb") as output:
         if format == "json":
+            import ujson
             parse_test = ujson.load(output)
         elif format == "pickle":
             parse_test = pickle.load(output)

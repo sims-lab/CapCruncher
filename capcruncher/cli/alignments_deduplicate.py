@@ -3,7 +3,6 @@ from typing import Iterable, List, Literal, Tuple
 import dask
 import pandas as pd
 import xopen
-import ujson
 import os
 import numpy as np
 import dask.distributed
@@ -91,6 +90,7 @@ def identify(
 
     # Output
     if output_file_type == "json":
+        import ujson
         with xopen.xopen(output, "w") as w:
             ujson.dump(dict.fromkeys(duplicated_fragments), w)
 

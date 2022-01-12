@@ -1,6 +1,5 @@
 import queue
 from typing import NamedTuple, Literal, Tuple, List, Union, Iterable
-import ujson
 import multiprocessing
 from multiprocessing import Process, Queue, SimpleQueue
 from xopen import xopen
@@ -50,6 +49,7 @@ class ReadDeduplicationParserProcess(Process):
 
         if ".json" in self.output_path:
             with xopen(self.output_path, "w") as w:
+                import ujson
                 ujson.dump(d, w)
         elif any(ext in self.output_path for ext in [".pkl", ".pickle"]):
             with open(self.output_path, "wb") as w:
@@ -459,6 +459,7 @@ def read_duplicated_ids(path: os.PathLike):
     file_type = get_file_type(path)
 
     if file_type == "json":
+        import ujson
         with xopen.xopen(path, "r") as r:
             ids_duplicated = {int(x) for x in ujson.load(r)}
 

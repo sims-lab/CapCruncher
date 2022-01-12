@@ -12,5 +12,4 @@ matplotlib
 pybedtools
 pysam
 xxhash
-ujson
 diffxpy
