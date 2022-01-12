@@ -118,13 +118,17 @@ N_SAMPLES = len(
 )
 
 # Determines the number of viewpoints being processed
-N_VIEWPOINTS = BedTool(P.PARAMS["analysis_viewpoints"]).count()
-HAS_HIGH_NUMBER_OF_VIEWPOINTS = (
-    True
-    if N_VIEWPOINTS > 100
-    and not P.PARAMS.get("analysis_optional_force_bigwig_generation")
-    else False
-)
+try:
+    N_VIEWPOINTS = BedTool(P.PARAMS["analysis_viewpoints"]).count()
+    HAS_HIGH_NUMBER_OF_VIEWPOINTS = (
+        True
+        if N_VIEWPOINTS > 100
+        and not P.PARAMS.get("analysis_optional_force_bigwig_generation")
+        else False
+    )
+except FileNotFoundError:
+    N_VIEWPOINTS = 0
+    HAS_HIGH_NUMBER_OF_VIEWPOINTS = False
 
 # Determines if the design matrix supplied does exist
 HAS_DESIGN = os.path.exists(P.PARAMS.get("analysis_design", ""))
