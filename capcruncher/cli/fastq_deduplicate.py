@@ -207,16 +207,3 @@ def remove(
     df_stats.to_csv(f"{stats_prefix}.deduplication.csv", index=False)
 
     return df_stats
-
-    # stats_aggregator = Counter()
-    # stats = statq.get()
-
-    # while not stats == "END":
-    #     stats_aggregator.update(stats)
-    #     stats = statq.get()
-
-    # deduplication_stats = DeduplicationStatistics(
-    #     sample=sample_name, **stats_aggregator
-    # )
-
-    # deduplication_stats.df.to_csv(f"{stats_prefix}.deduplication.csv", index=False)

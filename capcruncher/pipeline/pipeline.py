@@ -298,6 +298,9 @@ def genome_digest(infile, outfile):
 # Fastq file pre-processing #
 #############################
 
+##########
+# Read QC#
+##########
 
 @follows(mkdir("capcruncher_preprocessing"), mkdir("capcruncher_preprocessing/fastqc"))
 @transform(
@@ -359,6 +362,10 @@ def fastq_multiqc(infile, outfile):
     )
 
 
+###################
+# Read processing #
+###################
+
 @follows(mkdir("capcruncher_preprocessing/split"))
 @collate(
     "*.fastq*",
@@ -384,7 +391,7 @@ def fastq_split(infiles, outfile):
         outfile.replace(".sentinel", ""),
         "-n",
         str(P.PARAMS.get("split_n_reads", 1e6)),
-        "--no-gzip",
+        "--no-gzip" if P.PARAMS.get("pipeline_compression") == 0 else "--gzip",
     ]
 
     P.run(
@@ -514,6 +521,7 @@ def fastq_duplicates_remove(infiles, outfile):
                 "-p",
                 str(P.PARAMS.get("pipeline_n_cores", "4")),
                 "--hash-read-name", # Reduces memory by converting the readname to a 64bit hash
+                "--gzip" if ".gz" in infiles[0] else "--no-gzip",
             ]
         )
 
