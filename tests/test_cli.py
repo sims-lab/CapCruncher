@@ -458,3 +458,38 @@ def test_reporters_store_binned(
     )
     assert result.exit_code == 0
     assert os.path.exists(output)
+
+@pytest.mark.parametrize(
+    "cooler_fn,output_prefix,outfile,flags",
+    [
+        ("SAMPLE-A_REP1.hdf5", "test", "test.Slc25A37.bedgraph", []),
+        ("SAMPLE-A_REP1.hdf5", "test", "test.Slc25A37.bigWig", ["-f", "bigwig"]),
+    ],
+)
+def test_reporters_pileup(
+    cli_runner,
+    data_reporters_store,
+    tmpdir,
+    cooler_fn,
+    output_prefix,
+    outfile,
+    flags,
+):
+
+    clr = os.path.join(data_reporters_store, cooler_fn)
+    output = os.path.join(tmpdir, output_prefix)
+    outfile = os.path.join(tmpdir, outfile)
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "reporters",
+            "pileup",
+            clr,
+            "-o",
+            output,
+            *flags,
+        ],
+    )
+    assert result.exit_code == 0
+    assert os.path.exists(outfile)
