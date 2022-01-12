@@ -84,8 +84,7 @@ def pipeline(mode, pipeline_options, show_help=False, show_version=False):
         "python",
         f"{dir_package}/pipeline/pipeline.py",
     ]
-
-    breakpoint()
+    
     if show_help:
         cmd.append("--help")
         subprocess.run(cmd)
