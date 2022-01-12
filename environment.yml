@@ -1,40 +1,39 @@
+---
 name: cc
 channels:
   - bioconda
   - conda-forge
   - defaults
 dependencies:
-  - pip
+  - bedtools
+  - bowtie2==2.4.4
   - cgatcore
   - click
-  - joblib
-  - dask
-  - natsort
-  - pybedtools
-  - pysam
-  - bowtie2>=2.4.4
-  - trim-galore
   - cooler
-  - pandas
-  - flash
-  - ucsc-bedgraphtobigwig
-  - ucsc-fetchchromsizes
-  - bedtools
-  - samtools
-  - nbconvert
+  - dask
   - fastqc
-  - multiqc
+  - flash
   - iced
   - ipykernel
-  - papermill
-  - ujson
-  - plotly
-  - python-xxhash
-  - trackhub
-  - seaborn
-  - ucsc-fatotwobit
-  - ucsc-bedtobigbed
-  - pytables
-  - blosc
-  - pyarrow
+  - joblib
   - more-itertools
+  - multiqc
+  - natsort
+  - nbconvert
+  - pandas>1.0
+  - papermill
+  - pip
+  - plotly
+  - pyarrow
+  - pybedtools
+  - pysam
+  - python-xxhash
+  - python>3.9,<3.10
+  - samtools
+  - seaborn
+  - trackhub
+  - trim-galore
+  - ucsc-bedgraphtobigwig
+  - ucsc-bedtobigbed
+  - ucsc-fatotwobit
+  - ucsc-fetchchromsizes
