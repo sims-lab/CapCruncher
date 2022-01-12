@@ -412,8 +412,8 @@ def fastq_split(infiles, outfile):
 )
 @collate(
     "capcruncher_preprocessing/split/*.fastq*",
-    regex(r"capcruncher_preprocessing/split/(.*)_part(\d+)_[12].fastq(?:.gz)?"),
-    r"capcruncher_preprocessing/deduplicated/duplicated_ids/\1_\2.pkl",
+    regex(r"capcruncher_preprocessing/split/(.*)_part(\d+)_[12].fastq(.gz)?"),
+    r"capcruncher_preprocessing/deduplicated/duplicated_ids/\1_\2.pkl\3",
     extras=[r"\1", r"\2"],
 )
 def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
@@ -445,8 +445,8 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
 
 @collate(
     fastq_duplicates_parse,
-    regex(r"capcruncher_preprocessing/deduplicated/duplicated_ids/(.*)_\d*.pkl"),
-    r"capcruncher_preprocessing/deduplicated/duplicated_ids/\1.pkl",
+    regex(r"capcruncher_preprocessing/deduplicated/duplicated_ids/(.*)_\d*.pkl(.gz)?"),
+    r"capcruncher_preprocessing/deduplicated/duplicated_ids/\1.pkl\2",
 )
 def fastq_duplicates_identify(infiles, outfile):
 
