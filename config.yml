@@ -36,8 +36,8 @@ analysis:
     # Genomic window size(s) to use for binning restriction fragment interaction counts
     # into even genomic windows. Only bin sizes that are present here will be allowed 
     # to be used for heatmap generation.
-    # (Required, will become optional for capture mode in a later update)
-    bin_size: 2500
+    # (Optional) Leave blank to prevent binning
+    bin_size: 0
 
 genome:
     
@@ -139,6 +139,19 @@ analysis_optional:
     # Can be useful for troubleshooting errors with coordinates
     # (Debugging)
     keep_annotations: False
+
+
+    # Forces the pipeline to produce bigwigs when a high level of viewpoints are detected.
+    # This is not advised due to the high number of files that can be generated.
+    # In these situations it is advised to manually select the viewpoints for visualisation.
+    # (Optional)
+    force_bigwig_generation: False
+
+    # Changes the storage format used for slices.
+    # Options: tsv, hdf5, parquet
+    # Highly recomended to leave this as the default as other options may not be as robust
+    # (Optional)
+    storage_format: parquet 
    
 
 deduplication:

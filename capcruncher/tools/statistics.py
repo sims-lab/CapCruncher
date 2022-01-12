@@ -33,7 +33,7 @@ DigestionStats = namedtuple('DigestionStats', ['read_type', 'read_number', 'unfi
 def collate_histogram_data(fnames):
     return (
         pd.concat(read_dataframes(fnames))
-        .groupby(["sample", "read_type", "read_number", "n_slices"])["n_reads"]
+        .groupby(["sample", "read_type", "read_number", "filtered", "n_slices"])
         .sum()
         .reset_index()
         .sort_values(["sample", "read_type", "n_slices"])
@@ -64,7 +64,7 @@ def collate_slice_data(fnames):
 
 def collate_cis_trans_data(fnames):
     return (pd.concat(read_dataframes(fnames))
-              .groupby(['sample', 'capture', 'read_type', 'cis/trans'])
+              .groupby(['sample', 'viewpoint', 'read_type', 'cis/trans'])
               .sum()
               .reset_index()
               .sort_values(["sample", "read_type", 'count'], ascending=[True, True, False]))

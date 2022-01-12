@@ -1,0 +1,8 @@
+category,n_reads
+unmapped,10
+orphan,10
+excluded,10
+duplicate_rf,10
+duplicate_coords,10
+reporters_flashed,50
+reporters_pe,50

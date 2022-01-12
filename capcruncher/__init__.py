@@ -1,0 +1,1 @@
+from capcruncher import cli
