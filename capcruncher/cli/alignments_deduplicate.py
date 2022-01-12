@@ -106,7 +106,8 @@ def identify(
 
     
     try:
-        client.shutdown()
+        cluster.close()
+        client.close()
     except Exception as e:
         print(e)
 
@@ -185,7 +186,8 @@ def remove(
    
     
     try:
-        client.shutdown()
+        cluster.close()
+        client.close()
     except Exception as e:
         print(e)
 

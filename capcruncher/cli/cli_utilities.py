@@ -167,7 +167,7 @@ def cis_and_trans_stats(
             .reset_index()
         )
         ddf_cis_trans_stats_summary.to_csv(output, index=False, single_file=True)
-        client.shutdown()
+        client.close()
 
 
 @cli.command()
@@ -256,4 +256,4 @@ def merge_capcruncher_slices(
         )
         ddf.to_parquet(outfile, compression="snappy", engine="pyarrow")
 
-    client.shutdown()
+    client.close()

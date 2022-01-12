@@ -525,7 +525,7 @@ def get_categories_from_hdf5_column(
 
         client = dask.distributed.Client(processes=True)
         values = [x for x in dd.read_hdf(path, key, columns=column)[column].unique().compute()]
-        client.shutdown()
+        client.close()
         return values
 
 
