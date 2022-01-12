@@ -1,5 +1,4 @@
-from configparser import DuplicateSectionError
-from build import logging
+import logging
 import pytest
 import os
 from click.testing import CliRunner
@@ -57,6 +56,11 @@ def data_deduplication_alignments(testdata_dirname):
 @pytest.fixture(scope="module")
 def data_reporters_count(testdata_dirname):
     data_dir = os.path.join(testdata_dirname, "data", "reporters_count")
+    return data_dir
+
+@pytest.fixture(scope="module")
+def data_reporters_store(testdata_dirname):
+    data_dir = os.path.join(testdata_dirname, "data", "reporters_store")
     return data_dir
 
 
@@ -419,43 +423,38 @@ def test_reporters_count(
     assert result.exit_code == 0
     assert os.path.exists(output)
 
-# @pytest.mark.parametrize(
-#     "cooler_fn,bin_size,output,flags",
-#     [
-#         "SAMPLE-A_REP1.hdf5", int(1e5), "binned.hdf5", []),
-#     ],
-# )
-# def test_reporters_store_binned(
-#     cli_runner,
-#     data_deduplication_alignments,
-#     data_reporters_count,
-#     tmpdir,
-#     slices,
-#     bins,
-#     viewpoints,
-#     output,
-#     flags,
-# ):
+@pytest.mark.parametrize(
+    "cooler_fn,bin_size,output,flags",
+    [
+        ("SAMPLE-A_REP1.hdf5", int(1e5), "binned.hdf5", []),
+    ],
+)
+def test_reporters_store_binned(
+    cli_runner,
+    data_reporters_store,
+    tmpdir,
+    cooler_fn,
+    bin_size,
+    output,
+    flags,
+):
 
-#     slices = os.path.join(data_deduplication_alignments, slices)
-#     bins = os.path.join(data_reporters_count, bins)
-#     viewpoints = os.path.join(data_reporters_count, viewpoints)
-#     output = os.path.join(tmpdir, output)
+    clr = os.path.join(data_reporters_store, cooler_fn)
+    output = os.path.join(tmpdir, output)
 
-#     result = cli_runner.invoke(
-#         cli,
-#         [
-#             "reporters",
-#             "count",
-#             slices,
-#             "-o",
-#             output,
-#             "-f",
-#             bins,
-#             "-v",
-#             viewpoints,
-#             *flags,
-#         ],
-#     )
-#     assert result.exit_code == 0
-#     assert os.path.exists(output)
+    result = cli_runner.invoke(
+        cli,
+        [
+            "reporters",
+            "store",
+            "bins",
+            clr,
+            "-o",
+            output,
+            "-b",
+            bin_size,
+            *flags,
+        ],
+    )
+    assert result.exit_code == 0
+    assert os.path.exists(output)
