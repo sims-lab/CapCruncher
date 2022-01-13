@@ -26,6 +26,7 @@ def identify(
     viewpoint: str = "",
     buffer: int = 1e6,
     read_type: str = "flashed",
+    n_cores: int = 1,
 ):
     """
     Identifies aligned fragments with duplicate coordinates.
@@ -58,7 +59,7 @@ def identify(
     if input_file_type in ["hdf5", "parquet"]:
         # Will use dask for these
         cluster = dask.distributed.LocalCluster(
-            n_workers=4, dashboard_address=None, processes=True
+            n_workers=n_cores, dashboard_address=None, processes=True
         )
         client = dask.distributed.Client(cluster)
 
@@ -122,6 +123,7 @@ def remove(
     read_type: str = "",
     stats_prefix: os.PathLike = "",
     file_type: str = "hdf5",
+    n_cores: int = 1,
 ):
     """
     Removes duplicated aligned fragments.
@@ -155,7 +157,7 @@ def remove(
     if input_file_type in ["hdf5", "parquet"]:
         # Will use dask for these
         cluster = dask.distributed.LocalCluster(
-            n_workers=4, dashboard_address=None, processes=True
+            n_workers=n_cores, dashboard_address=None, processes=True
         )
         client = dask.distributed.Client(cluster)
 

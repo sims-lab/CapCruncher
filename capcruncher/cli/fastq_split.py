@@ -22,7 +22,8 @@ def run_unix_split(fn: os.PathLike,
                    read_number: int,
                    output_prefix: os.PathLike = '',
                    gzip: bool = False,
-                   compression_level: int = 5):
+                   compression_level: int = 5,
+                   n_cores=1):
 
     statement = []    
     if fn.endswith(".gz"):
@@ -34,7 +35,7 @@ def run_unix_split(fn: os.PathLike,
 
     if gzip:
         statement.append(
-            f"ls {output_prefix}_part* | xargs -P 8 -n 1 gzip -{compression_level}"
+            f"ls {output_prefix}_part* | xargs -P {n_cores} -n 1 gzip -{compression_level}"
         )
 
     subprocess.run(' '.join(statement), shell=True)
@@ -47,6 +48,7 @@ def split(
     compression_level: int = 5,
     n_reads: int = 1000000,
     gzip: bool = True,
+    n_cores: int = 1,
 ):
     """ 
     Splits fastq file(s) into equal chunks of n reads.
@@ -105,20 +107,22 @@ def split(
 
     elif method == "unix": # Using unix split to perform the splitting
 
-        
+
         tasks = []
+        n_cores_per_task = (n_cores // 2) if (n_cores // 2) > 1 else 1
         for ii, fn in enumerate(input_files):
             t = delayed(run_unix_split)(fn, 
                                         n_reads=n_reads,
                                         read_number=ii+1,
                                         gzip=gzip,
                                         compression_level=compression_level,
-                                        output_prefix=output_prefix)
+                                        output_prefix=output_prefix,
+                                        n_cores=n_cores_per_task)
             
             tasks.append(t)
         
         # Run splitting
-        Parallel(n_jobs=2)(tasks)
+        Parallel(n_jobs=2 if n_cores > 1 else 1)(tasks)
 
 
         # The suffixes are in the format 00, 01, 02 etc need to replace with int
