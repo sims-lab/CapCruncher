@@ -91,6 +91,12 @@ def repartition_csvs(
     default="flashed",
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
 )
+@click.option(
+    "-p",
+    "--n_cores",
+    help="Number of parallel processes to use",
+    default=1,
+)
 def cis_and_trans_stats(
     slices: str,
     output: str,
@@ -98,6 +104,7 @@ def cis_and_trans_stats(
     file_type: str = "hdf5",
     sample_name: str = "",
     read_type: str = "",
+    n_cores: int = 1,
 ):
 
     from capcruncher.tools.filter import (
@@ -148,10 +155,8 @@ def cis_and_trans_stats(
         import dask.distributed
 
         client = dask.distributed.Client(
-            n_workers=4, dashboard_address=None, processes=True
+            n_workers=n_cores, dashboard_address=None, processes=True
         )
-
-        # breakpoint()
 
         ddf = dd.read_parquet(slices, engine="pyarrow")
         ddf_cis_trans_stats = ddf.map_partitions(

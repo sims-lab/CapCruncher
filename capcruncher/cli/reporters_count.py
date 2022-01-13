@@ -1,6 +1,6 @@
+from concurrent.futures import thread
 import xopen
 import os
-import tqdm
 import logging
 import tempfile
 import glob
@@ -11,13 +11,26 @@ from capcruncher.tools.io import (
     CCHDF5ReaderProcess,
     CCParquetReaderProcess,
     FragmentCountingProcess,
-    CCHDF5WriterProcess,
     CCCountsWriterProcess,
 )
 import capcruncher.cli.reporters_store
 import capcruncher.tools.storage
 from capcruncher.tools.count import get_counts_from_tsv, get_counts_from_tsv_by_batch
 from capcruncher.utils import get_categories_from_hdf5_column, get_file_type
+
+def get_number_of_reader_threads(n_cores):
+    threads = (n_cores // 2)
+
+    if 1 < threads < 4:
+        threads = threads
+    elif threads < 1:
+        threads = 1
+    else:
+        threads = 4
+    
+    return threads
+
+
 
 
 def count(
@@ -54,6 +67,10 @@ def count(
 
     input_file_type = get_file_type(reporters) if file_type == "auto" else file_type
     output_file_type = get_file_type(output)
+
+    if output_file_type != "hdf5" and not output_as_cooler:
+        raise NotImplementedError("Currently only cooler output supported")
+
 
     if output_file_type == "tsv":
         with xopen.xopen(output, mode="wb", threads=4) as writer:
@@ -103,6 +120,7 @@ def count(
             )
 
         elif input_file_type == "parquet":
+            import pyarrow
             import dask.dataframe as dd
 
 
@@ -136,7 +154,11 @@ def count(
                 selection_mode=mode,
             )
 
-        n_worker_processes = ((n_cores - 1) // 2)
+        # Multiprocessing set-up
+        n_reading_threads = get_number_of_reader_threads(n_cores=n_cores)
+        pyarrow.set_cpu_count(n_reading_threads)
+
+        n_worker_processes = ((n_cores - n_reading_threads) // 2)
         n_counting_processes = n_worker_processes if n_worker_processes > 1 else 1
         n_writing_processes =  n_counting_processes
 
