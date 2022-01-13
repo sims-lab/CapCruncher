@@ -78,7 +78,7 @@ def annotate(
     overlap_fractions: Tuple = None,
     output: os.PathLike = None,
     duplicates: str = "remove",
-    n_cores: int = 6,
+    n_cores: int = 1,
     invalid_bed_action: str = "error",
 ):
     """

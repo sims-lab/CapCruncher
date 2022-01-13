@@ -59,7 +59,7 @@ def split(*args, **kwargs):
     required=True,
 )
 @click.option("-o", "--output_file", default="out.fastq.gz")
-@click.option("-p", "--n_cores", default=4, type=click.INT)
+@click.option("-p", "--n_cores", default=1, type=click.INT)
 @click.option("--minimum_slice_length", default=18, type=click.INT)
 @click.option("--keep_cutsite", default=False)
 @click.option(
