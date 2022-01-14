@@ -82,8 +82,8 @@ def format_run_stats_for_flash_figure(
         .loc[lambda df: df["stat_type"] == "unfiltered"]
         .assign(
             read_type=lambda df: df["read_type"]
-            .replace("flashed", "Flashed")
-            .replace("pe", "PE")
+            .replace("flashed", "Combined")
+            .replace("pe", "Not Combined")
         )
         .groupby(["sample", "stage", "stat_type", "read_type"])["stat"]
         .mean()
@@ -99,17 +99,23 @@ def plot_flash_summary(run_stats_path: os.PathLike):
     fig = px.bar(
         data_frame=df,
         x="stat",
-        y="sample",
+        y="stat_type",
         color="read_type",
+        facet_row="sample",
         template="simple_white",
         category_orders={
             "sample": sorted(df["sample"]),
             "read_type": ["Flashed", "PE"],
         },
     )
-    fig.update_layout(legend_title_text="")
-    fig.update_yaxes(title="Sample")
-    fig.update_xaxes(title="Number of Read Pairs")
+    fig.update_layout(
+        legend_title_text="",
+        margin={"b": 10},
+    )
+    fig.update_yaxes(title="", autorange="reversed")
+    fig.update_xaxes(matches=None, showticklabels=True)
+    fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
+    fig.layout["xaxis"]["title"]["text"] = "Number of Slices (Reads with RE sites)"
     fig.update_traces(marker_line_width=0)
 
     return fig
@@ -192,7 +198,7 @@ def plot_digestion_histogram(digestion_stats_histogram_path: os.PathLike):
 
 def format_alignment_filtering_read_stats(filtering_read_stats_path: os.PathLike):
     df = pd.read_csv(filtering_read_stats_path)
-    return (
+    df = (
         df.sort_values("stat", ascending=False)
         .query('stat_type != "not-deduplicated"')
         .replace("duplicate_filtered", "partial_duplicate_removal")
@@ -208,6 +214,18 @@ def format_alignment_filtering_read_stats(filtering_read_stats_path: os.PathLike
             sample=lambda df: df["sample"].str.replace("_", " "),
         )
     )
+    df.loc[
+        (df["stat_type"] == "Full PCR Duplicate Removal") & 
+        (df["read_type"] == "PE"),
+        "stat",] = (
+        df.loc[
+            (df["stat_type"] == "Full PCR Duplicate Removal")
+            & (df["read_type"] == "PE"),
+            "stat",
+        ]
+        // 2
+    )
+    return df
 
 
 def plot_alignment_filtering_read_summary(filtering_read_stats_path: os.PathLike):
@@ -255,6 +273,7 @@ def plot_reporter_summary(reporter_stats_path: os.PathLike):
             "sample": sorted(df["sample"].unique()),
         },
         labels={"count": "Number of reporters"},
+        facet_row_spacing=0.1,
     )
     fig.update_yaxes(title_text="")
     fig.update_xaxes(matches=None, showticklabels=True)
@@ -263,3 +282,118 @@ def plot_reporter_summary(reporter_stats_path: os.PathLike):
     fig.update_layout(legend={"traceorder": "reversed", "title": ""})
     fig.update_traces(marker_line_width=0)
     return fig
+
+
+def format_run_stats_for_overall_summary(run_stats_path: os.PathLike):
+
+    df = pd.read_csv(run_stats_path)
+    df = df.sort_values("stat", ascending=False)
+
+    stat_type_mapping = {
+        "reads_total": "Total Reads",
+        "reads_unique": "PCR Duplicate Filtered (1st pass)",
+        "unfiltered": "Passed Trimming and Combining",
+        "filtered": "Passed restriction site filter.",
+        "mapped": "Mapped to reference genome",
+        "contains_single_viewpoint": "Contains a viewpoint Slice",
+        "contains_viewpoint_and_reporter": "Contains a viewpoint and Reporter Slice",
+        "duplicate_filtered": "PCR Duplicate Filtered (2nd pass, partial)",
+        "deduplicated": "PCR Duplicate Filtered (final pass)",
+    }
+
+    df = df.assign(
+        stat_type=lambda df: df["stat_type"].map(stat_type_mapping),
+        read_type=lambda df: df["read_type"]
+        .replace("flashed", "Flashed")
+        .replace("pe", "PE"),
+        sample=lambda df: df["sample"].str.replace("_", " "),
+    )
+
+    return df
+
+
+def plot_overall_summary(run_stats_path: os.PathLike):
+
+    df = format_run_stats_for_overall_summary
+
+    fig = px.bar(
+        df.query("(read_number != 2) and (stage == stage) "),
+        x="stat",
+        y="stat_type",
+        color="read_type",
+        template="simple_white",
+        facet_row="sample",
+        category_orders={
+            "stat_type": df["stat_type"].unique(),
+            "sample": sorted(df["sample"].unique()),
+            "read_type": ["Flashed", "PE"],
+        },
+    )
+    fig.update_yaxes(title_text="")
+    fig.update_xaxes(matches=None, showticklabels=True)
+    fig.update_layout(legend_title_text="")
+    fig.for_each_annotation(lambda a: a.update(text=f'{a.text.split("=")[1]}'))
+    fig.layout["xaxis"]["title_text"] = "Number of Read Pairs"
+    fig.update_traces(marker_line_width=0)
+
+    return fig
+
+
+def plot_report(
+    capcruncher_statistics_path: os.PathLike, output: os.PathLike = "report.html"
+):
+
+    # Get paths
+    fastq_deduplication_path = os.path.join(
+        capcruncher_statistics_path, "deduplication/deduplication.summary.csv"
+    )
+    fastq_trimming_path = os.path.join(
+        capcruncher_statistics_path, "trimming/trimming.summary.csv"
+    )
+    fastq_digestion_hist_path = os.path.join(
+        capcruncher_statistics_path, "digestion/digestion.histogram.csv"
+    )
+    fastq_digestion_read_path = os.path.join(
+        capcruncher_statistics_path, "digestion/digestion.reads.csv"
+    )
+    reporter_read_path = os.path.join(
+        capcruncher_statistics_path, "reporters/reporters.reads.csv"
+    )
+    reporter_cis_trans_path = os.path.join(
+        capcruncher_statistics_path, "reporters/reporters.reporters.csv"
+    )
+    run_stats_path = os.path.join(capcruncher_statistics_path, "run_statistics.csv")
+
+    # Extract HTML template
+    dir_pipeline = os.path.dirname(os.path.abspath(__file__))
+    path_html_template = os.path.join(dir_pipeline, "report_template.html")
+
+    html_header = """
+    <html>
+    <head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
+    <style>
+        body {
+            margin: 0 100;
+            background: whitesmoke;
+        }
+    </style>
+    </head>
+    <body>
+    <h1>Run statistics</h1>
+    <p>This report provides statistics for all major pre-processing and filtering steps performed by the pipeline.
+        All charts are interactive so hovering over areas of interest will provide additional information.</p>
+    """
+
+    html_footer = """</body>
+                     </html>"""
+
+    section_template = """    
+    <!-- *** Section SECTION_NUMBER *** --->
+    <h2>SECTION_NAME</h2>
+    <p>SECTION_DESCRIPTION</p>
+    <iframe width="1000" height="1000" frameborder="0" seamless="seamless" scrolling="no" \
+        src="PLOT_URL.embed?width=1000&height=1000"></iframe>"""
+
+    # Deduplication
+    plot_deduplication_stats(fastq_deduplication_path)
