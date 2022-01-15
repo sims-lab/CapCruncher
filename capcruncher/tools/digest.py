@@ -281,7 +281,7 @@ class ReadDigestionProcess(multiprocessing.Process):
             if i == 0:
                 digested.append(DigestedRead(read, **digestion_kwargs))
             else:
-                digestion_kwargs["slice_number_offset"] = digested[
+                digestion_kwargs["slice_number_start"] = digested[
                     i - 1
                 ].slices_filtered
                 digested.append(DigestedRead(read, **digestion_kwargs))
