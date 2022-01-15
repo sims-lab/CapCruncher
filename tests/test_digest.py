@@ -188,7 +188,7 @@ def data_path():
 @pytest.mark.parametrize(
     "fastq_files,enzyme,mode,n_reads_raw,n_reads_filt",
     [
-        (("digest_1.fastq.gz",), "dpnii", "flashed", 1512, 876),
+        (("digest_1.fastq.gz",), "dpnii", "flashed", 1512, 802),
         (("digest_1.fastq.gz", "digest_2.fastq.gz"), "dpnii", "pe", 1512, 1512),
         pytest.param(
             ("digest_1.fastq.gz", "digest_2.fastq.gz"),
