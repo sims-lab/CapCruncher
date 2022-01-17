@@ -1280,6 +1280,13 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
+    #Zero fragments
+    for fn in fragments:
+        try:
+            zap_file(fn)
+        except FileNotFoundError:
+            pass
+
 
 @follows(alignments_deduplicate_fragments)
 @collate(
@@ -1331,9 +1338,13 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
     )
 
     #Zero non-deduplicated reporters
-    for s in slices:
-        zap_file(s)
+    for fn in slices:
+        try:
+            zap_file(fn)
+        except FileNotFoundError:
+            pass
 
+    # Make sentinel file
     touch_file(outfile)
 
 
@@ -1509,9 +1520,8 @@ def reporters_count(infile, outfile):
     )
 
     # Link bin tables to conserve space
-    from capcruncher.tools.storage import link_common_cooler_tables
-
-    link_common_cooler_tables(output_counts)
+    # from capcruncher.tools.storage import link_common_cooler_tables
+    # link_common_cooler_tables(output_counts)
     touch_file(outfile)
 
 
@@ -1551,7 +1561,7 @@ def generate_bin_conversion_tables(outfile):
         pickle.dump(binner_dict, w)
 
 
-@active_if(P.PARAMS.get("analysis_bin_size"))
+@active_if(P.PARAMS.get("analysis_bin_size", 0) > 0)
 @follows(
     generate_bin_conversion_tables,
 )
