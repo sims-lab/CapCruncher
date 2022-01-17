@@ -58,14 +58,10 @@ jobs:
     - name: Conda list
       shell: pwsh
       run: mamba list
-    - name: Test with pytest
+    - name: Test with pytest and generate report
       shell: pwsh
       run: |
-        pytest
-    - name: Generate coverage report
-      shell: pwsh
-      run: |
-        pytest --cov=./ --cov-report=xml
+        pytest -vv -s --log-cli-level debug --cov=./ --cov-report=xml
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v1
       with:

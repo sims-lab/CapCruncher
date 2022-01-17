@@ -442,7 +442,7 @@ class ClickDirective(rst.Directive):
 
         for line in lines:
             LOG.debug(line)
-            print(line)
+            #print(line)
             result.append(line, source_name)
 
         sphinx_nodes.nested_parse_with_titles(self.state, result, section)

@@ -1,7 +1,13 @@
-from typing import Iterable, Literal
+from typing import Iterable, List, Literal
 import click
 from capcruncher.cli import UnsortedGroup
 import ast
+import pandas as pd
+from cgatcore.iotools import touch_file
+import os
+import logging
+import glob
+from capcruncher.utils import get_file_type
 
 
 def strip_cmdline_args(args):
@@ -77,6 +83,7 @@ def repartition_csvs(
 @click.argument("slices")
 @click.option("-o", "--output", help="Output file name")
 @click.option("-m", "--method", type=click.Choice(["capture", "tri", "tiled"]))
+@click.option("--file-type", type=click.Choice(["parquet", "hdf5", "tsv"]))
 @click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
 @click.option(
     "--read-type",
@@ -84,16 +91,22 @@ def repartition_csvs(
     default="flashed",
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
 )
+@click.option(
+    "-p",
+    "--n_cores",
+    help="Number of parallel processes to use",
+    default=1,
+)
 def cis_and_trans_stats(
     slices: str,
     output: str,
     method: Literal["capture", "tri", "tiled"],
+    file_type: str = "hdf5",
     sample_name: str = "",
     read_type: str = "",
+    n_cores: int = 1,
 ):
 
-    import pandas as pd
-    from cgatcore.iotools import touch_file
     from capcruncher.tools.filter import (
         CCSliceFilter,
         TriCSliceFilter,
@@ -107,11 +120,145 @@ def cis_and_trans_stats(
     }
     slice_filterer = filters.get(method)
 
-    df_slices = pd.read_csv(slices, sep="\t")
+    if file_type == "tsv":
+        df_slices = pd.read_csv(slices, sep="\t")
 
-    try:
-        slice_filterer(
-            df_slices, sample_name=sample_name, read_type=read_type
-        ).cis_or_trans_stats.to_csv(output, index=False)
-    except:
-        touch_file(output)
+        try:
+            slice_filterer(
+                df_slices, sample_name=sample_name, read_type=read_type
+            ).cis_or_trans_stats.to_csv(output, index=False)
+        except Exception as e:
+            logging.info(f"Exception: {e} occured with {slices}")
+            touch_file(output)
+
+    elif file_type == "hdf5":
+
+        slices_iterator = pd.read_hdf(slices, "slices", chunksize=1e6, iterator=True)
+        slice_stats = pd.DataFrame()
+
+        for df in slices_iterator:
+            sf = slice_filterer(df, sample_name=sample_name, read_type=read_type)
+            stats = sf.cis_or_trans_stats
+
+            slice_stats = (
+                pd.concat([slice_stats, stats])
+                .groupby(["viewpoint", "cis/trans", "sample", "read_type"])
+                .sum()
+                .reset_index()
+            )
+
+        slice_stats.to_csv(output, index=False)
+
+    elif file_type == "parquet":
+
+        import dask.dataframe as dd
+        import dask.distributed
+
+        client = dask.distributed.Client(
+            n_workers=n_cores, dashboard_address=None, processes=True
+        )
+
+        ddf = dd.read_parquet(slices, engine="pyarrow")
+        ddf_cis_trans_stats = ddf.map_partitions(
+            lambda df: slice_filterer(
+                df, sample_name=sample_name, read_type=read_type
+            ).cis_or_trans_stats
+        )
+        ddf_cis_trans_stats_summary = (
+            ddf_cis_trans_stats.groupby(
+                ["viewpoint", "cis/trans", "sample", "read_type"]
+            )
+            .sum()
+            .reset_index()
+        )
+        ddf_cis_trans_stats_summary.to_csv(output, index=False, single_file=True)
+        client.close()
+
+
+@cli.command()
+@click.argument("infiles", nargs=-1, required=True)
+@click.option("-o", "--outfile", help="Output file name")
+@click.option(
+    "-i",
+    "--index-cols",
+    help="Columns to use as data_columns for queries",
+    multiple=True,
+)
+@click.option(
+    "-c",
+    "--category-cols",
+    help="Categorical columns",
+    multiple=True,
+)
+@click.option(
+    "-p", "--n-cores", help="Number of processes to use for merging", type=click.INT
+)
+def merge_capcruncher_slices(
+    infiles: Iterable,
+    outfile: os.PathLike,
+    index_cols: List[str] = None,
+    category_cols: List[str] = None,
+    n_cores: int = 1,
+):
+
+    import dask.dataframe as dd
+    import dask.distributed
+
+    client = dask.distributed.Client(
+        n_workers=n_cores, dashboard_address=None, processes=True
+    )
+    storage_kwargs = {}
+    output_format = get_file_type(outfile)
+
+    if output_format == "hdf5":
+        storage_kwargs.update({"data_columns": index_cols} if index_cols else {})
+
+        ddf = dd.read_hdf(infiles, key="slices")
+
+        # TODO: Bug when selecting columns using a string category
+        # To fix, explicitly convert to string before writing
+        transform_to_string = dict()
+        transformed_categories = dict()
+        max_len = dict()
+        for col in index_cols:
+            if ddf[col].dtype == "category":
+                transform_to_string[col] = str
+                transformed_categories[col] = list(ddf[col].cat.categories)
+                max_len[col] = max([len(cat) for cat in ddf[col].cat.categories])
+
+        ddf = ddf.astype(transform_to_string)
+
+        if category_cols:
+            ddf = ddf.categorize(columns=[*category_cols])
+
+        # breakpoint()
+        ddf = ddf.sort_values([*index_cols], npartitions="auto")
+
+        ddf.to_hdf(
+            outfile,
+            key="slices",
+            complib="blosc",
+            complevel=2,
+            min_itemsize=max_len,
+            **storage_kwargs,
+        )
+
+        with pd.HDFStore(outfile, "a") as store:
+            store.create_table_index("slices", columns=index_cols, kind="full")
+
+            if transformed_categories:
+                store.put(
+                    "/slices_category_metadata", pd.DataFrame(transformed_categories)
+                )
+
+    elif output_format == "parquet":
+
+        ddf = dd.read_parquet(
+            infiles,
+            chunksize="100MB",
+            aggregate_files=True,
+            engine="pyarrow"
+        )
+        ddf.to_parquet(outfile, compression="snappy", engine="pyarrow")
+
+    client.close()

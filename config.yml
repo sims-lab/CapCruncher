@@ -36,8 +36,8 @@ analysis:
     # Genomic window size(s) to use for binning restriction fragment interaction counts
     # into even genomic windows. Only bin sizes that are present here will be allowed 
     # to be used for heatmap generation.
-    # (Required, will become optional for capture mode in a later update)
-    bin_size: 2500
+    # (Optional) Leave blank to prevent binning
+    bin_size: 0
 
 genome:
     
@@ -98,9 +98,11 @@ pipeline:
     # (Required if using in cluster mode)
     memory: 32G
 
-    # Level of gzip compression to use for output files (1-9 with 9 being the slowest but best compressed)
-    # (Required, only alter if enhanced compression needed.)
-    compression: 5
+    # Level of compression (gzip currently) to use for output files (1-9 with 9 being the slowest but best compressed)
+    # A value of 0 indicates that compression will not be performed at all stages.
+    # It is highly recomended to avoid compression if possible as intermediate files will be removed to reduce space
+    # (Required)
+    compression: 0
 
 
 ###################################
@@ -139,6 +141,19 @@ analysis_optional:
     # Can be useful for troubleshooting errors with coordinates
     # (Debugging)
     keep_annotations: False
+
+
+    # Forces the pipeline to produce bigwigs when a high level of viewpoints are detected.
+    # This is not advised due to the high number of files that can be generated.
+    # In these situations it is advised to manually select the viewpoints for visualisation.
+    # (Optional)
+    force_bigwig_generation: False
+
+    # Changes the storage format used for slices.
+    # Options: tsv, hdf5, parquet
+    # Highly recomended to leave this as the default as other options may not be as robust
+    # (Optional)
+    storage_format: parquet 
    
 
 deduplication:

@@ -4,7 +4,16 @@ from functools import cached_property
 from importlib import import_module, metadata
 import subprocess
 import warnings
+import logging
+import sys
 
+
+# create logger
+logger = logging.getLogger("capcruncher")
+logger.setLevel(logging.INFO)
+logging.basicConfig(
+    format="%(levelname)s:%(asctime)s %(module)-20s %(message)s", level=logging.INFO
+)
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
@@ -56,11 +65,14 @@ def cli():
 
 
 @cli.command(context_settings=dict(ignore_unknown_options=True))
-@click.option("-h", "--help", is_flag=True)
+@click.option("-h", "--help", "show_help", is_flag=True)
+@click.option("--version", "show_version", is_flag=True)
 @click.version_option(metadata.version(distribution_name="capcruncher"))
-@click.argument("mode", type=click.Choice(["make", "plot", "show", "clone", "touch"]))
+@click.argument(
+    "mode", type=click.Choice(["make", "run", "plot", "show", "clone", "touch"])
+)
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
-def pipeline(mode, pipeline_options, help=False, version=False):
+def pipeline(mode, pipeline_options, show_help=False, show_version=False):
 
     """Runs the data processing pipeline"""
 
@@ -71,11 +83,15 @@ def pipeline(mode, pipeline_options, help=False, version=False):
     cmd = [
         "python",
         f"{dir_package}/pipeline/pipeline.py",
-        mode,
     ]
-
-    if help:
+    
+    if show_help:
         cmd.append("--help")
+        subprocess.run(cmd)
+        sys.exit()
+
+    cmd.append(mode.replace("run", "make"))
+
 
     if pipeline_options:
         cmd.extend(pipeline_options)
@@ -88,16 +104,18 @@ def pipeline(mode, pipeline_options, help=False, version=False):
         warnings.showwarning(
             "DRMAA_LIBRARY_PATH is incorrect. Implicitly using --local with 4 cores",
             category=UserWarning,
-            filename='CapCruncher CLI',
-            lineno=113)
+            filename="CapCruncher CLI",
+            lineno=113,
+        )
         cmd.append("--local")
         cmd.append("-p 4")
 
     completed = subprocess.run(cmd)
 
     if not completed.returncode == 0:
-        raise RuntimeError("CapCruncher pipeline failed. Check pipeline.log for details")
-
+        raise RuntimeError(
+            "CapCruncher pipeline failed. Check pipeline.log for details"
+        )
 
 
 @cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_fastq:cli")
@@ -123,13 +141,32 @@ def alignments():
 def reporters():
     """Reporter counting, storing, comparison and pileups"""
 
+
 @cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_plot:cli")
 def plot():
     """
     Generates plots for the outputs produced by CapCruncher
     """
 
+
 @cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_utilities:cli")
 def utilities():
     """Contains miscellaneous functions"""
 
+
+__all__ = [
+    "alignments_annotate",
+    "alignments_deduplicate",
+    "alignments_filter",
+    "fastq_deduplicate",
+    "fastq_split",
+    "fastq_digest",
+    "fastq_split",
+    "genome_digest",
+    "plot",
+    "reporters_compare",
+    "reporters_count",
+    "reporters_differential",
+    "reporters_pileup",
+    "reporters_store",
+]
