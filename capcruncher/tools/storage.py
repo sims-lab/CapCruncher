@@ -541,6 +541,8 @@ def link_common_cooler_tables(clr: os.PathLike):
      clr (os.PathLike): Path to cooler hdf5 produced by the merge command.
     """
 
+    logging.info("Making links to common cooler tables to conserve disk space")
+
     with h5py.File(clr, "a") as f:
 
         # Get all viewpoints stored
@@ -558,10 +560,16 @@ def link_common_cooler_tables(clr: os.PathLike):
             del f[viewpoint]["bins"]
             f[viewpoint]["bins"] = f[viewpoints[0]]["bins"]
 
+            # Delete chroms table and replace with link to the first "chroms" group
+            del f[viewpoint]["chroms"]
+            f[viewpoint]["bins"] = f[viewpoints[0]]["chroms"]
+
+
+            # Repeat for resolutions i.e. binned coolers
             if resolutions:
                 for resolution in resolutions:
-                    # Repeat for resolutions i.e. binned coolers
                     del f[viewpoint]["resolutions"][resolution]["bins"]
-                    f[viewpoint]["resolutions"][resolution]["bins"] = f[viewpoints[0]][
-                        "resolutions"
-                    ][resolution]["bins"]
+                    f[viewpoint]["resolutions"][resolution]["bins"] = f[viewpoints[0]]["resolutions"][resolution]["bins"]
+
+                    del f[viewpoint]["resolutions"][resolution]["chroms"]
+                    f[viewpoint]["resolutions"][resolution]["chroms"] = f[viewpoints[0]]["resolutions"][resolution]["chroms"]
