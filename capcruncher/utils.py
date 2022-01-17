@@ -8,14 +8,15 @@ from collections import OrderedDict
 from datetime import timedelta
 from functools import wraps
 from itertools import cycle, groupby
-from typing import Callable, IO, Iterable, Tuple, Union, Generator
+from typing import Any, Callable, IO, Iterable, Literal, Tuple, Union, Generator, List
+import numpy as np
 
-import click
 import pandas as pd
 import ujson
 import xxhash
 from pybedtools import BedTool
 import pybedtools
+import pickle
 
 
 def read_dataframes(filenames: Iterable, **kwargs):
@@ -32,7 +33,9 @@ def read_dataframes(filenames: Iterable, **kwargs):
     if len(dframes) > 0:
         return dframes
     else:
-        raise RuntimeError(f"All dataframes supplied are empty or incorrectly formatted: {filenames}")
+        raise RuntimeError(
+            f"All dataframes supplied are empty or incorrectly formatted: {filenames}"
+        )
 
 
 def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
@@ -101,18 +104,15 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
     except Exception as e:
 
         if isinstance(e, FileNotFoundError):
-            if verbose:
-                print("Bed file not found")
+            logging.debug(f"Bed file not found")
 
         elif isinstance(e, IndexError):
-            if verbose:
-                print(
-                    "Wrong number of fields detected, check separator/ number of columns"
+            logging.debug(
+                    f"Wrong number of fields detected check separator/ number of columns"
                 )
 
         else:
-            if verbose:
-                print(e)
+            logging.debug(f"Exception raised {e}")
 
 
 def bed_has_name(bed: Union[str, BedTool]) -> bool:
@@ -167,6 +167,7 @@ def get_re_site(recognition_site: str = None) -> str:
         cutsite = known_enzymes[recognition_site.lower()]
 
     else:
+        logging.error("No restriction site or recognised enzyme provided")
         raise ValueError("No restriction site or recognised enzyme provided")
 
     return cutsite
@@ -229,15 +230,50 @@ def intersect_bins(
     return df_intersect
 
 
-def load_json(fn, dtype: str = "int") -> dict:
-    """Convinence function to load gziped json file using xopen."""
+def load_dict(fn, format: str, dtype: str = "int") -> dict:
+    """Convinence function to load gziped json/pickle file using xopen."""
 
     from xopen import xopen
+    import itertools
 
-    with xopen(fn) as r:
-        d = ujson.load(r)
+    
+    if format == "json":
+        with xopen(fn) as r:
+            d = ujson.load(r)
+    elif format == "pickle":
+        with xopen(fn, "rb") as r:
+            d = pickle.load(r)
 
-    return {int(k): int(v) for k, v in d.items()}
+    key_sample = list(itertools.islice(d, 50))
+    required_dtype = eval(dtype)
+
+    if all(isinstance(k, required_dtype) for k in key_sample):
+        return d
+    elif isinstance(d, set):
+        return {required_dtype(k) for k in d}
+    elif isinstance(d, dict):
+        return {required_dtype(k): required_dtype(v) if v else None for k,v in d.items()}
+
+
+def save_dict(obj: Union[dict, set], fn: os.PathLike, format: str) -> dict:
+    """Convinence function to save [gziped] json/pickle file using xopen."""
+
+    from xopen import xopen
+    
+    if format == "json":
+        with xopen(fn, "w") as w:
+            if isinstance(obj, set):
+                d = dict.fromkeys(obj)
+            else:
+                d = obj
+            ujson.dump(d, w)
+    elif format == "pickle":
+        with xopen(fn, "wb") as w:
+            pickle.dump(obj, w)
+
+    return fn
+
+
 
 
 def get_timing(task_name=None) -> Callable:
@@ -253,7 +289,7 @@ def get_timing(task_name=None) -> Callable:
             time_end = time.perf_counter()
 
             time_taken = timedelta(seconds=(time_end - time_start))
-            print(f"Completed {task_name} in {time_taken} (hh:mm:ss.ms)")
+            logging.info(f"Completed {task_name} in {time_taken} (hh:mm:ss.ms)")
             return result
 
         return wrapped
@@ -419,7 +455,114 @@ def gtf_line_to_bed12_line(df):
     )
 
 
-class PysamFakeEntry:
+def get_file_type(fn: os.PathLike) -> str:
+    """
+    Determines file type based on extension.
+
+    Args:
+        fn (os.PathLike): Path to extract file extension from.
+
+    Returns:
+        str: File type
+    """
+
+    file_types = {
+        "hdf5": "hdf5",
+        "hdf": "hdf5",
+        "json": "json",
+        "tsv": "tsv",
+        "h5": "hdf5",
+        "pkl": "pickle",
+        "pickle": "pickle",
+        "parquet": "parquet",
+    }
+
+    ext = os.path.splitext(os.path.basename(fn).replace(".gz", ""))[-1].strip(".")
+
+
+    try:
+        return file_types[ext]
+    except KeyError as e:
+        logging.debug(f"File extension {ext} is not supported")
+        raise e
+
+
+def get_categories_from_hdf5_column(
+    path: os.PathLike,
+    key: str,
+    column: str,
+    null_value: Union[Literal["."], int, float] = ".",
+) -> List[str]:
+    """Extracts all categories from pytables table column.
+
+    Args:
+        path (os.PathLike): Path to hdf5 store
+        key (str): Table name
+        column (str): Column name from which to extract categories
+        null_value (Union[Literal[, optional): [description]. Defaults to ".".
+
+    Returns:
+        List[str]: Category names
+    """
+
+    df_test = pd.read_hdf(path, key, start=0, stop=10)
+
+    # If its a category get from the cat codes
+    if isinstance(df_test.dtypes[column], pd.CategoricalDtype):
+        return [cat for cat in df_test[column].cat.categories.values if not cat == null_value]
+    
+    # Try to extract from the metadata
+    try:
+        with pd.HDFStore(path, "r") as store:
+            #s = store.get_storer(key)
+            # values = getattr(s.attrs, column)
+            values = store[f"{key}_category_metadata"][column].unique()
+            return values
+    except AttributeError:
+        # Just determine from sampling all of the data (HIGHLY inefficient)
+        import dask.dataframe as dd
+        import dask.distributed
+
+        client = dask.distributed.Client(processes=True)
+        values = [x for x in dd.read_hdf(path, key, columns=column)[column].unique().compute()]
+        client.close()
+        return values
+
+
+
+def get_cooler_uri(store: os.PathLike, viewpoint: str, resolution: Union[str, int]):
+
+    cooler_fragment = r"(?P<store>.*?).hdf5::/(?!.*/resolutions/)(?P<viewpoint>.*?)$"
+    cooler_binned = r"(?P<store>.*?).hdf5::/(?P<viewpoint>.*?)/resolutions/(?P<binsize>\d+)$"
+
+    if re.match(cooler_fragment, store):
+        if resolution:
+            uri = f"{store}/resolutions/{resolution}"
+        else:
+            uri =  store
+    
+    elif re.match(cooler_binned, store):
+        uri =  store
+    
+    else:
+
+        if not resolution:
+            uri = f"{store}::/{viewpoint}"
+    
+        else:
+            uri = f"{store}::/{viewpoint}/resolutions/{resolution}"
+
+
+    return uri
+    
+
+
+
+
+    
+
+
+class MockFastqRecord:
     """Testing class used to supply a pysam FastqProxy like object"""
 
     def __init__(self, name, sequence, quality):
@@ -430,3 +573,14 @@ class PysamFakeEntry:
 
     def __repr__(self) -> str:
         return "|".join([self.name, self.sequence, "+", self.quality])
+    
+
+class MockFastaRecord:
+    """Testing class used to supply a pysam FastqProxy like object"""
+
+    def __init__(self, name, sequence):
+        self.name = name
+        self.sequence = sequence
+
+    def __repr__(self) -> str:
+        return f">{self.name}\n{self.sequence}\n"

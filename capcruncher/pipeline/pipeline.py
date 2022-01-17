@@ -36,9 +36,7 @@ Optional:
 """
 
 from collections import defaultdict
-from math import inf
 import os
-from posixpath import dirname
 import re
 import sys
 import pickle
@@ -50,6 +48,7 @@ import glob
 import shutil
 from cgatcore.pipeline.parameters import PARAMS
 from pybedtools.bedtool import BedTool
+import logging
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
@@ -63,9 +62,7 @@ from ruffus import (
     mkdir,
     regex,
     transform,
-    suffix,
     originate,
-    split,
 )
 from capcruncher.tools.statistics import (
     collate_slice_data,
@@ -112,10 +109,26 @@ for key in P.PARAMS:
 # Method of analysis
 ANALYSIS_METHOD = P.PARAMS.get("analysis_method", "capture")
 
+# Defines storage format for slices. Defaults to parquet.
+STORAGE_FORMAT = P.PARAMS.get("analysis_optional_storage_format", "parquet")
+
 # Determines the number of samples being processed
 N_SAMPLES = len(
     {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) for fn in glob.glob("*.fastq*")}
 )
+
+# Determines the number of viewpoints being processed
+try:
+    N_VIEWPOINTS = BedTool(P.PARAMS["analysis_viewpoints"]).count()
+    HAS_HIGH_NUMBER_OF_VIEWPOINTS = (
+        True
+        if N_VIEWPOINTS > 100
+        and not P.PARAMS.get("analysis_optional_force_bigwig_generation")
+        else False
+    )
+except FileNotFoundError:
+    N_VIEWPOINTS = 0
+    HAS_HIGH_NUMBER_OF_VIEWPOINTS = False
 
 # Determines if the design matrix supplied does exist
 HAS_DESIGN = os.path.exists(P.PARAMS.get("analysis_design", ""))
@@ -126,7 +139,7 @@ FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
 # Determines if blacklist is used
 HAS_BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbose=False)
 
-# Has valid plot coordinates for heatmaps
+# Check if the plotting packages are installed
 try:
     import coolbox
 
@@ -138,7 +151,7 @@ except ImportError as e:
     MAKE_PLOTS = False
 
 # Determines if UCSC hub is created from run.
-MAKE_HUB = is_on(P.PARAMS.get("hub_create"))
+MAKE_HUB = is_on(P.PARAMS.get("hub_create")) and not HAS_HIGH_NUMBER_OF_VIEWPOINTS
 HUB_NAME = re.sub(r"[,\s+\t;:]", "_", P.PARAMS.get("hub_name", ""))
 
 # Warn about missing parameters
@@ -266,9 +279,9 @@ def genome_digest(infile, outfile):
             P.PARAMS["analysis_restriction_enzyme"],
             "-o",
             tmp,
-            "-l",
-            f"{tmp}.log",
             "--sort",
+            "-l",
+            outfile.replace(".bed.gz", ".stats"),
         ]
     )
 
@@ -277,6 +290,7 @@ def genome_digest(infile, outfile):
     P.run(
         " && ".join([statement_digest, statement_compress]),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -284,6 +298,10 @@ def genome_digest(infile, outfile):
 #############################
 # Fastq file pre-processing #
 #############################
+
+##########
+# Read QC#
+##########
 
 
 @follows(mkdir("capcruncher_preprocessing"), mkdir("capcruncher_preprocessing/fastqc"))
@@ -341,16 +359,22 @@ def fastq_multiqc(infile, outfile):
             ]
         ),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_memory="2G",
         job_condaenv=P.PARAMS["conda_env"],
     )
 
 
+###################
+# Read processing #
+###################
+
+
 @follows(mkdir("capcruncher_preprocessing/split"))
 @collate(
-    "*.fastq.gz",
+    "*.fastq*",
     regex(r"(.*)_R*[12].fastq.*"),
-    r"capcruncher_preprocessing/split/\1.completed",
+    r"capcruncher_preprocessing/split/\1.sentinel",
 )
 def fastq_split(infiles, outfile):
     """
@@ -368,14 +392,17 @@ def fastq_split(infiles, outfile):
         "-m",
         "unix",
         "-o",
-        outfile.replace(".completed", ""),
+        outfile.replace(".sentinel", ""),
         "-n",
         str(P.PARAMS.get("split_n_reads", 1e6)),
-        "--no-gzip",
+        "--no-gzip" if P.PARAMS.get("pipeline_compression") == 0 else "--gzip",
+        "-p",
+        str(P.PARAMS["pipeline_n_cores"]),
     ]
 
     P.run(
         " ".join(statement),
+        job_threads=P.PARAMS["pipeline_n_cores"],
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
     )
@@ -387,13 +414,13 @@ def fastq_split(infiles, outfile):
 @active_if(FASTQ_DEDUPLICATE)
 @follows(
     mkdir("capcruncher_preprocessing/deduplicated"),
-    mkdir("capcruncher_preprocessing/deduplicated/deduplicated_ids"),
+    mkdir("capcruncher_preprocessing/deduplicated/duplicated_ids"),
     fastq_split,
 )
 @collate(
     "capcruncher_preprocessing/split/*.fastq*",
-    regex(r"capcruncher_preprocessing/split/(.*)_part(\d+)_[12].fastq(?:.gz)?"),
-    r"capcruncher_preprocessing/deduplicated/deduplicated_ids/\1_\2.json.gz",
+    regex(r"capcruncher_preprocessing/split/(.*)_part(\d+)_[12].fastq(.gz)?"),
+    r"capcruncher_preprocessing/deduplicated/duplicated_ids/\1_\2.pkl\3",
     extras=[r"\1", r"\2"],
 )
 def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
@@ -418,6 +445,7 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=2,
         job_memory="6G",
         job_condaenv=P.PARAMS["conda_env"],
     )
@@ -425,8 +453,8 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
 
 @collate(
     fastq_duplicates_parse,
-    regex(r"capcruncher_preprocessing/deduplicated/deduplicated_ids/(.*)_\d*.json.gz"),
-    r"capcruncher_preprocessing/deduplicated/deduplicated_ids/\1.json.gz",
+    regex(r"capcruncher_preprocessing/deduplicated/duplicated_ids/(.*)_\d*.pkl(.gz)?"),
+    r"capcruncher_preprocessing/deduplicated/duplicated_ids/\1.pkl\2",
 )
 def fastq_duplicates_identify(infiles, outfile):
 
@@ -450,6 +478,7 @@ def fastq_duplicates_identify(infiles, outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_memory="32G",
         job_condaenv=P.PARAMS["conda_env"],
     )
@@ -466,7 +495,7 @@ def fastq_duplicates_identify(infiles, outfile):
 @collate(
     "capcruncher_preprocessing/split/*.fastq*",
     regex(r".*/(.*_part\d+)_[12].fastq(?:.gz)?"),
-    r"capcruncher_preprocessing/deduplicated/\1.completed",
+    r"capcruncher_preprocessing/deduplicated/\1.sentinel",
 )
 def fastq_duplicates_remove(infiles, outfile):
 
@@ -477,7 +506,7 @@ def fastq_duplicates_remove(infiles, outfile):
     sample = re.match(r".*/(.*)(_part\d+)_[12].fastq(?:.gz)?", infiles[0])
     sample_name = sample.group(1)
     sample_part = sample.group(2)
-    output_prefix = outfile.replace(".completed", "")
+    output_prefix = outfile.replace(".sentinel", "")
     stats_prefix = (
         f"capcruncher_statistics/deduplication/data/{sample_name}{sample_part}"
     )
@@ -491,13 +520,17 @@ def fastq_duplicates_remove(infiles, outfile):
                 "remove",
                 *infiles,
                 "-d",
-                f"capcruncher_preprocessing/deduplicated/deduplicated_ids/{sample_name}.json.gz",
-                "--sample_name",
+                f"capcruncher_preprocessing/deduplicated/duplicated_ids/{sample_name}.pkl",
+                "--sample-name",
                 sample_name,
-                "--stats_prefix",
+                "--stats-prefix",
                 stats_prefix,
                 "-o",
                 output_prefix,
+                "-p",
+                str(P.PARAMS.get("pipeline_n_cores", "4")),
+                "--hash-read-name",  # Reduces memory by converting the readname to a 64bit hash
+                "--gzip" if ".gz" in infiles[0] else "--no-gzip",
             ]
         )
 
@@ -514,6 +547,7 @@ def fastq_duplicates_remove(infiles, outfile):
 
     P.run(
         statement,
+        job_threads=P.PARAMS["pipeline_n_cores"],
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_memory="6G",
         job_condaenv=P.PARAMS["conda_env"],
@@ -557,7 +591,7 @@ def stats_deduplication_collate(infiles, outfile):
 @collate(
     "capcruncher_preprocessing/deduplicated/*.fastq*",
     regex(r"capcruncher_preprocessing/deduplicated/(.*)_[12].fastq(?:.gz)?"),
-    r"capcruncher_preprocessing/trimmed/\1.completed",
+    r"capcruncher_preprocessing/trimmed/\1.sentinel",
 )
 def fastq_trim(infiles, outfile):
 
@@ -641,7 +675,7 @@ def stats_trim_collate(infiles, outfile):
 @collate(
     "capcruncher_preprocessing/trimmed/*.fq*",
     regex(r"capcruncher_preprocessing/trimmed/(.*)_[12]_.*.fq(?:.gz)?"),
-    r"capcruncher_preprocessing/flashed/\1.completed",
+    r"capcruncher_preprocessing/flashed/\1.sentinel",
 )
 def fastq_flash(infiles, outfile):
 
@@ -651,7 +685,7 @@ def fastq_flash(infiles, outfile):
         "flash",
         " ".join(infiles),
         "-o",
-        outfile.replace(".completed", ""),
+        outfile.replace(".sentinel", ""),
         "-t",
         str(P.PARAMS.get("pipeline_n_cores", 1)),
         "-z",
@@ -681,6 +715,9 @@ def fastq_digest_combined(infile, outfile):
 
     """In silico restriction enzyme digest of combined (flashed) read pairs"""
 
+    n_cores = P.PARAMS["pipeline_n_cores"] - 2
+    n_cores = n_cores if n_cores > 1 else 1
+
     statement = [
         "capcruncher",
         "fastq",
@@ -694,16 +731,18 @@ def fastq_digest_combined(infile, outfile):
         P.PARAMS["analysis_restriction_enzyme"],
         "--minimum_slice_length",
         "18",
-        "--stats_prefix",
+        "--stats-prefix",
         f"capcruncher_statistics/digestion/data/{os.path.basename(outfile)}",
-        "--sample_name",
+        "--sample-name",
         re.match(r".*/(.*?)_part.*", infile).group(1),
+        "-p",
+        str(n_cores),
     ]
 
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=3,
+        job_threads=2 + n_cores,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -720,6 +759,9 @@ def fastq_digest_non_combined(infiles, outfile):
 
     """In silico restriction enzyme digest of non-combined (non-flashed) read pairs"""
 
+    n_cores = P.PARAMS["pipeline_n_cores"] - 2
+    n_cores = n_cores if n_cores > 1 else 1
+
     statement = [
         "capcruncher",
         "fastq",
@@ -733,16 +775,18 @@ def fastq_digest_non_combined(infiles, outfile):
         P.PARAMS["analysis_restriction_enzyme"],
         "--minimum_slice_length",
         "18",
-        "--stats_prefix",
+        "--stats-prefix",
         f"capcruncher_statistics/digestion/data/{os.path.basename(outfile)}",
-        "--sample_name",
+        "--sample-name",
         re.match(r".*/(.*?)_part.*", infiles[0]).group(1),
+        "-p",
+        str(n_cores),
     ]
 
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=3,
+        job_threads=2 + n_cores,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -849,7 +893,7 @@ def fastq_alignment(infile, outfile):
         ),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
-        job_memory="4G",
+        job_memory="2G",
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -874,6 +918,7 @@ def alignments_merge(infiles, outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -893,6 +938,7 @@ def alignments_index(infile, outfile):
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_memory="1G",
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -936,8 +982,10 @@ def annotate_make_exclusion_bed(outfile):
         "|".join(
             [statement_bedtools_slop, statement_bedtools_subtract, statement_sort]
         ),
+        job_threads=1,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True,
     )
 
 
@@ -961,7 +1009,9 @@ def annotate_sort_viewpoints(outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True,
     )
 
 
@@ -999,7 +1049,9 @@ def annotate_sort_blacklist(outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True,
     )
 
 
@@ -1018,41 +1070,51 @@ def annotate_sort_blacklist(outfile):
                 "name": "restriction_fragment",
                 "fn": "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
                 "action": "get",
-                "fraction": 0.2,
+                "fraction": 0.51,
+                "dtype": "Int64",
             },
             {
                 "name": "capture",
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "get",
-                "fraction": 0.9,
+                "fraction": P.PARAMS.get(
+                    "analysis_optional_minimum_viewpoint_overlap", 0.75
+                ),
+                "dtype": "category",
             },
             {
                 "name": "exclusion",
                 "fn": "capcruncher_analysis/annotations/exclude.bed",
                 "action": "get",
                 "fraction": 1e-9,
+                "dtype": "category",
             },
             {
                 "name": "exclusion_count",
                 "fn": "capcruncher_analysis/annotations/exclude.bed",
                 "action": "count",
                 "fraction": 1e-9,
+                "dtype": "Int8",
             },
             {
                 "name": "capture_count",
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "count",
-                "fraction": 0.9,
+                "fraction": P.PARAMS.get(
+                    "analysis_optional_minimum_viewpoint_overlap", 0.75
+                ),
+                "dtype": "Int8",
             },
             {
                 "name": "blacklist",
                 "fn": "capcruncher_analysis/annotations/blacklist.bed",
                 "action": "count",
                 "fraction": 1e-9,
+                "dtype": "int",
             },
         ]
     ),
-    r"capcruncher_analysis/annotations/\1.annotations.tsv",
+    r"capcruncher_analysis/annotations/\1.annotations.parquet",
 )
 def annotate_alignments(infile, outfile):
 
@@ -1068,15 +1130,19 @@ def annotate_alignments(infile, outfile):
      * restriction fragment number
     """
 
-    flags = {"name": "-n", "fn": "-b", "action": "-a", "fraction": "-f"}
-    statement_bamtobed = " ".join(["bedtools", "bamtobed", "-i", infile[0]])
-    statement_sort = " ".join(["sort", "-k1,1", "-k2,2n"])
+    flags = {
+        "name": "-n",
+        "fn": "-b",
+        "action": "-a",
+        "fraction": "-f",
+        "dtype": "-t",
+    }
     statement_annotate = " ".join(
         [
             "capcruncher",
             "alignments",
             "annotate",
-            "-",
+            infile[0],
             *[
                 f"{flags[k]} {v}"
                 for annotation in infile[1]
@@ -1092,9 +1158,9 @@ def annotate_alignments(infile, outfile):
     )
 
     P.run(
-        " ".join([statement_bamtobed, "|", statement_sort, "|", statement_annotate]),
+        statement_annotate,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=1,
+        job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1113,28 +1179,24 @@ def post_annotation():
 @follows(
     post_annotation,
     annotate_alignments,
-    mkdir("capcruncher_analysis/reporters/identified"),
     mkdir("capcruncher_statistics/reporters/data"),
 )
 @transform(
     fastq_alignment,
-    regex(r"capcruncher_preprocessing/aligned/(.*).bam"),
-    add_inputs(r"capcruncher_analysis/annotations/\1.annotations.tsv"),
-    r"capcruncher_analysis/reporters/identified/\1.completed",
+    regex(r".*/(.*)_(part\d+).(flashed|pe).bam"),
+    add_inputs(r"capcruncher_analysis/annotations/\1_\2.\3.annotations.parquet"),
+    r"capcruncher_analysis/reporters/identified/\1/\1.\2.\3.sentinel",
+    extras=[r"\1", r"\2", r"\3"],
 )
-def alignments_filter(infiles, outfile):
+def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_type):
     """Filteres slices and outputs reporter slices for each capture site"""
 
     bam, annotations = infiles
-    sample = re.match(r".*/(.*)_(part\d+).(flashed|pe).bam", bam)
-    sample_name = sample.group(1)
-    sample_part = sample.group(2)
-    sample_read_type = sample.group(3)
-
-    output_prefix = outfile.replace(".completed", "")
-    output_log_file = f"{output_prefix}.log"
+    output_prefix = outfile.replace(".sentinel", "")
     stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{sample_part}_{sample_read_type}"
-    custom_filtering = P.PARAMS.get("analysis_optional_custom_filtering")
+    custom_filtering = P.PARAMS.get(
+        "analysis_optional_custom_filtering", "NO_PATH_PROVIDED"
+    )
 
     statement = [
         "capcruncher",
@@ -1147,120 +1209,67 @@ def alignments_filter(infiles, outfile):
         annotations,
         "-o",
         output_prefix,
-        "--stats_prefix",
+        "--stats-prefix",
         stats_prefix,
-        "--sample_name",
+        "--sample-name",
         sample_name,
-        "--read_type",
+        "--read-type",
         sample_read_type,
         "--no-cis-and-trans-stats",
-        f"--custom_filtering {custom_filtering}"
+        f"--custom-filtering {custom_filtering}"
         if os.path.exists(custom_filtering)
         else "",
-        ">",
-        output_log_file,
+        "--output-format",
+        STORAGE_FORMAT,
     ]
 
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_memory=P.PARAMS["pipeline_memory"],
+        job_threads=1,
+        job_total_memory="5G",
         job_condaenv=P.PARAMS["conda_env"],
     )
-
-    # Make sentinel file
-    touch_file(outfile)
 
     # Zero annotations
     if not P.PARAMS.get("analysis_optional_keep_annotations", False):
         zap_file(annotations)
 
+    # Make sentinel file
+    touch_file(outfile)
 
-@follows(mkdir("capcruncher_analysis/reporters/collated"), alignments_filter)
+
+@follows(mkdir("capcruncher_analysis/reporters/deduplicated/fragments"))
 @collate(
-    "capcruncher_analysis/reporters/identified/*.tsv",
-    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).(fragments).tsv"),
-    r"capcruncher_analysis/reporters/collated/\1.\2.\3.\4.tsv",
-    extras=[r"\1", r"\2", r"\3", r"\4"],
-)
-def reporters_fragments_collate(infiles, outfile, *grouping_args):
-
-    """Concatenates identified reporters"""
-
-    statement = []
-    for ii, fn in enumerate(infiles):
-        if ii == 0:
-            cmd = f"cat {fn} > {outfile}"
-        else:
-            cmd = f"tail -n +2 {fn} >> {outfile}"
-
-        statement.append(cmd)
-
-    P.run(
-        " && ".join(statement),
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=P.PARAMS["pipeline_n_cores"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
-
-    # Zero un-aggregated reporters
-    for fn in infiles:
-        zap_file(fn)
-
-
-@follows(alignments_filter)
-@collate(
-    "capcruncher_analysis/reporters/identified/*.tsv",
-    regex(r".*/(?P<sample>.*)_part\d+.(flashed|pe).(?P<capture>.*).slices.tsv"),
-    r"capcruncher_analysis/reporters/collated/\1.\2.\3.0.slices.tsv",
-    extras=[r"\1", r"\2", r"\3"],
-)
-def alignments_slices_re_collate(infiles, outfile, *grouping_args):
-
-    statement = [
-        "capcruncher",
-        "utilities",
-        "repartition-csvs",
-        *infiles,
-        "-o",
-        outfile.replace(".0.slices.tsv", ".*.slices.tsv"),
-        "-r",
-        "sep='\\t'",
-        "-w",
-        "sep='\\t'",
-    ]
-    
-    P.run(
-        " ".join(statement),
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=P.PARAMS["pipeline_n_cores"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
-
-
-@follows(mkdir("capcruncher_analysis/reporters/deduplicated"))
-@transform(
-    reporters_fragments_collate,
-    regex(r".*/(?P<sample>.*).(flashed|pe).(?P<capture>.*).fragments.tsv"),
-    r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.json.gz",
+    alignments_filter,
+    regex(r".*/(?P<sample>.*).part\d+.(flashed|pe).sentinel"),
+    r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\2.pkl",
     extras=[r"\2"],
 )
-def alignments_deduplicate_fragments(infile, outfile, read_type):
+def alignments_deduplicate_fragments(infiles, outfile, read_type):
 
     """
     Identifies duplicate fragments with the same coordinates and order.
     """
+
+    fragments = [
+        infile.replace("sentinel", f"fragments.{STORAGE_FORMAT}") for infile in infiles
+    ]
 
     statement = [
         "capcruncher",
         "alignments",
         "deduplicate",
         "identify",
-        infile,
-        "--read_type",
+        *[fn for fn in fragments if os.path.exists(fn)],
+        "--read-type",
         read_type,
         "-o",
         outfile,
+        "--file-type",
+        STORAGE_FORMAT,
+        "-p",
+        str(P.PARAMS.get("pipeline_n_cores", 1))
     ]
 
     P.run(
@@ -1272,41 +1281,45 @@ def alignments_deduplicate_fragments(infile, outfile, read_type):
     )
 
 
-@follows(alignments_deduplicate_fragments, alignments_slices_re_collate)
-@transform(
-    "capcruncher_analysis/reporters/collated/*slices.tsv",
-    regex(
-        r".*/(?P<sample>.*)\.(?P<read_type>flashed|pe)\.(?P<viewpoint>.*)\.(?P<part>\d+)\.slices.tsv"
-    ),
-    add_inputs(r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.json.gz"),
-    r"capcruncher_analysis/reporters/deduplicated/\1.\2.\3.\4.slices.tsv",
-    extras=[r"\1", r"\2", r"\3", r"\4"],
+@follows(alignments_deduplicate_fragments)
+@collate(
+    alignments_filter,
+    regex(r".*/(?P<sample>.*).part(?P<part>\d+)\.(?P<read_type>flashed|pe)\.sentinel"),
+    add_inputs(r"capcruncher_analysis/reporters/deduplicated/fragments/\1.\3.pkl"),
+    r"capcruncher_analysis/reporters/deduplicated/\1.\3.sentinel",
+    extras=[
+        r"\1",
+        r"\3",
+    ],
 )
-def alignments_deduplicate_slices(
-    infile, outfile, sample_name, read_type, viewpoint, part
-):
+def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
 
-    """Removes reporters with duplicate coordinates"""
+    """Removes reporters with duplicate coordinates and merges partitions."""
 
-    slices, duplicated_ids = infile
-    stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_part{part}_{read_type}_{viewpoint}"
+    slices, duplicated_ids = list(zip(*infile))
+    slices = [fn.replace("sentinel", f"slices.{STORAGE_FORMAT}") for fn in slices]
+    duplicated_ids = duplicated_ids[0]  # All id paths are the same, just need one.
+
+    stats_prefix = f"capcruncher_statistics/reporters/data/{sample_name}_{read_type}"
 
     statement = [
         "capcruncher",
         "alignments",
         "deduplicate",
         "remove",
-        slices,
+        *[fn for fn in slices if os.path.exists(fn)],
         "-d",
         duplicated_ids,
         "-o",
-        outfile,
-        "--stats_prefix",
+        outfile.replace("sentinel", STORAGE_FORMAT),
+        "--stats-prefix",
         stats_prefix,
-        "--sample_name",
+        "--sample-name",
         sample_name,
-        "--read_type",
+        "--read-type",
         read_type,
+        "-p",
+        str(P.PARAMS.get("pipeline_n_cores", 1))
     ]
 
     P.run(
@@ -1317,27 +1330,35 @@ def alignments_deduplicate_slices(
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # Zero non-deduplicated reporters
-    zap_file(slices)
+    #Zero non-deduplicated reporters
+    for s in slices:
+        zap_file(s)
+
+    touch_file(outfile)
 
 
 @transform(
     alignments_deduplicate_slices,
-    regex(r".*/(.*)\.(flashed|pe)\.(.*)\.(\d+)\.slices.tsv"),
-    r"capcruncher_statistics/reporters/data/\1_\2_\3_\4.reporter.stats.csv",
-    extras=[r"\1", r"\2", r"\3", r"\4"],
+    regex(r".*/(.*?)\.(.*?)\.sentinel"),
+    r"capcruncher_statistics/reporters/data/\1_\2.reporter.stats.csv",
+    extras=[r"\1", r"\2"],
 )
 def alignments_deduplicate_slices_statistics(
-    infile, outfile, sample, read_type, viewpoint, part
+    infile,
+    outfile,
+    sample,
+    read_type,
 ):
 
     """Generates reporter statistics from de-duplicated files"""
+
+    slices = infile.replace("sentinel", STORAGE_FORMAT)
 
     statement = [
         "capcruncher",
         "utilities",
         "cis-and-trans-stats",
-        infile,
+        slices,
         "-m",
         P.PARAMS["analysis_method"],
         "-o",
@@ -1346,8 +1367,12 @@ def alignments_deduplicate_slices_statistics(
         sample,
         "--read-type",
         read_type,
+        "--file-type",
+        STORAGE_FORMAT,
+        "-p",
+        str(P.PARAMS["pipeline_n_cores"]),
     ]
-    
+
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
@@ -1356,38 +1381,52 @@ def alignments_deduplicate_slices_statistics(
     )
 
 
-
+@follows(alignments_deduplicate_slices_statistics)
 @collate(
     alignments_deduplicate_slices,
-    regex(
-        r".*/(?P<sample>.*)\.(?:flashed|pe).(?P<capture>.*)\.\d+\.slices.tsv"
-    ),
-    r"capcruncher_analysis/reporters/\1.\2.tsv.gz",
-    extras=[r"\1", r"\2"],
+    regex(r".*/(?P<sample>.*)\.(?:flashed|pe)\.sentinel"),
+    r"capcruncher_analysis/reporters/\1.sentinel",
 )
-def alignments_deduplicate_collate(infiles, outfile, *grouping_args):
+def alignments_deduplicate_collate(infiles, outfile):
 
-    """Final collation of reporters by sample and capture probe"""
+    """Final collation of reporters by sample"""
 
-    statement = []
-    tmp = outfile.replace(".gz", "")
-    for ii, fn in enumerate(infiles):
-        if ii == 0:
-            cmd = f"cat {fn} > {tmp}"
-        else:
-            cmd = f"tail -n +2 {fn} >> {tmp}"
+    args = list()
+    if STORAGE_FORMAT == "hdf5":
+        slices = [fn.replace("sentinel", STORAGE_FORMAT) for fn in infiles]
+        args.extend(["-i", "viewpoint"])
+    elif STORAGE_FORMAT == "parquet":
+        # slices = [fn.replace("sentinel", STORAGE_FORMAT) for fn in infiles]
+        slices = list(
+            itertools.chain.from_iterable(
+                glob.glob(f"{fn.replace('sentinel', 'parquet')}/*.parquet")
+                for fn in infiles
+            )
+        )
 
-        statement.append(cmd)
-
-    statement.append(f'cat {tmp} | pigz -p {P.PARAMS["pipeline_n_cores"]} > {outfile}')
-    statement.append(f"rm -f {tmp}")
+    statement_merge = [
+        "capcruncher",
+        "utilities",
+        "merge-capcruncher-slices",
+        *slices,
+        "-o",
+        outfile.replace("sentinel", STORAGE_FORMAT),
+        *args,
+        "-p",
+        str(P.PARAMS.get("pipeline_n_cores", 1)),
+    ]
 
     P.run(
-        " && ".join(statement),
+        " ".join(statement_merge),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
     )
+
+    for fn in infiles:
+        zap_file(fn)
+
+    touch_file(outfile)
 
 
 @follows(alignments_deduplicate_collate, alignments_deduplicate_slices_statistics)
@@ -1422,7 +1461,7 @@ def stats_alignment_filtering_collate(infiles, outfile):
     collate_read_data(data["read"]).to_csv(outfile, index=False)
 
 
-@follows(alignments_deduplicate_slices, stats_alignment_filtering_collate)
+@follows(alignments_deduplicate_collate, stats_alignment_filtering_collate)
 def post_capcruncher_analysis():
     """Reporters have been identified, deduplicated and collated by sample/capture probe"""
 
@@ -1432,102 +1471,52 @@ def post_capcruncher_analysis():
 ####################
 
 
-@follows(mkdir("capcruncher_analysis/reporters/counts/partitioned/"))
+@follows(mkdir("capcruncher_analysis/reporters/counts"))
 @transform(
-    alignments_deduplicate_slices,
-    regex(
-        r"capcruncher_analysis/reporters/deduplicated/(.*?)\.(.*?)\.(.*?)\.(.*?)\.slices.tsv"
-    ),
-    r"capcruncher_analysis/reporters/counts/partitioned/\1.\2.\3.\4.tsv.gz",
+    alignments_deduplicate_collate,
+    regex(r".*/(?P<sample>.*?)\.sentinel"),
+    add_inputs(genome_digest, P.PARAMS["analysis_viewpoints"]),
+    r"capcruncher_analysis/reporters/counts/\1.sentinel",
 )
 def reporters_count(infile, outfile):
 
     """Counts the number of interactions identified between reporter restriction fragments"""
 
+    infile, restriction_fragment_map, viewpoints = infile
+    output_counts = outfile.replace("sentinel", "hdf5")
+
     statement = [
         "capcruncher",
         "reporters",
         "count",
-        infile,
+        infile.replace("sentinel", STORAGE_FORMAT),
         "-o",
-        outfile,
-        "--remove_exclusions",
-        ">",
-        f"{outfile}.log",
-    ]
-
-    P.run(
-        " ".join(statement),
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=1,
-        job_condaenv=P.PARAMS["conda_env"],
-    )
-
-
-@collate(
-    reporters_count,
-    regex(
-        r"capcruncher_analysis/reporters/counts/partitioned/(.*?)\.(.*?)\.(.*?)\.(.*?)\.tsv.gz"
-    ),
-    r"capcruncher_analysis/reporters/counts/\1.\3.tsv.gz",
-    extras=[r"\1", r"\4"],
-)
-def reporters_count_collate(infiles, outfile, sample, viewpoint):
-
-    """Collates the number of interactions identified between reporter restriction fragments"""
-
-    dframes = [pd.read_csv(fn, sep="\t") for fn in infiles]
-    df = pd.concat(dframes)
-    df_total_counts = (
-        df.groupby(["bin1_id", "bin2_id"]).agg({"count": "sum"}).reset_index()
-    )
-
-    df_total_counts.to_csv(outfile, sep="\t", index=False)
-
-
-@follows(mkdir("capcruncher_analysis/reporters/fragments"))
-@transform(
-    reporters_count_collate,
-    regex(r"capcruncher_analysis/reporters/counts/(.*)\.(.*)\.tsv.gz"),
-    add_inputs(genome_digest),
-    r"capcruncher_analysis/reporters/fragments/\1.\2.fragments.hdf5",
-    extras=[r"\1", r"\2"],
-)
-def reporters_store_restriction_fragment(infile, outfile, sample_name, capture_name):
-
-    """Stores restriction fragment interaction counts in cooler format"""
-
-    counts, rf_map = infile
-    output_prefix = outfile.replace(f".{capture_name}.fragments", "")
-
-    statement = [
-        "capcruncher",
-        "reporters",
-        "store",
-        "fragments",
-        counts,
+        output_counts,
         "-f",
-        rf_map,
-        "-g",
-        P.PARAMS["genome_name"],
-        "-n",
-        capture_name,
+        restriction_fragment_map,
         "-v",
-        P.PARAMS["analysis_viewpoints"],
-        "-o",
-        output_prefix,
-        "--suffix",
-        "fragments",
+        viewpoints,
+        "--cooler-output",
+        "-p",
+        str(P.PARAMS["pipeline_n_cores"]),
     ]
 
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
     )
 
+    # Link bin tables to conserve space
+    from capcruncher.tools.storage import link_common_cooler_tables
 
-@follows(genome_digest, reporters_count)
+    link_common_cooler_tables(output_counts)
+    touch_file(outfile)
+
+
+@active_if(P.PARAMS.get("analysis_bin_size"))
+@follows(genome_digest)
 @originate(r"capcruncher_analysis/reporters/binners.pkl")
 def generate_bin_conversion_tables(outfile):
     """
@@ -1558,28 +1547,30 @@ def generate_bin_conversion_tables(outfile):
         )  # Property is cached so need to call it to make sure it is present.
         binner_dict[int(bs)] = gb
 
-    with open("capcruncher_analysis/reporters/binners.pkl", "wb") as w:
+    with open(outfile, "wb") as w:
         pickle.dump(binner_dict, w)
 
 
 @active_if(P.PARAMS.get("analysis_bin_size"))
 @follows(
-    generate_bin_conversion_tables, mkdir("capcruncher_analysis/reporters/binned/")
+    generate_bin_conversion_tables,
 )
 @transform(
-    reporters_store_restriction_fragment,
-    regex(r"capcruncher_analysis/reporters/fragments/(.*)\.(.*)\.fragments\.hdf5"),
+    "capcruncher_analysis/reporters/counts/(.*).hdf5",
+    regex(r"capcruncher_analysis/reporters/counts/(.*).hdf5"),
     add_inputs(generate_bin_conversion_tables),
-    r"capcruncher_analysis/reporters/binned/\1.\2.completed",
-    extras=[r"\2"],
+    r"capcruncher_analysis/reporters/counts/\1.sentinel",
 )
-def reporters_store_binned(infile, outfile, capture_name):
+def reporters_store_binned(infile, outfile):
 
     """
     Converts a cooler file of restriction fragments to even genomic bins.
     """
 
     clr, conversion_tables = infile
+    sentinel_file = outfile.copy()
+    outfile = outfile.replace(".sentinel", ".hdf5")
+
     statement = [
         "capcruncher",
         "reporters",
@@ -1598,7 +1589,7 @@ def reporters_store_binned(infile, outfile, capture_name):
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
         "-o",
-        outfile.replace(f".{capture_name}.completed", ""),
+        outfile,
     ]
 
     P.run(
@@ -1608,42 +1599,13 @@ def reporters_store_binned(infile, outfile, capture_name):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
+    # Link bin tables to conserve space
+    from capcruncher.tools.storage import link_common_cooler_tables
+
+    link_common_cooler_tables(outfile)
+
     # Make sentinel file
-    touch_file(outfile)
-
-
-@follows(reporters_store_restriction_fragment, reporters_store_binned)
-@collate(
-    [
-        "capcruncher_analysis/reporters/fragments/*.hdf5",
-        "capcruncher_analysis/reporters/binned/*.hdf5",
-    ],
-    regex(r".*/(.*)\.(.*)\.(?:fragments|\d+)\.hdf5"),
-    r"capcruncher_analysis/reporters/\1.hdf5",
-    extras=[r"\1"],
-)
-def reporters_store_merged(infiles, outfile, sample_name):
-
-    """Combines cooler files together"""
-
-    statement = [
-        "capcruncher",
-        "reporters",
-        "store",
-        "merge",
-        " ".join(infiles),
-        "-o",
-        outfile,
-    ]
-
-    P.run(
-        " ".join(statement),
-        job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_condaenv=P.PARAMS["conda_env"],
-    )
-
-    for fn in infiles:
-        zap_file(fn)
+    touch_file(sentinel_file)
 
 
 #######################
@@ -1722,12 +1684,17 @@ def pipeline_make_report(infile, outfile):
 #####################
 
 
-@active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
-@follows(mkdir("capcruncher_analysis/bedgraphs"))
+@active_if(
+    (ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
+    and not HAS_HIGH_NUMBER_OF_VIEWPOINTS
+)
+@follows(
+    mkdir("capcruncher_analysis/bedgraphs"), reporters_count, reporters_store_binned
+)
 @transform(
-    reporters_store_merged,
+    "capcruncher_analysis/reporters/counts/*.hdf5",
     regex(r".*/(.*).hdf5"),
-    r"capcruncher_analysis/bedgraphs/\1.raw.completed",
+    r"capcruncher_analysis/bedgraphs/\1.raw.sentinel",
     extras=[r"\1"],
 )
 def reporters_make_bedgraph(infile, outfile, sample_name):
@@ -1735,22 +1702,36 @@ def reporters_make_bedgraph(infile, outfile, sample_name):
 
     output_prefix = f"capcruncher_analysis/bedgraphs/{sample_name}.raw"
 
-    statement = ["capcruncher", "reporters", "pileup", infile, "-o", output_prefix, "--normalisation", "raw"]
+    statement = [
+        "capcruncher",
+        "reporters",
+        "pileup",
+        infile,
+        "-o",
+        output_prefix,
+        "--normalisation",
+        "raw",
+    ]
 
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
     touch_file(outfile)
 
 
-@active_if(ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
+@follows(reporters_count, reporters_store_binned)
+@active_if(
+    (ANALYSIS_METHOD == "capture" or ANALYSIS_METHOD == "tri")
+    and not HAS_HIGH_NUMBER_OF_VIEWPOINTS
+)
 @transform(
-    reporters_store_merged,
+    "capcruncher_analysis/reporters/counts/*.hdf5",
     regex(r".*/(.*).hdf5"),
-    r"capcruncher_analysis/bedgraphs/\1.normalised.completed",
+    r"capcruncher_analysis/bedgraphs/\1.normalised.sentinel",
     extras=[r"\1"],
 )
 def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
@@ -1764,9 +1745,8 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
 
     output_prefix = f"capcruncher_analysis/bedgraphs/{sample_name}.normalised"
 
-    norm_regions = P.PARAMS.get("normalisation_regions")
+    norm_regions = P.PARAMS.get("normalisation_regions", "NOT_PROVIDED")
     norm_by_region = os.path.exists(norm_regions)
-
 
     statement = [
         "capcruncher",
@@ -1778,7 +1758,7 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
         "--normalisation",
         "n_cis" if not norm_by_region else "region",
         "--normalisation-regions" if norm_by_region else " ",
-        norm_regions if norm_by_region else " ",        
+        norm_regions if norm_by_region else " ",
         "--scale_factor",
         str(P.PARAMS.get("normalisation_scale_factor", 1000000)),
     ]
@@ -1786,6 +1766,7 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1834,6 +1815,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1846,22 +1828,19 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
 @transform(
     reporters_make_union_bedgraph,
     regex(r"capcruncher_compare/bedgraphs_union/(.*)\.normalised\.tsv"),
-    r"capcruncher_compare/bedgraphs_comparison/\1.completed",
+    r"capcruncher_compare/bedgraphs_comparison/\1.sentinel",
     extras=[r"\1"],
 )
 def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
 
-    import numpy as np
-
-    df_bdg = pd.read_csv(infile, sep="\t")
-    dir_output = os.path.dirname(outfile)
+    df_bdg = pd.read_csv(infile, sep="\t", nrows=10)
+    output_prefix = f"{os.path.dirname(outfile)}/"
 
     summary_methods = [
         m
         for m in re.split(r"[,;\s+]", P.PARAMS.get("compare_summary_methods", "mean,"))
         if m
     ]
-    summary_functions = {method: getattr(np, method) for method in summary_methods}
 
     if not HAS_DESIGN:
         # Need to generate a design matrix if one does not exist
@@ -1871,61 +1850,36 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
         df_design["sample"] = samples
         df_design["condition"] = condition
     else:
-        df_design = pd.read_csv(P.PARAMS["analysis_design"], sep="\t")
+        df_design = pd.read_csv(
+            P.PARAMS["analysis_design"], sep=r"\s+|;|:\t|,", engine="python"
+        )
 
-    samples_grouped_by_condition = (
-        df_design.set_index("sample").groupby("condition").groups
-    )  # {GROUP_NAME: [Location]}
+    groups = df_design.groupby("condition").groups
 
-    for group_a, group_b in itertools.permutations(
-        samples_grouped_by_condition.keys(), 2
-    ):
+    statement = [
+        "capcruncher",
+        "reporters",
+        "compare",
+        "summarise",
+        infile,
+        "-o",
+        output_prefix,
+        "-f",
+        "bedgraph",
+        *[f"-m {m}" for m in summary_methods],
+        *[f"-n {n}" for n in groups.keys()],
+        *[f"-c {','.join([str(c) for c in cols])}" for cols in groups.values()],
+        "--subtraction",
+        "--suffix",
+        f".{viewpoint}",
+    ]
 
-        # Extract the two groups
-        df_a = df_bdg.loc[:, samples_grouped_by_condition[group_a]]
-        df_b = df_bdg.loc[:, samples_grouped_by_condition[group_b]]
-
-        for summary_method in summary_functions:
-            # Get summary counts
-            a_summary = pd.Series(
-                df_a.pipe(summary_functions[summary_method], axis=1),
-                name=summary_method,
-            )
-            b_summary = pd.Series(
-                df_b.pipe(summary_functions[summary_method], axis=1),
-                name=summary_method,
-            )
-
-            # Merge counts with coordinates
-            df_a_bdg = pd.concat([df_bdg.iloc[:, :3], a_summary], axis=1)
-            df_b_bdg = pd.concat([df_bdg.iloc[:, :3], b_summary], axis=1)
-
-            # Run subtraction
-            df_subtraction_bdg = pd.concat(
-                [df_bdg.iloc[:, :3], a_summary - b_summary], axis=1
-            )
-
-            # Output bedgraphs
-            df_a_bdg.to_csv(
-                f"{dir_output}/{group_a}.{summary_method}-summary.{viewpoint}.bedgraph",
-                sep="\t",
-                header=False,
-                index=None,
-            )
-
-            df_b_bdg.to_csv(
-                f"{dir_output}/{group_b}.{summary_method}-summary.{viewpoint}.bedgraph",
-                sep="\t",
-                header=False,
-                index=None,
-            )
-
-            df_subtraction_bdg.to_csv(
-                f"{dir_output}/{group_a}_vs_{group_b}.{summary_method}-subtraction.{viewpoint}.bedgraph",
-                sep="\t",
-                index=None,
-                header=False,
-            )
+    P.run(
+        " ".join(statement),
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
+        job_condaenv=P.PARAMS["conda_env"],
+    )
 
     touch_file(outfile)
 
@@ -1958,6 +1912,7 @@ def reporters_make_bigwig(infile, outfile):
     P.run(
         " && ".join([statement_sort, statement_bdgtobw, statement_cleanup]),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1980,6 +1935,7 @@ def viewpoints_to_bigbed(infile, outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -2009,8 +1965,9 @@ def hub_make(infiles, outfile):
         .assign(basename=lambda df: df["fn"].apply(os.path.basename))
     )
     attributes = df_bigwigs["basename"].str.extract(
-        r"(?P<samplename>.*?)\.(?P<method>.*?)\.(?P<viewpoint>.*?)\.(?P<filetype>.*)"
+        r"(?P<samplename>.*?)\.(?P<method>.*?)\.(?P<viewpoint>.*?)\.(?P<file_type>.*)"
     )
+
     df_bigwigs = (
         df_bigwigs.join(attributes)
         .assign(track_categories=lambda df: categorise_tracks(df["method"]))
@@ -2192,14 +2149,14 @@ def hub_make(infiles, outfile):
 @transform(
     reporters_make_union_bedgraph,
     regex(r".*/(.*)\.raw\.tsv"),
-    r"capcruncher_compare/differential/\1.completed",
+    r"capcruncher_compare/differential/\1.sentinel",
     extras=[r"\1"],
 )
 def identify_differential_interactions(infile, outfile, capture_name):
 
     if len(pd.read_csv(infile, sep="\t", nrows=5).columns) >= 4:
 
-        output_prefix = outfile.replace(".log", "")
+        output_prefix = outfile.replace(".sentinel", "")
 
         statement = [
             "capcruncher",
@@ -2211,17 +2168,18 @@ def identify_differential_interactions(infile, outfile, capture_name):
             "-c",
             P.PARAMS["analysis_viewpoints"],
             "-o",
-            outfile.replace(".log", ""),
+            output_prefix,
         ]
 
         P.run(
             " ".join(statement),
             job_queue=P.PARAMS["pipeline_cluster_queue"],
+            job_threads=1,
             job_condaenv=P.PARAMS["conda_env"],
         )
 
     else:
-        print("Not enough replicates for differential testing")
+        logging.warn("Not enough replicates for differential testing")
 
     touch_file(outfile)
 
@@ -2231,11 +2189,11 @@ def identify_differential_interactions(infile, outfile, capture_name):
 ##################
 
 
-@follows(reporters_store_merged, mkdir("capcruncher_plots/templates"))
+@follows(reporters_store_binned, mkdir("capcruncher_plots/templates"))
 @active_if(ANALYSIS_METHOD in ["tri", "tiled"] and MAKE_PLOTS)
 @merge(
     "capcruncher_analysis/reporters/*.hdf5",
-    r"capcruncher_plots/templates/heatmaps.complete",
+    r"capcruncher_plots/templates/heatmaps.sentinel",
 )
 def plot_heatmaps_make_templates(infiles, outfile):
 
@@ -2260,7 +2218,7 @@ def plot_heatmaps_make_templates(infiles, outfile):
                     "-b",
                     str(P.PARAMS["analysis_bin_size"]),
                     "-o",
-                    outfile.replace("heatmaps.complete", f"{viewpoint}.heatmap.yml"),
+                    outfile.replace("heatmaps.sentinel", f"{viewpoint}.heatmap.yml"),
                 ]
             )
         )
@@ -2269,6 +2227,7 @@ def plot_heatmaps_make_templates(infiles, outfile):
         statements,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
+        job_threads=1,
         without_cluster=True,
     )
 
@@ -2308,6 +2267,7 @@ def plot_pileups_make_templates(infiles, outfile):
         statements,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
+        job_threads=1,
         without_cluster=True,
     )
 
@@ -2319,7 +2279,7 @@ def plot_pileups_make_templates(infiles, outfile):
 @transform(
     "capcruncher_plots/templates/*.yml",
     regex(r".*/(.*)\.(.*).yml"),
-    r"capcruncher_plots/templates/\1.complete",
+    r"capcruncher_plots/templates/\1.sentinel",
     extras=[r"\1"],
 )
 def make_plots(infile, outfile, viewpoint):
@@ -2357,6 +2317,7 @@ def make_plots(infile, outfile, viewpoint):
         statements,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
+        job_threads=1,
         without_cluster=True,
     )
 
@@ -2377,7 +2338,7 @@ def plotting():
     plotting,
 )
 @originate(
-    "pipeline_complete.txt",
+    "COMPLETE.sentinel",
 )
 def full(outfile):
 

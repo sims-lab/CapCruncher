@@ -104,7 +104,7 @@ def make_template(
     if design_matrix:
 
         # Assuming design matrix has columns: sample  condition
-        df_design = pd.read_csv(design_matrix, sep="\t", index_col="sample")
+        df_design = pd.read_csv(design_matrix, sep=r",|\s+|\t", index_col="sample", engine="python")
         df_fnames = (
             pd.Series(files).loc[lambda ser: ser.str.contains(".bigWig")].to_frame("fn")
         )
