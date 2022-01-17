@@ -60,7 +60,7 @@ def cli():
 @click.option(
     "-p",
     "--n_cores",
-    help="Intersections are performed by chromosome, this determines the number of cores.",
+    help="Intersections are performed in parallel, set this to the number of intersections required",
     default=1,
 )
 @click.option(
@@ -214,6 +214,12 @@ def deduplicate():
     default="flashed",
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
 )
+@click.option(
+    "-p",
+    "--n_cores",
+    help="Number of parallel processes to use for deduplication",
+    default=1,
+)
 def identify(*args, **kwargs):
     from capcruncher.cli.alignments_deduplicate import identify
 
@@ -256,6 +262,12 @@ def identify(*args, **kwargs):
     help="Indicates if the fragments have been combined (flashed) or not (pe). Required for correct statistics.",
     default="flashed",
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
+)
+@click.option(
+    "-p",
+    "--n_cores",
+    help="Number of parallel processes to use for deduplication",
+    default=1,
 )
 def remove(*args, **kwargs):
     """
