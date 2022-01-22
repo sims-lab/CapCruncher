@@ -298,6 +298,9 @@ def genome_digest(infile, outfile):
 # Fastq file pre-processing #
 #############################
 
+##########
+# Read QC#
+##########
 
 @follows(mkdir("capcruncher_preprocessing"), mkdir("capcruncher_preprocessing/fastqc"))
 @transform(
@@ -359,6 +362,10 @@ def fastq_multiqc(infile, outfile):
     )
 
 
+###################
+# Read processing #
+###################
+
 @follows(mkdir("capcruncher_preprocessing/split"))
 @collate(
     "*.fastq*",
@@ -384,7 +391,7 @@ def fastq_split(infiles, outfile):
         outfile.replace(".sentinel", ""),
         "-n",
         str(P.PARAMS.get("split_n_reads", 1e6)),
-        "--no-gzip",
+        "--no-gzip" if P.PARAMS.get("pipeline_compression") == 0 else "--gzip",
     ]
 
     P.run(
@@ -405,8 +412,8 @@ def fastq_split(infiles, outfile):
 )
 @collate(
     "capcruncher_preprocessing/split/*.fastq*",
-    regex(r"capcruncher_preprocessing/split/(.*)_part(\d+)_[12].fastq(?:.gz)?"),
-    r"capcruncher_preprocessing/deduplicated/duplicated_ids/\1_\2.pkl",
+    regex(r"capcruncher_preprocessing/split/(.*)_part(\d+)_[12].fastq(.gz)?"),
+    r"capcruncher_preprocessing/deduplicated/duplicated_ids/\1_\2.pkl\3",
     extras=[r"\1", r"\2"],
 )
 def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
@@ -438,8 +445,8 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
 
 @collate(
     fastq_duplicates_parse,
-    regex(r"capcruncher_preprocessing/deduplicated/duplicated_ids/(.*)_\d*.pkl"),
-    r"capcruncher_preprocessing/deduplicated/duplicated_ids/\1.pkl",
+    regex(r"capcruncher_preprocessing/deduplicated/duplicated_ids/(.*)_\d*.pkl(.gz)?"),
+    r"capcruncher_preprocessing/deduplicated/duplicated_ids/\1.pkl\2",
 )
 def fastq_duplicates_identify(infiles, outfile):
 
@@ -514,6 +521,7 @@ def fastq_duplicates_remove(infiles, outfile):
                 "-p",
                 str(P.PARAMS.get("pipeline_n_cores", "4")),
                 "--hash-read-name", # Reduces memory by converting the readname to a 64bit hash
+                "--gzip" if ".gz" in infiles[0] else "--no-gzip",
             ]
         )
 

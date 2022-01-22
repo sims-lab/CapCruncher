@@ -98,9 +98,11 @@ pipeline:
     # (Required if using in cluster mode)
     memory: 32G
 
-    # Level of gzip compression to use for output files (1-9 with 9 being the slowest but best compressed)
-    # (Required, only alter if enhanced compression needed.)
-    compression: 5
+    # Level of compression (gzip currently) to use for output files (1-9 with 9 being the slowest but best compressed)
+    # A value of 0 indicates that compression will not be performed at all stages.
+    # It is highly recomended to avoid compression if possible as intermediate files will be removed to reduce space
+    # (Required)
+    compression: 0
 
 
 ###################################
