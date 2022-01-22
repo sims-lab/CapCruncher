@@ -281,7 +281,7 @@ def genome_digest(infile, outfile):
             tmp,
             "--sort",
             "-l",
-            outfile.replace(".bed.gz", ".stats")
+            outfile.replace(".bed.gz", ".stats"),
         ]
     )
 
@@ -290,6 +290,7 @@ def genome_digest(infile, outfile):
     P.run(
         " && ".join([statement_digest, statement_compress]),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -301,6 +302,7 @@ def genome_digest(infile, outfile):
 ##########
 # Read QC#
 ##########
+
 
 @follows(mkdir("capcruncher_preprocessing"), mkdir("capcruncher_preprocessing/fastqc"))
 @transform(
@@ -357,6 +359,7 @@ def fastq_multiqc(infile, outfile):
             ]
         ),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_memory="2G",
         job_condaenv=P.PARAMS["conda_env"],
     )
@@ -365,6 +368,7 @@ def fastq_multiqc(infile, outfile):
 ###################
 # Read processing #
 ###################
+
 
 @follows(mkdir("capcruncher_preprocessing/split"))
 @collate(
@@ -392,10 +396,13 @@ def fastq_split(infiles, outfile):
         "-n",
         str(P.PARAMS.get("split_n_reads", 1e6)),
         "--no-gzip" if P.PARAMS.get("pipeline_compression") == 0 else "--gzip",
+        "-p",
+        str(P.PARAMS["pipeline_n_cores"]),
     ]
 
     P.run(
         " ".join(statement),
+        job_threads=P.PARAMS["pipeline_n_cores"],
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
     )
@@ -438,6 +445,7 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=2,
         job_memory="6G",
         job_condaenv=P.PARAMS["conda_env"],
     )
@@ -470,6 +478,7 @@ def fastq_duplicates_identify(infiles, outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_memory="32G",
         job_condaenv=P.PARAMS["conda_env"],
     )
@@ -520,7 +529,7 @@ def fastq_duplicates_remove(infiles, outfile):
                 output_prefix,
                 "-p",
                 str(P.PARAMS.get("pipeline_n_cores", "4")),
-                "--hash-read-name", # Reduces memory by converting the readname to a 64bit hash
+                "--hash-read-name",  # Reduces memory by converting the readname to a 64bit hash
                 "--gzip" if ".gz" in infiles[0] else "--no-gzip",
             ]
         )
@@ -706,6 +715,9 @@ def fastq_digest_combined(infile, outfile):
 
     """In silico restriction enzyme digest of combined (flashed) read pairs"""
 
+    n_cores = P.PARAMS["pipeline_n_cores"] - 2
+    n_cores = n_cores if n_cores > 1 else 1
+
     statement = [
         "capcruncher",
         "fastq",
@@ -723,12 +735,14 @@ def fastq_digest_combined(infile, outfile):
         f"capcruncher_statistics/digestion/data/{os.path.basename(outfile)}",
         "--sample-name",
         re.match(r".*/(.*?)_part.*", infile).group(1),
+        "-p",
+        str(n_cores),
     ]
 
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=3,
+        job_threads=2 + n_cores,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -744,6 +758,9 @@ def fastq_digest_combined(infile, outfile):
 def fastq_digest_non_combined(infiles, outfile):
 
     """In silico restriction enzyme digest of non-combined (non-flashed) read pairs"""
+
+    n_cores = P.PARAMS["pipeline_n_cores"] - 2
+    n_cores = n_cores if n_cores > 1 else 1
 
     statement = [
         "capcruncher",
@@ -762,12 +779,14 @@ def fastq_digest_non_combined(infiles, outfile):
         f"capcruncher_statistics/digestion/data/{os.path.basename(outfile)}",
         "--sample-name",
         re.match(r".*/(.*?)_part.*", infiles[0]).group(1),
+        "-p",
+        str(n_cores),
     ]
 
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_threads=3,
+        job_threads=2 + n_cores,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -874,7 +893,7 @@ def fastq_alignment(infile, outfile):
         ),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
-        job_memory="4G",
+        job_memory="2G",
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -899,6 +918,7 @@ def alignments_merge(infiles, outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -918,6 +938,7 @@ def alignments_index(infile, outfile):
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_memory="1G",
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -961,8 +982,10 @@ def annotate_make_exclusion_bed(outfile):
         "|".join(
             [statement_bedtools_slop, statement_bedtools_subtract, statement_sort]
         ),
+        job_threads=1,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True,
     )
 
 
@@ -986,7 +1009,9 @@ def annotate_sort_viewpoints(outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True,
     )
 
 
@@ -1024,7 +1049,9 @@ def annotate_sort_blacklist(outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True,
     )
 
 
@@ -1050,7 +1077,9 @@ def annotate_sort_blacklist(outfile):
                 "name": "capture",
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "get",
-                "fraction": P.PARAMS.get("analysis_optional_minimum_viewpoint_overlap", 0.75),
+                "fraction": P.PARAMS.get(
+                    "analysis_optional_minimum_viewpoint_overlap", 0.75
+                ),
                 "dtype": "category",
             },
             {
@@ -1071,7 +1100,9 @@ def annotate_sort_blacklist(outfile):
                 "name": "capture_count",
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "count",
-                "fraction": P.PARAMS.get("analysis_optional_minimum_viewpoint_overlap", 0.75),
+                "fraction": P.PARAMS.get(
+                    "analysis_optional_minimum_viewpoint_overlap", 0.75
+                ),
                 "dtype": "Int8",
             },
             {
@@ -1195,7 +1226,8 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_total_memory="8G",
+        job_threads=1,
+        job_total_memory="5G",
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1220,7 +1252,9 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
     Identifies duplicate fragments with the same coordinates and order.
     """
 
-    fragments = [infile.replace("sentinel", f"fragments.{STORAGE_FORMAT}")for infile in infiles]
+    fragments = [
+        infile.replace("sentinel", f"fragments.{STORAGE_FORMAT}") for infile in infiles
+    ]
 
     statement = [
         "capcruncher",
@@ -1234,6 +1268,8 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         outfile,
         "--file-type",
         STORAGE_FORMAT,
+        "-p",
+        str(P.PARAMS.get("pipeline_n_cores", 1))
     ]
 
     P.run(
@@ -1282,6 +1318,8 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         sample_name,
         "--read-type",
         read_type,
+        "-p",
+        str(P.PARAMS.get("pipeline_n_cores", 1))
     ]
 
     P.run(
@@ -1292,9 +1330,9 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # Zero non-deduplicated reporters
-    # for s in slices:
-    #     zap_file(s)
+    #Zero non-deduplicated reporters
+    for s in slices:
+        zap_file(s)
 
     touch_file(outfile)
 
@@ -1331,6 +1369,8 @@ def alignments_deduplicate_slices_statistics(
         read_type,
         "--file-type",
         STORAGE_FORMAT,
+        "-p",
+        str(P.PARAMS["pipeline_n_cores"]),
     ]
 
     P.run(
@@ -1356,7 +1396,7 @@ def alignments_deduplicate_collate(infiles, outfile):
         slices = [fn.replace("sentinel", STORAGE_FORMAT) for fn in infiles]
         args.extend(["-i", "viewpoint"])
     elif STORAGE_FORMAT == "parquet":
-        #slices = [fn.replace("sentinel", STORAGE_FORMAT) for fn in infiles]
+        # slices = [fn.replace("sentinel", STORAGE_FORMAT) for fn in infiles]
         slices = list(
             itertools.chain.from_iterable(
                 glob.glob(f"{fn.replace('sentinel', 'parquet')}/*.parquet")
@@ -1373,7 +1413,7 @@ def alignments_deduplicate_collate(infiles, outfile):
         outfile.replace("sentinel", STORAGE_FORMAT),
         *args,
         "-p",
-        str(P.PARAMS.get("pipeline_n_cores", 4)),
+        str(P.PARAMS.get("pipeline_n_cores", 1)),
     ]
 
     P.run(
@@ -1383,8 +1423,8 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # for fn in infiles:
-    #     zap_file(fn)
+    for fn in infiles:
+        zap_file(fn)
 
     touch_file(outfile)
 
@@ -1675,6 +1715,7 @@ def reporters_make_bedgraph(infile, outfile, sample_name):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1724,6 +1765,7 @@ def reporters_make_bedgraph_normalised(infile, outfile, sample_name):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1772,6 +1814,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1833,6 +1876,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1867,6 +1911,7 @@ def reporters_make_bigwig(infile, outfile):
     P.run(
         " && ".join([statement_sort, statement_bdgtobw, statement_cleanup]),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1889,6 +1934,7 @@ def viewpoints_to_bigbed(infile, outfile):
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -2127,6 +2173,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
         P.run(
             " ".join(statement),
             job_queue=P.PARAMS["pipeline_cluster_queue"],
+            job_threads=1,
             job_condaenv=P.PARAMS["conda_env"],
         )
 
@@ -2179,6 +2226,7 @@ def plot_heatmaps_make_templates(infiles, outfile):
         statements,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
+        job_threads=1,
         without_cluster=True,
     )
 
@@ -2218,6 +2266,7 @@ def plot_pileups_make_templates(infiles, outfile):
         statements,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
+        job_threads=1,
         without_cluster=True,
     )
 
@@ -2267,6 +2316,7 @@ def make_plots(infile, outfile, viewpoint):
         statements,
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
+        job_threads=1,
         without_cluster=True,
     )
 
@@ -2287,7 +2337,7 @@ def plotting():
     plotting,
 )
 @originate(
-    "pipeline_complete.txt",
+    "COMPLETE.sentinel",
 )
 def full(outfile):
 
