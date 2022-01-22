@@ -1616,7 +1616,6 @@ def reporters_store_binned(infile, outfile):
 @merge(
     [
         stats_deduplication_collate,
-        stats_trim_collate,
         stats_digestion_collate,
         stats_alignment_filtering_collate,
     ],
