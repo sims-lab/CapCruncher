@@ -503,9 +503,10 @@ def fastq_duplicates_remove(infiles, outfile):
     Removes duplicate read fragments identified from parsed fastq files.
     """
 
-    sample = re.match(r".*/(.*)(_part\d+)_[12].fastq(?:.gz)?", infiles[0])
+    sample = re.match(r".*/(.*)(_part\d+)_[12].fastq(.gz)?", infiles[0])
     sample_name = sample.group(1)
     sample_part = sample.group(2)
+    sample_compression = sample.group(3)
     output_prefix = outfile.replace(".sentinel", "")
     stats_prefix = (
         f"capcruncher_statistics/deduplication/data/{sample_name}{sample_part}"
@@ -520,7 +521,7 @@ def fastq_duplicates_remove(infiles, outfile):
                 "remove",
                 *infiles,
                 "-d",
-                f"capcruncher_preprocessing/deduplicated/duplicated_ids/{sample_name}.pkl",
+                f"capcruncher_preprocessing/deduplicated/duplicated_ids/{sample_name}.pkl{'.gz' if sample_compression else ''}",
                 "--sample-name",
                 sample_name,
                 "--stats-prefix",
