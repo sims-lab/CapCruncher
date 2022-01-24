@@ -150,7 +150,7 @@ def digest(
 
     # Read summary - reads that pass the filter
     df_stats = (
-        df_hist.query("(n_slices > 1) or (filtered == False) or (read_type == 'pe')")
+        df_hist.query("(n_slices >= 1) or (filtered == False) or (read_type == 'pe')")
         .groupby(["sample", "read_type", "read_number", "filtered"])["count"]
         .sum()
         .reset_index()
