@@ -184,11 +184,19 @@ def data_path():
     data_dir = os.path.join(dirname, "data", "fastq_digestion")
     return data_dir
 
+def count_fragments(fq):
+    fragments = set()
+    with pysam.FastxFile(fq) as fq_file:
+        for record in fq_file:
+            parent_id = record.name.split("|")[0]
+            fragments.add(parent_id)
+    return len(fragments)
+
 
 @pytest.mark.parametrize(
     "fastq_files,enzyme,mode,n_reads_raw,n_reads_filt",
     [
-        (("digest_1.fastq.gz",), "dpnii", "flashed", 1512, 802),
+        (("digest_1.fastq.gz",), "dpnii", "flashed", 1512, 876),
         (("digest_1.fastq.gz", "digest_2.fastq.gz"), "dpnii", "pe", 1512, 1512),
         pytest.param(
             ("digest_1.fastq.gz", "digest_2.fastq.gz"),
@@ -228,16 +236,13 @@ def test_digest_fastq(
         stats_prefix=stats_prefix,
         n_cores=3,
     )
-    assert (
-        stats.query("(stat_type == 'unfiltered') and (read_number < 2)")["stat"].values[
-            0
-        ]
-        == n_reads_raw
-    )
-    assert (
-        stats.query("(stat_type == 'filtered') and (read_number < 2)")["stat"].values[0]
-        == n_reads_filt
-    )
+
+    test_n_reads_raw = stats.query("(stat_type == 'unfiltered') and (read_number < 2)")["stat"].values[0]
+    test_n_reads_filt = stats.query("(stat_type == 'filtered') and (read_number < 2)")["stat"].values[0]
+
+    assert test_n_reads_raw == n_reads_raw
+    assert test_n_reads_filt == n_reads_filt
+    assert count_fragments(outfile) == n_reads_filt
 
 
 
