@@ -141,7 +141,7 @@ class DigestedRead:
         read: pysam.FastqProxy,
         cutsite: str,
         min_slice_length: int = 18,
-        slice_number_offset: int = 0,
+        slice_number_start: int = 1,
         allow_undigested: bool = False,
         read_type: str = "flashed",
     ):
@@ -157,7 +157,7 @@ class DigestedRead:
 
         self.read = read
         self.min_slice_length = min_slice_length
-        self.slice_number_offset = slice_number_offset
+        self.slice_number_start = slice_number_start
         self.allow_undigested = allow_undigested
         self.read_type = read_type
 
@@ -186,7 +186,7 @@ class DigestedRead:
     def _get_slices(self) -> List[str]:
 
         indexes = self.slice_indexes
-        slice_no = self.slice_number_offset
+        slice_no = self.slice_number_start
         slices_list = []
 
         if self.has_slices or self.allow_undigested:
@@ -281,7 +281,7 @@ class ReadDigestionProcess(multiprocessing.Process):
             if i == 0:
                 digested.append(DigestedRead(read, **digestion_kwargs))
             else:
-                digestion_kwargs["slice_number_offset"] = digested[
+                digestion_kwargs["slice_number_start"] = digested[
                     i - 1
                 ].slices_filtered
                 digested.append(DigestedRead(read, **digestion_kwargs))
@@ -350,7 +350,7 @@ class ReadDigestionProcess(multiprocessing.Process):
                                 if not self.read_type == "flashed"
                                 else read_number,
                                 unfiltered=digested_read.slices_unfiltered,
-                                filtered=digested_read.slices_filtered,
+                                filtered=digested_read.slices_filtered if digested_read.slices_filtered > 0 else 1,
                             )
 
                             buffer_stats.append(digested_read_stats)
