@@ -426,13 +426,6 @@ def remove_duplicates_from_parquet(
         engine="pyarrow-dataset",
         
     )
-    # Repartition to reduce overhead
-    ddf = ddf.repartition(partition_size="100MB")
-
-    # Determine categories
-    ddf = ddf.categorize(
-        columns=["capture", "viewpoint", "exclusion", "chrom"], index=False
-    )
 
     logging.info("Writing unique slices")
     ddf.to_parquet(output, compression="snappy", engine="pyarrow")
