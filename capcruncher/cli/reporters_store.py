@@ -1,16 +1,15 @@
+import logging
 import os
-import re
-from typing import Tuple
-import warnings
-
-warnings.simplefilter("ignore", category=RuntimeWarning)
 import pickle
+from typing import Tuple
 
-import click
 import h5py
 import pandas as pd
-from capcruncher.cli.cli_reporters import cli
-from capcruncher.tools.storage import CoolerBinner, create_cooler_cc, link_common_cooler_tables
+from capcruncher.tools.storage import (
+    CoolerBinner,
+    create_cooler_cc,
+    link_common_cooler_tables,
+)
 
 
 def get_viewpoints(store: h5py.File):
@@ -182,9 +181,11 @@ def merge(coolers: Tuple, output: os.PathLike):
      coolers (Tuple): Cooler files produced by either the fragments or bins subcommands.
      output (os.PathLike): Path from merged cooler file.
     """
-    import cooler
     from collections import defaultdict
-    #h5py._errors.unsilence_errors()
+
+    import cooler
+
+    logging.info("Merging cooler files")
 
     coolers_to_merge = defaultdict(list)
 
@@ -212,11 +213,11 @@ def merge(coolers: Tuple, output: os.PathLike):
         for ii, (viewpoint, cooler_uris) in enumerate(coolers_to_merge.items()):
 
             if len(cooler_uris) < 2:  # Only merge if two or more, else just copy
-                    (file_path, group_path) = cooler_uris[0].split("::")
+                (file_path, group_path) = cooler_uris[0].split("::")
 
-                    with h5py.File(file_path, mode="r") as src:
-                        src.copy(src[group_path], dest, group_path)
-            
+                with h5py.File(file_path, mode="r") as src:
+                    src.copy(src[group_path], dest, group_path)
+
             else:
                 need_merging.append(viewpoint)
 
@@ -224,11 +225,8 @@ def merge(coolers: Tuple, output: os.PathLike):
     for viewpoint in need_merging:
         cooler_uris = coolers_to_merge[viewpoint]
         cooler.merge_coolers(
-                f"{output}::/{viewpoint.replace('::', '/resolutions/')}", cooler_uris
-            )
-    
+            f"{output}::/{viewpoint.replace('::', '/resolutions/')}", cooler_uris
+        )
 
     # Reduce space by linking common tables (bins, chroms)
     link_common_cooler_tables(output)
-
-
