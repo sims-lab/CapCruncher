@@ -145,7 +145,7 @@ try:
 
     MAKE_PLOTS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
 except ImportError as e:
-    warnings.warn(
+    logging.warning(
         "Plotting capabilities not installed. For plotting please run: pip install capcruncher[plotting]"
     )
     MAKE_PLOTS = False
@@ -156,10 +156,10 @@ HUB_NAME = re.sub(r"[,\s+\t;:]", "_", P.PARAMS.get("hub_name", ""))
 
 # Warn about missing parameters
 if not HAS_DESIGN:
-    warnings.warn(f'Design matrix {P.PARAMS.get("analysis_design", "")} not found')
+    logging.warning(f'Design matrix {P.PARAMS.get("analysis_design", "")} not found')
 
 if not MAKE_PLOTS:
-    warnings.warn(
+    logging.warning(
         f'Plotting coordinates file {P.PARAMS.get("plot_coordinates")} is not correctly formatted. Will not perform plotting.'
     )
 
@@ -2310,7 +2310,7 @@ def make_plots(infile, outfile, viewpoint):
                     )
                 )
     except Exception as e:
-        warnings.warn(f"Exception {e} occured while plotting {region.name}")
+        logging.warning(f"Exception {e} occured while plotting {region.name}")
 
     P.run(
         statements,
