@@ -1,3 +1,4 @@
+import logging
 import queue
 import re
 import pysam
@@ -281,38 +282,22 @@ class ReadDigestionProcess(multiprocessing.Process):
             if i == 0:
                 digested.append(DigestedRead(read, **digestion_kwargs))
             else:
-                digestion_kwargs["slice_number_start"] = digested[
-                    i - 1
-                ].slices_filtered
+                digestion_kwargs["slice_number_start"] = digested[i - 1].slices_filtered
                 digested.append(DigestedRead(read, **digestion_kwargs))
 
         return digested
 
-    def _aggregate_stats(self, df, stats: List[DigestionStats]):
+    def _digestion_statistics_to_dataframe(self, stats: List[DigestionStats]):
 
         if stats:
 
-
-            df_2 = pd.DataFrame(stats)
-            df_2 = (
-                df_2.groupby(["read_type", "read_number", "unfiltered", "filtered"])
+            df = pd.DataFrame(stats)
+            return (
+                df.groupby(["read_type", "read_number", "unfiltered", "filtered"])
                 .size()
                 .to_frame("count")
                 .reset_index()
             )
-
-            df_stats = (
-                pd.concat([df, df_2])
-                .groupby(["read_type", "read_number", "unfiltered", "filtered"])
-                .sum()
-                .reset_index()
-            )
-        
-        else:
-            df_stats = df
-
-
-        return df_stats
 
     def run(self):
         """
@@ -328,42 +313,75 @@ class ReadDigestionProcess(multiprocessing.Process):
 
         buffer_stats = list()
         buffer_reads = list()
-        df_stats = pd.DataFrame()
+        dframes_stats = list()
 
         while True:
             try:
                 reads = self.inq.get(block=True, timeout=0.01)
-                
 
+                # Make sure that we don't need to terminate
                 if reads:
+
+                    # Accounts for PE as well as flashed
                     for read in reads:
+
+                        # Digest the read
                         digested = self._digest_reads(read, **self.digestion_kwargs)
 
+                        # Parse the digestion results
                         for read_number, digested_read in enumerate(digested):
 
+                            # Only write if there are valid slices present
                             if digested_read.has_valid_slices:
                                 buffer_reads.append(str(digested_read))
 
+                            # Will record all reads even if these do not digest
                             digested_read_stats = self._stat_container(
                                 read_type=self.read_type,
-                                read_number=read_number + 1
-                                if not self.read_type == "flashed"
-                                else read_number,
+                                read_number=(
+                                    read_number + 1
+                                    if not self.read_type == "flashed"
+                                    else read_number
+                                ),
                                 unfiltered=digested_read.slices_unfiltered,
-                                filtered=digested_read.slices_filtered if digested_read.slices_filtered > 0 else 1,
+                                filtered=digested_read.slices_filtered,
                             )
 
+                            # Append stats to the stats buffer
                             buffer_stats.append(digested_read_stats)
 
-                    df_stats = self._aggregate_stats(df_stats, buffer_stats)
+                    # Aggregate individual read stats into a dataframe
+                    df_stat_batch = self._digestion_statistics_to_dataframe(
+                        buffer_stats
+                    )
+
+                    # Add this summary to the overall stats
+                    dframes_stats.append(df_stat_batch)
+
+                    # Add the digested reads to the output queue
                     self.outq.put("".join(buffer_reads.copy()))
                     buffer_reads.clear()
+                    buffer_stats.clear()
 
                 else:
                     break
 
             except queue.Empty:
                 continue
-        
+
         if self.stats_pipe:
-            self.stats_pipe.send(df_stats)
+            # Merge all dataframes together
+
+            try:
+                df_stats = pd.concat(dframes_stats)
+                df_stats_aggregated = (
+                    df_stats.groupby(["read_type", "read_number", "unfiltered", "filtered"])
+                    .sum()
+                    .reset_index()
+                )
+
+                # Send the statistics to the main process
+                self.stats_pipe.send(df_stats_aggregated)
+            except ValueError:
+                # Might not actually have got any reads, just return none
+                self.stats_pipe.send(None)

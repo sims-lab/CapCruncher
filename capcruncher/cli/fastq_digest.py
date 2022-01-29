@@ -1,3 +1,4 @@
+from builtins import breakpoint
 import multiprocessing
 import os
 from typing import Tuple
@@ -112,7 +113,7 @@ def digest(
 
     # Collate statistics
     df_hist = (
-        pd.concat(stats)
+        pd.concat([df for df in stats if df is not None])
         .groupby(["read_type", "read_number", "unfiltered", "filtered"])
         .sum()
         .reset_index()
@@ -149,7 +150,7 @@ def digest(
 
     # Read summary - reads that pass the filter
     df_stats = (
-        df_hist.query("(n_slices > 1) or (filtered == False) or (read_type == 'pe')")
+        df_hist.query("(n_slices >= 1) or (filtered == False) or (read_type == 'pe')")
         .groupby(["sample", "read_type", "read_number", "filtered"])["count"]
         .sum()
         .reset_index()
