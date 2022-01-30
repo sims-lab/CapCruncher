@@ -1,3 +1,4 @@
+from audioop import reverse
 import os
 import tempfile
 import pandas as pd
@@ -117,8 +118,8 @@ def plot_flash_summary(run_stats_path: os.PathLike):
     fig.update_yaxes(title="")
     fig.update_layout(legend_title_text="")
     try:
-
-        fig["layout"]["updatemenus"][0].update(dict(y=1.2, pad={"b": 10, "t": 0, "l": 0}, x=0))
+        fig["layout"]["updatemenus"] = None
+        #fig["layout"]["updatemenus"][0].update(dict(y=1.2, pad={"b": 10, "t": 0, "l": 0}, x=0))
         fig["layout"]["sliders"][0]["pad"] = {"b": 10, "t": 25}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
@@ -155,8 +156,9 @@ def plot_digestion_read_summary(digestion_stats_reads_path):
         x="stat",
         y="stat_type",
         color="read_type",
-        facet_row="sample",
+        animation_frame="sample",
         template="plotly_white",
+        range_x=[0, df.groupby(["sample", "stat_type"])["stat"].sum().max()],
         category_orders={
             "sample": sorted(df["sample"]),
             "read_type": ["Combined", "Non-Combined"],
@@ -173,6 +175,16 @@ def plot_digestion_read_summary(digestion_stats_reads_path):
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
     fig.layout["xaxis"]["title"]["text"] = "Number of Slices"
     fig.update_traces(marker_line_width=0)
+
+    try:
+        fig["layout"]["updatemenus"] = None
+        #fig["layout"]["updatemenus"][0].update(dict(y=1.2, pad={"b": 10, "t": 0, "l": 0}, x=0))
+        fig["layout"]["sliders"][0]["pad"] = {"b": 10, "t": 25}
+        fig["layout"]["sliders"][0]["x"] = 0
+        fig["layout"]["sliders"][0]["len"] = 1
+
+    except KeyError:  # Might only have one sample
+        pass
 
     return fig
 
@@ -210,7 +222,8 @@ def plot_digestion_histogram(digestion_stats_histogram_path: os.PathLike):
     fig.update_xaxes(dtick=1)
 
     try:
-        fig["layout"]["updatemenus"][0].update(dict(y=1, pad={"b": 10, "t": 0}, x=0))
+        fig["layout"]["updatemenus"] = None
+        #fig["layout"]["updatemenus"][0].update(dict(y=1, pad={"b": 10, "t": 0}, x=0))
         fig["layout"]["sliders"][0]["pad"] = {"r": 10, "b": 5, "t": 10}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
@@ -249,7 +262,7 @@ def format_alignment_filtering_read_stats(filtering_read_stats_path: os.PathLike
         ]
         // 2
     )
-    return df.sort_values(["sample", "read_type"])
+    return df.sort_values(["sample", "read_type", "stat"], ascending=[True, True, False])
 
 
 def plot_alignment_filtering_read_summary(filtering_read_stats_path: os.PathLike):
@@ -265,18 +278,19 @@ def plot_alignment_filtering_read_summary(filtering_read_stats_path: os.PathLike
         template="plotly_white",
         category_orders={
             "stat_type": df["stat_type"].unique(),
-            "read_type": ["Combined", "Non-Combined"],
+            "read_type": list(reversed(["Combined", "Non-Combined"])),
         },
         range_x=[0, df["stat"].max()],
-        color_discrete_sequence=["#599AD3", "#9E66AB"]
+        color_discrete_sequence=list(reversed(["#599AD3", "#9E66AB"]))
     )
 
     fig.update_xaxes(title="")
     fig.update_yaxes(title="")
-    fig.update_layout(legend_title_text="")
+    fig.update_layout(legend_title_text="", legend_traceorder="reversed")
 
     try:
-        fig["layout"]["updatemenus"][0].update(dict(y=1.1, pad={"b": 5, "t": 0}, x=0))
+        fig["layout"]["updatemenus"] = None
+        #fig["layout"]["updatemenus"][0].update(dict(y=1.1, pad={"b": 5, "t": 0}, x=0))
         fig["layout"]["sliders"][0]["pad"] = {"r": 10, "b": 5, "t": 10}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
@@ -308,9 +322,10 @@ def plot_reporter_summary(reporter_stats_path: os.PathLike):
     fig.update_layout(legend_title_text="")
 
     try:
-        fig["layout"]["updatemenus"][0].update(
-            dict(y=1.2, pad={"l": 0, "b": 10, "t": 0}, x=0)
-        )
+        fig["layout"]["updatemenus"] = None
+        # fig["layout"]["updatemenus"][0].update(
+        #     dict(y=1.2, pad={"l": 0, "b": 10, "t": 0}, x=0)
+        # )
         fig["layout"]["sliders"][0]["pad"] = {"r": 0, "b": 5, "t": 50}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
@@ -374,9 +389,10 @@ def plot_overall_summary(run_stats_path: os.PathLike):
     fig.update_layout(legend_title_text="")
     
     try:
-        fig["layout"]["updatemenus"][0].update(
-            dict(y=1.1, pad={"l": 0, "b": 5, "t": 0}, x=0)
-        )
+        fig["layout"]["updatemenus"] = None
+        # fig["layout"]["updatemenus"][0].update(
+        #     dict(y=1.1, pad={"l": 0, "b": 5, "t": 0}, x=0)
+        # )
         fig["layout"]["sliders"][0]["pad"] = {"r": 0, "b": 5, "t": 10}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
