@@ -1,6 +1,5 @@
 from audioop import reverse
 import os
-import tempfile
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -117,6 +116,8 @@ def plot_flash_summary(run_stats_path: os.PathLike):
     fig.update_xaxes(title="Number of Read Pairs")
     fig.update_yaxes(title="")
     fig.update_layout(legend_title_text="")
+    fig.update_traces(width=0.5)
+
     try:
         fig["layout"]["updatemenus"] = None
         #fig["layout"]["updatemenus"][0].update(dict(y=1.2, pad={"b": 10, "t": 0, "l": 0}, x=0))
@@ -175,6 +176,7 @@ def plot_digestion_read_summary(digestion_stats_reads_path):
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
     fig.layout["xaxis"]["title"]["text"] = "Number of Slices"
     fig.update_traces(marker_line_width=0)
+    fig.update_traces(width=0.5)
 
     try:
         fig["layout"]["updatemenus"] = None
@@ -387,6 +389,8 @@ def plot_overall_summary(run_stats_path: os.PathLike):
     fig.update_xaxes(title="")
     fig.update_yaxes(title="")
     fig.update_layout(legend_title_text="")
+    fig.update_traces(marker_line_width=0)
+
     
     try:
         fig["layout"]["updatemenus"] = None

@@ -1270,7 +1270,7 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         "--file-type",
         STORAGE_FORMAT,
         "-p",
-        str(P.PARAMS.get("pipeline_n_cores", 1))
+        str(P.PARAMS.get("pipeline_n_cores", 1)),
     ]
 
     P.run(
@@ -1281,7 +1281,7 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    #Zero fragments
+    # Zero fragments
     for fn in fragments:
         try:
             zap_file(fn)
@@ -1327,7 +1327,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         "--read-type",
         read_type,
         "-p",
-        str(P.PARAMS.get("pipeline_n_cores", 1))
+        str(P.PARAMS.get("pipeline_n_cores", 1)),
     ]
 
     P.run(
@@ -1338,7 +1338,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    #Zero non-deduplicated reporters
+    # Zero non-deduplicated reporters
     for fn in slices:
         try:
             zap_file(fn)
@@ -1651,39 +1651,20 @@ def pipeline_merge_stats(infiles, outfile):
     "capcruncher_statistics/capcruncher_statistics.html",
 )
 def pipeline_make_report(infile, outfile):
-    """Run jupyter notebook for reporting and plotting pipeline statistics"""
+    """Make pipeline run report"""
 
-    path_pipeline = __file__
-    path_pipeline_dir = os.path.dirname(path_pipeline)
-
-    statement_clean = " ".join(["rm", outfile.replace(".html", "*"), "-f"])
-
-    statement_papermill = " ".join(
-        [
-            "papermill",
-            "-k",
-            "python3",
-            "-p",
-            "directory",
-            "$(pwd)/capcruncher_statistics/",
-            f"{path_pipeline_dir}/statistics.ipynb",
-            outfile.replace(".html", ".ipynb"),
-        ]
-    )
-
-    statement_nbconvert = " ".join(
-        [
-            "jupyter",
-            "nbconvert",
-            "--no-input",
-            "--to html",
-            outfile.replace(".html", ".ipynb"),
-            outfile,
-        ]
-    )
+    statement = [
+        "capcruncher",
+        "pipeline",
+        "report",
+        "--pipeline-statistics-path",
+        "capcruncher_statistics/",
+        "--pipeline-report-path",
+        outfile
+    ]
 
     P.run(
-        " && ".join([statement_clean, statement_papermill, statement_nbconvert]),
+        " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
     )
