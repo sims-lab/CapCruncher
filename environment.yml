@@ -4,37 +4,32 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pip
+  - bedtools
+  - bowtie2>=2.4.4
   - cgatcore
   - click
-  - joblib
+  - cooler
   - dask
+  - fastqc
+  - flash
+  - iced
+  - joblib
+  - more-itertools
+  - multiqc
   - natsort
+  - pandas
+  - pip
+  - plotly
+  - pyarrow
   - pybedtools
   - pysam
-  - bowtie2>=2.4.4
-  - trim-galore
-  - cooler
-  - pandas
-  - flash
-  - ucsc-bedgraphtobigwig
-  - ucsc-fetchchromsizes
-  - bedtools
-  - samtools
-  - nbconvert
-  - fastqc
-  - multiqc
-  - iced
-  - ipykernel
-  - papermill
-  - ujson
-  - plotly
   - python-xxhash
-  - trackhub
+  - samtools
   - seaborn
-  - ucsc-fatotwobit
+  - trackhub
+  - trim-galore
+  - ucsc-bedgraphtobigwig
   - ucsc-bedtobigbed
-  - pytables
-  - blosc
-  - pyarrow
-  - more-itertools
+  - ucsc-fatotwobit
+  - ucsc-fetchchromsizes
+  - ujson
