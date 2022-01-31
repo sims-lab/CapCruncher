@@ -346,7 +346,7 @@ def format_run_stats_for_overall_summary(run_stats_path: os.PathLike):
         "reads_total": "Total Reads",
         "reads_unique": "PCR Duplicate Filtered (1st pass)",
         "unfiltered": "Passed Trimming and Combining",
-        "filtered": "Passed restriction site filter.",
+        "filtered": "Passed restriction site filter",
         "mapped": "Mapped to reference genome",
         "contains_single_viewpoint": "Contains a viewpoint Slice",
         "contains_viewpoint_and_reporter": "Contains a viewpoint and Reporter Slice",
