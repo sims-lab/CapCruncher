@@ -10,11 +10,13 @@ import yaml
 
 def plot_deduplication_stats(deduplication_summary_path: os.PathLike):
 
-    df = (pd.read_csv(deduplication_summary_path)
-            .sort_values("sample")
-            .replace("reads_unique", "Unique Reads")
-            .replace("reads_removed", "Duplicated Reads"))
-    
+    df = (
+        pd.read_csv(deduplication_summary_path)
+        .sort_values("sample")
+        .replace("reads_unique", "Unique Reads")
+        .replace("reads_removed", "Duplicated Reads")
+    )
+
     fig = px.bar(
         data_frame=df.query('stat_type != "reads_total"'),
         x="stat",
@@ -27,7 +29,7 @@ def plot_deduplication_stats(deduplication_summary_path: os.PathLike):
         },
         color_discrete_sequence=["#F9A65A", "grey"],
     )
-    #fig.for_each_trace(lambda t: t.update(name=" ".join(t.name.split("_"))))
+    # fig.for_each_trace(lambda t: t.update(name=" ".join(t.name.split("_"))))
     fig.update_layout(legend_title_text="")
     fig.update_yaxes(title="")
     fig.update_xaxes(title="Number of Reads")
@@ -110,7 +112,7 @@ def plot_flash_summary(run_stats_path: os.PathLike):
         animation_frame="sample",
         range_x=[0, df["stat"].max()],
         template="plotly_white",
-        color_discrete_sequence=["#599AD3", "#9E66AB"]
+        color_discrete_sequence=["#599AD3", "#9E66AB"],
     )
 
     fig.update_xaxes(title="Number of Read Pairs")
@@ -120,7 +122,7 @@ def plot_flash_summary(run_stats_path: os.PathLike):
 
     try:
         fig["layout"]["updatemenus"] = None
-        #fig["layout"]["updatemenus"][0].update(dict(y=1.2, pad={"b": 10, "t": 0, "l": 0}, x=0))
+        # fig["layout"]["updatemenus"][0].update(dict(y=1.2, pad={"b": 10, "t": 0, "l": 0}, x=0))
         fig["layout"]["sliders"][0]["pad"] = {"b": 10, "t": 25}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
@@ -163,16 +165,16 @@ def plot_digestion_read_summary(digestion_stats_reads_path):
         category_orders={
             "sample": sorted(df["sample"]),
             "read_type": ["Combined", "Non-Combined"],
-            "stat_type": ["All Read Pairs", "Read Pairs With Valid Slices"]
+            "stat_type": ["All Read Pairs", "Read Pairs With Valid Slices"],
         },
-        color_discrete_sequence=["#599AD3", "#9E66AB"]
+        color_discrete_sequence=["#599AD3", "#9E66AB"],
     )
     fig.update_layout(
         legend_title_text="",
         margin={"b": 10},
     )
     fig.update_yaxes(title="")
-    #fig.update_xaxes(matches=None, showticklabels=True)
+    # fig.update_xaxes(matches=None, showticklabels=True)
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
     fig.layout["xaxis"]["title"]["text"] = "Number of Slices"
     fig.update_traces(marker_line_width=0)
@@ -180,7 +182,7 @@ def plot_digestion_read_summary(digestion_stats_reads_path):
 
     try:
         fig["layout"]["updatemenus"] = None
-        #fig["layout"]["updatemenus"][0].update(dict(y=1.2, pad={"b": 10, "t": 0, "l": 0}, x=0))
+        # fig["layout"]["updatemenus"][0].update(dict(y=1.2, pad={"b": 10, "t": 0, "l": 0}, x=0))
         fig["layout"]["sliders"][0]["pad"] = {"b": 10, "t": 25}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
@@ -215,7 +217,7 @@ def plot_digestion_histogram(digestion_stats_histogram_path: os.PathLike):
         template="plotly_white",
         range_x=[0, df["n_slices"].max()],
         range_y=[0, df["count"].max()],
-        color_discrete_sequence=["#599AD3", "#9E66AB"]
+        color_discrete_sequence=["#599AD3", "#9E66AB"],
     )
 
     fig.update_xaxes(title="")
@@ -225,7 +227,7 @@ def plot_digestion_histogram(digestion_stats_histogram_path: os.PathLike):
 
     try:
         fig["layout"]["updatemenus"] = None
-        #fig["layout"]["updatemenus"][0].update(dict(y=1, pad={"b": 10, "t": 0}, x=0))
+        # fig["layout"]["updatemenus"][0].update(dict(y=1, pad={"b": 10, "t": 0}, x=0))
         fig["layout"]["sliders"][0]["pad"] = {"r": 10, "b": 5, "t": 10}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
@@ -254,7 +256,8 @@ def format_alignment_filtering_read_stats(filtering_read_stats_path: os.PathLike
         )
     )
     df.loc[
-        (df["stat_type"] == "Full PCR Duplicate Removal") & (df["read_type"] == "Non-Combined"),
+        (df["stat_type"] == "Full PCR Duplicate Removal")
+        & (df["read_type"] == "Non-Combined"),
         "stat",
     ] = (
         df.loc[
@@ -264,7 +267,9 @@ def format_alignment_filtering_read_stats(filtering_read_stats_path: os.PathLike
         ]
         // 2
     )
-    return df.sort_values(["sample", "read_type", "stat"], ascending=[True, True, False])
+    return df.sort_values(
+        ["sample", "read_type", "stat"], ascending=[True, True, False]
+    )
 
 
 def plot_alignment_filtering_read_summary(filtering_read_stats_path: os.PathLike):
@@ -283,7 +288,7 @@ def plot_alignment_filtering_read_summary(filtering_read_stats_path: os.PathLike
             "read_type": list(reversed(["Combined", "Non-Combined"])),
         },
         range_x=[0, df["stat"].max()],
-        color_discrete_sequence=list(reversed(["#599AD3", "#9E66AB"]))
+        color_discrete_sequence=list(reversed(["#599AD3", "#9E66AB"])),
     )
 
     fig.update_xaxes(title="")
@@ -292,7 +297,7 @@ def plot_alignment_filtering_read_summary(filtering_read_stats_path: os.PathLike
 
     try:
         fig["layout"]["updatemenus"] = None
-        #fig["layout"]["updatemenus"][0].update(dict(y=1.1, pad={"b": 5, "t": 0}, x=0))
+        # fig["layout"]["updatemenus"][0].update(dict(y=1.1, pad={"b": 5, "t": 0}, x=0))
         fig["layout"]["sliders"][0]["pad"] = {"r": 10, "b": 5, "t": 10}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
@@ -362,7 +367,12 @@ def format_run_stats_for_overall_summary(run_stats_path: os.PathLike):
         sample=lambda df: df["sample"].str.replace("_", " "),
     )
 
-    return df.sort_values("sample")
+    df = df.sort_values("sample")
+    df = df.loc[
+        df.groupby("sample")["stat"].transform("sum").sort_values(ascending=False).index
+    ]
+
+    return df
 
 
 def plot_overall_summary(run_stats_path: os.PathLike):
@@ -379,11 +389,10 @@ def plot_overall_summary(run_stats_path: os.PathLike):
         barmode="relative",
         template="plotly_white",
         category_orders={
-            "stat_type": df["stat_type"].unique(),
             "sample": sorted(df["sample"].unique()),
             "read_type": ["Combined", "Non-Combined"],
         },
-        color_discrete_sequence=["#599AD3", "#9E66AB"]
+        color_discrete_sequence=["#599AD3", "#9E66AB"],
     )
 
     fig.update_xaxes(title="")
@@ -391,7 +400,6 @@ def plot_overall_summary(run_stats_path: os.PathLike):
     fig.update_layout(legend_title_text="")
     fig.update_traces(marker_line_width=0)
 
-    
     try:
         fig["layout"]["updatemenus"] = None
         # fig["layout"]["updatemenus"][0].update(
@@ -464,9 +472,7 @@ def generate_report(
     FIGURE_HTML
     """
     # <iframe width="1000" height="1000" frameborder="0" seamless="seamless" scrolling="no" \
-    #src="PLOT_URL.embed?width=1000&height=1000"></iframe>
-
-
+    # src="PLOT_URL.embed?width=1000&height=1000"></iframe>
 
     figures = dict(
         deduplication=plot_deduplication_stats(
@@ -486,7 +492,6 @@ def generate_report(
         overall=plot_overall_summary(run_stats_path),  # Overall
     )
 
-
     figure_name_to_title_mapping = dict(
         deduplication="FASTQ PCR Duplicate Removal",
         flashed="Read pair combination statistics (FLASh)",
@@ -497,8 +502,9 @@ def generate_report(
         overall="Pipeline run statistics",
     )
 
-
-    report_text_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "report_text.yml")
+    report_text_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "report_text.yml"
+    )
     with open(report_text_path, "r") as r:
         report_text = yaml.safe_load(r)
 
@@ -508,14 +514,19 @@ def generate_report(
 
         for ii, (fig_name, fig) in enumerate(figures.items()):
 
-            fig_html =  fig.to_html(full_html=False, include_plotlyjs=True if ii == 0 else False, auto_play=False)
+            fig_html = fig.to_html(
+                full_html=False,
+                include_plotlyjs=True if ii == 0 else False,
+                auto_play=False,
+            )
             fig_title = figure_name_to_title_mapping[fig_name]
             fig_text = report_text[fig_title]
 
-            report.write(section_template.replace("SECTION_NUMBER", str(ii))
-                                         .replace("SECTION_NAME", fig_title)
-                                         .replace("SECTION_DESCRIPTION", fig_text)
-                                         .replace("FIGURE_HTML",fig_html))
-                
-        report.write(html_footer)
+            report.write(
+                section_template.replace("SECTION_NUMBER", str(ii))
+                .replace("SECTION_NAME", fig_title)
+                .replace("SECTION_DESCRIPTION", fig_text)
+                .replace("FIGURE_HTML", fig_html)
+            )
 
+        report.write(html_footer)
