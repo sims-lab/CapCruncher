@@ -26,6 +26,7 @@ dependencies:
   - python-xxhash
   - samtools
   - seaborn
+  - tqdm
   - trackhub
   - trim-galore
   - ucsc-bedgraphtobigwig
