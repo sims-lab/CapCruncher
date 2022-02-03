@@ -1828,6 +1828,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True
     )
 
 
@@ -1865,7 +1866,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
             P.PARAMS["analysis_design"], sep=r"\s+|;|:\t|,", engine="python"
         )
 
-    groups = df_design.groupby("condition").groups
+    groups = df_design.groupby("condition")
 
     statement = [
         "capcruncher",
@@ -1878,8 +1879,8 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
         "-f",
         "bedgraph",
         *[f"-m {m}" for m in summary_methods],
-        *[f"-n {n}" for n in groups.keys()],
-        *[f"-c {','.join([str(c) for c in cols])}" for cols in groups.values()],
+        *[f"-n {n}" for n, df in groups],
+        *[f"-c {','.join([str(s) for s in df['sample']])}" for name, df in groups],
         "--subtraction",
         "--suffix",
         f".{viewpoint}",
@@ -1890,6 +1891,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True,
     )
 
     touch_file(outfile)
@@ -1925,6 +1927,7 @@ def reporters_make_bigwig(infile, outfile):
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
+        without_cluster=True,
     )
 
 
