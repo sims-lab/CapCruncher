@@ -562,7 +562,7 @@ def link_common_cooler_tables(clr: os.PathLike):
 
             # Delete chroms table and replace with link to the first "chroms" group
             del f[viewpoint]["chroms"]
-            f[viewpoint]["bins"] = f[viewpoints[0]]["chroms"]
+            f[viewpoint]["chroms"] = f[viewpoints[0]]["chroms"]
 
 
             # Repeat for resolutions i.e. binned coolers
