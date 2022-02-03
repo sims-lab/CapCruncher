@@ -124,7 +124,7 @@ def summarise(
     output_format: Literal["bedgraph", "tsv"] = "bedgraph",
     summary_methods: Tuple[str] = None,
     group_names: Tuple[str] = None,
-    group_columns: Tuple[int] = None,  # Need to ensure these are 0 based
+    group_columns: Tuple[int, str] = None,  # Need to ensure these are 0 based
     suffix: str = "",
     subtraction: bool = False,
 ):
@@ -149,6 +149,7 @@ def summarise(
         .rename(columns={"level_0": "index", "level_1": "aggregation"})
         .set_index("index")
         .join(df_union.iloc[:, :3])
+        .fillna(0)
     )
 
     # Write out groupby aggregations
