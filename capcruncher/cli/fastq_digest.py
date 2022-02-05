@@ -144,13 +144,17 @@ def digest(
     )
 
     # Filtered histogram
-    df_hist_filt = (df_hist.query("filtered == True")).sort_values(
+    df_hist_filt = (df_hist.query("filtered == True and n_slices > 0")).sort_values(
         ["n_slices", "count"]
     )
 
+    #breakpoint()
+
     # Read summary - reads that pass the filter
     df_stats = (
-        df_hist.query("(n_slices >= 1) or (filtered == False) or (read_type == 'pe')")
+        df_hist
+        .query("(n_slices >= 1) or (filtered == False) or (read_type == 'pe')")
+        .query("read_number < 2")
         .groupby(["sample", "read_type", "read_number", "filtered"])["count"]
         .sum()
         .reset_index()
