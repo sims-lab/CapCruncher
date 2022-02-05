@@ -351,36 +351,37 @@ def format_run_stats_for_overall_summary(run_stats_path: os.PathLike):
         "reads_total": "Total Reads",
         "reads_unique": "PCR Duplicate Filtered (1st pass)",
         "unfiltered": "Passed Trimming and Combining",
-        "filtered": "Passed restriction site filter",
-        "mapped": "Mapped to reference genome",
-        "contains_single_viewpoint": "Contains a viewpoint Slice",
-        "contains_viewpoint_and_reporter": "Contains a viewpoint and Reporter Slice",
+        "filtered": "Passed Minimum Slice Length Filter",
+        "mapped": "Mapped to Reference genome",
+        "contains_single_capture": "Contains one Viewpoint Slice",
+        "contains_capture_and_reporter": "Contains one Viewpoint and at least one Reporter Slice",
         "duplicate_filtered": "PCR Duplicate Filtered (2nd pass, partial)",
         "deduplicated": "PCR Duplicate Filtered (final pass)",
     }
 
     df = df.assign(
         stat_type=lambda df: df["stat_type"].map(stat_type_mapping),
-        read_type=lambda df: df["read_type"]
-        .replace("flashed", "Combined")
-        .replace("pe", "Non-Combined"),
+        read_type=lambda df: df["read_type"].replace("flashed", "Combined").replace("pe", "Non-Combined"),
         sample=lambda df: df["sample"].str.replace("_", " "),
     )
 
     df = df.sort_values("sample")
-    df = df.loc[
-        df.groupby("sample")["stat"].transform("sum").sort_values(ascending=False).index
-    ]
-
     return df
 
 
 def plot_overall_summary(run_stats_path: os.PathLike):
 
     df = format_run_stats_for_overall_summary(run_stats_path)
+    stat_type_order = (
+        df.groupby(["sample", "stat_type", "read_type", "read_number"])["stat"]
+        .sum()
+        .sort_values(ascending=False)
+        .reset_index()["stat_type"]
+        .unique()
+    )
 
     fig = px.bar(
-        df.query("(read_number != 2) and (stage == stage) "),
+        df,
         x="stat",
         y="stat_type",
         color="read_type",
@@ -391,6 +392,7 @@ def plot_overall_summary(run_stats_path: os.PathLike):
         category_orders={
             "sample": sorted(df["sample"].unique()),
             "read_type": ["Combined", "Non-Combined"],
+            "stat_type": stat_type_order,
         },
         color_discrete_sequence=["#599AD3", "#9E66AB"],
     )
