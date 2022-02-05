@@ -820,7 +820,6 @@ def stats_digestion_collate(infiles, outfile):
     # Collate histogram, read and slice statistics
     df_hist_filt = collate_histogram_data(data["hist_filt"])
     df_hist_unfilt = collate_histogram_data(data["hist_unfilt"])
-    # df_slice = collate_read_data(data["slice"])
     df_read = collate_read_data(data["read"])
 
     # Merge filtered and unfiltered histograms
@@ -830,7 +829,6 @@ def stats_digestion_collate(infiles, outfile):
 
     # Output histogram, slice and read statics
     df_hist.to_csv(f"{stats_prefix}.histogram.csv", index=False)
-    # df_slice.to_csv(f"{stats_prefix}.slice.csv", index=False)
     df_read.to_csv(outfile, index=False)
 
 
