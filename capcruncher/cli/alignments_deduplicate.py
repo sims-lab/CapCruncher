@@ -166,15 +166,16 @@ def remove(
         if not output_file_type == "tsv":
             raise NotImplementedError("Currently only tsv -> tsv output supported")
 
-        n_slices_total, n_slices_unique = remove_duplicates_from_tsv(
+        n_reads_total, n_reads_unique = remove_duplicates_from_tsv(
             slices, output, duplicates, buffer=buffer
         )
 
     elif input_file_type == "hdf5":
+        
         if not output_file_type == "hdf5":
             raise NotImplementedError("Currently only hdf5 -> hdf5 output supported")
 
-        n_slices_total, n_slices_unique = remove_duplicates_from_hdf5(
+        n_reads_total, n_reads_unique = remove_duplicates_from_hdf5(
             slices, duplicates, output
         )
     
@@ -182,7 +183,7 @@ def remove(
         if not output_file_type == "parquet":
             raise NotImplementedError("Currently only parquet -> parquet output supported")
 
-        n_slices_total, n_slices_unique = remove_duplicates_from_parquet(
+        n_reads_total, n_reads_unique = remove_duplicates_from_parquet(
             slices, duplicates, output
         )
    
@@ -196,7 +197,7 @@ def remove(
     # Prepare stats
     df_stats = pd.DataFrame()
     df_stats["stat_type"] = ["not-deduplicated", "deduplicated"]
-    df_stats["stat"] = [n_slices_total, n_slices_unique]
+    df_stats["stat"] = [n_reads_total, n_reads_unique]
     df_stats["sample"] = sample_name
     df_stats["read_type"] = read_type
     df_stats["read_number"] = 0
