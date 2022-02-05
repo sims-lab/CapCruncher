@@ -1,22 +1,18 @@
-import glob
 import logging
 import os
+import pickle
 import re
-import sys
 import time
-from collections import OrderedDict
 from datetime import timedelta
 from functools import wraps
-from itertools import cycle, groupby
-from typing import Any, Callable, IO, Iterable, Literal, Tuple, Union, Generator, List
+from typing import (Callable, Generator, Iterable, List, Literal,
+                    Tuple, Union)
 import numpy as np
-
 import pandas as pd
+import pybedtools
 import ujson
 import xxhash
 from pybedtools import BedTool
-import pybedtools
-import pickle
 
 
 def read_dataframes(filenames: Iterable, **kwargs):
@@ -233,8 +229,9 @@ def intersect_bins(
 def load_dict(fn, format: str, dtype: str = "int") -> dict:
     """Convinence function to load gziped json/pickle file using xopen."""
 
-    from xopen import xopen
     import itertools
+
+    from xopen import xopen
 
     
     if format == "json":

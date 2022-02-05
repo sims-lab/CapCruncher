@@ -412,9 +412,10 @@ def remove_duplicates_from_parquet(
 
     duplicates = tuple(duplicated_ids.values)
 
-    n_slices_total = (
+    n_reads_total = (
         dd.read_parquet(slices, columns=["parent_id"], engine="pyarrow")
-        .shape[0]
+        ["parent_id"]
+        .nunique()
         .compute()
     )
 
@@ -430,12 +431,13 @@ def remove_duplicates_from_parquet(
     logging.info("Writing unique slices")
     ddf.to_parquet(output, compression="snappy", engine="pyarrow")
 
-    n_slices_unique = (
+    n_reads_unique = (
         dd.read_parquet(output, columns=["parent_id"], engine="pyarrow")
-        .shape[0]
+        ["parent_id"]
+        .nunique()
         .compute()
     )
-    return (n_slices_total, n_slices_unique)
+    return (n_reads_total, n_reads_unique)
 
 
 def read_duplicated_ids(path: os.PathLike):
