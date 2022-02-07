@@ -1,0 +1,31 @@
+FASTQ PCR Duplicate Removal:
+  <p>Fastq files (after partitioning) are examined for fragments (R1 + R2) that appear to be PCR duplicates.</p>
+  <p>Duplicates are identified by comparing the concatenated R1 and R2 sequences and filtering out exact matches. </p>
+  <p>This is only the first pass of PCR duplicate removal as single base changes will be ignored. The aim here is to remove as many duplicate fragments as possible to reduce the amount of downstream processing required.</p>
+  <p>Approximately 5-20% of fragments are typically removed by this step.</p>
+
+# Trimming:
+#   <p>Following initial PCR duplicate removal fastq files are trimmed to remove sequencing adapters.</p>
+#   <p>These plots provide a brief summary of the number of adapters identified and removed.</p>
+
+Read pair combination statistics (FLASh):
+  After the removal of adapters read pairs are combined (if any overlap exists) using FLASh to generate combined fragments (refered to as flashed). Non-combined read pairs that do not have a sufficient overlap  (refered to as paired-end or pe) are maintained as read pairs in separate fastq files.
+
+Fastq <em>in silico</em> digestion statistics (read pair level):
+  <p>Following read pair combination, the combined or non-combined fragments are examined for recognition sites of the restriction enzyme used for the assay. A valid digesion of a fragment (above the minimum threshold set) results in one or more restriction fragments, refered to as slices.</p>
+  <p>Flashed read pairs are treated differently from paired-end read pairs as we expect to observe the ligation junction in the flashed fragment. Therefore, if no recognition sites are identified, the fragment is marked as invalid and is discarded. Non-combined (paired-end) reads are unlikely to contain the ligation junction and therefore if no restriction sites are identified, the individual read pairs are not discarded.</p>
+
+Fastq <em>in silico</em> digestion statistics (slice level):
+  <p> A histogram of the number of slices (<em>in silico</em> restriction fragments) generated per read fragment.
+  <p>All identified slices must be longer than the minimum length specified (default 18 bp) to be considered valid. </p>
+
+Alignment filtering statistics:
+  <p>After alignment to the reference genome and annotation with viewpoint probes, excluded regions and restriction fragments. Aligned slices are filtered and all fragments that do not contain one viewpoint slice and one or more reporter slice(s) (i.e. slices that are not viewpoint or appear in excluded regions) are removed.</p>
+  <p>This chart shows the number of read pairs removed at each stage of the filtering, split by flashed/pe status.</p>
+
+Identified reporter statistics:
+  <p>Slices from the same read fragment as a viewpoint slices are termed "reporters", these are used to determine interations with the viewpoint restriction fragment.</p>
+  <p>This chart displays the number of cis (same chromosome as viewpoint) or trans (different chromosome to viewpoint) reporters identified, separated by viewpoint.</p>
+
+Pipeline run statistics:
+  <p>This chart displays the combined statistics from the entire pipeline run summarised at the read pair level.</p>
