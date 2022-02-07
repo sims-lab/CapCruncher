@@ -34,15 +34,6 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-    - name: Install package dependencies
-      uses: conda-incubator/setup-miniconda@v2
-      with:
-        mamba-version: "*"
-        channels: conda-forge,bioconda,defaults
-        channel-priority: true
-        auto-update-conda: true
-        python-version: ${{ matrix.python-version }}
     
     - name: Restore conda cache
       uses: actions/cache@v2
@@ -57,6 +48,16 @@ jobs:
     #       path: /home/runner/work/CapCruncher/CapCruncher/tests/data/data_for_pipeline_run/chr14.fa.gz
     #       key: ${{ matrix.label }}-${{ hashFiles(/home/runner/work/CapCruncher/CapCruncher/tests/data/data_for_pipeline_run/chr14.fa.gz') }}-${{ env.CACHE_NUMBER }}
     #   id: bowtie2_cache
+
+    - name: Install package dependencies
+      uses: conda-incubator/setup-miniconda@v2
+      if: steps.conda_cache.outputs.cache-hit != 'true'
+      with:
+        mamba-version: "*"
+        channels: conda-forge,bioconda,defaults
+        channel-priority: true
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
       
     - name: Update environment 
       shell: bash -l {0}
