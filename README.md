@@ -14,3 +14,7 @@
 CapCruncher is a tool designed to automate the processing of Capture-C, Tri-C and Tiled-C data from FASTQ files, the package is written in python and  consists of an end-to-end data processing pipline together with a supporting command line interface to enable finer grained control. The pipeline provided is fast, robust and  scales from a laptop to a computational cluster. 
 
 For further information see the [documentation](https://capcruncher.readthedocs.io/en/latest/)
+
+## Changelog
+
+{{CHANGELOG.md}}
