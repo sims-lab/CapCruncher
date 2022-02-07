@@ -9,55 +9,70 @@ jobs:
     strategy:
       matrix:
         python-version: [3.8]
+        include:
+          - prefix: /usr/share/miniconda3/envs/test
 
     steps:
+      
     - uses: actions/checkout@v2
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ matrix.python-version }}   
+    
     - name: Install dependencies
       run: |
+        sudo apt install libcurl4-openssl-dev
         python -m pip install --upgrade pip
         pip install flake8
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Install package dependencies
     - uses: conda-incubator/setup-miniconda@v2
       with:
         mamba-version: "*"
-        channels: conda-forge,defaults
+        channels: conda-forge,bioconda,defaults
         channel-priority: true
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
-    - name: Install package dependencies
-      run: |
-        sudo apt install libcurl4-openssl-dev
-        mamba env update -n test -f environment.yml
+    
+    - uses: actions/cache@v2
+      with:
+          path: ${{ matrix.prefix }}
+          key: ${{ matrix.label }}-conda-${{ hashFiles('environment.yml') }}-${{ env.CACHE_NUMBER }}
+      id: cache
+      
+    - name: Update environment 
       shell: bash -l {0}
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        mamba env update -n test -f environment.yml
+
     - name: Install testing dependencies
+      shell: bash -l {0}
+      if: steps.cache.outputs.cache-hit != 'true'
       run: |
         mamba env update -n test -f testing.yml
-      shell: bash -l {0}
+
     - name: Conda info
       shell: bash -l {0}
-      run: mamba info
-    - name: Check which pip is used
-      shell: bash -l {0}
       run: |
-        which pip
+        mamba info
+
     - name: Install the package
       shell: bash -l {0}
       run: |
         pip install -e .
         pip install -e .[plotting]
-    - name: Conda list
-      shell: pwsh
-      run: mamba list
+
     - name: Test with pytest and generate report
       shell: pwsh
       run: |
