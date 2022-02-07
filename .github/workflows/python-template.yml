@@ -10,7 +10,7 @@ jobs:
       matrix:
         python-version: [3.8]
         include:
-        - prefix: /usr/share/miniconda3/envs/test
+        - prefix: /usr/share/miniconda/envs/test
 
     steps:
       
