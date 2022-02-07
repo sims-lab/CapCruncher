@@ -1891,7 +1891,7 @@ def reporters_make_comparison_bedgraph(infile, outfile, viewpoint):
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
-        without_cluster=True,
+        without_cluster=False,
     )
 
     touch_file(outfile)
