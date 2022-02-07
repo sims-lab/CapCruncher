@@ -145,7 +145,7 @@ try:
 
     MAKE_PLOTS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
 except ImportError as e:
-    warnings.warn(
+    logging.warning(
         "Plotting capabilities not installed. For plotting please run: pip install capcruncher[plotting]"
     )
     MAKE_PLOTS = False
@@ -156,10 +156,10 @@ HUB_NAME = re.sub(r"[,\s+\t;:]", "_", P.PARAMS.get("hub_name", ""))
 
 # Warn about missing parameters
 if not HAS_DESIGN:
-    warnings.warn(f'Design matrix {P.PARAMS.get("analysis_design", "")} not found')
+    logging.warning(f'Design matrix {P.PARAMS.get("analysis_design", "")} not found')
 
 if not MAKE_PLOTS:
-    warnings.warn(
+    logging.warning(
         f'Plotting coordinates file {P.PARAMS.get("plot_coordinates")} is not correctly formatted. Will not perform plotting.'
     )
 
@@ -820,7 +820,6 @@ def stats_digestion_collate(infiles, outfile):
     # Collate histogram, read and slice statistics
     df_hist_filt = collate_histogram_data(data["hist_filt"])
     df_hist_unfilt = collate_histogram_data(data["hist_unfilt"])
-    # df_slice = collate_read_data(data["slice"])
     df_read = collate_read_data(data["read"])
 
     # Merge filtered and unfiltered histograms
@@ -830,7 +829,6 @@ def stats_digestion_collate(infiles, outfile):
 
     # Output histogram, slice and read statics
     df_hist.to_csv(f"{stats_prefix}.histogram.csv", index=False)
-    # df_slice.to_csv(f"{stats_prefix}.slice.csv", index=False)
     df_read.to_csv(outfile, index=False)
 
 
@@ -1270,7 +1268,7 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         "--file-type",
         STORAGE_FORMAT,
         "-p",
-        str(P.PARAMS.get("pipeline_n_cores", 1))
+        str(P.PARAMS.get("pipeline_n_cores", 1)),
     ]
 
     P.run(
@@ -1281,7 +1279,7 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    #Zero fragments
+    # Zero fragments
     for fn in fragments:
         try:
             zap_file(fn)
@@ -1327,7 +1325,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         "--read-type",
         read_type,
         "-p",
-        str(P.PARAMS.get("pipeline_n_cores", 1))
+        str(P.PARAMS.get("pipeline_n_cores", 1)),
     ]
 
     P.run(
@@ -1338,7 +1336,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    #Zero non-deduplicated reporters
+    # Zero non-deduplicated reporters
     for fn in slices:
         try:
             zap_file(fn)
@@ -1627,7 +1625,6 @@ def reporters_store_binned(infile, outfile):
 @merge(
     [
         stats_deduplication_collate,
-        stats_trim_collate,
         stats_digestion_collate,
         stats_alignment_filtering_collate,
     ],
@@ -1652,39 +1649,20 @@ def pipeline_merge_stats(infiles, outfile):
     "capcruncher_statistics/capcruncher_statistics.html",
 )
 def pipeline_make_report(infile, outfile):
-    """Run jupyter notebook for reporting and plotting pipeline statistics"""
+    """Make pipeline run report"""
 
-    path_pipeline = __file__
-    path_pipeline_dir = os.path.dirname(path_pipeline)
-
-    statement_clean = " ".join(["rm", outfile.replace(".html", "*"), "-f"])
-
-    statement_papermill = " ".join(
-        [
-            "papermill",
-            "-k",
-            "python3",
-            "-p",
-            "directory",
-            "$(pwd)/capcruncher_statistics/",
-            f"{path_pipeline_dir}/statistics.ipynb",
-            outfile.replace(".html", ".ipynb"),
-        ]
-    )
-
-    statement_nbconvert = " ".join(
-        [
-            "jupyter",
-            "nbconvert",
-            "--no-input",
-            "--to html",
-            outfile.replace(".html", ".ipynb"),
-            outfile,
-        ]
-    )
+    statement = [
+        "capcruncher",
+        "pipeline",
+        "report",
+        "--pipeline-statistics-path",
+        "capcruncher_statistics/",
+        "--pipeline-report-path",
+        outfile
+    ]
 
     P.run(
-        " && ".join([statement_clean, statement_papermill, statement_nbconvert]),
+        " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_condaenv=P.PARAMS["conda_env"],
     )
@@ -2325,7 +2303,7 @@ def make_plots(infile, outfile, viewpoint):
                     )
                 )
     except Exception as e:
-        warnings.warn(f"Exception {e} occured while plotting {region.name}")
+        logging.warning(f"Exception {e} occured while plotting {region.name}")
 
     P.run(
         statements,
