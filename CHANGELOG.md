@@ -7,7 +7,8 @@
 * **packaging:** Fixed bug after updating pyyaml to latest version ([#122](https://github.com/sims-lab/CapCruncher/issues/122)) ([7d76b5f](https://github.com/sims-lab/CapCruncher/commit/7d76b5f4976fe3c6f1bc09989df3db28c12ecce3))
 * Added missing dependencies (seaborn and trackhub) to setup.cfg ([550a882](https://github.com/sims-lab/CapCruncher/commit/550a882af5e131c04b5d45bf0430ecc50ce15310))
 * Fixed packaging long description. ([#115](https://github.com/sims-lab/CapCruncher/issues/115)) ([6f716d1](https://github.com/sims-lab/CapCruncher/commit/6f716d182de705146333206a38d9c791de1a9227))
-**pipeline:** Fixes issue with tasks going over their allotted number of cores. ([#133](https://github.com/sims-lab/CapCruncher/issues/133)) ([27cd193](https://github.com/sims-lab/CapCruncher/commit/27cd193c207409b96a0b28c079b9d689daaa61ee))
+* **pipeline:** 
+* Fixes issue with tasks going over their allotted number of cores. ([#133](https://github.com/sims-lab/CapCruncher/issues/133)) ([27cd193](https://github.com/sims-lab/CapCruncher/commit/27cd193c207409b96a0b28c079b9d689daaa61ee))
 * Fixes error during deduplication when using gzip compression ([#134](https://github.com/sims-lab/CapCruncher/issues/134)) ([01ff56b](https://github.com/sims-lab/CapCruncher/commit/01ff56b88558af486d11b9f7544c8c5c6ca9f002))
 * Re-partition reporter slices after filtering ([#124](https://github.com/sims-lab/CapCruncher/issues/124)) ([db72c56](https://github.com/sims-lab/CapCruncher/commit/db72c56875c13ed2762d44e916a8ed66f73324cc))
 * **reporters_compare:** Fixed an issue when no data exists for a viewpoint for a given sample  ([#139](https://github.com/sims-lab/CapCruncher/issues/139)) ([e720029](https://github.com/sims-lab/CapCruncher/commit/e7200299bf2453e719f28f95ed3658e9570b7ad5))
@@ -19,7 +20,7 @@
 * **CLI:** Enables pileup normalisation using a set of regions supplied as a bed file ([#121](https://github.com/sims-lab/CapCruncher/issues/121)) ([9c587ff](https://github.com/sims-lab/CapCruncher/commit/9c587ff1a60f009c0b990952361810d61376a1c7))
 * **pipeline**: Expanded the number of viewpoints that can be processed  ([#128](https://github.com/sims-lab/CapCruncher/issues/128)) ([8fcb576](https://github.com/sims-lab/CapCruncher/commit/8fcb57657f108d78cdbb1e255a5eb85b7cb3e860))
 * **packaging:**  Moved all configuration from setup.py to setup.cfg. ([#114](https://github.com/sims-lab/CapCruncher/issues/114)) ([4835da4](https://github.com/sims-lab/CapCruncher/commit/4835da44157132feda38e299bf9c67ca297c3d2d))
-**pipeline:** 
+* **pipeline:** 
 * Capability to normalise pileups (bedgraphs/bigwigs) by a set of supplied regions. ([#125](https://github.com/sims-lab/CapCruncher/issues/125)) ([bab07ea](https://github.com/sims-lab/CapCruncher/commit/bab07eac1e524020d24c745dd88b749173d9d440))
 * Enable optional compression during fastq split and deduplicate ([#131](https://github.com/sims-lab/CapCruncher/issues/131)) ([0c32b73](https://github.com/sims-lab/CapCruncher/commit/0c32b7320fcff5d95145a406996e9baf9f7aeebd))
 * Enabled the use of custom filtering orders ([#119](https://github.com/sims-lab/CapCruncher/issues/119)) ([b57ebe8](https://github.com/sims-lab/CapCruncher/commit/b57ebe886fc767b8dcb12c7dfc45dd2e9a1ea1b3))
