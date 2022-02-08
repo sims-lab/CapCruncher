@@ -42,12 +42,12 @@ jobs:
           key: ${{ matrix.label }}-conda-${{ hashFiles('environment.yml') }}-${{ env.CACHE_NUMBER }}
       id: conda_cache
     
-    # - name: Restore bowtie2 cache
-    #   uses: actions/cache@v2
-    #   with:
-    #       path: /home/runner/work/CapCruncher/CapCruncher/tests/data/data_for_pipeline_run/chr14.fa.gz
-    #       key: ${{ matrix.label }}-${{ hashFiles(/home/runner/work/CapCruncher/CapCruncher/tests/data/data_for_pipeline_run/chr14.fa.gz') }}-${{ env.CACHE_NUMBER }}
-    #   id: bowtie2_cache
+    - name: Restore bowtie2 cache
+      uses: actions/cache@v2
+      with:
+          path: /home/runner/work/CapCruncher/CapCruncher/tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/
+          key: ${{ matrix.label }}-${{ hashFiles(/home/runner/work/CapCruncher/CapCruncher/tests/data/data_for_pipeline_run/chr14.fa.gz') }}-${{ env.CACHE_NUMBER }}
+      id: bowtie2_cache
 
     - name: Install package dependencies
       uses: conda-incubator/setup-miniconda@v2
