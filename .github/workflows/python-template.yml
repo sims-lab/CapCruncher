@@ -2,6 +2,9 @@ name: Python package
 
 on: [push]
 
+env: 
+  CACHE_NUMBER: 1
+
 jobs:
   build:
 
@@ -70,6 +73,11 @@ jobs:
       if: steps.conda_cache.outputs.cache-hit != 'true'
       run: |
         mamba env update -n test -f testing.yml
+    
+    - name: Check installed packages
+      shell: bash -l {0}
+      run: |
+        mamba info 
 
     - name: Install the package
       shell: bash -l {0}
