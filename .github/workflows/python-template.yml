@@ -51,7 +51,7 @@ jobs:
 
     - name: Install package dependencies
       uses: conda-incubator/setup-miniconda@v2
-      if: steps.conda_cache.outputs.cache-hit != 'true'
+      #if: steps.conda_cache.outputs.cache-hit != 'true'
       with:
         mamba-version: "*"
         channels: conda-forge,bioconda,defaults
@@ -70,11 +70,6 @@ jobs:
       if: steps.conda_cache.outputs.cache-hit != 'true'
       run: |
         mamba env update -n test -f testing.yml
-
-    - name: Conda info
-      shell: bash -l {0}
-      run: |
-        conda info
 
     - name: Install the package
       shell: bash -l {0}
