@@ -46,7 +46,7 @@ jobs:
       uses: actions/cache@v2
       with:
           path: /home/runner/work/CapCruncher/CapCruncher/tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/
-          key: ${{ matrix.label }}-${{ hashFiles(/home/runner/work/CapCruncher/CapCruncher/tests/data/data_for_pipeline_run/chr14.fa.gz') }}-${{ env.CACHE_NUMBER }}
+          key: ${{ matrix.label }}-${{ hashFiles('/home/runner/work/CapCruncher/CapCruncher/tests/data/data_for_pipeline_run/chr14.fa.gz') }}-${{ env.CACHE_NUMBER }}
       id: bowtie2_cache
 
     - name: Install package dependencies
