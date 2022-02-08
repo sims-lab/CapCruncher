@@ -74,7 +74,7 @@ jobs:
     - name: Conda info
       shell: bash -l {0}
       run: |
-        mamba info
+        conda info
 
     - name: Install the package
       shell: bash -l {0}
