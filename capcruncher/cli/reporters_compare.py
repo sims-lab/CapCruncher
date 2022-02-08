@@ -3,6 +3,7 @@ import os
 import re
 import sys
 from typing import Literal, Tuple
+import cooler
 
 import numpy as np
 import pandas as pd
@@ -36,42 +37,58 @@ def concat(
     input_format = format
     norm_kwargs = {"scale_factor": scale_factor, "regions": normalisation_regions}
 
-    if input_format == "cooler":
+    if not viewpoint:
+        viewpoints = [vp.strip("/") for vp in cooler.fileops.list_coolers(infiles[0])]
+    else:
+        viewpoints = [viewpoint, ]
 
-        bedgraphs = dict(
-            Parallel(n_jobs=n_cores)(
-                delayed(
-                    lambda fn: (
-                        get_bedgraph_name_from_cooler(fn),
-                        CoolerBedGraph(fn, region_to_limit=region if region else None)
-                        .extract_bedgraph(normalisation=normalisation, **norm_kwargs)
-                        .pipe(BedTool.from_dataframe),
-                    )
-                )(get_cooler_uri(fn, viewpoint, resolution))
-                for fn in infiles
+    
+    union_by_viewpoint = dict()
+
+    for viewpoint in viewpoints:
+
+        if input_format == "cooler":
+
+            cooler_uris = [get_cooler_uri(fn) for fn in infiles]
+            print(cooler_uris)
+
+
+            # bedgraphs = dict(
+            #     Parallel(n_jobs=n_cores)(
+            #         delayed(
+            #             lambda fn: (
+            #                 get_bedgraph_name_from_cooler(fn),
+            #                 CoolerBedGraph(fn, region_to_limit=region if region else None)
+            #                 .extract_bedgraph(normalisation=normalisation, **norm_kwargs)
+            #                 .pipe(BedTool.from_dataframe),
+            #             )
+            #         )(get_cooler_uri(fn, viewpoint, resolution))
+            #         for fn in infiles
+            #     )
+            # )
+
+        elif input_format == "bedgraph":
+
+            bedgraphs = {os.path.basename(fn): BedTool(fn) for fn in infiles}
+
+        else:
+            raise NotImplementedError("Auto currently not implemented")
+
+        union = (
+            BedTool()
+            .union_bedgraphs(i=[bt.fn for bt in bedgraphs.values()])
+            .to_dataframe(
+                disable_auto_names=True,
+                names=["chrom", "start", "end", *list(bedgraphs.keys())],
             )
         )
 
-    elif input_format == "bedgraph":
+        if output:
+            union.to_csv(output, sep="\t", index=False)
 
-        bedgraphs = {os.path.basename(fn): BedTool(fn) for fn in infiles}
-
-    else:
-        raise NotImplementedError("Auto currently not implemented")
-
-    union = (
-        BedTool()
-        .union_bedgraphs(i=[bt.fn for bt in bedgraphs.values()])
-        .to_dataframe(
-            disable_auto_names=True,
-            names=["chrom", "start", "end", *list(bedgraphs.keys())],
-        )
-    )
-
-    if output:
-        union.to_csv(output, sep="\t", index=False)
-
-    return union
+        union_by_viewpoint[viewpoint] = union
+    
+    return union_by_viewpoint
 
 
 def get_summary_functions(methods):
