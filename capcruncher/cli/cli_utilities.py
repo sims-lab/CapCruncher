@@ -325,6 +325,8 @@ def viewpoint_coordinates(
             fasta = dict_to_fasta(
                 df.set_index(cols[0])[cols[1]].to_dict(), viewpoints_fasta.name
             )
+        else:
+            raise ValueError("Oligos not provided in the correct format (FASTA/TSV)")
 
         # Align viewpoints to the genome
         # if not genome_indicies or not os.path.exists(os.path.join(genome_indicies, ".1.bt2")):
