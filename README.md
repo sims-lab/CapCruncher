@@ -17,7 +17,7 @@ For further information see the [documentation](https://capcruncher.readthedocs.
 
 ## Changelog
 
-###  v0.2.0 - (2022-02-07)
+### CapCruncher v0.2.0 - (2022-02-07)
 
 ### Bug Fixes
 
