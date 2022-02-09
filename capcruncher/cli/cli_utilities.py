@@ -1,3 +1,6 @@
+from email.policy import default
+import subprocess
+from tempfile import NamedTemporaryFile
 from typing import Iterable, List, Literal
 import click
 from capcruncher.cli import UnsortedGroup
@@ -254,11 +257,114 @@ def merge_capcruncher_slices(
     elif output_format == "parquet":
 
         ddf = dd.read_parquet(
-            infiles,
-            chunksize="100MB",
-            aggregate_files=True,
-            engine="pyarrow"
+            infiles, chunksize="100MB", aggregate_files=True, engine="pyarrow"
         )
         ddf.to_parquet(outfile, compression="snappy", engine="pyarrow")
 
     client.close()
+
+
+def dict_to_fasta(d, path):
+    with open(path, "w") as fasta:
+        for k, v in d.items():
+            fasta.write(f">{k}\n{v}\n")
+
+    return path
+
+
+@cli.command()
+@click.option("-v", "--viewpoints", help="Path to viewpoints", required=True)
+@click.option("-g", "--genome", help="Path to genome fasta file", required=True)
+@click.option(
+    "-i", "--genome-indicies", help="Path to genome bowtie2 indices", required=True
+)
+@click.option("-r", "--recognition-site", help="Restriction site used", default="dpnii")
+@click.option(
+    "-o", "--output", help="Output file name", default="viewpoint_coordinates.bed"
+)
+def viewpoint_coordinates(
+    viewpoints: os.PathLike,
+    genome: os.PathLike,
+    genome_indicies: os.PathLike = None,
+    recognition_site: str = "dpnii",
+    output: os.PathLike = "viewpoint_coordinates.bed",
+):
+
+    # import dask.distributed
+    import concurrent.futures
+    from capcruncher.cli import genome_digest
+    from pybedtools import BedTool
+
+    # client = dask.distributed.Client(
+    #     n_workers=4, dashboard_address=None, processes=True
+    # )
+
+    digested_genome = NamedTemporaryFile("r+")
+    viewpoints_fasta = NamedTemporaryFile("r+")
+    viewpoints_aligned_bam = NamedTemporaryFile("r+")
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
+
+        # Digest genome to find restriction fragments
+        digestion = executor.submit(
+            genome_digest.digest,
+            **dict(
+                input_fasta=genome,
+                recognition_site=recognition_site,
+                output_file=digested_genome.name,
+                sort=True,
+            ),
+        )
+
+        # Generate a fasta file of viewpoints
+        if ".fa" in viewpoints:
+            fasta = viewpoints
+        elif viewpoints.endswith(".tsv") or viewpoints.endswith(".csv"):
+            df = pd.read_table(viewpoints)
+            cols = df.columns
+            fasta = dict_to_fasta(
+                df.set_index(cols[0])[cols[1]].to_dict(), viewpoints_fasta.name
+            )
+        else:
+            raise ValueError("Oligos not provided in the correct format (FASTA/TSV)")
+
+        # Align viewpoints to the genome
+        # if not genome_indicies or not os.path.exists(os.path.join(genome_indicies, ".1.bt2")):
+        #     raise ValueError("No indices supplied for alignment")
+
+        p_alignment = subprocess.Popen(
+            ["bowtie2", "-x", genome_indicies, "-f", "-U", fasta],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        p_bam = subprocess.Popen(
+            ["samtools", "view", "-b", "-"],
+            stdout=viewpoints_aligned_bam,
+            stdin=p_alignment.stdout
+        )
+        p_alignment.stdout.close()
+        aligned_res = p_bam.communicate()
+
+        # Ensure genome has been digested in this time
+        digestion.result()
+
+        # Intersect digested genome with viewpoints
+        bt_genome = BedTool(digested_genome.name)
+        bt_viewpoints = BedTool(viewpoints_aligned_bam.name)
+
+        intersections = bt_genome.intersect(
+            bt_viewpoints, wa=True, wb=True
+        )
+
+        # Write results to file
+        (
+            intersections.to_dataframe()
+            .drop_duplicates("name")
+            .assign(oligo_name=lambda df: df["thickEnd"].str.split("_L").str[0])[
+                ["chrom", "start", "end", "oligo_name"]
+            ]
+            .to_csv(output, index=False, header=False, sep="\t")
+        )
+
+        for tmp in [digested_genome, viewpoints_fasta, viewpoints_aligned_bam]:
+            tmp.close()
