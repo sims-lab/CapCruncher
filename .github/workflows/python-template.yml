@@ -3,7 +3,7 @@ name: Python package
 on: [push]
 
 env: 
-  CACHE_NUMBER: 1
+  CACHE_NUMBER: 0
 
 jobs:
   build:
@@ -12,8 +12,6 @@ jobs:
     strategy:
       matrix:
         python-version: [3.8]
-        include:
-        - prefix: /usr/share/miniconda/envs/test
 
     steps:
       
@@ -41,7 +39,7 @@ jobs:
     - name: Restore conda cache
       uses: actions/cache@v2
       with:
-          path: ${{ matrix.prefix }}
+          path: ~/conda_pkgs_dir
           key: ${{ matrix.label }}-conda-${{ hashFiles('environment.yml') }}-${{ env.CACHE_NUMBER }}
       id: conda_cache
     
@@ -56,11 +54,14 @@ jobs:
       uses: conda-incubator/setup-miniconda@v2
       #if: steps.conda_cache.outputs.cache-hit != 'true'
       with:
+        activate-environment: test
         mamba-version: "*"
+        use-only-tar-bz2: true
         channels: conda-forge,bioconda,defaults
         channel-priority: true
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
+
       
     - name: Update environment 
       shell: bash -l {0}
