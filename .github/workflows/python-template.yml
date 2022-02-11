@@ -22,15 +22,13 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}   
     
-    - name: Install dependencies
+    - name: Install OS dependencies
       run: |
         sudo apt install libcurl4-openssl-dev
-        python -m pip install --upgrade pip
-        pip install flake8
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     - name: Lint with flake8
       run: |
+        pip install flake8
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
@@ -50,7 +48,7 @@ jobs:
           key: ${{ matrix.label }}-${{ hashFiles('/home/runner/work/CapCruncher/CapCruncher/tests/data/data_for_pipeline_run/chr14.fa.gz') }}-${{ env.CACHE_NUMBER }}
       id: bowtie2_cache
 
-    - name: Install package dependencies
+    - name: Set up conda
       uses: conda-incubator/setup-miniconda@v2
       #if: steps.conda_cache.outputs.cache-hit != 'true'
       with:
