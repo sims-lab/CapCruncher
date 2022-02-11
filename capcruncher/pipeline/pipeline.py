@@ -383,7 +383,7 @@ def fastq_split(infiles, outfile):
     Runs :ref:`capcruncher fastq split <CLI Documentation>`.
 
     """
-
+    use_compression = P.PARAMS.get("pipeline_compression") != 0
     statement = [
         "capcruncher",
         "fastq",
@@ -395,7 +395,8 @@ def fastq_split(infiles, outfile):
         outfile.replace(".sentinel", ""),
         "-n",
         str(P.PARAMS.get("split_n_reads", 1e6)),
-        "--no-gzip" if P.PARAMS.get("pipeline_compression") == 0 else "--gzip",
+        "--gzip" if use_compression else "--no-gzip",
+        f"--compression_level {P.PARAMS.get('pipeline_compression')}" if use_compression else "",
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
     ]
