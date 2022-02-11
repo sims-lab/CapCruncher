@@ -8,6 +8,7 @@ Created on Wed Jan  8 15:45:09 2020
 Script splits a fastq into specified chunks
 """
 
+import logging
 from multiprocessing import SimpleQueue
 from typing import Tuple
 import subprocess
@@ -26,18 +27,20 @@ def run_unix_split(fn: os.PathLike,
                    n_cores=1):
 
     statement = []    
-    if fn.endswith(".gz"):
-        cmd = f"""zcat {fn} | split -l {n_reads * 4} -d --additional-suffix=_{read_number}.fastq - {output_prefix}_part;"""
+
+    cmd = f"""zcat {fn} | split FILTER -l {n_reads * 4} -d --additional-suffix=_{read_number}.fastq - {output_prefix}_part;"""
+    
+    if not fn.split(".")[-1] == ".gz":
+        cmd = cmd.replace("zcat", "cat")
+    
+    if gzip:
+        cmd = cmd.replace("FILTER", f"--filter='pigz -p {n_cores} > $FILE.gz'")
     else:
-        cmd = f"cat {fn} | split -l {n_reads * 4} -d  --additional-suffix=_{read_number}.fastq - {output_prefix}_part;"
+        cmd = cmd.replace("FILTER", "")
     
     statement.append(cmd)
 
-    if gzip:
-        statement.append(
-            f"ls {output_prefix}_part* | xargs -P {n_cores} -n 1 gzip -{compression_level}"
-        )
-
+    logging.info(f"Running: {cmd}")
     subprocess.run(' '.join(statement), shell=True)
 
 
