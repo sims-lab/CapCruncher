@@ -699,13 +699,97 @@ def fastq_flash(infiles, outfile):
         job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
     )
+    touch_file(outfile)
 
+
+@follows(
+    mkdir("capcruncher_preprocessing/collated"),
+    fastq_flash,
+)
+@collate(
+    "capcruncher_preprocessing/flashed/*.fastq.gz",
+    regex(r"capcruncher_preprocessing/flashed/(.*)_part\d+.extendedFrags.fastq.gz"),
+    r"capcruncher_preprocessing/collated/\1.flashed.sentinel",
+)
+def fastq_collate_combined(infiles, outfile):
+
+    use_compression = P.PARAMS.get("pipeline_compression") != 0
+    statement = [
+        "capcruncher",
+        "fastq",
+        "split",
+        ",".join(infiles),
+        "-m",
+        "unix",
+        "-o",
+        outfile.replace(".sentinel", ""),
+        "-n",
+        str(P.PARAMS.get("split_n_reads", 1e6)),
+        "--gzip" if use_compression else "--no-gzip",
+        f"--compression_level {P.PARAMS.get('pipeline_compression')}" if use_compression else "",
+        "-p",
+        str(P.PARAMS["pipeline_n_cores"]),
+    ]
+
+    P.run(
+        " ".join(statement),
+        job_threads=P.PARAMS["pipeline_n_cores"],
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
+    )
+
+    # Create sentinel file
+    touch_file(outfile)
+
+
+@follows(
+    mkdir("capcruncher_preprocessing/collated"),
+    fastq_flash,
+)
+@collate(
+    "capcruncher_preprocessing/flashed/*.fastq.gz",
+    regex(r"capcruncher_preprocessing/flashed/(.*)_part\d+.notCombined_[12].fastq.gz"),
+    r"capcruncher_preprocessing/collated/\1.pe.sentinel",
+)
+def fastq_collate_non_combined(infiles, outfile):
+
+    df_fq_files = pd.Series(infiles).to_frame("fn")
+    df_fq_files["read"] = df_fq_files["fn"].str.extract(".*.notCombined_(\d).fastq.gz")
+    infiles_by_read_number = [df["fn"].to_list() for read_number, df in df_fq_files.groupby("read")] 
+
+    use_compression = P.PARAMS.get("pipeline_compression") != 0
+    statement = [
+        "capcruncher",
+        "fastq",
+        "split",
+        ",".join(infiles_by_read_number[0]),
+        ",".join(infiles_by_read_number[1]),
+        "-m",
+        "unix",
+        "-o",
+        outfile.replace(".sentinel", ""),
+        "-n",
+        str(P.PARAMS.get("split_n_reads", 1e6)),
+        "--gzip" if use_compression else "--no-gzip",
+        f"--compression_level {P.PARAMS.get('pipeline_compression')}" if use_compression else "",
+        "-p",
+        str(P.PARAMS["pipeline_n_cores"]),
+    ]
+
+    P.run(
+        " ".join(statement),
+        job_threads=P.PARAMS["pipeline_n_cores"],
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
+    )
+
+    # Create sentinel file
     touch_file(outfile)
 
 
 @follows(
     mkdir("capcruncher_preprocessing/digested"),
-    fastq_flash,
+    fastq_collate_combined,
     mkdir("capcruncher_statistics/digestion/data"),
 )
 @transform(
