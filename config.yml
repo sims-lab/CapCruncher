@@ -142,6 +142,11 @@ analysis_optional:
     # (Debugging)
     keep_annotations: False
 
+    keep_trimmed: False
+
+    keep_digested: False
+
+    keep_aligned: False
 
     # Forces the pipeline to produce bigwigs when a high level of viewpoints are detected.
     # This is not advised due to the high number of files that can be generated.
