@@ -988,6 +988,9 @@ def fastq_alignment(infile, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
+    if not P.PARAMS("analysis_optional_keep_digested"):
+        zap_file(infile)
+
 
 @collate(
     fastq_alignment,
@@ -1322,7 +1325,10 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # Zero annotations
+    # Zero input files
+    if not P.PARAMS.get("analysis_optional_keep_alignments", False):
+        zap_file(bam)
+
     if not P.PARAMS.get("analysis_optional_keep_annotations", False):
         zap_file(annotations)
 
@@ -1525,7 +1531,7 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    for fn in infiles:
+    for fn in slices:
         zap_file(fn)
 
     touch_file(outfile)
@@ -1610,9 +1616,6 @@ def reporters_count(infile, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # Link bin tables to conserve space
-    # from capcruncher.tools.storage import link_common_cooler_tables
-    # link_common_cooler_tables(output_counts)
     touch_file(outfile)
 
 
