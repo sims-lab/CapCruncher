@@ -74,6 +74,10 @@ def cli():
     default="error",
     type=click.Choice(["ignore", "error"]),
 )
+@click.option(
+    "--blacklist",
+    help="Regions to remove from the BAM file prior to annotation",
+)
 def annotate(*args, **kwargs):
     """
     Annotates a bed file with other bed files using bedtools intersect.
@@ -151,7 +155,7 @@ def annotate(*args, **kwargs):
     "--output-format",
     help="Determines file output format",
     default="parquet",
-    type=click.Choice(["tsv", "hdf5", "parquet"])
+    type=click.Choice(["tsv", "hdf5", "parquet"]),
 )
 def filter(*args, **kwargs):
     """
