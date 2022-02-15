@@ -937,7 +937,7 @@ def fastq_preprocessing():
 @follows(mkdir("capcruncher_preprocessing"), fastq_preprocessing)
 @transform(
     [fastq_digest_combined, fastq_digest_non_combined],
-    regex(r"capcruncher_preprocessing/digested/(.*).fastq.gz"),
+    regex(r"capcruncher_preprocessing/digested/(.*).fastq(.gz)?"),
     r"capcruncher_preprocessing/aligned/\1.bam",
 )
 def fastq_alignment(infile, outfile):
