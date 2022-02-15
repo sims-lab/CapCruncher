@@ -112,6 +112,9 @@ ANALYSIS_METHOD = P.PARAMS.get("analysis_method", "capture")
 # Defines storage format for slices. Defaults to parquet.
 STORAGE_FORMAT = P.PARAMS.get("analysis_optional_storage_format", "parquet")
 
+# Determines if FASTQ files are compressed during processing
+COMPRESS_FASTQ = P.PARAMS.get("pipeline_compression") != 0
+
 # Determines the number of samples being processed
 N_SAMPLES = len(
     {re.match(r"(.*)_R*[12].fastq.*", fn).group(1) for fn in glob.glob("*.fastq*")}
@@ -383,7 +386,6 @@ def fastq_split(infiles, outfile):
     Runs :ref:`capcruncher fastq split <CLI Documentation>`.
 
     """
-    use_compression = P.PARAMS.get("pipeline_compression") != 0
     statement = [
         "capcruncher",
         "fastq",
@@ -395,8 +397,8 @@ def fastq_split(infiles, outfile):
         outfile.replace(".sentinel", ""),
         "-n",
         str(P.PARAMS.get("split_n_reads", 1e6)),
-        "--gzip" if use_compression else "--no-gzip",
-        f"--compression_level {P.PARAMS.get('pipeline_compression')}" if use_compression else "",
+        "--gzip" if COMPRESS_FASTQ else "--no-gzip",
+        f"--compression_level {P.PARAMS.get('pipeline_compression')}" if COMPRESS_FASTQ else "",
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
     ]
@@ -608,7 +610,7 @@ def fastq_trim(infiles, outfile):
             "--paired",
             "--cores",
             str(P.PARAMS.get("pipeline_n_cores", 1)),
-            "--gzip",
+            "--gzip" if COMPRESS_FASTQ else "",
             P.PARAMS.get("trim_options") or " ",
         ]
     )
@@ -690,7 +692,7 @@ def fastq_flash(infiles, outfile):
         outfile.replace(".sentinel", ""),
         "-t",
         str(P.PARAMS.get("pipeline_n_cores", 1)),
-        "-z",
+        "-z" if COMPRESS_FASTQ else "",
     ]
 
     P.run(
@@ -699,7 +701,12 @@ def fastq_flash(infiles, outfile):
         job_threads=P.PARAMS["pipeline_n_cores"],
         job_condaenv=P.PARAMS["conda_env"],
     )
+
     touch_file(outfile)
+
+    if not P.PARAMS.get("analysis_optional_keep_trimmed"):
+        for fn in infiles:
+            zap_file(fn)
 
 
 @follows(
@@ -707,13 +714,12 @@ def fastq_flash(infiles, outfile):
     fastq_flash,
 )
 @collate(
-    "capcruncher_preprocessing/flashed/*.fastq.gz",
-    regex(r"capcruncher_preprocessing/flashed/(.*)_part\d+.extendedFrags.fastq.gz"),
-    r"capcruncher_preprocessing/collated/\1.flashed.sentinel",
+    "capcruncher_preprocessing/flashed/*.fastq*",
+    regex(r"capcruncher_preprocessing/flashed/(.*)_part\d+.extendedFrags.fastq(?:.gz)?"),
+    r"capcruncher_preprocessing/collated/flashed.\1.sentinel",
 )
 def fastq_collate_combined(infiles, outfile):
 
-    use_compression = P.PARAMS.get("pipeline_compression") != 0
     statement = [
         "capcruncher",
         "fastq",
@@ -725,8 +731,8 @@ def fastq_collate_combined(infiles, outfile):
         outfile.replace(".sentinel", ""),
         "-n",
         str(P.PARAMS.get("split_n_reads", 1e6)),
-        "--gzip" if use_compression else "--no-gzip",
-        f"--compression_level {P.PARAMS.get('pipeline_compression')}" if use_compression else "",
+        "--gzip" if COMPRESS_FASTQ else "--no-gzip",
+        f"--compression_level {P.PARAMS.get('pipeline_compression')}" if COMPRESS_FASTQ else "",
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
     ]
@@ -741,23 +747,25 @@ def fastq_collate_combined(infiles, outfile):
     # Create sentinel file
     touch_file(outfile)
 
+    for fn in infiles:
+        zap_file(fn)
+
 
 @follows(
     mkdir("capcruncher_preprocessing/collated"),
     fastq_flash,
 )
 @collate(
-    "capcruncher_preprocessing/flashed/*.fastq.gz",
-    regex(r"capcruncher_preprocessing/flashed/(.*)_part\d+.notCombined_[12].fastq.gz"),
-    r"capcruncher_preprocessing/collated/\1.pe.sentinel",
+    "capcruncher_preprocessing/flashed/*.fastq*",
+    regex(r"capcruncher_preprocessing/flashed/(.*)_part\d+.notCombined_[12].fastq(?:.gz)?"),
+    r"capcruncher_preprocessing/collated/pe.\1.sentinel",
 )
 def fastq_collate_non_combined(infiles, outfile):
 
     df_fq_files = pd.Series(infiles).to_frame("fn")
-    df_fq_files["read"] = df_fq_files["fn"].str.extract(".*.notCombined_(\d).fastq.gz")
-    infiles_by_read_number = [df["fn"].to_list() for read_number, df in df_fq_files.groupby("read")] 
+    df_fq_files["read"] = df_fq_files["fn"].str.extract(".*.notCombined_(\d)")
+    infiles_by_read_number = [df["fn"].to_list() for read_number, df in df_fq_files.groupby("read")]
 
-    use_compression = P.PARAMS.get("pipeline_compression") != 0
     statement = [
         "capcruncher",
         "fastq",
@@ -770,8 +778,8 @@ def fastq_collate_non_combined(infiles, outfile):
         outfile.replace(".sentinel", ""),
         "-n",
         str(P.PARAMS.get("split_n_reads", 1e6)),
-        "--gzip" if use_compression else "--no-gzip",
-        f"--compression_level {P.PARAMS.get('pipeline_compression')}" if use_compression else "",
+        "--gzip" if COMPRESS_FASTQ else "--no-gzip",
+        f"--compression_level {P.PARAMS.get('pipeline_compression')}" if COMPRESS_FASTQ else "",
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
     ]
@@ -786,16 +794,15 @@ def fastq_collate_non_combined(infiles, outfile):
     # Create sentinel file
     touch_file(outfile)
 
+    for fn in infiles:
+        zap_file(fn)
 
-@follows(
-    mkdir("capcruncher_preprocessing/digested"),
-    fastq_collate_combined,
-    mkdir("capcruncher_statistics/digestion/data"),
-)
+
+@follows(fastq_collate_combined, mkdir("capcruncher_statistics/digestion/data"))
 @transform(
-    "capcruncher_preprocessing/flashed/*.fastq.gz",
-    regex(r"capcruncher_preprocessing/flashed/(.*).extendedFrags.fastq.gz"),
-    r"capcruncher_preprocessing/digested/\1.flashed.fastq.gz",
+    "capcruncher_preprocessing/collated/flashed*.fastq*",
+    regex(r".*/flashed.(.*)_[1].fastq(.gz)?"),
+    r"capcruncher_preprocessing/digested/\1.flashed.fastq\2",
 )
 def fastq_digest_combined(infile, outfile):
 
@@ -835,11 +842,11 @@ def fastq_digest_combined(infile, outfile):
     zap_file(infile)
 
 
-@follows(fastq_flash, mkdir("capcruncher_statistics/digestion"))
+@follows(fastq_collate_non_combined, mkdir("capcruncher_statistics/digestion/data"))
 @collate(
-    "capcruncher_preprocessing/flashed/*.fastq.gz",
-    regex(r"capcruncher_preprocessing/flashed/(.*).notCombined_[12].fastq.gz"),
-    r"capcruncher_preprocessing/digested/\1.pe.fastq.gz",
+    "capcruncher_preprocessing/collated/pe.*.fastq*",
+    regex(r".*/pe.(.*)_[12].fastq(.gz)?"),
+    r"capcruncher_preprocessing/digested/\1.pe.fastq\2",
 )
 def fastq_digest_non_combined(infiles, outfile):
 
