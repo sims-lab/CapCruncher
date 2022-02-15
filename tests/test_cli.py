@@ -250,6 +250,22 @@ def test_fastq_digest(cli_runner, data_digestion, tmpdir, infiles, flags):
                 1e-9,
             ],
         ),
+        (
+            "test.pe.bam",
+            [
+                "test_capture.bed",
+            ],
+            [
+                "-n",
+                "TEST_OVERLAP",
+                "-a",
+                "get",
+                "-f",
+                1e-9,
+                "--blacklist",
+                "BLACKLIST"
+            ],
+        ),
     ],
 )
 def test_alignment_annotation(cli_runner, data_annotation, tmpdir, bam, beds, flags):
