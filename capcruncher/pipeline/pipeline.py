@@ -988,7 +988,7 @@ def fastq_alignment(infile, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    if not P.PARAMS("analysis_optional_keep_digested"):
+    if not P.PARAMS.get("analysis_optional_keep_digested"):
         zap_file(infile)
 
 
