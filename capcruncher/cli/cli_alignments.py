@@ -78,6 +78,15 @@ def cli():
     "--blacklist",
     help="Regions to remove from the BAM file prior to annotation",
 )
+@click.option(
+    "--prioritize-cis-slices",
+    is_flag=True,
+    help="Attempts to prevent slices on the most common chromosome in a fragment (ideally cis to the viewpoint) being removed by deduplication",
+)
+@click.option(
+    "--priority-chroms",
+    help="A comma separated list of chromosomes to prioritize during deduplication",
+)
 def annotate(*args, **kwargs):
     """
     Annotates a bed file with other bed files using bedtools intersect.
