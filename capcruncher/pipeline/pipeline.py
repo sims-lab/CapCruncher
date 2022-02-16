@@ -1161,51 +1161,53 @@ def annotate_sort_blacklist(outfile):
     add_inputs(
         [
             {
-                "name": "restriction_fragment",
-                "fn": "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
-                "action": "get",
-                "fraction": 0.51,
-                "dtype": "Int64",
-            },
-            {
-                "name": "capture",
-                "fn": "capcruncher_analysis/annotations/viewpoints.bed",
-                "action": "get",
-                "fraction": P.PARAMS.get(
-                    "analysis_optional_minimum_viewpoint_overlap", 0.75
-                ),
-                "dtype": "category",
-            },
-            {
-                "name": "exclusion",
-                "fn": "capcruncher_analysis/annotations/exclude.bed",
-                "action": "get",
-                "fraction": 1e-9,
-                "dtype": "category",
-            },
-            {
-                "name": "exclusion_count",
-                "fn": "capcruncher_analysis/annotations/exclude.bed",
-                "action": "count",
-                "fraction": 1e-9,
-                "dtype": "Int8",
-            },
-            {
-                "name": "capture_count",
-                "fn": "capcruncher_analysis/annotations/viewpoints.bed",
-                "action": "count",
-                "fraction": P.PARAMS.get(
-                    "analysis_optional_minimum_viewpoint_overlap", 0.75
-                ),
-                "dtype": "Int8",
-            },
-            {
-                "name": "blacklist",
-                "fn": "capcruncher_analysis/annotations/blacklist.bed",
-                "action": "count",
-                "fraction": 1e-9,
-                "dtype": "int",
-            },
+                "restriction_fragment": {
+                    "name": "restriction_fragment",
+                    "fn": "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
+                    "action": "get",
+                    "fraction": 0.51,
+                    "dtype": "Int64",
+                },
+                "viewpoints": {
+                    "name": "capture",
+                    "fn": "capcruncher_analysis/annotations/viewpoints.bed",
+                    "action": "get",
+                    "fraction": P.PARAMS.get(
+                        "analysis_optional_minimum_viewpoint_overlap", 0.75
+                    ),
+                    "dtype": "category",
+                },
+                "exclusions": {
+                    "name": "exclusion",
+                    "fn": "capcruncher_analysis/annotations/exclude.bed",
+                    "action": "get",
+                    "fraction": 1e-9,
+                    "dtype": "category",
+                },
+                "exclusions_count": {
+                    "name": "exclusion_count",
+                    "fn": "capcruncher_analysis/annotations/exclude.bed",
+                    "action": "count",
+                    "fraction": 1e-9,
+                    "dtype": "Int8",
+                },
+                "viewpoint_count": {
+                    "name": "capture_count",
+                    "fn": "capcruncher_analysis/annotations/viewpoints.bed",
+                    "action": "count",
+                    "fraction": P.PARAMS.get(
+                        "analysis_optional_minimum_viewpoint_overlap", 0.75
+                    ),
+                    "dtype": "Int8",
+                },
+                "blacklist": {
+                    "name": "blacklist",
+                    "fn": "capcruncher_analysis/annotations/blacklist.bed",
+                    "action": "count",
+                    "fraction": 1e-9,
+                    "dtype": "int",
+                },
+            }
         ]
     ),
     r"capcruncher_analysis/annotations/\1.annotations.parquet",
@@ -1231,6 +1233,7 @@ def annotate_alignments(infile, outfile):
         "fraction": "-f",
         "dtype": "-t",
     }
+
     statement_annotate = " ".join(
         [
             "capcruncher",
@@ -1239,7 +1242,7 @@ def annotate_alignments(infile, outfile):
             infile[0],
             *[
                 f"{flags[k]} {v}"
-                for annotation in infile[1]
+                for annotation_name, annotation in infile[1]
                 for k, v in annotation.items()
             ],
             "-o",
@@ -1248,6 +1251,7 @@ def annotate_alignments(infile, outfile):
             "ignore",
             "-p",
             str(P.PARAMS["pipeline_n_cores"]),
+            f"--blacklist {infile[1]['blacklist']['fn']}" if HAS_BLACKLIST else "",
         ]
     )
 
@@ -1753,7 +1757,7 @@ def pipeline_make_report(infile, outfile):
         "--pipeline-statistics-path",
         "capcruncher_statistics/",
         "--pipeline-report-path",
-        outfile
+        outfile,
     ]
 
     P.run(
@@ -1901,7 +1905,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
-        without_cluster=True
+        without_cluster=True,
     )
 
 
