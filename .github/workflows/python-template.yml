@@ -50,16 +50,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
         use-mamba: true
 
-      
-    - name: Update environment 
-      shell: bash -l {0}
-      if: steps.conda_cache.outputs.cache-hit != 'true'
-      run: |
-        mamba env update -n test -f environment.yml
-
     - name: Install testing dependencies
       shell: bash -l {0}
-      if: steps.conda_cache.outputs.cache-hit != 'true'
       run: |
         mamba env update -n test -f testing.yml
     
