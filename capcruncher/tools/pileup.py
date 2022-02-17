@@ -30,12 +30,13 @@ class CoolerBedGraph:
         self._sparse = sparse
         self._only_cis = only_cis
 
+        logging.info(f"Reading {uri}")
         self._cooler = cooler.Cooler(uri)
-        logging.info("Loaded cooler group for processing")
         self.viewpoint_name = self._cooler.info["metadata"]["viewpoint_name"]
         self._viewpoint_bins = self._cooler.info["metadata"]["viewpoint_bins"]
         self.viewpoint_chrom = self._cooler.info["metadata"]["viewpoint_chrom"][0]
         self.n_cis_interactions = self._cooler.info["metadata"]["n_cis_interactions"]
+        logging.info(f"Processing {self.viewpoint_name}")
 
         
         if only_cis:
