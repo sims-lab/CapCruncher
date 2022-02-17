@@ -13,7 +13,7 @@ import os
 import pandas as pd
 from capcruncher.tools.annotate import BedIntersection
 from capcruncher.utils import bed_has_name, convert_bed_to_dataframe, is_valid_bed
-from pybedtools import BedTool
+from pybedtools import BedTool, MalformedBedLineError
 
 
 def cycle_argument(arg):
@@ -166,7 +166,11 @@ def annotate(
 
     if blacklist:
         logging.info("Removing blacklisted regions from the bed file")
-        slices = slices - BedTool(blacklist)
+        try:
+            slices = slices - BedTool(blacklist)
+        except (MalformedBedLineError, FileNotFoundError, IndexError) as e:
+            logging.error(f"Blacklist {blacklist} bedfile raised {e}. Ensure it is correctly formatted")
+
 
     logging.info("Dealing with duplicates in the bed file")
     # Deal with multimapping reads.
