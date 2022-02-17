@@ -50,14 +50,13 @@ jobs:
 
     - name: Set up conda
       uses: conda-incubator/setup-miniconda@v2
-      #if: steps.conda_cache.outputs.cache-hit != 'true'
       with:
         activate-environment: test
         mamba-version: "*"
         use-only-tar-bz2: true
         channels: conda-forge,bioconda,defaults
         channel-priority: true
-        auto-update-conda: true
+        auto-update-conda: false
         python-version: ${{ matrix.python-version }}
 
       
@@ -84,7 +83,7 @@ jobs:
         pip install -e .[plotting]
 
     - name: Test with pytest and generate report
-      shell: pwsh
+      shell: bash -l {0}
       run: |
         pytest -vv -s --log-cli-level debug --cov=./ --cov-report=xml
 
