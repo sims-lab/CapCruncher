@@ -74,6 +74,19 @@ def cli():
     default="error",
     type=click.Choice(["ignore", "error"]),
 )
+@click.option(
+    "--blacklist",
+    help="Regions to remove from the BAM file prior to annotation",
+)
+@click.option(
+    "--prioritize-cis-slices",
+    is_flag=True,
+    help="Attempts to prevent slices on the most common chromosome in a fragment (ideally cis to the viewpoint) being removed by deduplication",
+)
+@click.option(
+    "--priority-chroms",
+    help="A comma separated list of chromosomes to prioritize during deduplication",
+)
 def annotate(*args, **kwargs):
     """
     Annotates a bed file with other bed files using bedtools intersect.
@@ -151,7 +164,7 @@ def annotate(*args, **kwargs):
     "--output-format",
     help="Determines file output format",
     default="parquet",
-    type=click.Choice(["tsv", "hdf5", "parquet"])
+    type=click.Choice(["tsv", "hdf5", "parquet"]),
 )
 def filter(*args, **kwargs):
     """
