@@ -58,6 +58,7 @@ def data_reporters_count(testdata_dirname):
     data_dir = os.path.join(testdata_dirname, "data", "reporters_count")
     return data_dir
 
+
 @pytest.fixture(scope="module")
 def data_reporters_store(testdata_dirname):
     data_dir = os.path.join(testdata_dirname, "data", "reporters_store")
@@ -99,7 +100,9 @@ def test_genome_digest(cli_runner, data_digestion, tmpdir, infile, flags):
     outfile = os.path.join(tmpdir, "digested.bed")
     tmp_log = os.path.join(tmpdir, "gd.log")
 
-    result = cli_runner.invoke(cli, ["genome", "digest", infile, "-o", outfile, "-l", tmp_log, *flags])
+    result = cli_runner.invoke(
+        cli, ["genome", "digest", infile, "-o", outfile, "-l", tmp_log, *flags]
+    )
     assert result.exit_code == 0
     assert os.path.exists(outfile)
 
@@ -262,8 +265,8 @@ def test_fastq_digest(cli_runner, data_digestion, tmpdir, infiles, flags):
                 "get",
                 "-f",
                 1e-9,
-                "--blacklist",
-                "BLACKLIST"
+                "--priority-chroms",
+                "chr14" "--prioritize-cis-slices",
             ],
         ),
     ],
@@ -272,10 +275,23 @@ def test_alignment_annotation(cli_runner, data_annotation, tmpdir, bam, beds, fl
 
     bam = os.path.join(data_annotation, bam)
     beds = [os.path.join(data_annotation, bed) for bed in beds]
+    blacklist = os.path.join(data_annotation, "test_exlcusions.bed")
     outfile = os.path.join(tmpdir, "annotated.parquet")
 
     result = cli_runner.invoke(
-        cli, ["alignments", "annotate", bam, "-b", *beds, "-o", outfile, *flags]
+        cli,
+        [
+            "alignments",
+            "annotate",
+            bam,
+            "-b",
+            *beds,
+            "-o",
+            outfile,
+            *flags,
+            "--blacklist",
+            blacklist,
+        ],
     )
     assert result.exit_code == 0
     assert os.path.exists(outfile)
@@ -398,7 +414,13 @@ def test_alignment_deduplicate_slices(
 @pytest.mark.parametrize(
     "slices,bins,viewpoints,output,flags",
     [
-        ("slices.flashed.parquet", "bins.bed.gz", "viewpoints.bed","counts.hdf5", ["--cooler-output"]),
+        (
+            "slices.flashed.parquet",
+            "bins.bed.gz",
+            "viewpoints.bed",
+            "counts.hdf5",
+            ["--cooler-output"],
+        ),
     ],
 )
 def test_reporters_count(
@@ -439,6 +461,7 @@ def test_reporters_count(
     assert result.exit_code == 0
     assert os.path.exists(output)
 
+
 @pytest.mark.parametrize(
     "cooler_fn,bin_size,output,flags",
     [
@@ -474,6 +497,7 @@ def test_reporters_store_binned(
     )
     assert result.exit_code == 0
     assert os.path.exists(output)
+
 
 @pytest.mark.parametrize(
     "cooler_fn,output_prefix,outfile,flags",
