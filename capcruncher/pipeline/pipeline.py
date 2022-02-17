@@ -1244,14 +1244,17 @@ def annotate_alignments(infile, outfile):
     }
 
     priority_chroms = P.PARAMS.get("analysis_optional_priority_chromosomes")
-    if "," in priority_chroms:
+    
+    
+    if not priority_chroms:
+        chroms = None
+    elif "," in priority_chroms:
         chroms = priority_chroms
     elif "viewpoints" in priority_chroms:
         chroms = ",".join(
             convert_bed_to_dataframe(P.PARAMS["analysis_viewpoints"])["chrom"]
         )
-    else:
-        chroms = None
+        
 
     statement_annotate = " ".join(
         [
