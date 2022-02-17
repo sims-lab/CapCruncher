@@ -266,7 +266,8 @@ def test_fastq_digest(cli_runner, data_digestion, tmpdir, infiles, flags):
                 "-f",
                 1e-9,
                 "--priority-chroms",
-                "chr14" "--prioritize-cis-slices",
+                "chr14", 
+                "--prioritize-cis-slices",
             ],
         ),
     ],
@@ -275,7 +276,7 @@ def test_alignment_annotation(cli_runner, data_annotation, tmpdir, bam, beds, fl
 
     bam = os.path.join(data_annotation, bam)
     beds = [os.path.join(data_annotation, bed) for bed in beds]
-    blacklist = os.path.join(data_annotation, "test_exlcusions.bed")
+    blacklist = os.path.join(data_annotation, "test_exlcusions_corrected.bed")
     outfile = os.path.join(tmpdir, "annotated.parquet")
 
     result = cli_runner.invoke(
