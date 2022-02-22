@@ -123,6 +123,11 @@ align:
     # (Optional)
     options: -p 6 --very-sensitive
 
+alignments_filter:
+    # Maximum memory for alignment filtering
+    # Increase if the number of reads per partition has been increased from the default
+    memory: 5G
+
 analysis_optional:
 
     # Path to a YAML file containing the filter order to be applied to slices.
