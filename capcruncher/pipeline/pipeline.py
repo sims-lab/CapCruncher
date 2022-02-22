@@ -1351,7 +1351,7 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=1,
-        job_total_memory="5G",
+        job_total_memory=P.PARAMS.get("alignments_filter_memory", "5G"),
         job_condaenv=P.PARAMS["conda_env"],
     )
 
