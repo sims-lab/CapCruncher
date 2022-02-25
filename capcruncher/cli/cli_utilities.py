@@ -162,7 +162,7 @@ def cis_and_trans_stats(
             dashboard_address=None,
             processes=True,
             scheduler_port=0,
-            local_directory=os.environ["TMPDIR"],
+            local_directory=os.environ.get("TMPDIR", "/tmp/"),
         ) as client:
 
             ddf = dd.read_parquet(slices, engine="pyarrow")
@@ -215,7 +215,7 @@ def merge_capcruncher_slices(
         dashboard_address=None,
         processes=True,
         scheduler_port=0,
-        local_directory=os.environ["TMPDIR"]
+        local_directory=os.environ.get("TMPDIR", "/tmp/")
     ) as client:
     
         storage_kwargs = {}

@@ -65,7 +65,7 @@ def identify(
             dashboard_address=None,
             processes=True,
             scheduler_port=0,
-            local_directory=os.environ["TMPDIR"]
+            local_directory=os.environ.get("TMPDIR", "/tmp/")
 
         )
 
@@ -160,7 +160,7 @@ def remove(
             dashboard_address=None,
             processes=True,
             scheduler_port=0,
-            local_directory=os.environ["TMPDIR"]
+            local_directory=os.environ.get("TMPDIR", "/tmp/")
         )
     with dask.distributed.Client(cluster) as client:
 
