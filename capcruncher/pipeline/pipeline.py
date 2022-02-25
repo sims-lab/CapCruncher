@@ -451,7 +451,7 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=2,
-        job_memory="6G",
+        job_total_memory="6G",
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -484,7 +484,7 @@ def fastq_duplicates_identify(infiles, outfile):
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=1,
-        job_memory="32G",
+        job_total_memory="32G",
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1351,7 +1351,7 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=1,
-        job_total_memory="5G",
+        job_total_memory=P.PARAMS.get("alignments_filter_memory", "5G"),
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1399,7 +1399,7 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
-        job_total_memory="32G",
+        job_total_memory=P.PARAMS["pipeline_memory"],
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1456,7 +1456,7 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
-        job_memory=P.PARAMS["pipeline_memory"],
+        job_total_memory=P.PARAMS["pipeline_memory"],
         job_condaenv=P.PARAMS["conda_env"],
     )
 
