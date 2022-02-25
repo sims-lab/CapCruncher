@@ -1,10 +1,14 @@
 import itertools
-import logging
 import sys
 import warnings
 from typing import Tuple, Union
-
+import logging
 import numpy as np
+# import dask.dataframe as dd
+# import dask.distributed
+
+# logger = logging.getLogger(__name__)
+
 from joblib.parallel import Parallel, delayed
 
 warnings.simplefilter("ignore")
@@ -13,7 +17,7 @@ import os
 import pandas as pd
 from capcruncher.tools.annotate import BedIntersection
 from capcruncher.utils import bed_has_name, convert_bed_to_dataframe, is_valid_bed
-from pybedtools import BedTool, MalformedBedLineError
+from pybedtools import BedTool
 
 
 def cycle_argument(arg):
@@ -25,38 +29,7 @@ def cycle_argument(arg):
         return arg
 
 
-def increase_cis_slice_priority(df: pd.DataFrame, score_multiplier: float = 2):
-    """
-    Prioritizes cis slices by increasing the mapping score.
-    """
-
-    df["parent_name"] = df["name"].str.split("|").str[0]
-
-    df_chrom_counts = (
-        df[["parent_name", "chrom"]].value_counts().to_frame("slices_per_chrom")
-    )
-    modal_chrom = (
-        df_chrom_counts.groupby("parent_name")["slices_per_chrom"]
-        .transform("max")
-        .reset_index()
-        .set_index("parent_name")["chrom"]
-        .to_dict()
-    )
-    df["fragment_chrom"] = df["parent_name"].map(modal_chrom)
-    df["score"] = np.where(
-        df["chrom"] == df["fragment_chrom"],
-        df["score"] * score_multiplier,
-        df["score"] / score_multiplier,
-    )
-
-    return df.drop(columns="parent_name")
-
-
-def remove_duplicates_from_bed(
-    bed: Union[str, BedTool, pd.DataFrame],
-    prioritize_cis_slices: bool = False,
-    chroms_to_prioritize: Union[list, np.ndarray] = None,
-) -> BedTool:
+def remove_duplicates_from_bed(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
     """
     Simple removal of duplicated entries from bed file.
 
@@ -71,23 +44,25 @@ def remove_duplicates_from_bed(
 
     df = convert_bed_to_dataframe(bed).sample(frac=1)
 
-    if prioritize_cis_slices:
-        df = increase_cis_slice_priority(df)
-
     if "score" in df.columns:
         df = df.sort_values(["score"], ascending=False)
 
-    if chroms_to_prioritize:
-        df["is_chrom_priority"] = df["chrom"].isin(chroms_to_prioritize).astype(int)
-        df = df.sort_values(["score", "is_chrom_priority"], ascending=False).drop(
-            columns="is_chrom_priority"
-        )
-
     return (
         df.drop_duplicates(subset="name", keep="first")
-        .sort_values(["chrom", "start"])[["chrom", "start", "end", "name"]]
+        .sort_values(["chrom", "start"])
+        [["chrom", "start", "end", "name"]]
         .pipe(BedTool.from_dataframe)
     )
+
+
+# @numba.jit
+# def merge_intersections(df, intersections):
+
+#     for intersection in intersections:
+#         intersection = intersection.to_frame(intersection.name)
+#         df = df.merge(intersection, how="left")
+
+#     return df.reset_index()
 
 
 def get_intersection(intersector: BedIntersection):
@@ -105,9 +80,6 @@ def annotate(
     duplicates: str = "remove",
     n_cores: int = 1,
     invalid_bed_action: str = "error",
-    blacklist: str = "",
-    prioritize_cis_slices: bool = False,
-    priority_chroms: str = "",
 ):
     """
     Annotates a bed file with other bed files using bedtools intersect.
@@ -137,6 +109,8 @@ def annotate(
      NotImplementedError: Only supported option for duplicate bed names is remove.
     """
 
+    # client = dask.distributed.Client(dask.distributed.LocalCluster(n_workers=n_cores))
+
     logging.info("Validating commandline arguments")
     len_bed_files = len(bed_files)
     if not all([len(arg) == len_bed_files for arg in [actions, names]]):
@@ -164,20 +138,10 @@ def annotate(
     if not bed_has_name(slices):
         raise ValueError(f"bed - {slices} does not have a name column")
 
-    if blacklist:
-        logging.info("Removing blacklisted regions from the bed file")
-        try:
-            slices = slices - BedTool(blacklist)
-        except (MalformedBedLineError, FileNotFoundError, IndexError) as e:
-            logging.error(f"Blacklist {blacklist} bedfile raised {e}. Ensure it is correctly formatted")
-
-
     logging.info("Dealing with duplicates in the bed file")
     # Deal with multimapping reads.
     if duplicates == "remove":
-        slices = remove_duplicates_from_bed(slices, 
-                                            prioritize_cis_slices=prioritize_cis_slices, 
-                                            chroms_to_prioritize=priority_chroms.split(",") if priority_chroms else None)
+        slices = remove_duplicates_from_bed(slices)
     else:
         raise NotImplementedError(
             "Only supported option at present is to remove duplicates"
@@ -228,9 +192,8 @@ def annotate(
     del intersections_results
     logging.info("Writing annotations to file.")
 
-    df_annotation.loc[
-        :, lambda df: df.select_dtypes("number").columns
-    ] = df_annotation.select_dtypes("number").astype("float")
+
+    df_annotation.loc[:, lambda df: df.select_dtypes("number").columns] = df_annotation.select_dtypes("number").astype("float")
 
     # Export to tsv
     if output.endswith(".tsv"):
@@ -242,3 +205,4 @@ def annotate(
         )
     elif output.endswith(".parquet"):
         df_annotation.to_parquet(output, compression="snappy")
+

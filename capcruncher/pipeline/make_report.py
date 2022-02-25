@@ -127,7 +127,7 @@ def plot_flash_summary(run_stats_path: os.PathLike):
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
 
-    except (KeyError, IndexError):  # Might only have one sample
+    except KeyError:  # Might only have one sample
         pass
 
     return fig
@@ -187,7 +187,7 @@ def plot_digestion_read_summary(digestion_stats_reads_path):
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
 
-    except (KeyError, IndexError):  # Might only have one sample
+    except KeyError:  # Might only have one sample
         pass
 
     return fig
@@ -231,7 +231,7 @@ def plot_digestion_histogram(digestion_stats_histogram_path: os.PathLike):
         fig["layout"]["sliders"][0]["pad"] = {"r": 10, "b": 5, "t": 10}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
-    except (KeyError, IndexError):
+    except KeyError:
         pass
 
     return fig
@@ -301,7 +301,7 @@ def plot_alignment_filtering_read_summary(filtering_read_stats_path: os.PathLike
         fig["layout"]["sliders"][0]["pad"] = {"r": 10, "b": 5, "t": 10}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
-    except (KeyError, IndexError):
+    except KeyError:
         pass
 
     return fig
@@ -336,7 +336,7 @@ def plot_reporter_summary(reporter_stats_path: os.PathLike):
         fig["layout"]["sliders"][0]["pad"] = {"r": 0, "b": 5, "t": 50}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
-    except (KeyError, IndexError):
+    except KeyError:
         pass
 
     return fig
@@ -410,7 +410,7 @@ def plot_overall_summary(run_stats_path: os.PathLike):
         fig["layout"]["sliders"][0]["pad"] = {"r": 0, "b": 5, "t": 10}
         fig["layout"]["sliders"][0]["x"] = 0
         fig["layout"]["sliders"][0]["len"] = 1
-    except (KeyError, IndexError):
+    except KeyError:
         pass
 
     return fig
