@@ -1399,7 +1399,7 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
-        job_total_memory="32G",
+        job_total_memory=P.PARAMS["pipeline_memory"],
         job_condaenv=P.PARAMS["conda_env"],
     )
 
