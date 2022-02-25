@@ -123,6 +123,11 @@ align:
     # (Optional)
     options: -p 6 --very-sensitive
 
+alignments_filter:
+    # Maximum memory for alignment filtering
+    # Increase if the number of reads per partition has been increased from the default
+    memory: 5G
+
 analysis_optional:
 
     # Path to a YAML file containing the filter order to be applied to slices.
@@ -137,11 +142,34 @@ analysis_optional:
     # (Optional)
     blacklist: PATH_TO_BLACKLIST
 
+    # Attempts to prevent cis slices from being removed during annotation
+    # (Optional)
+    prioritize_cis_slices: True
+
+    # Attempts to prevent slices on specified chromosomes being removed during annotation
+    # Choose from:
+    # None - No priority
+    # Comma separated list e.g. chr1,chr2 to directly specify chromosomes
+    # viewpoints - Uses the supplied viewpoints to define priority chromosomes
+    # (Optional)
+    priority_chromosomes: None
+
+    # Determines if trimmed fastq files are erased after read combining (FLASh).
+    # (Debugging)
+    keep_trimmed: False
+    
+    # Determines if digested fastq files are erased after alignment.
+    # (Debugging)
+    keep_digested: False
+
+    # Determines if aligned (BAM) files are erased after slice filtering.
+    # (Debugging)
+    keep_aligned: False
+
     # Determines if slice annotations are erased after aligned slice filtering.
     # Can be useful for troubleshooting errors with coordinates
     # (Debugging)
     keep_annotations: False
-
 
     # Forces the pipeline to produce bigwigs when a high level of viewpoints are detected.
     # This is not advised due to the high number of files that can be generated.
