@@ -8,7 +8,6 @@ Created on Wed Jan  8 15:45:09 2020
 Script splits a fastq into specified chunks
 """
 
-import itertools
 import logging
 from multiprocessing import SimpleQueue
 from typing import Tuple
@@ -31,7 +30,7 @@ def run_unix_split(fn: os.PathLike,
 
     cmd = f"""zcat {fn} | split FILTER -l {n_reads * 4} -d --additional-suffix=_{read_number}.fastq - {output_prefix}_part;"""
     
-    if not ".gz" in fn:
+    if not fn.split(".")[-1] == ".gz":
         cmd = cmd.replace("zcat", "cat")
     
     if gzip:
@@ -56,8 +55,6 @@ def split(
 ):
     """ 
     Splits fastq file(s) into equal chunks of n reads.
-
-    Will now need "," between files of the same read.
 
     \f
     Args:
@@ -113,12 +110,9 @@ def split(
 
     elif method == "unix": # Using unix split to perform the splitting
 
+
         tasks = []
         n_cores_per_task = (n_cores // 2) if (n_cores // 2) > 1 else 1
-
-        if "," in input_files[0]: # Allows for specifying multiple files
-            input_files = [fnames.replace(",", " ") for fnames in input_files]
-
         for ii, fn in enumerate(input_files):
             t = delayed(run_unix_split)(fn, 
                                         n_reads=n_reads,
