@@ -100,6 +100,11 @@ def repartition_csvs(
     help="Number of parallel processes to use",
     default=1,
 )
+@click.option(
+    "--memory-limit",
+    help="Maximum amount of memory to use.",
+    default="1G",
+)
 def cis_and_trans_stats(
     slices: str,
     output: str,
@@ -108,6 +113,7 @@ def cis_and_trans_stats(
     sample_name: str = "",
     read_type: str = "",
     n_cores: int = 1,
+    memory_limit: str = "1G",
 ):
 
     from capcruncher.tools.filter import (
@@ -163,6 +169,7 @@ def cis_and_trans_stats(
             processes=True,
             scheduler_port=0,
             local_directory=os.environ.get("TMPDIR", "/tmp/"),
+            memory_limit=memory_limit,
         ) as client:
 
             ddf = dd.read_parquet(slices, engine="pyarrow")

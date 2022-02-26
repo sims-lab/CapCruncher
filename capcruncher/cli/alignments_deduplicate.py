@@ -28,6 +28,7 @@ def identify(
     buffer: int = 1e6,
     read_type: str = "flashed",
     n_cores: int = 1,
+    memory_limit: str = "1G",
 ):
     """
     Identifies aligned fragments with duplicate coordinates.
@@ -65,8 +66,8 @@ def identify(
             dashboard_address=None,
             processes=True,
             scheduler_port=0,
-            local_directory=os.environ.get("TMPDIR", "/tmp/")
-
+            local_directory=os.environ.get("TMPDIR", "/tmp/"),
+            memory_limit=memory_limit,
         )
 
     with dask.distributed.Client(cluster) as client:
@@ -122,6 +123,7 @@ def remove(
     stats_prefix: os.PathLike = "",
     file_type: str = "hdf5",
     n_cores: int = 1,
+    memory_limit: str = "1G",
 ):
     """
     Removes duplicated aligned fragments.
@@ -160,7 +162,8 @@ def remove(
             dashboard_address=None,
             processes=True,
             scheduler_port=0,
-            local_directory=os.environ.get("TMPDIR", "/tmp/")
+            local_directory=os.environ.get("TMPDIR", "/tmp/"),
+            memory_limit=memory_limit,
         )
     with dask.distributed.Client(cluster) as client:
 
