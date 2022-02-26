@@ -1392,6 +1392,8 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         STORAGE_FORMAT,
         "-p",
         str(P.PARAMS.get("pipeline_n_cores", 1)),
+        "--memory-limit",
+        str(P.PARAMS["pipeline_memory"]),
     ]
 
     P.run(
@@ -1449,6 +1451,8 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         read_type,
         "-p",
         str(P.PARAMS.get("pipeline_n_cores", 1)),
+        "--memory-limit",
+        str(P.PARAMS["pipeline_memory"]),
     ]
 
     P.run(
