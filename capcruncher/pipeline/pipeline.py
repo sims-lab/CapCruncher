@@ -1003,6 +1003,7 @@ def fastq_alignment(infile, outfile):
     if not P.PARAMS.get("analysis_optional_keep_digested"):
         zap_file(infile)
 
+
 @collate(
     fastq_alignment,
     regex(r"capcruncher_preprocessing/aligned/(.*)_part\d+.*.bam"),
@@ -1026,7 +1027,7 @@ def alignments_merge(infiles, outfile):
         job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
     )
-    
+
 
 @transform(alignments_merge, regex("(.*).bam"), r"\1.bam.bai")
 def alignments_index(infile, outfile):
@@ -1244,8 +1245,7 @@ def annotate_alignments(infile, outfile):
     }
 
     priority_chroms = P.PARAMS.get("analysis_optional_priority_chromosomes")
-    
-    
+
     if not priority_chroms:
         chroms = None
     elif "," in priority_chroms:
@@ -1254,7 +1254,6 @@ def annotate_alignments(infile, outfile):
         chroms = ",".join(
             convert_bed_to_dataframe(P.PARAMS["analysis_viewpoints"])["chrom"]
         )
-        
 
     statement_annotate = " ".join(
         [
@@ -1393,6 +1392,8 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         STORAGE_FORMAT,
         "-p",
         str(P.PARAMS.get("pipeline_n_cores", 1)),
+        "--memory-limit",
+        str(P.PARAMS["pipeline_memory"]),
     ]
 
     P.run(
@@ -1450,6 +1451,8 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         read_type,
         "-p",
         str(P.PARAMS.get("pipeline_n_cores", 1)),
+        "--memory-limit",
+        str(P.PARAMS["pipeline_memory"]),
     ]
 
     P.run(
@@ -1505,6 +1508,8 @@ def alignments_deduplicate_slices_statistics(
         STORAGE_FORMAT,
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
+        "--memory-limit",
+        str(P.PARAMS["pipeline_memory"]),
     ]
 
     P.run(
@@ -1598,7 +1603,7 @@ def stats_alignment_filtering_collate(infiles, outfile):
 @follows(alignments_deduplicate_collate, stats_alignment_filtering_collate)
 def post_capcruncher_analysis():
     """Reporters have been identified, deduplicated and collated by sample/capture probe"""
-    
+
     # Zero bam files if not specified
     if not P.PARAMS.get("analysis_optional_keep_alignments", False):
         for bam in glob.glob("capcruncher_preprocessing/aligned/*.bam"):

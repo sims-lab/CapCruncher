@@ -233,6 +233,11 @@ def deduplicate():
     help="Number of parallel processes to use for deduplication",
     default=1,
 )
+@click.option(
+    "--memory-limit",
+    help="Maximum amount of memory to use.",
+    default="1G",
+)
 def identify(*args, **kwargs):
     from capcruncher.cli.alignments_deduplicate import identify
 
@@ -281,6 +286,11 @@ def identify(*args, **kwargs):
     "--n_cores",
     help="Number of parallel processes to use for deduplication",
     default=1,
+)
+@click.option(
+    "--memory-limit",
+    help="Maximum amount of memory to use.",
+    default="1G",
 )
 def remove(*args, **kwargs):
     """
