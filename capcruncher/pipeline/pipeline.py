@@ -72,7 +72,7 @@ from capcruncher.tools.statistics import (
     extract_trimming_stats,
 )
 
-from capcruncher.utils import is_on, is_none, is_valid_bed
+from capcruncher.utils import convert_bed_to_dataframe, is_on, is_none, is_valid_bed
 
 
 ##############################
@@ -111,6 +111,9 @@ ANALYSIS_METHOD = P.PARAMS.get("analysis_method", "capture")
 
 # Defines storage format for slices. Defaults to parquet.
 STORAGE_FORMAT = P.PARAMS.get("analysis_optional_storage_format", "parquet")
+
+# Determines if FASTQ files are compressed during processing
+COMPRESS_FASTQ = P.PARAMS.get("pipeline_compression") != 0
 
 # Determines the number of samples being processed
 N_SAMPLES = len(
@@ -383,7 +386,6 @@ def fastq_split(infiles, outfile):
     Runs :ref:`capcruncher fastq split <CLI Documentation>`.
 
     """
-    use_compression = P.PARAMS.get("pipeline_compression") != 0
     statement = [
         "capcruncher",
         "fastq",
@@ -395,8 +397,10 @@ def fastq_split(infiles, outfile):
         outfile.replace(".sentinel", ""),
         "-n",
         str(P.PARAMS.get("split_n_reads", 1e6)),
-        "--gzip" if use_compression else "--no-gzip",
-        f"--compression_level {P.PARAMS.get('pipeline_compression')}" if use_compression else "",
+        "--gzip" if COMPRESS_FASTQ else "--no-gzip",
+        f"--compression_level {P.PARAMS.get('pipeline_compression')}"
+        if COMPRESS_FASTQ
+        else "",
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
     ]
@@ -447,7 +451,7 @@ def fastq_duplicates_parse(infiles, outfile, sample_name, part_no):
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=2,
-        job_memory="6G",
+        job_total_memory="6G",
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -480,7 +484,7 @@ def fastq_duplicates_identify(infiles, outfile):
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=1,
-        job_memory="32G",
+        job_total_memory="32G",
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -608,7 +612,7 @@ def fastq_trim(infiles, outfile):
             "--paired",
             "--cores",
             str(P.PARAMS.get("pipeline_n_cores", 1)),
-            "--gzip",
+            "--gzip" if COMPRESS_FASTQ else "",
             P.PARAMS.get("trim_options") or " ",
         ]
     )
@@ -690,7 +694,7 @@ def fastq_flash(infiles, outfile):
         outfile.replace(".sentinel", ""),
         "-t",
         str(P.PARAMS.get("pipeline_n_cores", 1)),
-        "-z",
+        "-z" if COMPRESS_FASTQ else "",
     ]
 
     P.run(
@@ -702,18 +706,118 @@ def fastq_flash(infiles, outfile):
 
     touch_file(outfile)
 
+    if not P.PARAMS.get("analysis_optional_keep_trimmed"):
+        for fn in infiles:
+            zap_file(fn)
+
 
 @follows(
-    mkdir("capcruncher_preprocessing/digested"),
+    mkdir("capcruncher_preprocessing/collated"),
     fastq_flash,
-    mkdir("capcruncher_statistics/digestion/data"),
 )
+@collate(
+    "capcruncher_preprocessing/flashed/*.fastq*",
+    regex(
+        r"capcruncher_preprocessing/flashed/(.*)_part\d+.extendedFrags.fastq(?:.gz)?"
+    ),
+    r"capcruncher_preprocessing/collated/flashed.\1.sentinel",
+)
+def fastq_collate_combined(infiles, outfile):
+
+    statement = [
+        "capcruncher",
+        "fastq",
+        "split",
+        ",".join(infiles),
+        "-m",
+        "unix",
+        "-o",
+        outfile.replace(".sentinel", ""),
+        "-n",
+        str(P.PARAMS.get("split_n_reads", 1e6)),
+        "--gzip" if COMPRESS_FASTQ else "--no-gzip",
+        f"--compression_level {P.PARAMS.get('pipeline_compression')}"
+        if COMPRESS_FASTQ
+        else "",
+        "-p",
+        str(P.PARAMS["pipeline_n_cores"]),
+    ]
+
+    P.run(
+        " ".join(statement),
+        job_threads=P.PARAMS["pipeline_n_cores"],
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
+    )
+
+    # Create sentinel file
+    touch_file(outfile)
+
+    for fn in infiles:
+        zap_file(fn)
+
+
+@follows(
+    mkdir("capcruncher_preprocessing/collated"),
+    fastq_flash,
+)
+@collate(
+    "capcruncher_preprocessing/flashed/*.fastq*",
+    regex(
+        r"capcruncher_preprocessing/flashed/(.*)_part\d+.notCombined_[12].fastq(?:.gz)?"
+    ),
+    r"capcruncher_preprocessing/collated/pe.\1.sentinel",
+)
+def fastq_collate_non_combined(infiles, outfile):
+
+    df_fq_files = pd.Series(infiles).to_frame("fn")
+    df_fq_files["read"] = df_fq_files["fn"].str.extract(".*.notCombined_(\d)")
+    infiles_by_read_number = [
+        df["fn"].to_list() for read_number, df in df_fq_files.groupby("read")
+    ]
+
+    statement = [
+        "capcruncher",
+        "fastq",
+        "split",
+        ",".join(infiles_by_read_number[0]),
+        ",".join(infiles_by_read_number[1]),
+        "-m",
+        "unix",
+        "-o",
+        outfile.replace(".sentinel", ""),
+        "-n",
+        str(P.PARAMS.get("split_n_reads", 1e6)),
+        "--gzip" if COMPRESS_FASTQ else "--no-gzip",
+        f"--compression_level {P.PARAMS.get('pipeline_compression')}"
+        if COMPRESS_FASTQ
+        else "",
+        "-p",
+        str(P.PARAMS["pipeline_n_cores"]),
+    ]
+
+    P.run(
+        " ".join(statement),
+        job_threads=P.PARAMS["pipeline_n_cores"],
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_condaenv=P.PARAMS["conda_env"],
+    )
+
+    # Create sentinel file
+    touch_file(outfile)
+
+    for fn in infiles:
+        zap_file(fn)
+
+
+@follows(fastq_collate_combined, mkdir("capcruncher_statistics/digestion/data"))
 @transform(
-    "capcruncher_preprocessing/flashed/*.fastq.gz",
-    regex(r"capcruncher_preprocessing/flashed/(.*).extendedFrags.fastq.gz"),
-    r"capcruncher_preprocessing/digested/\1.flashed.fastq.gz",
+    "capcruncher_preprocessing/collated/flashed*.fastq*",
+    regex(r".*/flashed.(.*)_[1].fastq(.gz)?"),
+    r"capcruncher_preprocessing/digested/\1.flashed.fastq\2",
+    extras=[r"\1"]
 )
-def fastq_digest_combined(infile, outfile):
+def fastq_digest_combined(infile, outfile, sample_name):
 
     """In silico restriction enzyme digest of combined (flashed) read pairs"""
 
@@ -736,7 +840,7 @@ def fastq_digest_combined(infile, outfile):
         "--stats-prefix",
         f"capcruncher_statistics/digestion/data/{os.path.basename(outfile)}",
         "--sample-name",
-        re.match(r".*/(.*?)_part.*", infile).group(1),
+        re.match(r"(.*?)_part.*", sample_name).group(1),
         "-p",
         str(n_cores),
     ]
@@ -751,13 +855,14 @@ def fastq_digest_combined(infile, outfile):
     zap_file(infile)
 
 
-@follows(fastq_flash, mkdir("capcruncher_statistics/digestion"))
+@follows(fastq_collate_non_combined, mkdir("capcruncher_statistics/digestion/data"))
 @collate(
-    "capcruncher_preprocessing/flashed/*.fastq.gz",
-    regex(r"capcruncher_preprocessing/flashed/(.*).notCombined_[12].fastq.gz"),
-    r"capcruncher_preprocessing/digested/\1.pe.fastq.gz",
+    "capcruncher_preprocessing/collated/pe.*.fastq*",
+    regex(r".*/pe.(.*)_[12].fastq(.gz)?"),
+    r"capcruncher_preprocessing/digested/\1.pe.fastq\2",
+    extras=[r"\1"]
 )
-def fastq_digest_non_combined(infiles, outfile):
+def fastq_digest_non_combined(infiles, outfile, sample_name):
 
     """In silico restriction enzyme digest of non-combined (non-flashed) read pairs"""
 
@@ -780,7 +885,7 @@ def fastq_digest_non_combined(infiles, outfile):
         "--stats-prefix",
         f"capcruncher_statistics/digestion/data/{os.path.basename(outfile)}",
         "--sample-name",
-        re.match(r".*/(.*?)_part.*", infiles[0]).group(1),
+        re.match(r"(.*?)_part.*", sample_name).group(1),
         "-p",
         str(n_cores),
     ]
@@ -846,7 +951,7 @@ def fastq_preprocessing():
 @follows(mkdir("capcruncher_preprocessing"), fastq_preprocessing)
 @transform(
     [fastq_digest_combined, fastq_digest_non_combined],
-    regex(r"capcruncher_preprocessing/digested/(.*).fastq.gz"),
+    regex(r"capcruncher_preprocessing/digested/(.*).fastq(.gz)?"),
     r"capcruncher_preprocessing/aligned/\1.bam",
 )
 def fastq_alignment(infile, outfile):
@@ -897,6 +1002,9 @@ def fastq_alignment(infile, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
+    if not P.PARAMS.get("analysis_optional_keep_digested"):
+        zap_file(infile)
+
 
 @collate(
     fastq_alignment,
@@ -926,7 +1034,7 @@ def alignments_merge(infiles, outfile):
 @transform(alignments_merge, regex("(.*).bam"), r"\1.bam.bai")
 def alignments_index(infile, outfile):
 
-    """Indexes all bam files (both partitioned and merged)"""
+    """Indexes all bam files"""
 
     statement = [
         "samtools",
@@ -943,7 +1051,7 @@ def alignments_index(infile, outfile):
     )
 
 
-@follows(fastq_alignment)
+@follows(fastq_alignment, alignments_merge)
 def pre_annotation():
     pass
 
@@ -1065,15 +1173,15 @@ def annotate_sort_blacklist(outfile):
     fastq_alignment,
     regex(r".*/(.*).bam"),
     add_inputs(
-        [
-            {
+        {
+            "restriction_fragment": {
                 "name": "restriction_fragment",
                 "fn": "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
                 "action": "get",
                 "fraction": 0.51,
                 "dtype": "Int64",
             },
-            {
+            "viewpoints": {
                 "name": "capture",
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "get",
@@ -1082,21 +1190,21 @@ def annotate_sort_blacklist(outfile):
                 ),
                 "dtype": "category",
             },
-            {
+            "exclusions": {
                 "name": "exclusion",
                 "fn": "capcruncher_analysis/annotations/exclude.bed",
                 "action": "get",
                 "fraction": 1e-9,
                 "dtype": "category",
             },
-            {
+            "exclusions_count": {
                 "name": "exclusion_count",
                 "fn": "capcruncher_analysis/annotations/exclude.bed",
                 "action": "count",
                 "fraction": 1e-9,
                 "dtype": "Int8",
             },
-            {
+            "viewpoint_count": {
                 "name": "capture_count",
                 "fn": "capcruncher_analysis/annotations/viewpoints.bed",
                 "action": "count",
@@ -1105,14 +1213,14 @@ def annotate_sort_blacklist(outfile):
                 ),
                 "dtype": "Int8",
             },
-            {
+            "blacklist": {
                 "name": "blacklist",
                 "fn": "capcruncher_analysis/annotations/blacklist.bed",
                 "action": "count",
                 "fraction": 1e-9,
                 "dtype": "int",
             },
-        ]
+        }
     ),
     r"capcruncher_analysis/annotations/\1.annotations.parquet",
 )
@@ -1137,6 +1245,18 @@ def annotate_alignments(infile, outfile):
         "fraction": "-f",
         "dtype": "-t",
     }
+
+    priority_chroms = P.PARAMS.get("analysis_optional_priority_chromosomes")
+
+    if not priority_chroms:
+        chroms = None
+    elif "," in priority_chroms:
+        chroms = priority_chroms
+    elif "viewpoints" in priority_chroms:
+        chroms = ",".join(
+            convert_bed_to_dataframe(P.PARAMS["analysis_viewpoints"])["chrom"]
+        )
+
     statement_annotate = " ".join(
         [
             "capcruncher",
@@ -1144,9 +1264,9 @@ def annotate_alignments(infile, outfile):
             "annotate",
             infile[0],
             *[
-                f"{flags[k]} {v}"
-                for annotation in infile[1]
-                for k, v in annotation.items()
+                f"{flags[attribute]} {value}"
+                for annotation_name, annotation in infile[1].items()
+                for attribute, value in annotation.items()
             ],
             "-o",
             outfile,
@@ -1154,6 +1274,11 @@ def annotate_alignments(infile, outfile):
             "ignore",
             "-p",
             str(P.PARAMS["pipeline_n_cores"]),
+            f"--blacklist {infile[1]['blacklist']['fn']}" if HAS_BLACKLIST else "",
+            "--prioritize-cis-slices"
+            if P.PARAMS.get("analysis_optional_prioritize_cis_slices")
+            else "",
+            f"--priority-chroms {chroms}" if chroms else "",
         ]
     )
 
@@ -1227,11 +1352,10 @@ def alignments_filter(infiles, outfile, sample_name, sample_part, sample_read_ty
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=1,
-        job_total_memory="5G",
+        job_total_memory=P.PARAMS.get("alignments_filter_memory", "5G"),
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # Zero annotations
     if not P.PARAMS.get("analysis_optional_keep_annotations", False):
         zap_file(annotations)
 
@@ -1270,13 +1394,15 @@ def alignments_deduplicate_fragments(infiles, outfile, read_type):
         STORAGE_FORMAT,
         "-p",
         str(P.PARAMS.get("pipeline_n_cores", 1)),
+        "--memory-limit",
+        str(P.PARAMS["pipeline_memory"]),
     ]
 
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
-        job_total_memory="32G",
+        job_total_memory=P.PARAMS["pipeline_memory"],
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1327,13 +1453,15 @@ def alignments_deduplicate_slices(infile, outfile, sample_name, read_type):
         read_type,
         "-p",
         str(P.PARAMS.get("pipeline_n_cores", 1)),
+        "--memory-limit",
+        str(P.PARAMS["pipeline_memory"]),
     ]
 
     P.run(
         " ".join(statement),
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=P.PARAMS["pipeline_n_cores"],
-        job_memory=P.PARAMS["pipeline_memory"],
+        job_total_memory=P.PARAMS["pipeline_memory"],
         job_condaenv=P.PARAMS["conda_env"],
     )
 
@@ -1382,6 +1510,8 @@ def alignments_deduplicate_slices_statistics(
         STORAGE_FORMAT,
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
+        "--memory-limit",
+        str(P.PARAMS["pipeline_memory"]),
     ]
 
     P.run(
@@ -1434,7 +1564,7 @@ def alignments_deduplicate_collate(infiles, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    for fn in infiles:
+    for fn in slices:
         zap_file(fn)
 
     touch_file(outfile)
@@ -1475,6 +1605,11 @@ def stats_alignment_filtering_collate(infiles, outfile):
 @follows(alignments_deduplicate_collate, stats_alignment_filtering_collate)
 def post_capcruncher_analysis():
     """Reporters have been identified, deduplicated and collated by sample/capture probe"""
+
+    # Zero bam files if not specified
+    if not P.PARAMS.get("analysis_optional_keep_alignments", False):
+        for bam in glob.glob("capcruncher_preprocessing/aligned/*.bam"):
+            zap_file(bam)
 
 
 ####################
@@ -1519,9 +1654,6 @@ def reporters_count(infile, outfile):
         job_condaenv=P.PARAMS["conda_env"],
     )
 
-    # Link bin tables to conserve space
-    # from capcruncher.tools.storage import link_common_cooler_tables
-    # link_common_cooler_tables(output_counts)
     touch_file(outfile)
 
 
@@ -1659,7 +1791,7 @@ def pipeline_make_report(infile, outfile):
         "--pipeline-statistics-path",
         "capcruncher_statistics/",
         "--pipeline-report-path",
-        outfile
+        outfile,
     ]
 
     P.run(
@@ -1807,7 +1939,7 @@ def reporters_make_union_bedgraph(infiles, outfile, normalisation_type, capture_
         job_queue=P.PARAMS["pipeline_cluster_queue"],
         job_threads=1,
         job_condaenv=P.PARAMS["conda_env"],
-        without_cluster=True
+        without_cluster=True,
     )
 
 

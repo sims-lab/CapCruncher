@@ -15,9 +15,10 @@ from capcruncher.tools.deduplicate import (
     remove_duplicates_from_parquet,
     remove_duplicates_from_tsv,
     remove_duplicates_from_hdf5,
-    read_duplicated_ids
+    read_duplicated_ids,
 )
 from capcruncher.utils import get_file_type
+
 
 def identify(
     fragments: tuple,
@@ -27,6 +28,7 @@ def identify(
     buffer: int = 1e6,
     read_type: str = "flashed",
     n_cores: int = 1,
+    memory_limit: str = "1G",
 ):
     """
     Identifies aligned fragments with duplicate coordinates.
@@ -59,59 +61,56 @@ def identify(
     if input_file_type in ["hdf5", "parquet"]:
         # Will use dask for these
         cluster = dask.distributed.LocalCluster(
-            n_workers=n_cores, dashboard_address=None, processes=True
+            n_workers=n_cores,
+            threads_per_worker=1,
+            dashboard_address=None,
+            processes=True,
+            scheduler_port=0,
+            local_directory=os.environ.get("TMPDIR", "/tmp/"),
+            memory_limit=memory_limit,
         )
-        client = dask.distributed.Client(cluster)
 
+    with dask.distributed.Client(cluster) as client:
 
+        # Extract duplicated fragment ids
+        if input_file_type == "tsv":
+            if len(fragments) > 1:
+                raise NotImplementedError("Currently just supports a single tsv input")
+            else:
+                duplicated_fragments = identify_coordinate_duplicates_from_tsv(
+                    fragments[0], read_type=read_type, buffer=buffer
+                )
+        elif input_file_type == "hdf5":
+            outfile = f"{output.replace('.hdf5', '')}.hdf5"
+            if os.path.exists(outfile):
+                os.remove(outfile)
 
-    # Extract duplicated fragment ids
-    if input_file_type == "tsv":
-        if len(fragments) > 1:
-            raise NotImplementedError("Currently just supports a single tsv input")
-        else:
-            duplicated_fragments = identify_coordinate_duplicates_from_tsv(
-                fragments[0], read_type=read_type, buffer=buffer
+            duplicated_fragments = identify_coordinate_duplicates_from_hdf5(
+                fragments, read_type=read_type
             )
-    elif input_file_type == "hdf5":
-        outfile = f"{output.replace('.hdf5', '')}.hdf5"
-        if os.path.exists(outfile):
-            os.remove(outfile)
 
-        duplicated_fragments = identify_coordinate_duplicates_from_hdf5(
-            fragments, read_type=read_type
-        )
-    
-    elif input_file_type == "parquet":
-        duplicated_fragments = identify_coordinate_duplicates_from_parquet(
-            fragments, read_type=read_type
-        )
+        elif input_file_type == "parquet":
+            duplicated_fragments = identify_coordinate_duplicates_from_parquet(
+                fragments, read_type=read_type
+            )
 
-    else:
-        raise ValueError(f"Input file type {file_type} not supported")
+        else:
+            raise ValueError(f"Input file type {file_type} not supported")
 
-    # Output
-    if output_file_type == "json":
-        with xopen.xopen(output, "w") as w:
-            ujson.dump(dict.fromkeys(duplicated_fragments), w)
+        # Output
+        if output_file_type == "json":
+            with xopen.xopen(output, "w") as w:
+                ujson.dump(dict.fromkeys(duplicated_fragments), w)
 
-    elif output_file_type == "hdf5":
+        elif output_file_type == "hdf5":
 
-        duplicated_fragments.to_hdf(
-            outfile, f"/duplicated_ids", min_itemsize={"id": 25}, index=False
-        )
+            duplicated_fragments.to_hdf(
+                outfile, f"/duplicated_ids", min_itemsize={"id": 25}, index=False
+            )
 
-    elif output_file_type == "pickle":
-        duplicated_fragments = duplicated_fragments.compute()
-        duplicated_fragments.to_pickle(output)
-
-    
-    try:
-        cluster.close()
-        client.close()
-    except Exception as e:
-        print(e)
-
+        elif output_file_type == "pickle":
+            duplicated_fragments = duplicated_fragments.compute()
+            duplicated_fragments.to_pickle(output)
 
 
 def remove(
@@ -124,6 +123,7 @@ def remove(
     stats_prefix: os.PathLike = "",
     file_type: str = "hdf5",
     n_cores: int = 1,
+    memory_limit: str = "1G",
 ):
     """
     Removes duplicated aligned fragments.
@@ -157,42 +157,43 @@ def remove(
     if input_file_type in ["hdf5", "parquet"]:
         # Will use dask for these
         cluster = dask.distributed.LocalCluster(
-            n_workers=n_cores, dashboard_address=None, processes=True
+            n_workers=n_cores,
+            threads_per_worker=1,
+            dashboard_address=None,
+            processes=True,
+            scheduler_port=0,
+            local_directory=os.environ.get("TMPDIR", "/tmp/"),
+            memory_limit=memory_limit,
         )
-        client = dask.distributed.Client(cluster)
+    with dask.distributed.Client(cluster) as client:
 
-    if input_file_type == "tsv":
+        if input_file_type == "tsv":
 
-        if not output_file_type == "tsv":
-            raise NotImplementedError("Currently only tsv -> tsv output supported")
+            if not output_file_type == "tsv":
+                raise NotImplementedError("Currently only tsv -> tsv output supported")
 
-        n_reads_total, n_reads_unique = remove_duplicates_from_tsv(
-            slices, output, duplicates, buffer=buffer
-        )
+            n_reads_total, n_reads_unique = remove_duplicates_from_tsv(
+                slices, output, duplicates, buffer=buffer
+            )
 
-    elif input_file_type == "hdf5":
-        
-        if not output_file_type == "hdf5":
-            raise NotImplementedError("Currently only hdf5 -> hdf5 output supported")
+        elif input_file_type == "hdf5":
 
-        n_reads_total, n_reads_unique = remove_duplicates_from_hdf5(
-            slices, duplicates, output
-        )
-    
-    elif input_file_type == "parquet":
-        if not output_file_type == "parquet":
-            raise NotImplementedError("Currently only parquet -> parquet output supported")
+            if not output_file_type == "hdf5":
+                raise NotImplementedError("Currently only hdf5 -> hdf5 output supported")
 
-        n_reads_total, n_reads_unique = remove_duplicates_from_parquet(
-            slices, duplicates, output
-        )
-   
-    
-    try:
-        cluster.close()
-        client.close()
-    except Exception as e:
-        print(e)
+            n_reads_total, n_reads_unique = remove_duplicates_from_hdf5(
+                slices, duplicates, output
+            )
+
+        elif input_file_type == "parquet":
+            if not output_file_type == "parquet":
+                raise NotImplementedError(
+                    "Currently only parquet -> parquet output supported"
+                )
+
+            n_reads_total, n_reads_unique = remove_duplicates_from_parquet(
+                slices, duplicates, output
+            )
 
     # Prepare stats
     df_stats = pd.DataFrame()

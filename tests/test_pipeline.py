@@ -99,7 +99,7 @@ def test_pipeline_all(setup_pipeline_run):
 
 def test_digested_exists(run_directory):
     assert len(
-        glob.glob(f"{run_directory}/capcruncher_preprocessing/digested/*.fastq.gz")
+        glob.glob(f"{run_directory}/capcruncher_preprocessing/digested/*.fastq*")
     ) == (4 * 2)
 
 
