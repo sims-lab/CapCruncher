@@ -5,8 +5,7 @@ import re
 import time
 from datetime import timedelta
 from functools import wraps
-from typing import (Callable, Generator, Iterable, List, Literal,
-                    Tuple, Union)
+from typing import Callable, Generator, Iterable, List, Literal, Tuple, Union
 import numpy as np
 import pandas as pd
 import pybedtools
@@ -104,8 +103,8 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
 
         elif isinstance(e, IndexError):
             logging.debug(
-                    f"Wrong number of fields detected check separator/ number of columns"
-                )
+                f"Wrong number of fields detected check separator/ number of columns"
+            )
 
         else:
             logging.debug(f"Exception raised {e}")
@@ -233,7 +232,6 @@ def load_dict(fn, format: str, dtype: str = "int") -> dict:
 
     from xopen import xopen
 
-    
     if format == "json":
         with xopen(fn) as r:
             d = ujson.load(r)
@@ -249,14 +247,16 @@ def load_dict(fn, format: str, dtype: str = "int") -> dict:
     elif isinstance(d, set):
         return {required_dtype(k) for k in d}
     elif isinstance(d, dict):
-        return {required_dtype(k): required_dtype(v) if v else None for k,v in d.items()}
+        return {
+            required_dtype(k): required_dtype(v) if v else None for k, v in d.items()
+        }
 
 
 def save_dict(obj: Union[dict, set], fn: os.PathLike, format: str) -> dict:
     """Convinence function to save [gziped] json/pickle file using xopen."""
 
     from xopen import xopen
-    
+
     if format == "json":
         with xopen(fn, "w") as w:
             if isinstance(obj, set):
@@ -269,8 +269,6 @@ def save_dict(obj: Union[dict, set], fn: os.PathLike, format: str) -> dict:
             pickle.dump(obj, w)
 
     return fn
-
-
 
 
 def get_timing(task_name=None) -> Callable:
@@ -476,7 +474,6 @@ def get_file_type(fn: os.PathLike) -> str:
 
     ext = os.path.splitext(os.path.basename(fn).replace(".gz", ""))[-1].strip(".")
 
-
     try:
         return file_types[ext]
     except KeyError as e:
@@ -506,12 +503,16 @@ def get_categories_from_hdf5_column(
 
     # If its a category get from the cat codes
     if isinstance(df_test.dtypes[column], pd.CategoricalDtype):
-        return [cat for cat in df_test[column].cat.categories.values if not cat == null_value]
-    
+        return [
+            cat
+            for cat in df_test[column].cat.categories.values
+            if not cat == null_value
+        ]
+
     # Try to extract from the metadata
     try:
         with pd.HDFStore(path, "r") as store:
-            #s = store.get_storer(key)
+            # s = store.get_storer(key)
             # values = getattr(s.attrs, column)
             values = store[f"{key}_category_metadata"][column].unique()
             return values
@@ -520,43 +521,41 @@ def get_categories_from_hdf5_column(
         import dask.dataframe as dd
         import dask.distributed
 
-        client = dask.distributed.Client(processes=True)
-        values = [x for x in dd.read_hdf(path, key, columns=column)[column].unique().compute()]
-        client.close()
+        with dask.distributed.Client(processes=True) as client:
+            values = [
+                x
+                for x in dd.read_hdf(path, key, columns=column)[column]
+                .unique()
+                .compute()
+            ]
         return values
-
 
 
 def get_cooler_uri(store: os.PathLike, viewpoint: str, resolution: Union[str, int]):
 
     cooler_fragment = r"(?P<store>.*?).hdf5::/(?!.*/resolutions/)(?P<viewpoint>.*?)$"
-    cooler_binned = r"(?P<store>.*?).hdf5::/(?P<viewpoint>.*?)/resolutions/(?P<binsize>\d+)$"
+    cooler_binned = (
+        r"(?P<store>.*?).hdf5::/(?P<viewpoint>.*?)/resolutions/(?P<binsize>\d+)$"
+    )
 
     if re.match(cooler_fragment, store):
         if resolution:
             uri = f"{store}/resolutions/{resolution}"
         else:
-            uri =  store
-    
+            uri = store
+
     elif re.match(cooler_binned, store):
-        uri =  store
-    
+        uri = store
+
     else:
 
         if not resolution:
             uri = f"{store}::/{viewpoint}"
-    
+
         else:
             uri = f"{store}::/{viewpoint}/resolutions/{resolution}"
 
-
     return uri
-    
-
-
-
-
-    
 
 
 class MockFastqRecord:
@@ -570,7 +569,7 @@ class MockFastqRecord:
 
     def __repr__(self) -> str:
         return "|".join([self.name, self.sequence, "+", self.quality])
-    
+
 
 class MockFastaRecord:
     """Testing class used to supply a pysam FastqProxy like object"""

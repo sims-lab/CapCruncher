@@ -100,6 +100,11 @@ def repartition_csvs(
     help="Number of parallel processes to use",
     default=1,
 )
+@click.option(
+    "--memory-limit",
+    help="Maximum amount of memory to use.",
+    default="1G",
+)
 def cis_and_trans_stats(
     slices: str,
     output: str,
@@ -108,6 +113,7 @@ def cis_and_trans_stats(
     sample_name: str = "",
     read_type: str = "",
     n_cores: int = 1,
+    memory_limit: str = "1G",
 ):
 
     from capcruncher.tools.filter import (
@@ -157,25 +163,29 @@ def cis_and_trans_stats(
         import dask.dataframe as dd
         import dask.distributed
 
-        client = dask.distributed.Client(
-            n_workers=n_cores, dashboard_address=None, processes=True
-        )
+        with dask.distributed.Client(
+            n_workers=n_cores,
+            dashboard_address=None,
+            processes=True,
+            scheduler_port=0,
+            local_directory=os.environ.get("TMPDIR", "/tmp/"),
+            memory_limit=memory_limit,
+        ) as client:
 
-        ddf = dd.read_parquet(slices, engine="pyarrow")
-        ddf_cis_trans_stats = ddf.map_partitions(
-            lambda df: slice_filterer(
-                df, sample_name=sample_name, read_type=read_type
-            ).cis_or_trans_stats
-        )
-        ddf_cis_trans_stats_summary = (
-            ddf_cis_trans_stats.groupby(
-                ["viewpoint", "cis/trans", "sample", "read_type"]
+            ddf = dd.read_parquet(slices, engine="pyarrow")
+            ddf_cis_trans_stats = ddf.map_partitions(
+                lambda df: slice_filterer(
+                    df, sample_name=sample_name, read_type=read_type
+                ).cis_or_trans_stats
             )
-            .sum()
-            .reset_index()
-        )
-        ddf_cis_trans_stats_summary.to_csv(output, index=False, single_file=True)
-        client.close()
+            ddf_cis_trans_stats_summary = (
+                ddf_cis_trans_stats.groupby(
+                    ["viewpoint", "cis/trans", "sample", "read_type"]
+                )
+                .sum()
+                .reset_index()
+            )
+            ddf_cis_trans_stats_summary.to_csv(output, index=False, single_file=True)
 
 
 @cli.command()
@@ -207,61 +217,65 @@ def merge_capcruncher_slices(
     import dask.dataframe as dd
     import dask.distributed
 
-    client = dask.distributed.Client(
-        n_workers=n_cores, dashboard_address=None, processes=True
-    )
-    storage_kwargs = {}
-    output_format = get_file_type(outfile)
+    with dask.distributed.Client(
+        n_workers=n_cores,
+        dashboard_address=None,
+        processes=True,
+        scheduler_port=0,
+        local_directory=os.environ.get("TMPDIR", "/tmp/")
+    ) as client:
+    
+        storage_kwargs = {}
+        output_format = get_file_type(outfile)
 
-    if output_format == "hdf5":
-        storage_kwargs.update({"data_columns": index_cols} if index_cols else {})
+        if output_format == "hdf5":
+            storage_kwargs.update({"data_columns": index_cols} if index_cols else {})
 
-        ddf = dd.read_hdf(infiles, key="slices")
+            ddf = dd.read_hdf(infiles, key="slices")
 
-        # TODO: Bug when selecting columns using a string category
-        # To fix, explicitly convert to string before writing
-        transform_to_string = dict()
-        transformed_categories = dict()
-        max_len = dict()
-        for col in index_cols:
-            if ddf[col].dtype == "category":
-                transform_to_string[col] = str
-                transformed_categories[col] = list(ddf[col].cat.categories)
-                max_len[col] = max([len(cat) for cat in ddf[col].cat.categories])
+            # TODO: Bug when selecting columns using a string category
+            # To fix, explicitly convert to string before writing
+            transform_to_string = dict()
+            transformed_categories = dict()
+            max_len = dict()
+            for col in index_cols:
+                if ddf[col].dtype == "category":
+                    transform_to_string[col] = str
+                    transformed_categories[col] = list(ddf[col].cat.categories)
+                    max_len[col] = max([len(cat) for cat in ddf[col].cat.categories])
 
-        ddf = ddf.astype(transform_to_string)
+            ddf = ddf.astype(transform_to_string)
 
-        if category_cols:
-            ddf = ddf.categorize(columns=[*category_cols])
+            if category_cols:
+                ddf = ddf.categorize(columns=[*category_cols])
 
-        # breakpoint()
-        ddf = ddf.sort_values([*index_cols], npartitions="auto")
+            # breakpoint()
+            ddf = ddf.sort_values([*index_cols], npartitions="auto")
 
-        ddf.to_hdf(
-            outfile,
-            key="slices",
-            complib="blosc",
-            complevel=2,
-            min_itemsize=max_len,
-            **storage_kwargs,
-        )
+            ddf.to_hdf(
+                outfile,
+                key="slices",
+                complib="blosc",
+                complevel=2,
+                min_itemsize=max_len,
+                **storage_kwargs,
+            )
 
-        with pd.HDFStore(outfile, "a") as store:
-            store.create_table_index("slices", columns=index_cols, kind="full")
+            with pd.HDFStore(outfile, "a") as store:
+                store.create_table_index("slices", columns=index_cols, kind="full")
 
-            if transformed_categories:
-                store.put(
-                    "/slices_category_metadata", pd.DataFrame(transformed_categories)
-                )
+                if transformed_categories:
+                    store.put(
+                        "/slices_category_metadata",
+                        pd.DataFrame(transformed_categories),
+                    )
 
-    elif output_format == "parquet":
+        elif output_format == "parquet":
 
-        ddf = dd.read_parquet(
-            infiles, chunksize="100MB", aggregate_files=True, engine="pyarrow"
-        )
-        ddf.to_parquet(outfile, compression="snappy", engine="pyarrow")
-
-    client.close()
+            ddf = dd.read_parquet(
+                infiles, chunksize="100MB", aggregate_files=True, engine="pyarrow"
+            )
+            ddf.to_parquet(outfile, compression="snappy", engine="pyarrow")
 
 
 def dict_to_fasta(d, path):
@@ -340,7 +354,7 @@ def viewpoint_coordinates(
         p_bam = subprocess.Popen(
             ["samtools", "view", "-b", "-"],
             stdout=viewpoints_aligned_bam,
-            stdin=p_alignment.stdout
+            stdin=p_alignment.stdout,
         )
         p_alignment.stdout.close()
         aligned_res = p_bam.communicate()
@@ -352,9 +366,7 @@ def viewpoint_coordinates(
         bt_genome = BedTool(digested_genome.name)
         bt_viewpoints = BedTool(viewpoints_aligned_bam.name)
 
-        intersections = bt_genome.intersect(
-            bt_viewpoints, wa=True, wb=True
-        )
+        intersections = bt_genome.intersect(bt_viewpoints, wa=True, wb=True)
 
         # Write results to file
         (
