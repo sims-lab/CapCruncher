@@ -579,6 +579,7 @@ def fastq_duplicates_remove(infiles, outfile):
 
 
 @active_if(FASTQ_DEDUPLICATE and HAS_CAPCRUNCHER_TOOLS)
+@follows(fastq_split)
 @collate(
     "capcruncher_preprocessing/split/*.fastq*",
     regex(r".*/(.*)_part\d+_[12].fastq(?:.gz)?"),
@@ -588,9 +589,10 @@ def fastq_duplicates_remove(infiles, outfile):
 def fastq_duplicates_remove_cct(infiles, outfile, sample_name):
 
     df_infiles = pd.Series(infiles).to_frame("fn").sort_values("fn")
-    df_infiles["read_number"] = df_infiles["fn"].str.extract(
-        r".*/(:?.*)_part\d+_([12]).fastq(?:.gz)?"
+    df_infiles = df_infiles.join(
+        df_infiles["fn"].str.extract(r".*/(.*)_part\d+_([12]).fastq(?:.gz)?")
     )
+    df_infiles.columns = ["fn", "sample_name", "read_number"]
 
     fq_read_1 = df_infiles.query("read_number == '1'")["fn"].values
     fq_read_2 = df_infiles.query("read_number == '2'")["fn"].values
@@ -603,7 +605,6 @@ def fastq_duplicates_remove_cct(infiles, outfile, sample_name):
             "fastq-deduplicate",
             ",".join(fq_read_1),
             ",".join(fq_read_2),
-            "--sample-name",
             "-o",
             output_prefix,
         ]
