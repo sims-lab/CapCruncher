@@ -109,6 +109,14 @@ for key in P.PARAMS:
 # Method of analysis
 ANALYSIS_METHOD = P.PARAMS.get("analysis_method", "capture")
 
+# Check if CapCruncherTools has been installed
+try:
+    import capcruncher_tools
+
+    HAS_CAPCRUNCHER_TOOLS = True
+except ImportError:
+    HAS_CAPCRUNCHER_TOOLS = False
+
 # Defines storage format for slices. Defaults to parquet.
 STORAGE_FORMAT = P.PARAMS.get("analysis_optional_storage_format", "parquet")
 
@@ -152,6 +160,7 @@ except ImportError as e:
         "Plotting capabilities not installed. For plotting please run: pip install capcruncher[plotting]"
     )
     MAKE_PLOTS = False
+
 
 # Determines if UCSC hub is created from run.
 MAKE_HUB = is_on(P.PARAMS.get("hub_create")) and not HAS_HIGH_NUMBER_OF_VIEWPOINTS
@@ -416,7 +425,7 @@ def fastq_split(infiles, outfile):
     touch_file(outfile)
 
 
-@active_if(FASTQ_DEDUPLICATE)
+@active_if(FASTQ_DEDUPLICATE and not HAS_CAPCRUNCHER_TOOLS)
 @follows(
     mkdir("capcruncher_preprocessing/deduplicated"),
     mkdir("capcruncher_preprocessing/deduplicated/duplicated_ids"),
@@ -492,6 +501,7 @@ def fastq_duplicates_identify(infiles, outfile):
         zap_file(fn)
 
 
+@active_if(not HAS_CAPCRUNCHER_TOOLS)
 @follows(
     fastq_duplicates_parse,
     fastq_duplicates_identify,
@@ -568,7 +578,50 @@ def fastq_duplicates_remove(infiles, outfile):
             zap_file(fn)
 
 
-@follows(fastq_duplicates_remove)
+@active_if(FASTQ_DEDUPLICATE and HAS_CAPCRUNCHER_TOOLS)
+@collate(
+    "capcruncher_preprocessing/split/*.fastq*",
+    regex(r".*/(.*)_part\d+_[12].fastq(?:.gz)?"),
+    r"capcruncher_preprocessing/deduplicated/\1.sentinel",
+    extras=[r"\1"],
+)
+def fastq_duplicates_remove_cct(infiles, outfile, sample_name):
+
+    df_infiles = pd.Series(infiles).to_frame("fn").sort_values("fn")
+    df_infiles["read_number"] = df_infiles["fn"].str.extract(
+        r".*/(:?.*)_part\d+_([12]).fastq(?:.gz)?"
+    )
+
+    fq_read_1 = df_infiles.query("read_number == '1'")["fn"].values
+    fq_read_2 = df_infiles.query("read_number == '2'")["fn"].values
+
+    output_prefix = os.path.dirname(outfile)
+
+    statement = " ".join(
+        [
+            "capcruncher-tools",
+            "fastq-deduplicate",
+            ",".join(fq_read_1),
+            ",".join(fq_read_2),
+            "--sample-name",
+            "-o",
+            output_prefix,
+        ]
+    )
+
+    P.run(
+        statement,
+        job_threads=P.PARAMS["pipeline_n_cores"],
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_memory="6G",
+        job_condaenv=P.PARAMS["conda_env"],
+    )
+
+    # Make sentinel file
+    touch_file(outfile)
+
+
+@follows(fastq_duplicates_remove, fastq_duplicates_remove_cct)
 @merge(
     "capcruncher_statistics/deduplication/data/*.csv",
     "capcruncher_statistics/deduplication/deduplication.reads.csv",
@@ -815,7 +868,7 @@ def fastq_collate_non_combined(infiles, outfile):
     "capcruncher_preprocessing/collated/flashed*.fastq*",
     regex(r".*/flashed.(.*)_[1].fastq(.gz)?"),
     r"capcruncher_preprocessing/digested/\1.flashed.fastq\2",
-    extras=[r"\1"]
+    extras=[r"\1"],
 )
 def fastq_digest_combined(infile, outfile, sample_name):
 
@@ -860,7 +913,7 @@ def fastq_digest_combined(infile, outfile, sample_name):
     "capcruncher_preprocessing/collated/pe.*.fastq*",
     regex(r".*/pe.(.*)_[12].fastq(.gz)?"),
     r"capcruncher_preprocessing/digested/\1.pe.fastq\2",
-    extras=[r"\1"]
+    extras=[r"\1"],
 )
 def fastq_digest_non_combined(infiles, outfile, sample_name):
 
