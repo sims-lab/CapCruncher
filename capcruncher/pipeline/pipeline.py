@@ -599,6 +599,11 @@ def fastq_duplicates_remove_cct(infiles, outfile, sample_name):
 
     output_prefix = os.path.dirname(outfile)
 
+    stats_prefix = (
+        f"capcruncher_statistics/deduplication/data/{sample_name}"
+    )
+
+
     statement = " ".join(
         [
             "capcruncher-tools",
@@ -606,7 +611,11 @@ def fastq_duplicates_remove_cct(infiles, outfile, sample_name):
             ",".join(fq_read_1),
             ",".join(fq_read_2),
             "-o",
-            output_prefix,
+            output_prefix.rstrip("/") + "/",
+            "--sample-name",
+            sample_name,
+            "--stats-prefix",
+            stats_prefix,
         ]
     )
 
@@ -614,7 +623,7 @@ def fastq_duplicates_remove_cct(infiles, outfile, sample_name):
         statement,
         job_threads=P.PARAMS["pipeline_n_cores"],
         job_queue=P.PARAMS["pipeline_cluster_queue"],
-        job_memory="6G",
+        job_memory="5G",
         job_condaenv=P.PARAMS["conda_env"],
     )
 
