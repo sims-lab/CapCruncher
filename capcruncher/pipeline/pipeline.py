@@ -655,6 +655,7 @@ def stats_deduplication_collate(infiles, outfile):
 @follows(
     mkdir("capcruncher_preprocessing/trimmed"),
     fastq_duplicates_remove,
+    fastq_duplicates_remove_cct,
     mkdir("capcruncher_statistics/trimming/data/"),
 )
 @collate(
