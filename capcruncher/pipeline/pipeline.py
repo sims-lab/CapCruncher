@@ -815,8 +815,9 @@ def fastq_collate_non_combined(infiles, outfile):
     "capcruncher_preprocessing/collated/flashed*.fastq*",
     regex(r".*/flashed.(.*)_[1].fastq(.gz)?"),
     r"capcruncher_preprocessing/digested/\1.flashed.fastq\2",
+    extras=[r"\1"]
 )
-def fastq_digest_combined(infile, outfile):
+def fastq_digest_combined(infile, outfile, sample_name):
 
     """In silico restriction enzyme digest of combined (flashed) read pairs"""
 
@@ -839,7 +840,7 @@ def fastq_digest_combined(infile, outfile):
         "--stats-prefix",
         f"capcruncher_statistics/digestion/data/{os.path.basename(outfile)}",
         "--sample-name",
-        re.match(r".*/(.*?)_part.*", infile).group(1),
+        re.match(r"(.*?)_part.*", sample_name).group(1),
         "-p",
         str(n_cores),
     ]
@@ -859,8 +860,9 @@ def fastq_digest_combined(infile, outfile):
     "capcruncher_preprocessing/collated/pe.*.fastq*",
     regex(r".*/pe.(.*)_[12].fastq(.gz)?"),
     r"capcruncher_preprocessing/digested/\1.pe.fastq\2",
+    extras=[r"\1"]
 )
-def fastq_digest_non_combined(infiles, outfile):
+def fastq_digest_non_combined(infiles, outfile, sample_name):
 
     """In silico restriction enzyme digest of non-combined (non-flashed) read pairs"""
 
@@ -883,7 +885,7 @@ def fastq_digest_non_combined(infiles, outfile):
         "--stats-prefix",
         f"capcruncher_statistics/digestion/data/{os.path.basename(outfile)}",
         "--sample-name",
-        re.match(r".*/(.*?)_part.*", infiles[0]).group(1),
+        re.match(r"(.*?)_part.*", sample_name).group(1),
         "-p",
         str(n_cores),
     ]
