@@ -551,7 +551,7 @@ def link_common_cooler_tables(clr: os.PathLike):
         # Get all resolutions stored
         try:
             resolutions = [res for res in f[viewpoints[0]]["resolutions"]]
-        except KeyError:
+        except (KeyError, IndexError):
             resolutions = None
 
         for viewpoint in viewpoints[1:]:
