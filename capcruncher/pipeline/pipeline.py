@@ -1607,7 +1607,7 @@ def post_capcruncher_analysis():
     """Reporters have been identified, deduplicated and collated by sample/capture probe"""
 
     # Zero bam files if not specified
-    if not P.PARAMS.get("analysis_optional_keep_alignments", False):
+    if not P.PARAMS.get("analysis_optional_keep_aligned", False):
         for bam in glob.glob("capcruncher_preprocessing/aligned/*.bam"):
             zap_file(bam)
 
