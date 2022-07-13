@@ -1029,12 +1029,12 @@ class TiledCSliceFilter(SliceFilter):
         """
         multicapture_fragments = (
             self.slices.query("capture_count == 1")
-            .groupby("parent_read")["capture"]
+            .groupby("parent_id")["capture"]
             .nunique()
             > 1
         )
         self.slices = (
-            self.slices.set_index("parent_read")
+            self.slices.set_index("parent_id")
             .loc[~multicapture_fragments]
             .reset_index()
         )
