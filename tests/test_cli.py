@@ -307,6 +307,18 @@ def test_alignment_annotation(cli_runner, data_annotation, tmpdir, bam, beds, fl
             "test.annotations.parquet",
             [],
         ),
+        (
+            "tri",
+            "test.flashed.bam",
+            "test.annotations.parquet",
+            [],
+        ),
+        (
+            "tiled",
+            "test.flashed.bam",
+            "test.annotations.parquet",
+            [],
+        ),
     ],
 )
 def test_alignment_filter(
@@ -332,6 +344,7 @@ def test_alignment_filter(
             output_prefix,
             *flags,
         ],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
     assert os.path.exists(f"{output_prefix}.slices.parquet")
