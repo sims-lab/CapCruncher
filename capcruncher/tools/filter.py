@@ -896,6 +896,20 @@ class TiledCSliceFilter(SliceFilter):
             }
 
         super(TiledCSliceFilter, self).__init__(slices, filter_stages, **sample_kwargs)
+    
+    @property
+    def captures(self) -> pd.DataFrame:
+        """
+        Extracts capture slices from slices dataframe
+
+        i.e. slices that do not have a null capture name
+
+        Returns:
+         pd.DataFrame: Capture slices
+
+        """
+        # Return any slice with a non N/A capture value
+        return self.slices.query("capture_count == 1")
 
     @property
     def fragments(self) -> pd.DataFrame:
