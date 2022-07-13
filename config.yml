@@ -6,7 +6,7 @@ analysis:
     
     # Method to use for data analysis, choose from capture | tri | tiled. 
     # (Required)
-    method: capture 
+    method: ANALYSIS_METHOD 
     
     # Path to viewpoints used for analysis.
     # This is a bed file containing the coordinates of the captured restricion fragments.
