@@ -990,7 +990,7 @@ class TiledCSliceFilter(SliceFilter):
             df_not_primary_capture = df_cap.loc[
                 ~(df_cap["slice_name"].isin(df_primary_capture["slice_name"]))
             ]
-            df_outside_capture = self.slices.query("capture != capture").loc[
+            df_outside_capture = self.slices.query("capture_count == 0").loc[
                 lambda df_rep: df_rep["parent_read"].isin(df_cap["parent_read"])
             ]
 
