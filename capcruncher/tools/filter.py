@@ -89,6 +89,7 @@ class SliceFilter:
         self._filter_stats = pd.DataFrame()
         self.sample_name = sample_name
         self.read_type = read_type
+        self.current_filter = ""
 
     def _required_columns_present(self, df) -> bool:
 
@@ -258,6 +259,8 @@ class SliceFilter:
 
         for stage, filters in self.filter_stages.items():
             for filt in filters:
+
+                self.current_filter = filt
                 # Call all of the filters in the filter_stages dict in order
                 logging.info(f"Filtering slices: {filt}")
                 getattr(self, filt)()  # Gets and calls the selected method
@@ -893,6 +896,20 @@ class TiledCSliceFilter(SliceFilter):
             }
 
         super(TiledCSliceFilter, self).__init__(slices, filter_stages, **sample_kwargs)
+    
+    @property
+    def captures(self) -> pd.DataFrame:
+        """
+        Extracts capture slices from slices dataframe
+
+        i.e. slices that do not have a null capture name
+
+        Returns:
+         pd.DataFrame: Capture slices
+
+        """
+        # Return any slice with a non N/A capture value
+        return self.slices.query("capture_count == 1")
 
     @property
     def fragments(self) -> pd.DataFrame:
@@ -916,7 +933,13 @@ class TiledCSliceFilter(SliceFilter):
 
     @property
     def slice_stats(self):
-        stats_df = self.slices.agg(
+
+        slices = self.slices.copy()
+        if slices.empty:  # Deal with empty dataframe i.e. no valid slices
+            for col in slices:
+                slices[col] = np.zeros((10,))
+
+        stats_df = slices.agg(
             {
                 "slice_name": "nunique",
                 "parent_read": "nunique",
@@ -936,8 +959,8 @@ class TiledCSliceFilter(SliceFilter):
                 "blacklist": "number_of_slices_in_blacklisted_region",
             }
         )
-
         return stats_df
+
 
     @property
     def cis_or_trans_stats(self) -> pd.DataFrame:
@@ -967,7 +990,7 @@ class TiledCSliceFilter(SliceFilter):
             df_not_primary_capture = df_cap.loc[
                 ~(df_cap["slice_name"].isin(df_primary_capture["slice_name"]))
             ]
-            df_outside_capture = self.slices.query("capture != capture").loc[
+            df_outside_capture = self.slices.query("capture_count == 0").loc[
                 lambda df_rep: df_rep["parent_read"].isin(df_cap["parent_read"])
             ]
 
@@ -1008,7 +1031,7 @@ class TiledCSliceFilter(SliceFilter):
             .query("capture_count > 0")
         )
         self.slices = self.slices[
-            self.slices["parent_read"].isin(fragments_with_capture["parent_id"])
+            self.slices["parent_id"].isin(fragments_with_capture["parent_id"])
         ]
 
     def remove_dual_capture_fragments(self):
@@ -1020,12 +1043,12 @@ class TiledCSliceFilter(SliceFilter):
         """
         multicapture_fragments = (
             self.slices.query("capture_count == 1")
-            .groupby("parent_read")["capture"]
+            .groupby("parent_id")["capture"]
             .nunique()
             > 1
         )
         self.slices = (
-            self.slices.set_index("parent_read")
+            self.slices.set_index("parent_id")
             .loc[~multicapture_fragments]
             .reset_index()
         )

@@ -409,8 +409,14 @@ def remove_duplicates_from_parquet(
 ) -> Tuple[int, int]:
 
     import dask.dataframe as dd
+    import pyarrow.parquet as pq
+    import pyarrow.dataset as ds
+    import pyarrow as pa
 
-    duplicates = tuple(duplicated_ids.values)
+    if not duplicated_ids.empty:
+        duplicates = set(duplicated_ids.values)
+    else:
+        duplicates = set()
 
     n_reads_total = (
         dd.read_parquet(slices, columns=["parent_id"], engine="pyarrow")
@@ -420,16 +426,18 @@ def remove_duplicates_from_parquet(
     )
 
     logging.info("Loading and filtering slices")
+    
     # Load and filter data
-    ddf = dd.read_parquet(
-        slices,
-        filters=[("parent_id", "not in", duplicates)],
-        engine="pyarrow-dataset",
-        
+    slice_dataset = ds.dataset(
+        list(slices),
+        format="parquet",
     )
 
+    slice_dataset_scanner = slice_dataset.scanner(filter=~ds.field('parent_id').isin(duplicates))
+    
+    
     logging.info("Writing unique slices")
-    ddf.to_parquet(output, compression="snappy", engine="pyarrow")
+    ds.write_dataset(slice_dataset_scanner, output, format="parquet", partitioning_flavor="hive")
 
     n_reads_unique = (
         dd.read_parquet(output, columns=["parent_id"], engine="pyarrow")
