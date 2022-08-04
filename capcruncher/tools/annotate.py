@@ -102,13 +102,12 @@ class BedIntersection:
 
     def _intersections_count(self, a, b):
         return self._extract_intersection_result(
-            a.intersect(b, loj=True, c=True, f=self.min_frac, sorted=True),
+            a.intersect(b, c=True, f=self.min_frac),
             intersection_id=self.intersection_name,
             dtype=self.dtype,
         )
 
     def _intersections_get(self, a, b):
-
         if self.dtype == "category":
             b_names = b.to_dataframe().iloc[:, -1].unique()
             dtype = pd.CategoricalDtype(b_names)
@@ -116,7 +115,7 @@ class BedIntersection:
             dtype = self.dtype
 
         return self._extract_intersection_result(
-            a.intersect(b, loj=True, f=self.min_frac, sorted=True),
+            a.intersect(b, wb=True, f=self.min_frac),
             intersection_id=self.intersection_name,
             dtype=dtype,
         )
