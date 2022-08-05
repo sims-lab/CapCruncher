@@ -83,22 +83,27 @@ class BedIntersection:
         self.dtype = dtype
 
     def _extract_intersection_result(
-        self, bt: BedTool, intersection_id: str, dtype: str = None
+        self,
+        bt: BedTool,
+        intersection_id: str,
+        dtype: Union[str, pd.CategoricalDtype] = "str",
     ):
-        columns = pd.read_csv(bt.fn, nrows=5, sep="\t", header=None).columns
-        columns_needed = [columns[3], columns[-1]]
+        try:
+            columns = pd.read_csv(bt.fn, nrows=5, sep="\t", header=None).columns
+            columns_needed = [columns[3], columns[-1]]
 
-        return pd.read_csv(
-            bt.fn,
-            sep="\t",
-            header=None,
-            usecols=columns_needed,
-            names=["parent_name", intersection_id],
-            index_col="parent_name",
-            squeeze=True,
-            dtype={"parent_name": str, intersection_id: dtype},
-            na_values=".",
-        )
+            return pd.read_csv(
+                bt.fn,
+                sep="\t",
+                header=None,
+                usecols=columns_needed,
+                names=["parent_name", intersection_id],
+                index_col="parent_name",
+                dtype={"parent_name": str, intersection_id: dtype},
+                na_values=".",
+            ).squeeze("columns")
+        except pd.errors.EmptyDataError:
+            return self._format_invalid_intersection(self.bed1, dtype=dtype)
 
     def _intersections_count(self, a, b):
         return self._extract_intersection_result(
@@ -120,13 +125,13 @@ class BedIntersection:
             dtype=dtype,
         )
 
-    def _format_invalid_intersection(self, bed):
+    def _format_invalid_intersection(self, bed, dtype=float):
         return (
             convert_bed_to_dataframe(bed)
             .assign(**{self.intersection_name: np.nan})
             .set_index("name")
             .loc[:, self.intersection_name]
-            .astype(float)
+            .astype(dtype)
         )
 
     def get_intersection(self, sort_index: bool = True) -> pd.Series:
