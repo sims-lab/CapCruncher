@@ -225,7 +225,9 @@ def merge(coolers: Tuple, output: os.PathLike):
     for viewpoint in need_merging:
         cooler_uris = coolers_to_merge[viewpoint]
         cooler.merge_coolers(
-            f"{output}::/{viewpoint.replace('::', '/resolutions/')}", cooler_uris
+            f"{output}::/{viewpoint.replace('::', '/resolutions/')}",
+            cooler_uris,
+            mergebuf=int(1e6),
         )
 
     # Reduce space by linking common tables (bins, chroms)

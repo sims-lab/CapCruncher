@@ -37,33 +37,6 @@ def remove_exclusions_from_df(df: pd.DataFrame):
 
 
 
-
-    # Must only remove exclusions if they are relevant for the capture being examined
-    # df_capture = df.query('capture != "."')
-
-    # # Finds excluded reporters
-    # df_reporters_exclusions = df.query('(capture == ".") and (exclusion == ".")')
-
-    # # Merge captures with excluded reporters and remove only exclusions
-    # # where the excluded region is the same as the capture probe.
-    # df_reporters_to_remove = (
-    #     df_capture.drop_duplicates(["parent_read", "capture"])[
-    #         ["parent_read", "capture"]
-    #     ]
-    #     .merge(
-    #         df_reporters_exclusions[["parent_read", "exclusion", "slice_name"]],
-    #         on="parent_read",
-    #     )
-    #     .query("capture == exclusion")
-    # )
-
-    # df_reporters = df.loc[
-    #     ~(df["slice_name"].isin(df_reporters_to_remove["slice_name"]))
-    # ]
-
-    # return df_reporters
-
-
 def preprocess_reporters_for_counting(df: pd.DataFrame, **kwargs):
 
     # Need to remove any restiction fragments that are not in the digested genome
@@ -76,7 +49,7 @@ def preprocess_reporters_for_counting(df: pd.DataFrame, **kwargs):
     # Remove the capture site
     if kwargs.get("remove_viewpoints"):
         logging.info("Removing viewpoints")
-        df_reporters = df_reporters.query('capture == "."')
+        df_reporters = df_reporters.query('capture_count == 0')
 
     # Subsample at the fragment level
     if kwargs.get("subsample"):
@@ -84,10 +57,6 @@ def preprocess_reporters_for_counting(df: pd.DataFrame, **kwargs):
     
     return df_reporters
 
-    # logging.info("Grouping into fragments")
-    # fragments = df_reporters.groupby("parent_id")
-
-    # return fragments
 
 
 def count_re_site_combinations(
