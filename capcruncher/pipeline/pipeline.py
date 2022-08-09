@@ -86,7 +86,7 @@ cgatcore_defaults_override["cluster"] = {
     "queue": P.PARAMS.get("cluster_queue", "batch"),
 }
 cgatcore_defaults_override["conda_env"] = P.PARAMS.get(
-    "conda_env", os.path.basename(os.environ["CONDA_PREFIX"])
+    "conda_env", os.environ["CONDA_PREFIX"]
 )
 
 # Load parameters into P.PARAMS
@@ -1696,6 +1696,7 @@ def generate_bin_conversion_tables(outfile):
 @active_if(P.PARAMS.get("analysis_bin_size", 0) > 0)
 @follows(
     generate_bin_conversion_tables,
+    reporters_count,
 )
 @transform(
     "capcruncher_analysis/reporters/counts/(.*).hdf5",
