@@ -1658,7 +1658,7 @@ def reporters_count(infile, outfile):
 
 
 @active_if(P.PARAMS.get("analysis_bin_size"))
-@follows(genome_digest)
+@follows(genome_digest, mkdir("capcruncher_analysis/reporters/"))
 @originate(r"capcruncher_analysis/reporters/binners.pkl")
 def generate_bin_conversion_tables(outfile):
     """
