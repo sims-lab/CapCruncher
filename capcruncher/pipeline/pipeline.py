@@ -815,7 +815,7 @@ def fastq_collate_non_combined(infiles, outfile):
     "capcruncher_preprocessing/collated/flashed*.fastq*",
     regex(r".*/flashed.(.*)_[1].fastq(.gz)?"),
     r"capcruncher_preprocessing/digested/\1.flashed.fastq\2",
-    extras=[r"\1"]
+    extras=[r"\1"],
 )
 def fastq_digest_combined(infile, outfile, sample_name):
 
@@ -860,7 +860,7 @@ def fastq_digest_combined(infile, outfile, sample_name):
     "capcruncher_preprocessing/collated/pe.*.fastq*",
     regex(r".*/pe.(.*)_[12].fastq(.gz)?"),
     r"capcruncher_preprocessing/digested/\1.pe.fastq\2",
-    extras=[r"\1"]
+    extras=[r"\1"],
 )
 def fastq_digest_non_combined(infiles, outfile, sample_name):
 
