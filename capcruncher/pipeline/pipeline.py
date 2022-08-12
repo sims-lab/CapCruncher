@@ -815,7 +815,7 @@ def fastq_collate_non_combined(infiles, outfile):
     "capcruncher_preprocessing/collated/flashed*.fastq*",
     regex(r".*/flashed.(.*)_[1].fastq(.gz)?"),
     r"capcruncher_preprocessing/digested/\1.flashed.fastq\2",
-    extras=[r"\1"],
+    extras=[r"\1"]
 )
 def fastq_digest_combined(infile, outfile, sample_name):
 
@@ -860,7 +860,7 @@ def fastq_digest_combined(infile, outfile, sample_name):
     "capcruncher_preprocessing/collated/pe.*.fastq*",
     regex(r".*/pe.(.*)_[12].fastq(.gz)?"),
     r"capcruncher_preprocessing/digested/\1.pe.fastq\2",
-    extras=[r"\1"],
+    extras=[r"\1"]
 )
 def fastq_digest_non_combined(infiles, outfile, sample_name):
 
@@ -1622,14 +1622,14 @@ def post_capcruncher_analysis():
     alignments_deduplicate_collate,
     regex(r".*/(?P<sample>.*?)\.sentinel"),
     add_inputs(genome_digest, P.PARAMS["analysis_viewpoints"]),
-    r"capcruncher_analysis/reporters/counts/\1.sentinel",
+    r"capcruncher_analysis/reporters/counts/\1_fragments.sentinel",
 )
 def reporters_count(infile, outfile):
 
     """Counts the number of interactions identified between reporter restriction fragments"""
 
     infile, restriction_fragment_map, viewpoints = infile
-    output_counts = outfile.replace("sentinel", "hdf5")
+    output_counts = outfile.replace("_fragments.sentinel", ".hdf5")
 
     statement = [
         "capcruncher",
@@ -1699,10 +1699,10 @@ def generate_bin_conversion_tables(outfile):
     reporters_count,
 )
 @transform(
-    "capcruncher_analysis/reporters/counts/(.*).hdf5",
-    regex(r"capcruncher_analysis/reporters/counts/(.*).hdf5"),
+    reporters_count,
+    regex(r".*/(?P<sample>.*?)\_fragments.sentinel"),
     add_inputs(generate_bin_conversion_tables),
-    r"capcruncher_analysis/reporters/counts/\1.sentinel",
+    r"capcruncher_analysis/reporters/counts/\1_binned.sentinel",
 )
 def reporters_store_binned(infile, outfile):
 
@@ -1711,8 +1711,11 @@ def reporters_store_binned(infile, outfile):
     """
 
     clr, conversion_tables = infile
-    sentinel_file = outfile.copy()
-    outfile = outfile.replace(".sentinel", ".hdf5")
+    sentinel_file = outfile
+    outfile = outfile.replace("_binned.sentinel", ".hdf5")
+
+    scale_factor = P.PARAMS.get("normalisation_scale_factor", 1000000)
+    scale_factor = scale_factor if not is_none(scale_factor) else int(1e6)
 
     statement = [
         "capcruncher",
@@ -1728,7 +1731,7 @@ def reporters_store_binned(infile, outfile):
         conversion_tables,
         "--normalise",
         "--scale_factor",
-        str(P.PARAMS.get("normalisation_scale_factor", 1000000)),
+        str(scale_factor),
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
         "-o",
