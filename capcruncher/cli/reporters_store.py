@@ -1,15 +1,19 @@
 import logging
 import os
 import pickle
-from typing import Tuple
+import tempfile
+from typing import Iterable, Tuple
 
 import h5py
 import pandas as pd
 from capcruncher.tools.storage import (
     CoolerBinner,
+    GenomicBinner,
     create_cooler_cc,
     link_common_cooler_tables,
 )
+import cooler
+import ujson
 
 
 def get_viewpoints(store: h5py.File):
@@ -28,6 +32,38 @@ def get_dataset_keys(f):
     f.visit(lambda key: keys.append(key) if isinstance(f[key], h5py.Dataset) else None)
     return keys
 
+def get_merged_metadata(coolers: Iterable[os.PathLike]):
+    """
+    Merges metadata from multiple coolers.
+    """
+    # Get metadata from all coolers and copy to the merged file
+    metadata = {}
+    for cooler_uri in coolers:
+        filepath, group = cooler_uri.split("::")
+
+        with h5py.File(filepath, mode="r") as src:
+            metadata_src = ujson.decode(src[group].attrs["metadata"])
+            
+            for metadata_key, metadata_value in metadata_src.items():
+
+                if isinstance(metadata_value, str):
+                    metadata[metadata_key] = metadata_value
+                
+                elif isinstance(metadata_value, Iterable):
+                    if metadata_key not in metadata:
+                        metadata[metadata_key] = []
+                        metadata[metadata_key].extend(metadata_value)
+                    else:
+                        metadata[metadata_key].extend([v for v in metadata_value if v not in metadata[metadata_key]])
+                        
+                elif isinstance(metadata_value, (int, float)):
+                    if metadata_key not in metadata:
+                        metadata[metadata_key] = metadata_value
+                    else:
+                        metadata[metadata_key] += metadata_value
+            
+    
+    return metadata
 
 def fragments(
     counts: os.PathLike,
@@ -107,7 +143,7 @@ def bins(
     cooler_path: os.PathLike,
     output: os.PathLike,
     binsizes: Tuple = None,
-    normalise: bool = False,
+    normalise: bool = True,
     n_cores: int = 1,
     scale_factor: int = 1e6,
     overlap_fraction: float = 1e-9,
@@ -137,37 +173,44 @@ def bins(
      overlap_fraction (float, optional): Minimum fraction to use for defining overlapping bins. Defaults to 1e-9.
     """
 
-    # Get a conversion table if one exists
+    clr_groups = cooler.api.list_coolers(cooler_path)
+
     if conversion_tables:
-        with open(conversion_tables, "rb") as r:
-            genomic_binner_objs = pickle.load(r)
+        logging.info("Loading conversion tables")
+        with open(conversion_tables, "rb") as f:
+            try:
+                conversion_tables = pickle.load(f)
+            except:
+                raise ValueError("Conversion tables are not in a valid format.")
     else:
-        genomic_binner_objs = None
+        logging.info("Generating conversion tables")
+        clr_example = cooler.Cooler(f"{cooler_path}::{clr_groups[0]}")
+        conversion_tables = {
+            GenomicBinner(
+                chromsizes=clr_example.chromsizes,
+                fragments=clr_example.bins()[:],
+                binsize=binsize,
+            )
+            for binsize in binsizes
+        }
+    
+    
+    clr_tempfiles = []
+    for binsize in binsizes:
+        for clr_group in clr_groups:
+            
+            binning_output = tempfile.NamedTemporaryFile().name
 
-    # Get Viewpoints
-    with h5py.File(cooler_path) as store:
-        viewpoints = get_viewpoints(store)
+            logging.info(f"Processing {clr_group}")
+            clr = cooler.Cooler(f"{cooler_path}::{clr_group}")
+            clr_binner = CoolerBinner(cooler_group=clr, binner=conversion_tables[binsize])
+            clr_binner.normalise(scale_factor=scale_factor)
+            clr_binner.to_cooler(binning_output)
+            clr_tempfiles.append(binning_output)
+    
+    clr_merged = merge(clr_tempfiles, output)
 
-    # Perform binning
-    for viewpoint in viewpoints:
 
-        cooler_group = f"{cooler_path}::/{viewpoint}"
-
-        for binsize in binsizes:
-            if genomic_binner_objs and (binsize in genomic_binner_objs):
-                cb = CoolerBinner(
-                    cooler_group,
-                    binsize=binsize,
-                    n_cores=n_cores,
-                    binner=genomic_binner_objs[binsize],
-                )
-            else:
-                cb = CoolerBinner(cooler_group, binsize=binsize, n_cores=n_cores)
-
-            if normalise:
-                cb.normalise(scale_factor=scale_factor)
-
-            cb.to_cooler(output)
 
 
 def merge(coolers: Tuple, output: os.PathLike):
@@ -223,12 +266,22 @@ def merge(coolers: Tuple, output: os.PathLike):
 
     # Actually merge the coolers left over that do have duplicates
     for viewpoint in need_merging:
+        tmp = tempfile.NamedTemporaryFile().name
         cooler_uris = coolers_to_merge[viewpoint]
         cooler.merge_coolers(
-            f"{output}::/{viewpoint.replace('::', '/resolutions/')}",
+            f"{tmp}::/{viewpoint.replace('::', '/resolutions/')}",
             cooler_uris,
             mergebuf=int(1e6),
         )
+
+        with h5py.File(tmp, mode="r") as src:
+            with h5py.File(output, mode="a") as dest:
+                dest.copy(src[viewpoint.replace("::", "/resolutions/")], dest, viewpoint)
+
+        metadata = get_merged_metadata(cooler_uris)
+   
+        with h5py.File(output, mode="a") as dest:
+            dest[viewpoint.replace('::', '/resolutions/')].attrs["metadata"] = ujson.encode(metadata)
 
     # Reduce space by linking common tables (bins, chroms)
     link_common_cooler_tables(output)
