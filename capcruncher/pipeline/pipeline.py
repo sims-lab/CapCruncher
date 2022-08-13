@@ -1761,6 +1761,9 @@ def reporters_store_binned(infile, outfile):
         "mv",
         f"{outfile}.tmp",
         outfile,
+        "&&",
+        "rm",
+        f"{outfile}.binned.tmp",
     ]
 
     P.run(
