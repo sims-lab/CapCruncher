@@ -1711,12 +1711,14 @@ def reporters_store_binned(infile, outfile):
     """
 
     clr, conversion_tables = infile
+    clr = clr.replace("_fragments.sentinel", ".hdf5")
     sentinel_file = outfile
     outfile = outfile.replace("_binned.sentinel", ".hdf5")
 
     scale_factor = P.PARAMS.get("normalisation_scale_factor", 1000000)
     scale_factor = scale_factor if not is_none(scale_factor) else int(1e6)
 
+    # Store counts into bins
     statement = [
         "capcruncher",
         "reporters",
@@ -1735,6 +1737,29 @@ def reporters_store_binned(infile, outfile):
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
         "-o",
+        f"{outfile}.binned.tmp",
+    ]
+
+    P.run(
+        " ".join(statement),
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=P.PARAMS["pipeline_n_cores"],
+        job_condaenv=P.PARAMS["conda_env"],
+    )
+
+    # Merge fragment counts and binned counts into the same file
+    statement = [
+        "capcruncher",
+        "reporters",
+        "store",
+        "merge",
+        clr,
+        f"{outfile}.binned.tmp",
+        "-o",
+        f"{outfile}.tmp",
+        "&&",
+        "mv",
+        f"{outfile}.tmp",
         outfile,
     ]
 
