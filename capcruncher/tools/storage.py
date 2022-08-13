@@ -345,11 +345,17 @@ class CoolerBinner:
                                                                  Can be initialised and provided so that binning is not repeated.
                                                                  Defaults to None.
         """
+        
+        if isinstance(cooler_group, str):
+            self.cooler = cooler.Cooler(cooler_group)
+        elif isinstance(cooler_group, cooler.Cooler):
+            self.cooler = cooler_group
+        else:
+            raise ValueError("cooler_group must be a path to a cooler file or a cooler object")
 
-        self.cooler = cooler.Cooler(cooler_group)
         self.bins_fragments = self.cooler.bins()[:]
 
-        self.binner = binner or GenomicBinner(
+        self.binner = binner if binner is not None else GenomicBinner(
             chromsizes=self.cooler.chromsizes,
             fragments=self.bins_fragments,
             binsize=binsize,
@@ -384,7 +390,7 @@ class CoolerBinner:
             )
             .drop(columns=["name_fragment_1", "name_fragment_2"])
         )
-
+        
         return pixels_conv
 
     def _get_pixels(self):
@@ -555,14 +561,17 @@ def link_common_cooler_tables(clr: os.PathLike):
             resolutions = None
 
         for viewpoint in viewpoints[1:]:
+            
+            try:
+                # Delete currenly stored bins group and replace with link to first viewpoint "bins" group
+                del f[viewpoint]["bins"]
+                f[viewpoint]["bins"] = f[viewpoints[0]]["bins"]
 
-            # Delete currenly stored bins group and replace with link to first viewpoint "bins" group
-            del f[viewpoint]["bins"]
-            f[viewpoint]["bins"] = f[viewpoints[0]]["bins"]
-
-            # Delete chroms table and replace with link to the first "chroms" group
-            del f[viewpoint]["chroms"]
-            f[viewpoint]["chroms"] = f[viewpoints[0]]["chroms"]
+                # Delete chroms table and replace with link to the first "chroms" group
+                del f[viewpoint]["chroms"]
+                f[viewpoint]["chroms"] = f[viewpoints[0]]["chroms"]
+            except KeyError:
+                pass
 
 
             # Repeat for resolutions i.e. binned coolers
