@@ -32,6 +32,7 @@ def get_dataset_keys(f):
     f.visit(lambda key: keys.append(key) if isinstance(f[key], h5py.Dataset) else None)
     return keys
 
+
 def get_merged_metadata(coolers: Iterable[os.PathLike]):
     """
     Merges metadata from multiple coolers.
@@ -43,27 +44,33 @@ def get_merged_metadata(coolers: Iterable[os.PathLike]):
 
         with h5py.File(filepath, mode="r") as src:
             metadata_src = ujson.decode(src[group].attrs["metadata"])
-            
+
             for metadata_key, metadata_value in metadata_src.items():
 
                 if isinstance(metadata_value, str):
                     metadata[metadata_key] = metadata_value
-                
+
                 elif isinstance(metadata_value, Iterable):
                     if metadata_key not in metadata:
                         metadata[metadata_key] = []
                         metadata[metadata_key].extend(metadata_value)
                     else:
-                        metadata[metadata_key].extend([v for v in metadata_value if v not in metadata[metadata_key]])
-                        
+                        metadata[metadata_key].extend(
+                            [
+                                v
+                                for v in metadata_value
+                                if v not in metadata[metadata_key]
+                            ]
+                        )
+
                 elif isinstance(metadata_value, (int, float)):
                     if metadata_key not in metadata:
                         metadata[metadata_key] = metadata_value
                     else:
                         metadata[metadata_key] += metadata_value
-            
-    
+
     return metadata
+
 
 def fragments(
     counts: os.PathLike,
@@ -172,7 +179,6 @@ def bins(
      scale_factor (int, optional): Scaling factor to use for normalising interactions. Defaults to 1e6.
      overlap_fraction (float, optional): Minimum fraction to use for defining overlapping bins. Defaults to 1e-9.
     """
-
     clr_groups = cooler.api.list_coolers(cooler_path)
 
     if conversion_tables:
@@ -186,31 +192,30 @@ def bins(
         logging.info("Generating conversion tables")
         clr_example = cooler.Cooler(f"{cooler_path}::{clr_groups[0]}")
         conversion_tables = {
-            GenomicBinner(
+            binsize: GenomicBinner(
                 chromsizes=clr_example.chromsizes,
                 fragments=clr_example.bins()[:],
                 binsize=binsize,
             )
             for binsize in binsizes
         }
-    
-    
+
     clr_tempfiles = []
     for binsize in binsizes:
         for clr_group in clr_groups:
-            
+
             binning_output = tempfile.NamedTemporaryFile().name
 
             logging.info(f"Processing {clr_group}")
             clr = cooler.Cooler(f"{cooler_path}::{clr_group}")
-            clr_binner = CoolerBinner(cooler_group=clr, binner=conversion_tables[binsize])
+            clr_binner = CoolerBinner(
+                cooler_group=clr, binner=conversion_tables[binsize]
+            )
             clr_binner.normalise(scale_factor=scale_factor)
             clr_binner.to_cooler(binning_output)
             clr_tempfiles.append(binning_output)
-    
+
     clr_merged = merge(clr_tempfiles, output)
-
-
 
 
 def merge(coolers: Tuple, output: os.PathLike):
@@ -276,12 +281,16 @@ def merge(coolers: Tuple, output: os.PathLike):
 
         with h5py.File(tmp, mode="r") as src:
             with h5py.File(output, mode="a") as dest:
-                dest.copy(src[viewpoint.replace("::", "/resolutions/")], dest, viewpoint)
+                dest.copy(
+                    src[viewpoint.replace("::", "/resolutions/")], dest, viewpoint
+                )
 
         metadata = get_merged_metadata(cooler_uris)
-   
+
         with h5py.File(output, mode="a") as dest:
-            dest[viewpoint.replace('::', '/resolutions/')].attrs["metadata"] = ujson.encode(metadata)
+            dest[viewpoint.replace("::", "/resolutions/")].attrs[
+                "metadata"
+            ] = ujson.encode(metadata)
 
     # Reduce space by linking common tables (bins, chroms)
     link_common_cooler_tables(output)
