@@ -15,24 +15,6 @@ from capcruncher.tools.storage import (
 import cooler
 import ujson
 
-
-def get_viewpoints(store: h5py.File):
-
-    keys = set()
-    for k in store.keys():
-        if "/" in k:
-            keys.add(k.split("/")[1])
-        else:
-            keys.add(k)
-    return keys
-
-
-def get_dataset_keys(f):
-    keys = []
-    f.visit(lambda key: keys.append(key) if isinstance(f[key], h5py.Dataset) else None)
-    return keys
-
-
 def get_merged_metadata(coolers: Iterable[os.PathLike]):
     """
     Merges metadata from multiple coolers.
@@ -151,10 +133,10 @@ def bins(
     output: os.PathLike,
     binsizes: Tuple = None,
     normalise: bool = True,
-    n_cores: int = 1,
     scale_factor: int = 1e6,
     overlap_fraction: float = 1e-9,
     conversion_tables: os.PathLike = None,
+    **kwargs,
 ):
     """
     Convert a cooler group containing restriction fragments to constant genomic windows
@@ -211,11 +193,15 @@ def bins(
             clr_binner = CoolerBinner(
                 cooler_group=clr, binner=conversion_tables[binsize]
             )
-            clr_binner.normalise(scale_factor=scale_factor)
+
+            if normalise:
+                clr_binner.normalise(scale_factor=scale_factor)
+
             clr_binner.to_cooler(binning_output)
             clr_tempfiles.append(binning_output)
 
-    clr_merged = merge(clr_tempfiles, output)
+    # Final cooler output
+    merge(clr_tempfiles, output)
 
 
 def merge(coolers: Tuple, output: os.PathLike):
@@ -230,7 +216,6 @@ def merge(coolers: Tuple, output: os.PathLike):
      output (os.PathLike): Path from merged cooler file.
     """
     from collections import defaultdict
-
     import cooler
 
     logging.info("Merging cooler files")
