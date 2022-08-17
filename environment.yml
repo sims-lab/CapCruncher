@@ -1,15 +1,15 @@
 name: cc
 channels:
-  - bioconda
   - conda-forge
+  - bioconda
   - defaults
 dependencies:
   - bedtools
   - bowtie2>=2.4.4
   - cgatcore
-  - click
+  - click<=8.1.0
   - cooler
-  - dask
+  - dask>2020.12.0,<=2022.8.0
   - fastqc
   - flash
   - iced
@@ -17,20 +17,21 @@ dependencies:
   - more-itertools
   - multiqc
   - natsort
-  - pandas
-  - pip
-  - plotly
-  - pyarrow
+  - pandas<=1.4.3
+  - pip<=22.2.2
+  - plotly>5.0.0,<=5.10.0
+  - pyarrow>8.0.0,<=9.0.0
   - pybedtools
-  - pysam
+  - pysam>0.15.0,<=0.19.1
+  - python>=3.8,<3.11
   - python-xxhash
-  - samtools
+  - samtools<=1.15.1
   - seaborn
+  - setuptools>50.1.0,<=65.0.1
   - tqdm
   - trackhub
   - trim-galore
   - ucsc-bedgraphtobigwig
   - ucsc-bedtobigbed
-  - ucsc-fatotwobit
   - ucsc-fetchchromsizes
   - ujson
