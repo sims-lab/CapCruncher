@@ -266,7 +266,7 @@ def test_fastq_digest(cli_runner, data_digestion, tmpdir, infiles, flags):
                 "-f",
                 1e-9,
                 "--priority-chroms",
-                "chr14", 
+                "chr14",
                 "--prioritize-cis-slices",
             ],
         ),
@@ -511,6 +511,47 @@ def test_reporters_store_binned(
     )
     assert result.exit_code == 0
     assert os.path.exists(output)
+
+
+@pytest.mark.parametrize(
+    "infiles,viewpoint,output,flags",
+    [
+        (["SAMPLE-A_REP1.hdf5", "SAMPLE-A_REP1.hdf5"], "Slc25A37", "merged.hdf5", []),
+    ],
+)
+def test_reporters_store_merge(
+    cli_runner,
+    data_reporters_store,
+    tmpdir,
+    infiles,
+    viewpoint,
+    output,
+    flags,
+):
+    import cooler
+
+    hdf5_files = [os.path.join(data_reporters_store, fn) for fn in infiles]
+    output = os.path.join(tmpdir, output)
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "reporters",
+            "store",
+            "merge",
+            *hdf5_files,
+            "-o",
+            output,
+            *flags,
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert os.path.exists(output)
+    assert (
+        cooler.Cooler(f"{output}::{viewpoint}").pixels()[:]["count"].sum()
+        == cooler.Cooler(f"{hdf5_files[0]}::{viewpoint}").pixels()[:]["count"].sum() * 2
+    )
 
 
 @pytest.mark.parametrize(

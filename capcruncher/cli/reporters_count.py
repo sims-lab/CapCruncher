@@ -123,7 +123,7 @@ def count(
             import pyarrow
             import dask.dataframe as dd
 
-
+            logging.info(f"Examining viewpoints from parquet file: {reporters}")
             # Unsure of the best way to do this. Will just load the first partion vp column and extract
             ddf = dd.read_parquet(
                 reporters,
@@ -136,6 +136,9 @@ def count(
             viewpoints_col = ddf["viewpoint"].cat.as_known()
             viewpoint_sizes = viewpoints_col.value_counts().compute()
             viewpoints = list(viewpoints_col.cat.categories)
+
+            logging.info(f"Number of viewpoints: {len(viewpoints)}")
+            logging.info(f"Number of slices per viewpoint: {viewpoint_sizes.to_dict()}")
 
             MAX_SLICE_NUMBER = 1e6
 
@@ -161,6 +164,8 @@ def count(
         n_worker_processes = ((n_cores - n_reading_threads) // 2)
         n_counting_processes = n_worker_processes if n_worker_processes > 1 else 1
         n_writing_processes =  n_counting_processes
+
+        logging.info(f"Starting {n_reading_threads} reader threads")
 
         counters = [
             FragmentCountingProcess(
@@ -198,7 +203,7 @@ def count(
             for vp_chunk in more_itertools.chunked(viewpoints, 10):
                 viewpoints_queue.put(vp_chunk)
 
-        viewpoints_queue.put(None)
+        viewpoints_queue.put(None) # Sentinel value to signal end of viewpoints
         reader.join()
 
         # End the counting inqueue
@@ -219,6 +224,7 @@ def count(
 
         # Merge the output files together
         # TODO: Allow other than cooler outputs
+        logging.info(f"Making final cooler at {output}")
         output_files = glob.glob(os.path.join(tmpdir.name, "*.hdf5"))
         capcruncher.cli.reporters_store.merge(output_files, output=output)
 

@@ -173,11 +173,13 @@ def cis_and_trans_stats(
         ) as client:
 
             ddf = dd.read_parquet(slices, engine="pyarrow")
+
             ddf_cis_trans_stats = ddf.map_partitions(
                 lambda df: slice_filterer(
                     df, sample_name=sample_name, read_type=read_type
                 ).cis_or_trans_stats
             )
+
             ddf_cis_trans_stats_summary = (
                 ddf_cis_trans_stats.groupby(
                     ["viewpoint", "cis/trans", "sample", "read_type"]
@@ -222,9 +224,9 @@ def merge_capcruncher_slices(
         dashboard_address=None,
         processes=True,
         scheduler_port=0,
-        local_directory=os.environ.get("TMPDIR", "/tmp/")
+        local_directory=os.environ.get("TMPDIR", "/tmp/"),
     ) as client:
-    
+
         storage_kwargs = {}
         output_format = get_file_type(outfile)
 
@@ -272,10 +274,18 @@ def merge_capcruncher_slices(
 
         elif output_format == "parquet":
 
-            ddf = dd.read_parquet(
-                infiles, chunksize="100MB", aggregate_files=True, engine="pyarrow"
+            import pyarrow as pa
+            import pyarrow.dataset as ds
+
+            datasets = ds.dataset([ds.dataset(fn) for fn in infiles])
+            sc = datasets.scanner()
+            ds.write_dataset(
+                sc,
+                outfile,
+                format="parquet",
+                partitioning_flavor="hive",
+                max_rows_per_file=1024 * 1024 * 10,
             )
-            ddf.to_parquet(outfile, compression="snappy", engine="pyarrow")
 
 
 def dict_to_fasta(d, path):

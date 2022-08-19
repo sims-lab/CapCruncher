@@ -3,6 +3,7 @@ import subprocess
 import shutil
 import glob
 import pytest
+import logging
 
 
 @pytest.fixture(scope="module")
@@ -23,9 +24,30 @@ def indicies(data_path, genome):
 
     indicies = os.path.join(data_path, "chr14_bowtie2_indicies")
     if not os.path.exists(indicies):
-        os.mkdir(indicies)
-        cmd = f"bowtie2-build {genome} {indicies}/bt2 --threads 8"
-        subprocess.run(cmd.split())
+        try:
+            import requests
+            import tarfile
+
+            url = "https://userweb.molbiol.ox.ac.uk/public/asmith/capcruncher/test_indicies.tar.gz"
+            output = os.path.join(data_path, "test_indicies.tar.gz")
+
+            r = requests.get(url, stream=True)
+            with open(output, 'wb') as f:
+                f.write(r.content)
+
+            tar = tarfile.open(output)
+            tar.extractall(path=data_path)
+            tar.close()
+            os.remove(output)
+            os.rename(data_path + "/test_indicies", indicies)
+            logging.info("Downloaded indicies")
+
+        except Exception as e:
+            print(e)
+            print("Could not download indicies so generating them")
+            os.mkdir(indicies)
+            cmd = f"bowtie2-build {genome} {indicies}/bt2 --threads 8"
+            subprocess.run(cmd.split())
 
     return os.path.join(indicies, "bt2")
 

@@ -170,7 +170,7 @@ def annotate(
             slices = slices - BedTool(blacklist)
         except (MalformedBedLineError, FileNotFoundError, IndexError) as e:
             logging.error(f"Blacklist {blacklist} bedfile raised {e}. Ensure it is correctly formatted")
-
+    
 
     logging.info("Dealing with duplicates in the bed file")
     # Deal with multimapping reads.
@@ -182,6 +182,9 @@ def annotate(
         raise NotImplementedError(
             "Only supported option at present is to remove duplicates"
         )
+    
+    logging.info("Ensuring bed file is sorted")
+    slices = slices.sort()
 
     logging.info("Performing intersection")
     intersections_to_perform = []

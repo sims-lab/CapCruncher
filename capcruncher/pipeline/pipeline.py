@@ -86,7 +86,7 @@ cgatcore_defaults_override["cluster"] = {
     "queue": P.PARAMS.get("cluster_queue", "batch"),
 }
 cgatcore_defaults_override["conda_env"] = P.PARAMS.get(
-    "conda_env", os.path.basename(os.environ["CONDA_PREFIX"])
+    "conda_env", os.environ["CONDA_PREFIX"]
 )
 
 # Load parameters into P.PARAMS
@@ -1622,14 +1622,14 @@ def post_capcruncher_analysis():
     alignments_deduplicate_collate,
     regex(r".*/(?P<sample>.*?)\.sentinel"),
     add_inputs(genome_digest, P.PARAMS["analysis_viewpoints"]),
-    r"capcruncher_analysis/reporters/counts/\1.sentinel",
+    r"capcruncher_analysis/reporters/counts/\1_fragments.sentinel",
 )
 def reporters_count(infile, outfile):
 
     """Counts the number of interactions identified between reporter restriction fragments"""
 
     infile, restriction_fragment_map, viewpoints = infile
-    output_counts = outfile.replace("sentinel", "hdf5")
+    output_counts = outfile.replace("_fragments.sentinel", ".hdf5")
 
     statement = [
         "capcruncher",
@@ -1658,7 +1658,7 @@ def reporters_count(infile, outfile):
 
 
 @active_if(P.PARAMS.get("analysis_bin_size"))
-@follows(genome_digest)
+@follows(genome_digest, mkdir("capcruncher_analysis/reporters/"))
 @originate(r"capcruncher_analysis/reporters/binners.pkl")
 def generate_bin_conversion_tables(outfile):
     """
@@ -1696,12 +1696,13 @@ def generate_bin_conversion_tables(outfile):
 @active_if(P.PARAMS.get("analysis_bin_size", 0) > 0)
 @follows(
     generate_bin_conversion_tables,
+    reporters_count,
 )
 @transform(
-    "capcruncher_analysis/reporters/counts/(.*).hdf5",
-    regex(r"capcruncher_analysis/reporters/counts/(.*).hdf5"),
+    reporters_count,
+    regex(r".*/(?P<sample>.*?)\_fragments.sentinel"),
     add_inputs(generate_bin_conversion_tables),
-    r"capcruncher_analysis/reporters/counts/\1.sentinel",
+    r"capcruncher_analysis/reporters/counts/\1_binned.sentinel",
 )
 def reporters_store_binned(infile, outfile):
 
@@ -1710,9 +1711,14 @@ def reporters_store_binned(infile, outfile):
     """
 
     clr, conversion_tables = infile
-    sentinel_file = outfile.copy()
-    outfile = outfile.replace(".sentinel", ".hdf5")
+    clr = clr.replace("_fragments.sentinel", ".hdf5")
+    sentinel_file = outfile
+    outfile = outfile.replace("_binned.sentinel", ".hdf5")
 
+    scale_factor = P.PARAMS.get("normalisation_scale_factor", 1000000)
+    scale_factor = scale_factor if not is_none(scale_factor) else int(1e6)
+
+    # Store counts into bins
     statement = [
         "capcruncher",
         "reporters",
@@ -1727,11 +1733,37 @@ def reporters_store_binned(infile, outfile):
         conversion_tables,
         "--normalise",
         "--scale_factor",
-        str(P.PARAMS.get("normalisation_scale_factor", 1000000)),
+        str(scale_factor),
         "-p",
         str(P.PARAMS["pipeline_n_cores"]),
         "-o",
+        f"{outfile}.binned.tmp",
+    ]
+
+    P.run(
+        " ".join(statement),
+        job_queue=P.PARAMS["pipeline_cluster_queue"],
+        job_threads=P.PARAMS["pipeline_n_cores"],
+        job_condaenv=P.PARAMS["conda_env"],
+    )
+
+    # Merge fragment counts and binned counts into the same file
+    statement = [
+        "capcruncher",
+        "reporters",
+        "store",
+        "merge",
+        clr,
+        f"{outfile}.binned.tmp",
+        "-o",
+        f"{outfile}.tmp",
+        "&&",
+        "mv",
+        f"{outfile}.tmp",
         outfile,
+        "&&",
+        "rm",
+        f"{outfile}.binned.tmp",
     ]
 
     P.run(

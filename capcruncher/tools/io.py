@@ -21,7 +21,7 @@ from capcruncher.utils import get_timing, hash_column
 from pysam import FastxFile
 from xopen import xopen
 import xxhash
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 
 
 class FastqReaderProcess(multiprocessing.Process):
@@ -500,7 +500,7 @@ class CCParquetReaderProcess(multiprocessing.Process):
         # Multiprocessing vars
         self.inq = inq
         self.outq = outq
-        self.block_period = 0.01
+        self.block_period = 0.1
 
         super(CCParquetReaderProcess, self).__init__()
 
@@ -509,6 +509,7 @@ class CCParquetReaderProcess(multiprocessing.Process):
         df = pd.read_parquet(
             self.path,
             columns=[
+                "parent_id",
                 "restriction_fragment",
                 "viewpoint",
                 "capture",
@@ -541,6 +542,7 @@ class CCParquetReaderProcess(multiprocessing.Process):
             df = pd.read_parquet(
                 part,
                 columns=[
+                    "parent_id",
                     "restriction_fragment",
                     "viewpoint",
                     "capture",
@@ -574,16 +576,22 @@ class CCParquetReaderProcess(multiprocessing.Process):
                     df = self._select_by_viewpoint_batch(viewpoints_to_find)
                     for vp, df_vp in df.groupby("viewpoint"):
                         if not df_vp.empty:
+                            logging.info(f"Queuing {vp} for counting")
                             self.outq.put((vp, df_vp))
 
                 elif (
                     self.selection_mode == "partition"
                 ):  # Low memory counting. Good for data rich viewpoints
+
+                    vp_partitions = defaultdict(int)
+
                     for df in self._select_by_viewpoint_batch_by_partition(
                         viewpoints_to_find
                     ):
                         for vp, df_vp in df.groupby("viewpoint"):
                             if not df_vp.empty:
+                                vp_partitions[vp] += 1
+                                logging.info(f"Queuing {vp} partition {vp_partitions[vp]} for counting")
                                 self.outq.put((vp, df_vp))
 
             except queue.Empty:
@@ -601,7 +609,7 @@ class FragmentCountingProcess(multiprocessing.Process):
         # Multiprocessing vars
         self.inq = inq
         self.outq = outq
-        self.block_period = 0.01
+        self.block_period = 0.1
         self.preprocessing_kwargs = preprocessing_kwargs
 
         super(FragmentCountingProcess, self).__init__()
@@ -699,7 +707,8 @@ class CCHDF5WriterProcess(multiprocessing.Process):
                         if self.restriction_fragment_map and self.viewpoint_path:
 
                             from capcruncher.tools.storage import create_cooler_cc
-
+                            
+                            logging.info(f"Making temporary cooler for {vp}")
                             create_cooler_cc(
                                 output_prefix=self.path,
                                 pixels=df,
@@ -779,6 +788,7 @@ class CCCountsWriterProcess(multiprocessing.Process):
 
                             from capcruncher.tools.storage import create_cooler_cc
 
+                            logging.info(f"Making temporary cooler for {vp}")
                             create_cooler_cc(
                                 output_prefix=path,
                                 pixels=df,
