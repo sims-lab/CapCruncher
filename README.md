@@ -15,24 +15,25 @@ For further information see the [documentation](https://capcruncher.readthedocs.
 
 ## Changelog
 
-### CapCruncher v[0.2.2](https://github.com/sims-lab/CapCruncher/compare/v0.2.0...v) (2022-03-03)
+## [0.2.3] - 2022-08-19
 
 ### Bug Fixes
 
-* **alignment filtering:** Prevent cluster errors due to lack of allocated memory. ([#153](https://github.com/sims-lab/CapCruncher/issues/153)) ([c77c2fd](https://github.com/sims-lab/CapCruncher/commit/c77c2fd3c2374be5b5838c5b8e8e609f2debe201)), closes [#149](https://github.com/sims-lab/CapCruncher/issues/149) [#150](https://github.com/sims-lab/CapCruncher/issues/150) [#143](https://github.com/sims-lab/CapCruncher/issues/143) [#152](https://github.com/sims-lab/CapCruncher/issues/152) [#151](https://github.com/sims-lab/CapCruncher/issues/151)
-* **alignment filtering:** Enabled max memory adjustment for alignment filtering ([#156](https://github.com/sims-lab/CapCruncher/issues/156)) ([05daf2d](https://github.com/sims-lab/CapCruncher/commit/05daf2da4bbecd38f0937431d050e40e1c5512ae))
-* **packaging:** Fix issue with missing report text file ([#157](https://github.com/sims-lab/CapCruncher/issues/157)) ([b172c8b](https://github.com/sims-lab/CapCruncher/commit/b172c8b9d50d93a40f89475b768cf83da3437b08))
-* **pipeline:** Fix dask client shutdown related errors ([#154](https://github.com/sims-lab/CapCruncher/issues/154)) ([80f1f1b](https://github.com/sims-lab/CapCruncher/commit/80f1f1bf3ff2550c8612a4e4d8f3e8b53c7268d3))
-* **report:** Fixes error when generating a report for a single sample([#149](https://github.com/sims-lab/CapCruncher/issues/149)) ([3509c7c](https://github.com/sims-lab/CapCruncher/commit/3509c7c0f3d6d383216f0d5c8d1f06a63a4f811b))
-
+- Fixes Tiled-C filtering error due to typo in index specification for remove_dual_capture_fragments
+- Fixed bug when annotating Tiled-C data ([#166](https://github.com/sims-lab/CapCruncher/pull/166)) with the sorted option that caused no data to be annotated as as a viewpoint or exclusion.
+- Fixed a bug with Tiled-C slice filtering ([#166](https://github.com/sims-lab/CapCruncher/pull/166)) that caused slices to be erronously filtered.
+- Fixed a bug with counting reporters in batches (this occurs when counting >1x106 slices per viewpoint) ([#166](https://github.com/sims-lab/CapCruncher/pull/166)) 
+- Fixed a bug when merging and storing Tri-C or Tiled-C data ([#166](https://github.com/sims-lab/CapCruncher/pull/166)) using "capcruncher reporters store merge" or "capcruncher reporters store bins". This functionally has been re-written and now appears to work correctly.
+- Fixed a bug with plotting matrices using capcrunchers plotting capabilities ([#166](https://github.com/sims-lab/CapCruncher/pull/166)). 
+- Fixes bug where all slices are removed from parquet files (reporter) outputs due to an upgraded dask version (the pyarrow-dataset engine has been removed). This corrects the all dataframes are empty error occurring while generating reporter statistics.
 
 ### Features
 
-* **alignment annotation:** Enabled biasing of duplicate removal towards trans reporters ([#151](https://github.com/sims-lab/CapCruncher/issues/151)) ([2de4e35](https://github.com/sims-lab/CapCruncher/commit/2de4e35e57f99711c2340f0b966c73eb59f30695)).
-This effetively increases the proportion of cis interactions in comparison to trans.
-* **preprocessing:** Reduced disk space required by fastq files ([#150](https://github.com/sims-lab/CapCruncher/issues/150)) ([b43dff2](https://github.com/sims-lab/CapCruncher/commit/b43dff2481e2978d920f4b3077f286722c5d34d3))
-* **reporters compare:** Improved the utility of the reporters-compare CLI ([#145](https://github.com/sims-lab/CapCruncher/issues/145)) ([be0b8b0](https://github.com/sims-lab/CapCruncher/commit/be0b8b06d1841d3d1849ec20c4be033005c44e5f))
-* **utilities:** Added CLI utility ti get viewpoint coordinates from capture oligos ([#144](https://github.com/sims-lab/CapCruncher/issues/144)) ([a7ffcaf](https://github.com/sims-lab/CapCruncher/commit/a7ffcaf785fde16f19deae46091b2eb754db16fd))
+- Added option to normalised CCMatrix data using ice followed by a scaling factor.
+- Reporter merging (paraquet) has been re-written to use pyarrow directly and is now faster and better able to split datasets into smaller files for more efficient parallel querying.
 
 
+### Miscellaneous Tasks
 
+- Updated version to 0.2.3 ([#165](https://github.com/sims-lab/CapCruncher/pull/165))
+- Pin conda dependency versions to speed up environment solver ([#167](https://github.com/sims-lab/CapCruncher/pull/167))
