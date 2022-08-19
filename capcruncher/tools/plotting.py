@@ -49,7 +49,7 @@ class CCMatrix(cb.Cool):
             )
 
         self.cooler = cooler.Cooler(f"{file}::{viewpoint}/resolutions/{binsize}")
-        self.capture_bins = self.cooler.info["metadata"]["capture_bins"]
+        self.capture_bins = self.cooler.info["metadata"]["viewpoint_bins"]
 
 
 
@@ -97,7 +97,7 @@ class CCMatrix(cb.Cool):
                 matrix, **normalisation_kwargs
             )  # Get iced matrix
 
-        elif normalization_method == "icen":
+        elif normalization_method == "icen_cis":
             matrix = self.get_matrix(coordinates)
             matrix = np.nan_to_num(matrix)
             matrix_ice = iced.normalization.ICE_normalization(
@@ -106,6 +106,14 @@ class CCMatrix(cb.Cool):
             matrix_normalised = matrix_ice / int(
                 self.cooler.info["metadata"]["n_cis_interactions"]
             ) * 1e6 # Correct for number of interactions * 1e6
+        
+        elif normalization_method == "icen_scale":
+            matrix = self.get_matrix(coordinates)
+            matrix = np.nan_to_num(matrix)
+            matrix_ice = iced.normalization.ICE_normalization(
+                matrix, **normalisation_kwargs
+            )  # Get iced matrix
+            matrix_normalised = matrix_ice / self.properties["scaling_factor"]
 
         else:
             raise ValueError(
@@ -142,8 +150,7 @@ class CCMatrix(cb.Cool):
         c_min, c_max = self.matrix_val_range
 
         if self.properties['max_value'] == 'auto':
-            mask = np.tri(self.matrix.shape[0], k = -1)
-            matrix_triu = np.ma.array(self.matrix, mask = mask)         
+            matrix_triu = np.triu(self.matrix)
             c_max = np.percentile(matrix_triu, 98)
 
         if gr2 is None and self.style == self.STYLE_TRIANGULAR:
