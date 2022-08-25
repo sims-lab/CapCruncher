@@ -40,7 +40,6 @@ import os
 import re
 import sys
 import pickle
-from types import NoneType
 from cgatcore import pipeline as P
 from cgatcore.iotools import touch_file, zap_file
 import itertools
