@@ -2367,7 +2367,7 @@ def identify_differential_interactions(infile, outfile, capture_name):
 @follows(reporters_store_binned, mkdir("capcruncher_plots/templates"))
 @active_if(ANALYSIS_METHOD in ["tri", "tiled"] and MAKE_PLOTS)
 @merge(
-    "capcruncher_analysis/reporters/*.hdf5",
+    "capcruncher_analysis/reporters/counts/*.hdf5",
     r"capcruncher_plots/templates/heatmaps.sentinel",
 )
 def plot_heatmaps_make_templates(infiles, outfile):
