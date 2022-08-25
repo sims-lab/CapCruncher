@@ -40,6 +40,7 @@ import os
 import re
 import sys
 import pickle
+from types import NoneType
 from cgatcore import pipeline as P
 from cgatcore.iotools import touch_file, zap_file
 import itertools
@@ -141,6 +142,14 @@ FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
 
 # Determines if blacklist is used
 HAS_BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbose=False)
+
+# Check if reporters need to be binned into even genomic regions
+try:
+    _binsize = int(P.PARAMS.get("analysis_bin_size", 0))
+    PERFORM_BINNING = True if _binsize > 0 else False
+except ValueError:
+    PERFORM_BINNING = False
+
 
 # Check if the plotting packages are installed
 try:
@@ -1657,7 +1666,7 @@ def reporters_count(infile, outfile):
     touch_file(outfile)
 
 
-@active_if(P.PARAMS.get("analysis_bin_size"))
+@active_if(PERFORM_BINNING)
 @follows(genome_digest, mkdir("capcruncher_analysis/reporters/"))
 @originate(r"capcruncher_analysis/reporters/binners.pkl")
 def generate_bin_conversion_tables(outfile):
@@ -1681,19 +1690,26 @@ def generate_bin_conversion_tables(outfile):
 
     binner_dict = dict()
     for bs in re.split(r"[,;]\s*|\s+", str(P.PARAMS["analysis_bin_size"])):
-        gb = GenomicBinner(
+        try:
+            binsize = int(bs)
+            gb = GenomicBinner(
             chromsizes=P.PARAMS["genome_chrom_sizes"], fragments=frags, binsize=int(bs)
-        )
-        bct = (
-            gb.bin_conversion_table
-        )  # Property is cached so need to call it to make sure it is present.
-        binner_dict[int(bs)] = gb
+            )
+            bct = (
+                gb.bin_conversion_table
+            )  # Property is cached so need to call it to make sure it is present.
+            binner_dict[int(bs)] = gb
+
+
+        except ValueError:
+            logging.warn(f"Failed to generate binning object with bin size: {bs}")
+
 
     with open(outfile, "wb") as w:
         pickle.dump(binner_dict, w)
 
 
-@active_if(P.PARAMS.get("analysis_bin_size", 0) > 0)
+@active_if(PERFORM_BINNING)
 @follows(
     generate_bin_conversion_tables,
     reporters_count,
