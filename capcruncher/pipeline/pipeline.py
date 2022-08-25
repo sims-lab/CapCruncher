@@ -2380,23 +2380,24 @@ def plot_heatmaps_make_templates(infiles, outfile):
 
     statements = list()
     for viewpoint in df_viewpoints["name"].unique():
-        statements.append(
-            " ".join(
-                [
-                    "capcruncher",
-                    "plot",
-                    "make-template",
-                    *infiles,
-                    genes if has_genes_to_plot else "",
-                    "-v",
-                    viewpoint,
-                    "-b",
-                    str(P.PARAMS["analysis_bin_sizes"]),
-                    "-o",
-                    outfile.replace("heatmaps.sentinel", f"{viewpoint}.heatmap.yml"),
-                ]
+        for bin_size in BINSIZES: 
+            statements.append(
+                " ".join(
+                    [
+                        "capcruncher",
+                        "plot",
+                        "make-template",
+                        *infiles,
+                        genes if has_genes_to_plot else "",
+                        "-v",
+                        viewpoint,
+                        "-b",
+                        str(bin_size),
+                        "-o",
+                        outfile.replace("heatmaps.sentinel", f"{viewpoint}_resolution_{bin_size}.heatmap.yml"),
+                    ]
+                )
             )
-        )
 
     P.run(
         statements,
