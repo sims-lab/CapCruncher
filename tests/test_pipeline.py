@@ -4,6 +4,7 @@ import shutil
 import glob
 import pytest
 import logging
+import numpy as np
 
 
 @pytest.fixture(scope="module")
@@ -59,6 +60,9 @@ def config_yaml(data_path):
     config = os.path.join(repo_dir, "config.yml")
     return config
 
+@pytest.fixture(scope="module")
+def binsizes():
+    return np.random.randint(int(1e3), int(1e6), size=3)
 
 @pytest.fixture(scope="module")
 def run_directory_capture(tmpdir_factory):
@@ -116,7 +120,6 @@ def setup_pipeline_run_capture(data_path, run_directory_capture, genome, indicie
 
     yield
 
-
 @pytest.fixture(scope="module")
 def setup_pipeline_run_tri(data_path, run_directory_tri, genome, indicies, config_yaml):
 
@@ -158,7 +161,7 @@ def setup_pipeline_run_tri(data_path, run_directory_tri, genome, indicies, confi
     yield
 
 @pytest.fixture(scope="module")
-def setup_pipeline_run_tiled(data_path, run_directory_tiled, genome, indicies, config_yaml):
+def setup_pipeline_run_tiled(data_path, run_directory_tiled, genome, indicies, config_yaml, binsizes):
 
     oligos = os.path.join(data_path, "mm9_capture_oligos_Slc25A37.bed")
     chromsizes = os.path.join(data_path, "chr14.fa.fai")
@@ -184,6 +187,7 @@ def setup_pipeline_run_tiled(data_path, run_directory_tiled, genome, indicies, c
         "PATH_TO_GENES_IN_BED12_FORMAT": os.path.join(data_path, "mm9_chr14_genes.bed"),
         "HUB_NAME": "CAPCRUNCHER_TEST_HUB",
         "REGIONS_FOR_NORM": os.path.join(data_path, "regions_for_norm.bed"),
+        "BIN_SIZES": " ".join([str(bs) for bs in binsizes])
     }
 
     with open(config_yaml, "r") as config:
@@ -251,6 +255,15 @@ def test_bigwigs_exist(run_directory_capture, n_samples, n_groups, n_viewpoints)
         len(glob.glob(f"{run_directory_capture}/capcruncher_analysis/bigwigs/*.bigWig"))
         == n_bigwigs_expected
     )
+
+@pytest.mark.order(2)
+def test_reporters_are_binned(run_directory_tiled, binsizes):
+    import cooler
+
+    example_cooler = os.path.join(run_directory_tiled, "capcruncher_analysis/reporters/counts/SAMPLE-A_REP1.hdf5")
+    cooler_groups = cooler.api.list_coolers(example_cooler)
+    assert len(cooler_groups) == len(binsizes) + 1
+
 
 @pytest.mark.order(2)
 def test_hub_exists(run_directory_capture):
