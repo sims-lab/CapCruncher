@@ -145,8 +145,12 @@ HAS_BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbos
 
 # Check if reporters need to be binned into even genomic regions
 try:
-    _binsize = int(P.PARAMS.get("analysis_bin_size", 0))
-    PERFORM_BINNING = True if _binsize > 0 else False
+
+    BINSIZES = [
+        int(bs)
+        for bs in re.split(r"[,;]\s*|\s+", str(P.PARAMS.get("analysis_bin_sizes", "0")))
+    ]
+    PERFORM_BINNING = True if all(bs > 0 for bs in BINSIZES) else False
 except ValueError:
     PERFORM_BINNING = False
 
@@ -824,7 +828,7 @@ def fastq_collate_non_combined(infiles, outfile):
     "capcruncher_preprocessing/collated/flashed*.fastq*",
     regex(r".*/flashed.(.*)_[1].fastq(.gz)?"),
     r"capcruncher_preprocessing/digested/\1.flashed.fastq\2",
-    extras=[r"\1"]
+    extras=[r"\1"],
 )
 def fastq_digest_combined(infile, outfile, sample_name):
 
@@ -869,7 +873,7 @@ def fastq_digest_combined(infile, outfile, sample_name):
     "capcruncher_preprocessing/collated/pe.*.fastq*",
     regex(r".*/pe.(.*)_[12].fastq(.gz)?"),
     r"capcruncher_preprocessing/digested/\1.pe.fastq\2",
-    extras=[r"\1"]
+    extras=[r"\1"],
 )
 def fastq_digest_non_combined(infiles, outfile, sample_name):
 
@@ -1689,21 +1693,20 @@ def generate_bin_conversion_tables(outfile):
     )
 
     binner_dict = dict()
-    for bs in re.split(r"[,;]\s*|\s+", str(P.PARAMS["analysis_bin_size"])):
+    for bs in BINSIZES:
         try:
-            binsize = int(bs)
             gb = GenomicBinner(
-            chromsizes=P.PARAMS["genome_chrom_sizes"], fragments=frags, binsize=int(bs)
+                chromsizes=P.PARAMS["genome_chrom_sizes"],
+                fragments=frags,
+                binsize=int(bs),
             )
             bct = (
                 gb.bin_conversion_table
             )  # Property is cached so need to call it to make sure it is present.
             binner_dict[int(bs)] = gb
 
-
         except ValueError:
             logging.warn(f"Failed to generate binning object with bin size: {bs}")
-
 
     with open(outfile, "wb") as w:
         pickle.dump(binner_dict, w)
@@ -1743,7 +1746,7 @@ def reporters_store_binned(infile, outfile):
         clr,
         *[
             f"-b {bin_size}"
-            for bin_size in re.split(r"[,;]\s*|\s+", str(P.PARAMS["analysis_bin_size"]))
+            for bin_size in BINSIZES
         ],
         "--conversion_tables",
         conversion_tables,
@@ -2389,7 +2392,7 @@ def plot_heatmaps_make_templates(infiles, outfile):
                     "-v",
                     viewpoint,
                     "-b",
-                    str(P.PARAMS["analysis_bin_size"]),
+                    str(P.PARAMS["analysis_bin_sizes"]),
                     "-o",
                     outfile.replace("heatmaps.sentinel", f"{viewpoint}.heatmap.yml"),
                 ]
