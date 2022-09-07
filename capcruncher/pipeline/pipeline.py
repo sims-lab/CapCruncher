@@ -142,6 +142,18 @@ FASTQ_DEDUPLICATE = P.PARAMS.get("deduplication_pre-dedup", False)
 # Determines if blacklist is used
 HAS_BLACKLIST = is_valid_bed(P.PARAMS.get("analysis_optional_blacklist"), verbose=False)
 
+# Check if reporters need to be binned into even genomic regions
+try:
+
+    BINSIZES = [
+        int(bs)
+        for bs in re.split(r"[,;]\s*|\s+", str(P.PARAMS.get("analysis_bin_sizes", "0")))
+    ]
+    PERFORM_BINNING = True if all(bs > 0 for bs in BINSIZES) else False
+except ValueError:
+    PERFORM_BINNING = False
+
+
 # Check if the plotting packages are installed
 try:
     import coolbox
@@ -815,7 +827,7 @@ def fastq_collate_non_combined(infiles, outfile):
     "capcruncher_preprocessing/collated/flashed*.fastq*",
     regex(r".*/flashed.(.*)_[1].fastq(.gz)?"),
     r"capcruncher_preprocessing/digested/\1.flashed.fastq\2",
-    extras=[r"\1"]
+    extras=[r"\1"],
 )
 def fastq_digest_combined(infile, outfile, sample_name):
 
@@ -860,7 +872,7 @@ def fastq_digest_combined(infile, outfile, sample_name):
     "capcruncher_preprocessing/collated/pe.*.fastq*",
     regex(r".*/pe.(.*)_[12].fastq(.gz)?"),
     r"capcruncher_preprocessing/digested/\1.pe.fastq\2",
-    extras=[r"\1"]
+    extras=[r"\1"],
 )
 def fastq_digest_non_combined(infiles, outfile, sample_name):
 
@@ -1657,7 +1669,7 @@ def reporters_count(infile, outfile):
     touch_file(outfile)
 
 
-@active_if(P.PARAMS.get("analysis_bin_size"))
+@active_if(PERFORM_BINNING)
 @follows(genome_digest, mkdir("capcruncher_analysis/reporters/"))
 @originate(r"capcruncher_analysis/reporters/binners.pkl")
 def generate_bin_conversion_tables(outfile):
@@ -1680,20 +1692,26 @@ def generate_bin_conversion_tables(outfile):
     )
 
     binner_dict = dict()
-    for bs in re.split(r"[,;]\s*|\s+", str(P.PARAMS["analysis_bin_size"])):
-        gb = GenomicBinner(
-            chromsizes=P.PARAMS["genome_chrom_sizes"], fragments=frags, binsize=int(bs)
-        )
-        bct = (
-            gb.bin_conversion_table
-        )  # Property is cached so need to call it to make sure it is present.
-        binner_dict[int(bs)] = gb
+    for bs in BINSIZES:
+        try:
+            gb = GenomicBinner(
+                chromsizes=P.PARAMS["genome_chrom_sizes"],
+                fragments=frags,
+                binsize=int(bs),
+            )
+            bct = (
+                gb.bin_conversion_table
+            )  # Property is cached so need to call it to make sure it is present.
+            binner_dict[int(bs)] = gb
+
+        except ValueError:
+            logging.warn(f"Failed to generate binning object with bin size: {bs}")
 
     with open(outfile, "wb") as w:
         pickle.dump(binner_dict, w)
 
 
-@active_if(P.PARAMS.get("analysis_bin_size", 0) > 0)
+@active_if(PERFORM_BINNING)
 @follows(
     generate_bin_conversion_tables,
     reporters_count,
@@ -1727,7 +1745,7 @@ def reporters_store_binned(infile, outfile):
         clr,
         *[
             f"-b {bin_size}"
-            for bin_size in re.split(r"[,;]\s*|\s+", str(P.PARAMS["analysis_bin_size"]))
+            for bin_size in BINSIZES
         ],
         "--conversion_tables",
         conversion_tables,
@@ -2347,9 +2365,9 @@ def identify_differential_interactions(infile, outfile, capture_name):
 
 
 @follows(reporters_store_binned, mkdir("capcruncher_plots/templates"))
-@active_if(ANALYSIS_METHOD in ["tri", "tiled"] and MAKE_PLOTS)
+@active_if(ANALYSIS_METHOD in ["tri", "tiled"] and MAKE_PLOTS and PERFORM_BINNING)
 @merge(
-    "capcruncher_analysis/reporters/*.hdf5",
+    "capcruncher_analysis/reporters/counts/*.hdf5",
     r"capcruncher_plots/templates/heatmaps.sentinel",
 )
 def plot_heatmaps_make_templates(infiles, outfile):
@@ -2362,23 +2380,24 @@ def plot_heatmaps_make_templates(infiles, outfile):
 
     statements = list()
     for viewpoint in df_viewpoints["name"].unique():
-        statements.append(
-            " ".join(
-                [
-                    "capcruncher",
-                    "plot",
-                    "make-template",
-                    *infiles,
-                    genes if has_genes_to_plot else "",
-                    "-v",
-                    viewpoint,
-                    "-b",
-                    str(P.PARAMS["analysis_bin_size"]),
-                    "-o",
-                    outfile.replace("heatmaps.sentinel", f"{viewpoint}.heatmap.yml"),
-                ]
+        for bin_size in BINSIZES: 
+            statements.append(
+                " ".join(
+                    [
+                        "capcruncher",
+                        "plot",
+                        "make-template",
+                        *infiles,
+                        genes if has_genes_to_plot else "",
+                        "-v",
+                        viewpoint,
+                        "-b",
+                        str(bin_size),
+                        "-o",
+                        outfile.replace("heatmaps.sentinel", f"{viewpoint}_resolution_{bin_size}.heatmap.yml"),
+                    ]
+                )
             )
-        )
 
     P.run(
         statements,

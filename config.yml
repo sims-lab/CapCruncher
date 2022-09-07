@@ -33,11 +33,11 @@ analysis:
     # (Optional) 
     design: PATH_TO_TSV_FORMATTED_DESIGN_MATRIX
 
-    # Genomic window size(s) to use for binning restriction fragment interaction counts
+    # Genomic window size(s) (use spaces to separate bin sizes) to use for binning restriction fragment interaction counts
     # into even genomic windows. Only bin sizes that are present here will be allowed 
     # to be used for heatmap generation.
     # (Optional) Leave blank to prevent binning
-    bin_size: 0
+    bin_sizes: BIN_SIZES
 
 genome:
     
