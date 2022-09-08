@@ -1,0 +1,53 @@
+import os
+import sys
+import pathlib
+
+import pandas as pd
+import pyranges as pr
+from snakemake.utils import min_version
+
+import capcruncher.pipeline.utils as pipeline_utils
+
+configfile: "config.yml"
+# container: "library://asmith151/ngs-pipeline/ngs"
+
+###########################
+# Pipeline pre-run set-up #
+###########################
+pipeline_utils.format_config_dict(config)
+
+### Experimental design ####
+
+## Essential files ##
+FASTQ_FILES = list(pathlib.Path(".").glob("*.fastq*"))
+VIEWPOINTS = config["analysis"]["viewpoints"]
+
+## Analysis files ##
+if os.path.exists(config["analysis"].get("design", None)):
+    DESIGN = pd.read_table(config["analysis"]["design"])
+else:
+    DESIGN = pipeline_utils.get_design_matrix(FASTQ_FILES)
+
+N_SAMPLES = DESIGN["samplename"].nunique()
+ANALYSIS_METHOD = config["analysis"].get("method", "capture")
+HIGH_NUMBER_OF_VIEWPOINTS = pipeline_utils.has_high_viewpoint_number(viewpoints, config)
+
+## Optional ##
+BLACKLIST = pipeline_utils.get_blacklist(config)
+BINSIZES = pipeline_utils.get_binsizes(config)
+PERFORM_BINNING = True if all(bs > 0 for bs in BINSIZES) else False
+MAKE_HUB = pipeline_utils.is_on(config["hub"]["create"]) and not HIGH_NUMBER_OF_VIEWPOINTS
+PERFORM_PLOTTING = pipeline_utils.can_perform_plotting(config)
+FASTQ_DEDUPLICATE = config["deduplication"].get("pre-dedup", False)
+COMPRESS_FASTQ = config["pipeline"].get("compression", 0) != 0
+
+## Pipeline variables ##
+SAMPLE_NAMES_NO_READ = DESIGN["samplename"]
+SAMPLE_NAMES_WITH_READ = [fn.split(".fastq")[0] for fn in FASTQ_FILES]
+
+
+rule all:
+    input:
+        multiqc_fastq_raw = "qc/fastq_qc_raw_report.html",
+        
+        
