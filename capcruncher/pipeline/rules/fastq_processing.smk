@@ -12,7 +12,7 @@ checkpoint split_fastqs:
     input:
         **collate_fastq_files(wc)
     output:
-        touch("flags/{sample}.sentinel")
+        touch("flags/fastq_split/{sample}.sentinel")
     threads:
         2
     params:

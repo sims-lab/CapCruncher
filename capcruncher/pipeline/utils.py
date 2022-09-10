@@ -1,6 +1,6 @@
 import pathlib
 import re
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import pandas as pd
 import pyranges as pr
@@ -65,15 +65,15 @@ def format_config_dict(config: Dict) -> Dict:
     return config
 
 
-def get_design_matrix(fastqs: List[str, pathlib.Path]):
+def get_design_matrix(fastqs: List[Union[str, pathlib.Path]]):
     
     df = pd.DataFrame(fastqs, columns=["fn"])
     df["filename"] = df["fn"].apply(str).str.split(".fastq").str[0]
-    df["samplename"] = df["filename"].str.extract(r".*/(.*?)_R?[12].fastq.*")
-    df["condition"] = df["samplename"].str.split(".fastq").str[0].str.split("_").str[-1]
+    df["sample"] = df["filename"].str.extract(r".*/(.*?)_R?[12].fastq.*")
+    df["condition"] = df["sample"].str.split(".fastq").str[0].str.split("_").str[-1]
 
     if df["condition"].isna().any():
-        logging.warn("Failed to identify conditions from fastq files. Please format as SAMPLENAME_CONDITION_READ.fastq(.gz)")
+        logging.warn("Failed to identify conditions from fastq files. Please format as sample_CONDITION_READ.fastq(.gz)")
         df["condition"].fillna("UNKNOWN")
     
     return df[["sample_name", "condition"]].drop_duplicates()

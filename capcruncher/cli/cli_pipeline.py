@@ -63,4 +63,34 @@ def pipeline(mode, pipeline_options, show_help=False, show_version=False, **repo
     else:
         from capcruncher.pipeline.make_report import generate_report
         generate_report(**report_options)
+
+
+
+@cli.command(context_settings=dict(ignore_unknown_options=True), name="pipeline-smk")
+@click.option("-h", "--help", "show_help", is_flag=True)
+@click.option("--version", "show_version", is_flag=True)
+@click.version_option(metadata.version(distribution_name="capcruncher"))
+@click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
+def pipeline_snakemake(pipeline_options, show_help=False, show_version=False):
+
+    """Runs the data processing pipeline"""
+
+    fn = os.path.abspath(__file__)
+    dir_cli = os.path.dirname(fn)
+    dir_package = os.path.dirname(dir_cli)
+
+    cmd = [
+        "snakemake",
+        "-s",
+        f"{dir_package}/pipeline/snakefile",
+    ]
+
+    if pipeline_options:
+        cmd.extend(pipeline_options)
         
+    completed = subprocess.run(cmd)
+
+    if not completed.returncode == 0:
+        raise RuntimeError(
+            "CapCruncher pipeline failed. Check the log for details"
+        )
