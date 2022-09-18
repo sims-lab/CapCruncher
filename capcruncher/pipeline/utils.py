@@ -111,3 +111,9 @@ def can_perform_plotting(config):
     
     return utils.is_valid_bed(config["plot"].get("coordinates"), verbose=False)
     
+
+def group_files_by_regex(files: List, regex: str):
+    df = pd.DataFrame(files, columns=["fn"])
+    extracted_substrings = df["fn"].astype(str).str.extract(regex)
+    df = df.join(extracted_substrings)
+    return df.groupby(extracted_substrings.columns.to_list()).agg(list)["fn"].rename("files_grouped")

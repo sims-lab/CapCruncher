@@ -47,15 +47,19 @@ SAMPLE_NAMES_WITH_READ = [str(fn).split(".fastq")[0] for fn in FASTQ_FILES]
 
 
 include: 
-    "rules/fastq_processing.smk"
-    "rules/qc.smk"
-    "rules/digest.smk"
+    "rules/fastq_processing.smk",
+    "rules/qc.smk",
+    "rules/digest.smk",
 
 
 rule all:
     input:
-        multiqc_fastq_raw = "qc/fastq_qc_raw_report.html",
-        split_files = expand("flags/fastq_split/{sample}.sentinel", sample=SAMPLE_NAMES_NO_READ)
+        #multiqc_fastq_raw = "qc/fastq_qc_raw_report.html",
+        fq_split = expand("capcruncher_preprocessing/split/{sample}", sample=SAMPLE_NAMES_NO_READ),
+        test = expand("{sample}.done", sample=SAMPLE_NAMES_NO_READ)
+        
+
+
     
         
 
