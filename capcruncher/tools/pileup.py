@@ -58,8 +58,10 @@ class CoolerBedGraph:
         else:
             self._pixels = self._cooler.pixels()[:]
             # TODO: Avoid this if possible as reading all bins into memory
-            self._bins = self._cooler.bins()[:]  
-
+            self._bins = self._cooler.bins()[:]
+        
+        # Ensure name column is present
+        self._bins = self._bins.assign(name=lambda df: df.index) if not "name" in self._bins.columns else self._bins
         self._reporters = None
 
     def _get_reporters(self):
