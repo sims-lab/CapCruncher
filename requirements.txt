@@ -1,6 +1,6 @@
 apsw
 cgatcore
-click<=8.1.0
+click<8.2.0
 cooler
 dask>2020.12.0,<2022.10.0
 drmaa
