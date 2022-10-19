@@ -12,6 +12,9 @@ import pybedtools
 import ujson
 import xxhash
 from pybedtools import BedTool
+import ray
+import pyranges as pr
+import pysam
 
 
 def read_dataframes(filenames: Iterable, **kwargs):
@@ -328,7 +331,57 @@ def categorise_tracks(ser: pd.Series) -> list:
     return categories
 
 
-def convert_bed_to_dataframe(bed: Union[str, BedTool, pd.DataFrame]) -> pd.DataFrame:
+def convert_bed_to_pr(
+    bed: Union[str, pybedtools.BedTool, pd.DataFrame, pr.PyRanges, ray.ObjectRef],
+    ignore_ray_objrefs=True,
+) -> pr.PyRanges:
+
+    if isinstance(bed, str):
+        converted = pr.read_bed(bed)
+
+    elif isinstance(bed, pybedtools.BedTool):
+        converted = (
+            bed.to_dataframe()
+            .rename(
+                columns={
+                    "chrom": "Chromosome",
+                    "start": "Start",
+                    "end": "End",
+                    "name": "Name",
+                }
+            )
+            .pipe(pr.PyRanges)
+        )
+
+    elif isinstance(bed, pr.PyRanges):
+        converted = bed
+
+    elif isinstance(bed, pd.DataFrame):
+        converted = bed.rename(
+            columns={
+                "chrom": "Chromosome",
+                "start": "Start",
+                "end": "End",
+                "name": "Name",
+            }
+        ).pipe(pr.PyRanges)
+
+    elif isinstance(bed, ray.ObjectRef):
+
+        if ignore_ray_objrefs:
+            logging.warning("Assuming ObjectRef is a PyRanges")
+            converted = bed
+        else:
+            bed = ray.get(bed)
+            converted = convert_bed_to_pr(bed)
+
+    return converted
+
+
+def convert_bed_to_dataframe(
+    bed: Union[str, BedTool, pd.DataFrame, ray.ObjectRef, pr.PyRanges],
+    ignore_ray_objrefs=False,
+) -> pd.DataFrame:
     """Converts a bed like object (including paths to bed files) to a pd.DataFrame"""
 
     if isinstance(bed, str):
@@ -340,7 +393,33 @@ def convert_bed_to_dataframe(bed: Union[str, BedTool, pd.DataFrame]) -> pd.DataF
     elif isinstance(bed, pd.DataFrame):
         bed_conv = bed
 
+    elif isinstance(bed, pr.PyRanges):
+        bed_conv = bed.as_df()
+
+    elif isinstance(bed, ray.ObjectRef):
+        if ignore_ray_objrefs:
+            logging.warning("Assuming ObjectRef is a PyRanges")
+            bed_conv = bed
+        else:
+            bed = ray.get(bed)
+            bed_conv = convert_bed_to_dataframe(bed)
+
     return bed_conv
+
+
+def is_tabix(file: str):
+
+    _is_tabix = False
+
+    try:
+        tbx = pysam.TabixFile(file)
+        chroms = tbx.contigs
+        _is_tabix = True
+
+    except (OSError) as e:
+        pass
+
+    return _is_tabix
 
 
 def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:

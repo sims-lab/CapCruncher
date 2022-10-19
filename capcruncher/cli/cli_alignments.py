@@ -49,7 +49,7 @@ def cli():
     "-o",
     "--output",
     help="Path for the annotated slices to be output.",
-    default="annotated.slices.tsv.gz",
+    default="annotated.slices.parquet",
 )
 @click.option(
     "--duplicates",

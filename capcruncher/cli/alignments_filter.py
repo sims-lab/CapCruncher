@@ -15,7 +15,7 @@ SLICE_FILTERS = {
 
 
 # @get_timing(task_name="merging annotations with BAM input")
-def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFrame:
+def merge_annotations(slices: pd.DataFrame, annotations: os.PathLike) -> pd.DataFrame:
     """Combines annotations with the parsed bam file output.
 
     Uses pandas outer join on the indexes to merge annotations
@@ -26,36 +26,21 @@ def merge_annotations(df: pd.DataFrame, annotations: os.PathLike) -> pd.DataFram
 
 
     Args:
-     df (pd.DataFrame): Dataframe to merge with annotations
-     annotations (os.PathLike): Filename of .tsv to read and merge with df
+     slices (pd.DataFrame): Dataframe to merge with annotations
+     annotations (os.PathLike): Filename of to read and merge with df
 
     Returns:
      pd.DataFrame: Merged dataframe
     """
-    if annotations.endswith(".tsv"):
-        df_ann = pd.read_csv(
-            annotations,
-            sep="\t",
-            header=0,
-            index_col=["slice_name", "chrom", "start"],
-            low_memory=False,
-        )
 
-    elif annotations.endswith(".hdf5"):
-        df_ann = pd.read_hdf(annotations, "annotation").set_index(
-            ["slice_name", "chrom", "start"]
-        )
+    df_ann = (pd.read_parquet(annotations)
+                .rename(columns={"Chromosome": "chrom", "Start": "start", "End": "end"})
+                .set_index(["slice_name", "chrom", "start"])
+                .drop(columns="end", errors="ignore")
+                )
+    slices = slices.join(df_ann, how="inner").reset_index()
 
-    elif annotations.endswith(".parquet"):
-        df_ann = pd.read_parquet(annotations).set_index(
-            ["slice_name", "chrom", "start"]
-        )
-
-    df_ann = df_ann.drop(columns="end", errors="ignore")
-
-    df = df.join(df_ann, how="inner").reset_index()
-
-    return df
+    return slices
 
 
 # @get_timing(task_name="analysis of bam file")
