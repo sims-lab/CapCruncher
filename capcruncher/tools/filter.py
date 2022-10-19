@@ -79,7 +79,9 @@ class SliceFilter:
         """
 
         self._has_required_columns = self._required_columns_present(slices)
-        self.slices = slices.sort_values(["parent_read", "slice"])
+        self.slices = (slices.sort_values(["parent_read", "slice"])
+                             .assign(blacklist=lambda df: df["blacklist"].astype(float))
+                      )
 
         if filter_stages:
             self.filter_stages = self._extract_filter_stages(filter_stages)
@@ -514,11 +516,6 @@ class CCSliceFilter(SliceFilter):
             )
         )
 
-        # df["unique_capture_sites"] = (
-        #     df["unique_capture_sites"] - 1
-        # )  # nunique identifies '.' as a capture site
-        # df["unique_exclusions"] = df["unique_exclusions"] - 1  # as above
-
         # Add the number of reporters to the dataframe.
         # Only consider a reporter if at least one capture slice is present
         # in the fragment.
@@ -681,7 +678,6 @@ class CCSliceFilter(SliceFilter):
         Removes the fragment if it has no reporter slices present (Common)
 
         """
-
         fragments_partial = self.slices.groupby("parent_id").agg(
             n_capture=("capture_count", "sum"),
             n_mapped=("mapped", "sum"),
