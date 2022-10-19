@@ -3,10 +3,16 @@ import os
 import numpy as np
 import pandas as pd
 import pytest
-from capcruncher.tools.annotate import BedIntersection
-from more_itertools import intersperse
-from pandas.api.types import is_numeric_dtype, is_string_dtype
-from pybedtools import BedTool
+from capcruncher.tools.annotate import BedFileIntersection
+from pandas.api.types import is_numeric_dtype, is_string_dtype, is_categorical_dtype, is_object_dtype
+import ray
+
+
+@pytest.fixture(scope="session")
+def ray_cluster():
+    import ray
+
+    ray.init(num_cpus=4, ignore_reinit_error=True)
 
 
 @pytest.fixture(scope="module")
@@ -18,114 +24,73 @@ def data_path():
 
 
 @pytest.mark.parametrize(
-    "bed1,bed2,method,n_rows_expected,dtype,dtype_check_func",
+    "bed1,bed2,method,name,n_rows_expected,dtype_check_func",
     [
         (
             "test_slices_sorted.bed",
             "test_capture.bed",
             "count",
-            4,
-            "Int8",
+            "capture",
+            1,
             is_numeric_dtype,
         ),
         (
             "test_slices_sorted.bed",
             "test_capture.bed",
             "get",
+            "capture",
             1,
-            "string",
-            is_string_dtype,
+            is_categorical_dtype,
         ),
-        ("test_slices_sorted.bed", "bad_bed.bed", "count", 4, "Int8", is_numeric_dtype),
-        ("test_slices_sorted.bed", "blank.bed", "count", 4, "Int8", is_numeric_dtype),
+        ("test_slices_sorted.bed", "bad_bed.bed", "count", "capture_count", 4, is_object_dtype),
+        ("test_slices_sorted.bed", "blank.bed","count", "capture_count", 4, is_object_dtype),
     ],
 )
 def test_bed_intersection_succeeds(
-    data_path, bed1, bed2, method, n_rows_expected, dtype, dtype_check_func
+    ray_cluster, data_path, bed1, bed2, method, name, n_rows_expected, dtype_check_func
 ):
 
-    bi = BedIntersection(
-        bed1=os.path.join(data_path, bed1),
-        bed2=os.path.join(data_path, bed2),
-        intersection_name="capture",
-        intersection_method=method,
-        invalid_bed_action="ignore",
-        dtype=dtype,
+    bi = BedFileIntersection.remote(
+        bed_a=os.path.join(data_path, bed1),
+        bed_b=os.path.join(data_path, bed2),
+        name=name,
+        action=method,
     )
 
-    intersection = bi.get_intersection()
-    assert intersection.name == "capture"
+    intersection = ray.get(bi.intersection.remote())
+    assert intersection.name == name
     assert intersection.shape[0] == n_rows_expected
     assert dtype_check_func(intersection.values)
 
 
-@pytest.mark.parametrize(
-    "bed1,bed2,method",
-    [
-        (
-            "test_slices.bed",
-            "test_capture.bed",
-            "count",
-        ),
-        (
-            "test_slices_sorted.bed",
-            "bad_bed.bed",
-            "count",
-        ),
-        (
-            "test_slices_sorted.bed",
-            "blank.bed",
-            "count",
-        ),
-    ],
-)
-@pytest.mark.xfail
-def test_bed_intersection_fails(data_path, bed1, bed2, method):
-
-    bi = BedIntersection(
-        bed1=os.path.join(data_path, bed1),
-        bed2=os.path.join(data_path, bed2),
-        intersection_name="capture",
-        intersection_method=method,
-        invalid_bed_action="error",
-    )
-
-    intersection = bi.get_intersection()
-
-
-def test_bed_intersection_count_succeeds(data_path):
+def test_bed_intersection_get_output(data_path):
+    
     bed1 = "test_slices_sorted.bed"
     bed2 = "test_capture.bed"
 
-    bi = BedIntersection(
-        bed1=os.path.join(data_path, bed1),
-        bed2=os.path.join(data_path, bed2),
-        intersection_name="capture",
-        intersection_method="count",
-        invalid_bed_action="error",
-        dtype="Int8",
+    bi = BedFileIntersection.remote(
+        bed_a=os.path.join(data_path, bed1),
+        bed_b=os.path.join(data_path, bed2),
+        name="capture",
+        action="get",
     )
 
-    intersection = bi.get_intersection()
-    assert intersection.name == "capture"
-    assert intersection.shape[0] == 4
-    assert is_numeric_dtype(intersection.values)
-    assert intersection.sum() == 1
-
-
-def test_bed_intersection_get_succeeds(data_path):
-    bed1 = "test_slices_sorted.bed"
-    bed2 = "test_capture.bed"
-
-    bi = BedIntersection(
-        bed1=os.path.join(data_path, bed1),
-        bed2=os.path.join(data_path, bed2),
-        intersection_name="capture",
-        intersection_method="get",
-        invalid_bed_action="error",
-        dtype="category",
-    )
-
-    intersection = bi.get_intersection()
+    intersection = ray.get(bi.intersection.remote())
     assert intersection.name == "capture"
     assert intersection.value_counts().loc["CAPTURE"] == 1
+
+def test_bed_intersection_count_output(data_path):
+    
+    bed1 = "test_slices_sorted.bed"
+    bed2 = "test_capture.bed"
+
+    bi = BedFileIntersection.remote(
+        bed_a=os.path.join(data_path, bed1),
+        bed_b=os.path.join(data_path, bed2),
+        name="capture",
+        action="count",
+    )
+
+    intersection = ray.get(bi.intersection.remote())
+    assert intersection.name == "capture"
+    assert intersection.sum() == 1

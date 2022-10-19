@@ -3,17 +3,25 @@ import logging
 import sys
 import warnings
 from typing import Tuple, Union
+import ray
 
 import numpy as np
-from joblib.parallel import Parallel, delayed
 
 warnings.simplefilter("ignore")
 import os
 
 import pandas as pd
-from capcruncher.tools.annotate import BedIntersection
-from capcruncher.utils import bed_has_name, convert_bed_to_dataframe, is_valid_bed
+from capcruncher.tools.annotate import BedFileIntersection
+from capcruncher.utils import (
+    bed_has_name,
+    convert_bed_to_dataframe,
+    convert_bed_to_pr,
+    is_valid_bed,
+)
 from pybedtools import BedTool, MalformedBedLineError
+import pysam
+
+pysam.set_verbosity(0)
 
 
 def cycle_argument(arg):
@@ -88,10 +96,6 @@ def remove_duplicates_from_bed(
         .sort_values(["chrom", "start"])[["chrom", "start", "end", "name"]]
         .pipe(BedTool.from_dataframe)
     )
-
-
-def get_intersection(intersector: BedIntersection):
-    return intersector.get_intersection()
 
 
 def annotate(
@@ -169,25 +173,32 @@ def annotate(
         try:
             slices = slices - BedTool(blacklist)
         except (MalformedBedLineError, FileNotFoundError, IndexError) as e:
-            logging.error(f"Blacklist {blacklist} bedfile raised {e}. Ensure it is correctly formatted")
-    
+            logging.error(
+                f"Blacklist {blacklist} bedfile raised {e}. Ensure it is correctly formatted"
+            )
 
     logging.info("Dealing with duplicates in the bed file")
     # Deal with multimapping reads.
     if duplicates == "remove":
-        slices = remove_duplicates_from_bed(slices, 
-                                            prioritize_cis_slices=prioritize_cis_slices, 
-                                            chroms_to_prioritize=priority_chroms.split(",") if priority_chroms else None)
+        slices = remove_duplicates_from_bed(
+            slices,
+            prioritize_cis_slices=prioritize_cis_slices,
+            chroms_to_prioritize=priority_chroms.split(",")
+            if priority_chroms
+            else None,
+        )
     else:
         raise NotImplementedError(
             "Only supported option at present is to remove duplicates"
         )
-    
-    logging.info("Ensuring bed file is sorted")
-    slices = slices.sort()
 
-    logging.info("Performing intersection")
-    intersections_to_perform = []
+    logging.info("Setting-up intersection(s)")
+
+    ray.init(num_cpus=n_cores, ignore_reinit_error=True)
+    pr_slices = convert_bed_to_pr(slices)
+    pr_slices_ref = ray.put(pr_slices)
+
+    results = []
     for bed, name, action, fraction, dtype in zip(
         bed_files,
         names,
@@ -196,52 +207,33 @@ def annotate(
         cycle_argument(dtypes),
     ):
 
-        intersections_to_perform.append(
-            BedIntersection(
-                bed1=slices,
-                bed2=bed,
-                intersection_name=name,
-                intersection_method=action,
-                intersection_min_frac=fraction,
-                invalid_bed_action=invalid_bed_action,
-                dtype=dtype,
-            )
+        bfi = BedFileIntersection.remote(
+            bed_a=pr_slices_ref,
+            bed_b=bed,
+            name=name,
+            action=action,
+            fraction=fraction,
         )
+        results.append(bfi.intersection.remote())
 
-    logging.debug(intersections_to_perform)
+    # Collate results
+    df_annotation = pr_slices.df.set_index("Name")
 
-    intersections_results = Parallel(n_jobs=n_cores)(
-        delayed(get_intersection)(intersection)
-        for intersection in intersections_to_perform
-    )
+    while len(results):
+        done_id, results = ray.wait(results)
 
-    logging.info("Merging annotations")
+        for ref in done_id:
+            ser_new = ray.get(ref)
+            df_annotation = df_annotation.join(ser_new, how="left")
+            del ser_new
 
-    # Merge intersections with slices
+    # Format dataframe for next stage
     df_annotation = (
-        convert_bed_to_dataframe(slices)
-        .rename(columns={"name": "slice_name"})
+        df_annotation.reset_index()
+        .rename(columns={"Name": "slice_name"})
         .set_index("slice_name")
-        .sort_index()
-        .join(intersections_results, how="left")
         .reset_index()
-        .rename(columns={"index": "slice_name"})
     )
 
-    del intersections_results
     logging.info("Writing annotations to file.")
-
-    df_annotation.loc[
-        :, lambda df: df.select_dtypes("number").columns
-    ] = df_annotation.select_dtypes("number").astype("float")
-
-    # Export to tsv
-    if output.endswith(".tsv"):
-        df_annotation.to_csv(output, sep="\t", index=False)
-    elif output.endswith(".hdf5"):
-        # Need to convert dtypes to ones that are supported
-        df_annotation.to_hdf(
-            output, key="/annotation", format="table", complib="blosc", complevel=2
-        )
-    elif output.endswith(".parquet"):
-        df_annotation.to_parquet(output, compression="snappy")
+    df_annotation.to_parquet(output, compression="snappy")
