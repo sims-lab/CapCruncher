@@ -79,8 +79,11 @@ class SliceFilter:
         """
 
         self._has_required_columns = self._required_columns_present(slices)
+
+        # Tweak format slices dataframe to be consistent
         self.slices = (slices.sort_values(["parent_read", "slice"])
-                             .assign(blacklist=lambda df: df["blacklist"].astype(float))
+                             .assign(blacklist=lambda df: df["blacklist"].astype(float),
+                                     restriction_fragment= lambda df: df["restriction_fragment"].astype(pd.Int64Dtype()))
                       )
 
         if filter_stages:
