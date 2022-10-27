@@ -733,11 +733,12 @@ class CCSliceFilter(SliceFilter):
 
         """
 
-        slices_with_viewpoint = self.slices_with_viewpoint
+        slices_with_viewpoint = self.slices_with_viewpoint[["restriction_fragment", "capture", "capture_count", "viewpoint", "parent_id"]]
 
         # Create a per viewpoint dataframe of adjacent fragment ranges
         restriction_fragments_viewpoint = (
-            self.captures.set_index("capture")["restriction_fragment"]
+            self.captures.set_index("capture")
+            ["restriction_fragment"]
             .drop_duplicates()
             .reset_index()
             .assign(
