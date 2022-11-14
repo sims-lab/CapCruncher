@@ -12,7 +12,7 @@ import ray
 def ray_cluster():
     import ray
 
-    ray.init(num_cpus=4, ignore_reinit_error=True)
+    ray.init(num_cpus=4, ignore_reinit_error=True, include_dashboard=False)
 
 
 @pytest.fixture(scope="module")

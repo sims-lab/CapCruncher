@@ -194,7 +194,7 @@ def annotate(
 
     logging.info("Setting-up intersection(s)")
 
-    ray.init(num_cpus=n_cores, ignore_reinit_error=True)
+    ray.init(num_cpus=n_cores, ignore_reinit_error=True, include_dashboard=False)
     pr_slices = convert_bed_to_pr(slices)
     pr_slices_ref = ray.put(pr_slices)
 
