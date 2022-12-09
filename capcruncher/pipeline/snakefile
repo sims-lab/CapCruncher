@@ -19,14 +19,15 @@ pipeline_utils.format_config_dict(config)
 ### Experimental design ####
 
 ## Essential files ##
-FASTQ_FILES = list(pathlib.Path(".").glob("*.fastq*"))
+fastq_samples = pipeline_utils.GenericFastqSamples.from_files(list(pathlib.Path(".").glob("*.fastq*")))
+
 VIEWPOINTS = config["analysis"]["viewpoints"]
 
 ## Analysis files ##
 if os.path.exists(config["analysis"].get("design", None)):
     DESIGN = pd.read_table(config["analysis"]["design"], sep=r"\s+|,|\t", engine="python")
 else:
-    DESIGN = pipeline_utils.get_design_matrix(FASTQ_FILES)
+    DESIGN = fastq_samples.experimental_design
 
 N_SAMPLES = DESIGN["sample"].nunique()
 ANALYSIS_METHOD = config["analysis"].get("method", "capture")
@@ -42,21 +43,18 @@ FASTQ_DEDUPLICATE = config["deduplication"].get("pre-dedup", False)
 COMPRESS_FASTQ = config["pipeline"].get("compression", 0) != 0
 
 ## Pipeline variables ##
-SAMPLE_NAMES_NO_READ = DESIGN["sample"]
-SAMPLE_NAMES_WITH_READ = [str(fn).split(".fastq")[0] for fn in FASTQ_FILES]
+SAMPLE_NAMES = DESIGN["sample"]
+FASTQ_FILE_NAMES = [*fastq_samples.design["fq1"].apply(str).to_list(), 
+                   *fastq_samples.design["fq2"].apply(str).to_list()]
 
-
-include: 
-    "rules/fastq_processing.smk",
-    "rules/qc.smk",
-    "rules/digest.smk",
+include: "rules/digest.smk",
+include: "rules/fastq.smk",
 
 
 rule all:
     input:
-        #multiqc_fastq_raw = "qc/fastq_qc_raw_report.html",
-        fq_split = expand("capcruncher_preprocessing/split/{sample}", sample=SAMPLE_NAMES_NO_READ),
-        test = expand("{sample}.done", sample=SAMPLE_NAMES_NO_READ)
+        digested = "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
+        done = expand("{sample}.done", sample=SAMPLE_NAMES),
         
 
 

@@ -208,19 +208,19 @@ def test_pipeline_capture(setup_pipeline_run_capture):
     completed = subprocess.run(cmd.split())
     assert completed.returncode == 0
 
-@pytest.mark.order(1)
-def test_pipeline_tri(setup_pipeline_run_tri):
+# @pytest.mark.order(1)
+# def test_pipeline_tri(setup_pipeline_run_tri):
 
-    cmd = f"capcruncher pipeline make full --local -p 8"
-    completed = subprocess.run(cmd.split())
-    assert completed.returncode == 0
+#     cmd = f"capcruncher pipeline make full --local -p 8"
+#     completed = subprocess.run(cmd.split())
+#     assert completed.returncode == 0
 
-@pytest.mark.order(1)
-def test_pipeline_tiled(setup_pipeline_run_tiled):
+# @pytest.mark.order(1)
+# def test_pipeline_tiled(setup_pipeline_run_tiled):
 
-    cmd = f"capcruncher pipeline make full --local -p 8"
-    completed = subprocess.run(cmd.split())
-    assert completed.returncode == 0
+#     cmd = f"capcruncher pipeline make full --local -p 8"
+#     completed = subprocess.run(cmd.split())
+#     assert completed.returncode == 0
 
 @pytest.mark.order(2)
 def test_digested_exists(run_directory_capture):

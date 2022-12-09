@@ -102,7 +102,7 @@ pipeline:
     # A value of 0 indicates that compression will not be performed at all stages.
     # It is highly recomended to avoid compression if possible as intermediate files will be removed to reduce space
     # (Required)
-    compression: 0
+    compression: 5
 
 
 ###################################

@@ -5,6 +5,7 @@ from typing import Dict, List, Union
 import pandas as pd
 import pyranges as pr
 import logging
+import os
 
 from capcruncher import utils
 
@@ -117,3 +118,59 @@ def group_files_by_regex(files: List, regex: str):
     extracted_substrings = df["fn"].astype(str).str.extract(regex)
     df = df.join(extracted_substrings)
     return df.groupby(extracted_substrings.columns.to_list()).agg(list)["fn"].rename("files_grouped")
+
+
+class GenericFastqSamples:
+    def __init__(self, design):
+
+        # Expected columns: sample, fq1, fq2
+        self.design = design
+        self.design = self.design.assign(
+            paired=(~self.design[["fq1", "fq2"]].isna().any(axis=1))
+        )
+
+        assert self.design["paired"].all(), "All files must be paired" 
+
+    @classmethod
+    def from_files(cls, files: List[Union[pathlib.Path, str]]) -> (pd.DataFrame):
+
+        try:
+            df = pd.DataFrame(files, columns=["fn"])
+
+            df[["sample", "read"]] = (
+                df["fn"].apply(str).str.extract("(?!.*/)?(.*).*_R?([12]).fastq(?!.gz)?")
+            )
+
+            df["sample"] = df["sample"].apply(
+                lambda p: pathlib.Path(p).name
+                if isinstance(p, pathlib.Path)
+                else os.path.basename(p)
+            )
+            df["read"] = "fq" + df["read"]
+
+            df = (
+                df.pivot(columns="read", index=["sample"])
+                .droplevel(level=0, axis=1)
+                .reset_index()
+            )
+
+            return cls(design=df)
+        except TypeError:
+            logging.exception("Samples not named correctly")
+            raise ValueError("Could not determine sample name from the file name")
+
+    @property
+    def fastq_files(self):
+        return sorted([*self.design["fq1"], *self.design["fq2"]])
+
+    @property
+    def sample_names_all(self):
+        return self.design["sample"].to_list()
+    
+    @property
+    def experimental_design(self):
+        return (self.design
+                    .assign(condition=self.design["sample"].split("_").str[1])
+                    .loc[:, ["sample", "condition"]])
+                                  
+        

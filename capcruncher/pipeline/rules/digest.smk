@@ -2,7 +2,8 @@ rule digest_genome:
     input:
         fasta = config["genome"]["fasta"]
     output:
-        fasta_digested = "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz"
+        bed = "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
+        stats = "capcruncher_statistics/digest_genome/genome_digestion_statistics.txt"
     log:
         "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.log"
     params:
@@ -11,24 +12,8 @@ rule digest_genome:
         4
     shell:
         """
-        capcruncher genome digest 
-        {input.fasta} 
-        -r 
-        {params.enzyme_or_site}
-        -o
-        {output.fasta_digested}.tmp
-        --sort
-        -l
-        {output.stats} 
-        &&
-        pigz 
-        -p 
-        {threads} 
-        {output.fasta_digested}.tmp
-        &&
-        mv
-        {output.fasta_digested}.tmp
-        {output.fasta_digested}
+        capcruncher genome digest {input.fasta} -r {params.enzyme_or_site} -o {output.bed}.tmp --sort -l {output.stats} > {log} 2>&1 &&
+        pigz -p {threads} {output.bed}.tmp -c > {output.bed} 2> {log}
         """
 
 

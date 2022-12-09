@@ -64,7 +64,7 @@ use rule fastqc as fastqc_trimmed with:
 
 use rule multiqc as multiqc_fastq_raw with:
     input:
-        reports = expand("qc/fastq_raw/{sample}_fastqc.html", sample=SAMPLE_NAMES_WITH_READ),
+        reports = expand("qc/fastq_raw/{sample}_{read}_fastqc.html", sample=SAMPLE_NAMES, read=[1,2]),
     output:
         report = "qc/fastq_qc_raw_report.html"
     threads:
@@ -74,7 +74,7 @@ use rule multiqc as multiqc_fastq_raw with:
 
 use rule multiqc as multiqc_fastq_trimmed with:
     input:
-        reports = expand("qc/fastq_trimmed/{sample}_fastqc.html", sample=SAMPLE_NAMES_WITH_READ),
+        reports = expand("qc/fastq_trimmed/{sample}_{read}_fastqc.html", sample=SAMPLE_NAMES, read=[1,2]),
     output:
         report = "qc/fastq_qc_trimmed_report.html"
     threads:
