@@ -1,8 +1,8 @@
 apsw
 cgatcore
-click<=8.1.0
+click<8.2.0
 cooler
-dask>2020.12.0,<=2022.8.0
+dask>2020.12.0,<2022.10.0
 drmaa
 gevent
 h5py
@@ -10,11 +10,12 @@ joblib
 more-itertools
 natsort
 numpy
-pandas<=1.4.3
+pandas<1.4.5
 paramiko>=2.7.1
 plotly>5.0.0,<=5.10.0
 pyarrow>8.0.0,<=9.0.0
 pybedtools
+pyranges
 pysam>0.15.0,<=0.19.1
 pyyaml>=6.0
 seaborn
@@ -22,6 +23,7 @@ sqlalchemy>=1.3.18
 tqdm
 trackhub
 ruffus
+ray<=2.0.1
 ujson
 xxhash
 xopen

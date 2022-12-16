@@ -294,6 +294,7 @@ def test_alignment_annotation(cli_runner, data_annotation, tmpdir, bam, beds, fl
             blacklist,
         ],
     )
+
     assert result.exit_code == 0
     assert os.path.exists(outfile)
 

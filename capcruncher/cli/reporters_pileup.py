@@ -47,10 +47,11 @@ def pileup(
      sparse (bool, optional): Produce bedgraph containing just positive bins (True) or all bins (False). Defaults to True.
     """
 
-    logging.info(f"Performing pileup for {viewpoint_names}")
     viewpoint_names = viewpoint_names or [
         v.strip("/") for v in cooler.fileops.list_coolers(uri) if not "resolutions" in v
     ]
+    
+    logging.info(f"Performing pileup for {viewpoint_names}")
 
     bin_bedgraph = True if binsize > 0 else False
 
@@ -66,7 +67,7 @@ def pileup(
         except Exception as e:
             logging.info(f"Exception {e} occured while looking for: {viewpoint_name}")
             raise (f"Cannot find {viewpoint_name} in cooler file")
-
+            
         bedgraph = CoolerBedGraph(uri=cooler_group, sparse=sparse).extract_bedgraph(
             normalisation=normalisation,
             region=normalisation_regions,
