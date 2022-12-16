@@ -2,10 +2,10 @@ rule digest_genome:
     input:
         fasta = config["genome"]["fasta"]
     output:
-        bed = "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
+        bed = "capcruncher_resources/restriction_enzyme_map/genome.digest.bed.gz",
         stats = "capcruncher_statistics/digest_genome/genome_digestion_statistics.txt"
     log:
-        "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.log"
+        "capcruncher_resources/restriction_enzyme_map/genome.digest.log"
     params:
         enzyme_or_site = config["analysis"]["restriction_enzyme"]
     threads:

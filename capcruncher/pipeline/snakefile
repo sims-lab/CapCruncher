@@ -49,11 +49,13 @@ FASTQ_FILE_NAMES = [*fastq_samples.design["fq1"].apply(str).to_list(),
 
 include: "rules/digest.smk",
 include: "rules/fastq.smk",
+include: "rules/align.smk",
+include: "rules/annotate.smk",
 
 
 rule all:
     input:
-        digested = "capcruncher_preprocessing/restriction_enzyme_map/genome.digest.bed.gz",
+        digested = "capcruncher_resources/restriction_enzyme_map/genome.digest.bed.gz",
         done = expand("{sample}.done", sample=SAMPLE_NAMES),
         
 

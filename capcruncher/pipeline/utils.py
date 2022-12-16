@@ -172,5 +172,3 @@ class GenericFastqSamples:
         return (self.design
                     .assign(condition=self.design["sample"].split("_").str[1])
                     .loc[:, ["sample", "condition"]])
-                                  
-        
