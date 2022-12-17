@@ -51,6 +51,8 @@ include: "rules/digest.smk",
 include: "rules/fastq.smk",
 include: "rules/align.smk",
 include: "rules/annotate.smk",
+include: "rules/filter.smk",
+include: "rules/pileup.smk",
 
 
 rule all:

@@ -199,12 +199,11 @@ def annotate(
     pr_slices_ref = ray.put(pr_slices)
 
     results = []
-    for bed, name, action, fraction, dtype in zip(
+    for bed, name, action, fraction in zip(
         bed_files,
         names,
         actions,
         cycle_argument(overlap_fractions),
-        cycle_argument(dtypes),
     ):
 
         bfi = BedFileIntersection.remote(

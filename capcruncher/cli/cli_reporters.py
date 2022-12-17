@@ -8,6 +8,44 @@ def cli():
 
 
 @cli.command()
+@click.argument("slices", required=True)
+@click.option(
+    "-o",
+    "--output",
+    help="Output prefix for directory of deduplicated slices",
+    default="deduplicated_slices/",
+)
+@click.option(
+    "--stats-prefix",
+    help="Output prefix for stats file(s)",
+    default="",
+)
+@click.option(
+    "--sample-name", help="Name of sample e.g. DOX_treated_1", default="sample")
+@click.option(
+    "--read-type",
+    help="Type of read",
+    default="flashed",
+    type=click.Choice(["flashed", "pe"], case_sensitive=False),
+)
+def deduplicate(*args, **kwargs):
+    """
+    Identifies and removes duplicated aligned fragments.
+
+    PCR duplicates are very commonly present in Capture-C/Tri-C/Tiled-C data and must be removed
+    for accurate analysis. Unlike fastq deduplicate, this command removes fragments with identical
+    genomic coordinates.
+
+    Non-combined (pe) and combined (flashed) reads are treated slightly differently due to the increased
+    confidence that the ligation junction has been captured for the flashed reads.
+
+    """
+
+    from capcruncher.cli.reporters_deduplicate import deduplicate
+    deduplicate(*args, **kwargs)
+
+
+@cli.command()
 @click.argument("union_bedgraph")
 @click.option(
     "-n",

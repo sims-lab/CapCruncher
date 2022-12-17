@@ -81,10 +81,12 @@ class SliceFilter:
         self._has_required_columns = self._required_columns_present(slices)
 
         # Tweak format slices dataframe to be consistent
-        self.slices = (slices.sort_values(["parent_read", "slice"])
-                             .assign(blacklist=lambda df: df["blacklist"].astype(float),
-                                     restriction_fragment= lambda df: df["restriction_fragment"].astype(pd.Int64Dtype()))
-                      )
+        self.slices = slices.sort_values(["parent_read", "slice"]).assign(
+            blacklist=lambda df: df["blacklist"].astype(float),
+            restriction_fragment=lambda df: df["restriction_fragment"].astype(
+                pd.Int64Dtype()
+            ),
+        )
 
         if filter_stages:
             self.filter_stages = self._extract_filter_stages(filter_stages)
@@ -265,13 +267,19 @@ class SliceFilter:
         for stage, filters in self.filter_stages.items():
             for filt in filters:
 
-                self.current_filter = filt
-                # Call all of the filters in the filter_stages dict in order
-                logging.info(f"Filtering slices: {filt}")
-                getattr(self, filt)()  # Gets and calls the selected method
-                logging.info(f"Completed: {filt}")
-                logging.info(f"Number of slices: {self.slices.shape[0]}")
-                logging.info(f'Number of reads: {self.slices["parent_read"].nunique()}')
+                try:
+                    self.current_filter = filt
+                    # Call all of the filters in the filter_stages dict in order
+                    logging.info(f"Filtering slices: {filt}")
+                    getattr(self, filt)()  # Gets and calls the selected method
+                    logging.info(f"Completed: {filt}")
+                    logging.info(f"Number of slices: {self.slices.shape[0]}")
+                    logging.info(
+                        f'Number of reads: {self.slices["parent_read"].nunique()}'
+                    )
+                except Exception as e:
+                    logging.error(f"Exception {e} raised during {filt} filtering")
+                    raise e
 
                 if output_slices == "filter":
                     self.slices.to_csv(os.path.join(output_location, f"{filt}.tsv.gz"))
@@ -340,7 +348,6 @@ class SliceFilter:
 
 
         """
-
         frags_deduplicated = (
             self.slices.groupby("parent_id")
             .agg(coords=("coordinates", "|".join))
@@ -398,15 +405,20 @@ class SliceFilter:
         """Removes any slices in the exclusion region (default 1kb) (V. Common)"""
 
         slices_with_viewpoint = self.slices_with_viewpoint
-        slices_passed = slices_with_viewpoint.loc[lambda df: (df["exclusion_count"] < 1) | (df["exclusion"] != df["viewpoint"])] 
-        
+        slices_passed = slices_with_viewpoint.loc[
+            lambda df: (df["exclusion_count"] < 1)
+            | (df["exclusion"] != df["viewpoint"])
+        ]
+
         self.slices = self.slices.loc[
             lambda df: df["parent_id"].isin(slices_passed["parent_id"])
         ]
 
     def remove_blacklisted_slices(self):
         """Removes slices marked as being within blacklisted regions"""
-        self.slices = self.slices.loc[lambda df: (df["blacklist"] == 0) | (df["blacklist"].isna())]
+        self.slices = self.slices.loc[
+            lambda df: (df["blacklist"] == 0) | (df["blacklist"].isna())
+        ]
 
     @property
     def slices_with_viewpoint(self):
@@ -681,11 +693,13 @@ class CCSliceFilter(SliceFilter):
         Removes the fragment if it has no reporter slices present (Common)
 
         """
-        fragments_partial = self.slices.groupby("parent_id").agg(
-            n_capture=("capture_count", "sum"),
-            n_mapped=("mapped", "sum"),
-            n_blacklist=("blacklist", "sum"),
-            n_exclusions=("exclusion_count", "sum"),
+        fragments_partial = (
+            self.slices.groupby("parent_id").agg(
+                n_capture=("capture_count", "sum"),
+                n_mapped=("mapped", "sum"),
+                n_blacklist=("blacklist", "sum"),
+                n_exclusions=("exclusion_count", lambda ser: ser.sum()),
+            )
         )
 
         fragments_with_reporters = fragments_partial.query(
@@ -733,12 +747,19 @@ class CCSliceFilter(SliceFilter):
 
         """
 
-        slices_with_viewpoint = self.slices_with_viewpoint[["restriction_fragment", "capture", "capture_count", "viewpoint", "parent_id"]]
+        slices_with_viewpoint = self.slices_with_viewpoint[
+            [
+                "restriction_fragment",
+                "capture",
+                "capture_count",
+                "viewpoint",
+                "parent_id",
+            ]
+        ]
 
         # Create a per viewpoint dataframe of adjacent fragment ranges
         restriction_fragments_viewpoint = (
-            self.captures.set_index("capture")
-            ["restriction_fragment"]
+            self.captures.set_index("capture")["restriction_fragment"]
             .drop_duplicates()
             .reset_index()
             .assign(
@@ -760,9 +781,9 @@ class CCSliceFilter(SliceFilter):
             "(exclusion_start <= restriction_fragment <= exclusion_end) and (capture_count == 0)"
         )
 
-        self.slices = (
-            self.slices.loc[lambda df: ~df["parent_id"].isin(excluded_slices["parent_id"])]
-        )
+        self.slices = self.slices.loc[
+            lambda df: ~df["parent_id"].isin(excluded_slices["parent_id"])
+        ]
 
 
 class TriCSliceFilter(CCSliceFilter):
@@ -896,7 +917,7 @@ class TiledCSliceFilter(SliceFilter):
             }
 
         super(TiledCSliceFilter, self).__init__(slices, filter_stages, **sample_kwargs)
-    
+
     @property
     def captures(self) -> pd.DataFrame:
         """
@@ -960,7 +981,6 @@ class TiledCSliceFilter(SliceFilter):
             }
         )
         return stats_df
-
 
     @property
     def cis_or_trans_stats(self) -> pd.DataFrame:

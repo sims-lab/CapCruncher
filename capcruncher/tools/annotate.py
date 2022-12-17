@@ -76,6 +76,7 @@ class BedFileIntersection:
                 _intersection = self._count_intersection(pr_b)
 
         except (OSError, IndexError, FileNotFoundError, StopIteration, AssertionError):
+            logging.error(f"Bed file {self.b} raised an error. Skipping {self.name} intersection.")
             _intersection = pd.Series(
                 data=pd.NA,
                 index=self.pr_a.df["Name"],

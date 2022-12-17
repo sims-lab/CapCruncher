@@ -1,26 +1,6 @@
 import json
 import pyranges as pr
 
-
-def aggregate(wc):
-    files = expand(
-        "capcruncher_annotate/{sample}/{sample}_part{part}_{combined}.parquet",
-        sample=wc.sample,
-        part=get_fastq_partition_numbers_for_sample(wc),
-        combined=["flashed", "pe"],
-    )
-
-    assert files
-    return files
-
-
-rule done:
-    input:
-        unpack(aggregate),
-    output:
-        touch("{sample}.done"),
-
-
 def validate_blacklist(blacklist):
     """Validate blacklist file."""
 
@@ -40,9 +20,11 @@ def configure_annotation_parameters():
     parameters = json.load(open(defaults_file))
 
     # Overwrite defaults with current options
+    parameters["viewpoints"]["fn"] = config["analysis"]["viewpoints"]
     parameters["viewpoints"]["fraction"] = config["analysis_optional"].get(
         "minimum_viewpoint_overlap", parameters["viewpoints"]["fraction"]
     )
+    parameters["viewpoints_count"]["fn"] = config["analysis"]["viewpoints"]
     parameters["viewpoints_count"]["fraction"] = config["analysis_optional"].get(
         "minimum_viewpoint_overlap", parameters["viewpoints"]["fraction"]
     )
@@ -128,8 +110,12 @@ rule annotate:
     params:
         annotation_files_and_params=format_annotation_parameters(),
         priority_chromosomes=format_priority_chromosome_list(),
-        prioritize_cis_slices="--prioritize-cis-slices" if config["analysis_optional"].get("prioritize_cis_slices", "") else "",
+        prioritize_cis_slices="--prioritize-cis-slices"
+        if config["analysis_optional"].get("prioritize_cis_slices", "")
+        else "",
     threads: 6
+    log:
+        "logs/capcruncher_annotate/{sample}/{sample}_part{part}_{combined}.log",
     shell:
         """
         capcruncher \
@@ -141,5 +127,5 @@ rule annotate:
         {params.annotation_files_and_params} \
         {params.priority_chromosomes} \
         {params.prioritize_cis_slices} \
-        -p {threads}
+        -p {threads} > {log} 2>&1
         """
