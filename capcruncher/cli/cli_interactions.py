@@ -1,6 +1,6 @@
 import click
-from numpy import multiply
 
+import logging
 
 @click.group()
 def cli():
@@ -41,7 +41,7 @@ def deduplicate(*args, **kwargs):
 
     """
 
-    from capcruncher.cli.reporters_deduplicate import deduplicate
+    from capcruncher.cli.interactions_deduplicate import deduplicate
     deduplicate(*args, **kwargs)
 
 
@@ -113,7 +113,7 @@ def differential(*args, **kwargs):
      i.e. SAMPLE_CONDITION_REPLICATE_(1|2).fastq.gz.
     """
 
-    from capcruncher.cli.reporters_differential import differential
+    from capcruncher.cli.interactions_differential import differential
 
     differential(*args, **kwargs)
 
@@ -146,7 +146,7 @@ def differential(*args, **kwargs):
 )
 @click.option("--gzip", help="Compress output using gzip", default=False, is_flag=True)
 @click.option(
-    "--scale_factor",
+    "--scale-factor",
     help="Scale factor to use for bedgraph normalisation",
     default=1e6,
     type=click.INT,
@@ -174,7 +174,7 @@ def pileup(*args, **kwargs):
     inter experiment comparisons and/or extract pilups binned into even genomic windows.
     """
 
-    from capcruncher.cli.reporters_pileup import pileup
+    from capcruncher.cli.interactions_pileup import pileup
 
     pileup(*args, **kwargs)
 
@@ -259,25 +259,25 @@ def count(*args, **kwargs):
             raise ValueError("Viewpoint path must be provided for cooler output")
 
 
-    from capcruncher.cli.reporters_count import count
+    from capcruncher.cli.interaction_count import count
 
     count(*args, **kwargs)
 
 
-@cli.group()
-def store():
-    """
-    Store reporter counts.
+# @cli.group()
+# def store():
+#     """
+#     Store reporter counts.
 
-    These commands store and manipulate reporter restriction fragment interaction
-    counts as cooler formated groups in HDF5 files.
+#     These commands store and manipulate reporter restriction fragment interaction
+#     counts as cooler formated groups in HDF5 files.
 
-    See subcommands for details.
+#     See subcommands for details.
 
-    """
+#     """
 
 
-@store.command(name="fragments")
+@cli.command(name="counts-to-cooler")
 @click.argument("counts", required=True)
 @click.option(
     "-f",
@@ -320,12 +320,12 @@ def store_fragments(*args, **kwargs):
     "capcruncher reporters count" and gerates a cooler formatted group in an HDF5 File.
     See `https://cooler.readthedocs.io/en/latest/` for further details.
     """
-    from capcruncher.cli.reporters_store import fragments
+    from capcruncher.cli.counts_store import fragments
 
     fragments(*args, **kwargs)
 
 
-@store.command(name="bins")
+@cli.command(name="fragments-to-bins")
 @click.argument("cooler_path", required=True)
 @click.option(
     "-b",
@@ -353,7 +353,7 @@ def store_fragments(*args, **kwargs):
     type=click.INT,
 )
 @click.option(
-    "--scale_factor",
+    "--scale-factor",
     help="Scaling factor used for normalisation",
     default=1e6,
     type=click.INT,
@@ -377,12 +377,12 @@ def store_bins(*args, **kwargs):
     genomic bins of a specified size. If the normalise option is selected,
     columns containing normalised counts are added to the pixels table of the output
     """
-    from capcruncher.cli.reporters_store import bins
+    from capcruncher.cli.counts_store import bins
 
     bins(*args, **kwargs)
 
 
-@store.command(name="merge")
+@cli.command(name="merge")
 @click.argument("coolers", required=True, nargs=-1)
 @click.option("-o", "--output", help="Output file name")
 def store_merge(*args, **kwargs):
@@ -392,7 +392,7 @@ def store_merge(*args, **kwargs):
     Produces a unified cooler with both restriction fragment and genomic bins whilst
     reducing the storage space required by hard linking the "bins" tables to prevent duplication.
     """
-    from capcruncher.cli.reporters_store import merge
+    from capcruncher.cli.counts_store import merge
 
     merge(*args, **kwargs)
 
@@ -449,7 +449,7 @@ def compare():
 )
 def bedgraphs_concat(*args, **kwargs):
 
-    from capcruncher.cli.reporters_compare import concat
+    from capcruncher.cli.interactions_compare import concat
 
     concat(*args, **kwargs)
 
@@ -479,6 +479,6 @@ def bedgraphs_concat(*args, **kwargs):
 @click.option("--suffix", help="Add a suffix before the file extension")
 def bedgraphs_summarise(*args, **kwargs):
 
-    from capcruncher.cli.reporters_compare import summarise
+    from capcruncher.cli.interactions_compare import summarise
 
     summarise(*args, **kwargs)

@@ -9,11 +9,13 @@ import sys
 
 
 # create logger
-logger = logging.getLogger("capcruncher")
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+formatter = logging.Formatter("%(levelname)s:%(asctime)s %(module)-20s %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 logger.setLevel(logging.INFO)
-logging.basicConfig(
-    format="%(levelname)s:%(asctime)s %(module)-20s %(message)s", level=logging.INFO
-)
+
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
@@ -93,8 +95,8 @@ def alignments():
     """Alignment annotation, identification and deduplication."""
 
 
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_reporters:cli")
-def reporters():
+@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_interactions:cli")
+def interactions():
     """Reporter counting, storing, comparison and pileups"""
 
 

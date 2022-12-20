@@ -9,6 +9,7 @@
 #     assert files
 #     return files
 
+
 def validate_custom_filtering():
 
     custom_filter_stages = config["analysis"].get("custom_filtering", "")
@@ -108,16 +109,24 @@ rule remove_duplicate_coordinates_flashed:
                 "capcruncher_filter/03_remove_duplicate_coordinates/{sample}/flashed"
             )
         ),
+        stats_read="capcruncher_statistics/deduplication_by_coordinate/data/{sample}_flashed.read.stats.csv",
+    params:
+        sample_name=lambda wildcards, output: wildcards.sample,
+        stats_prefix=lambda wildcards, output: output.stats_read.replace(
+            ".read.stats.csv", ""
+        ),
     log:
-        "logs/remove_duplicate_coordinates_flashed/{sample}.log"
+        "logs/remove_duplicate_coordinates_flashed/{sample}.log",
     shell:
         """
         capcruncher \
-        reporters \
+        interactions \
         deduplicate \
         {input.slices_directory} \
         -o {output.slices} \
         --read-type flashed \
+        --sample-name {params.sample_name} \
+        --stats-prefix {params.stats_prefix} \
         > {log} 2>&1
         """
 
@@ -126,17 +135,57 @@ rule remove_duplicate_coordinates_pe:
     input:
         slices_directory=rules.split_flashed_and_pe_datasets.output.slices_pe,
     output:
-        slices=temp(directory("capcruncher_filter/03_remove_duplicate_coordinates/{sample}/pe")),
+        slices=temp(
+            directory("capcruncher_filter/03_remove_duplicate_coordinates/{sample}/pe")
+        ),
+        stats_read="capcruncher_statistics/deduplication_by_coordinate/data/{sample}_pe.read.stats.csv",
+    params:
+        sample_name=lambda wildcards, output: wildcards.sample,
+        stats_prefix=lambda wildcards, output: output.stats_read.replace(
+            ".read.stats.csv", ""
+        ),
     log:
-        "logs/remove_duplicate_coordinates_pe/{sample}.log"
+        "logs/remove_duplicate_coordinates_pe/{sample}.log",
     shell:
         """
         capcruncher \
-        reporters \
+        interactions \
         deduplicate \
         {input.slices_directory} \
         -o {output.slices} \
         --read-type pe \
+        --sample-name {params.sample_name} \
+        --stats-prefix {params.stats_prefix} \
+        > {log} 2>&1
+        """
+
+
+rule cis_and_trans_stats:
+    input:
+        slices="capcruncher_filter/03_remove_duplicate_coordinates/{sample}/{combined}",
+    output:
+        stats="capcruncher_statistics/cis_and_trans_reporters/data/{sample}_{combined}.reporter.stats.csv",
+    params:
+        sample_name=lambda wildcards, output: wildcards.sample,
+        combined=lambda wildcards, output: wildcards.combined,
+        analysis_method=config["analysis"]["method"],
+    log:
+        "logs/cis_and_trans_stats/{sample}_{combined}.log",
+    resources:
+        mem_mb=config["pipeline"]["memory"],
+    priority: 10
+    shell:
+        """
+        capcruncher \
+        utilities \
+        cis-and-trans-stats \
+        {input.slices} \
+        -m {params.analysis_method} \
+        --sample-name {params.sample_name} \
+        --read-type {params.combined} \
+        -p {threads} \
+        --memory-limit {resources.mem_mb} \
+        -o {output.stats}
         > {log} 2>&1
         """
 
@@ -145,6 +194,11 @@ rule combine_flashed_and_pe_post_deduplication:
     input:
         slices_flashed=rules.remove_duplicate_coordinates_flashed.output.slices,
         slices_pe=rules.remove_duplicate_coordinates_pe.output.slices,
+        cis_and_trans_stats=lambda wc: expand(
+            "capcruncher_statistics/cis_and_trans_reporters/data/{sample}_{combined}.reporter.stats.csv",
+            sample=wc.sample,
+            combined=["flashed", "pe"],
+        ),
     output:
         slices=directory("capcruncher_filter/04_reporters/{sample}/"),
     shell:

@@ -1,4 +1,3 @@
-from audioop import reverse
 import os
 import pandas as pd
 import numpy as np
@@ -273,7 +272,12 @@ def format_alignment_filtering_read_stats(filtering_read_stats_path: os.PathLike
 
 
 def plot_alignment_filtering_read_summary(filtering_read_stats_path: os.PathLike):
+    
+
+    #breakpoint()
+    
     df = format_alignment_filtering_read_stats(filtering_read_stats_path)
+
     fig = px.bar(
         df,
         x="stat",
@@ -416,119 +420,102 @@ def plot_overall_summary(run_stats_path: os.PathLike):
     return fig
 
 
-def generate_report(
-    pipeline_statistics_path: os.PathLike,
-    pipeline_report_path: os.PathLike = "report.html",
-):
 
-    # Get paths
-    fastq_deduplication_path = os.path.join(
-        pipeline_statistics_path, "deduplication/deduplication.summary.csv"
-    )
-    fastq_trimming_path = os.path.join(
-        pipeline_statistics_path, "trimming/trimming.summary.csv"
-    )
-    fastq_digestion_hist_path = os.path.join(
-        pipeline_statistics_path, "digestion/digestion.histogram.csv"
-    )
-    fastq_digestion_read_path = os.path.join(
-        pipeline_statistics_path, "digestion/digestion.reads.csv"
-    )
-    reporter_read_path = os.path.join(
-        pipeline_statistics_path, "reporters/reporters.reads.csv"
-    )
-    reporter_cis_trans_path = os.path.join(
-        pipeline_statistics_path, "reporters/reporters.reporters.csv"
-    )
-    run_stats_path = os.path.join(pipeline_statistics_path, "run_statistics.csv")
+# Get paths
+fastq_deduplication_path = snakemake.input.fastq_deduplication
+fastq_digestion_hist_path = snakemake.input.digestion_histogram
+fastq_digestion_read_path = snakemake.input.digestion_read
+reporter_read_path = snakemake.input.reporters
+reporter_cis_trans_path = snakemake.input.cis_and_trans_stats
+run_stats_path = snakemake.input.read_level_stats
 
-    # # Extract HTML template
-    # dir_pipeline = os.path.dirname(os.path.abspath(__file__))
-    # path_html_template = os.path.join(dir_pipeline, "report_template.html")
+# # Extract HTML template
+# dir_pipeline = os.path.dirname(os.path.abspath(__file__))
+# path_html_template = os.path.join(dir_pipeline, "report_template.html")
 
-    html_header = """
-    <html>
-    <head>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <style>
-        body {
-            margin: 0 100;
-            background: whitesmoke;
-        }
-    </style>
-    </head>
-    <body>
-    <h1>Run statistics</h1>
-    <p>This report provides statistics for all major pre-processing and filtering steps performed by the pipeline.
-        All charts are interactive so hovering over areas of interest will provide additional information.</p>
-    """
+html_header = """
+<html>
+<head>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+    body {
+        margin: 0 100;
+        background: whitesmoke;
+    }
+</style>
+</head>
+<body>
+<h1>Run statistics</h1>
+<p>This report provides statistics for all major pre-processing and filtering steps performed by the pipeline.
+    All charts are interactive so hovering over areas of interest will provide additional information.</p>
+"""
 
-    html_footer = """</body>
-                     </html>"""
+html_footer = """</body>
+                    </html>"""
 
-    section_template = """    
-    <!-- *** Section SECTION_NUMBER *** --->
-    <h2>SECTION_NAME</h2>
-    <p>SECTION_DESCRIPTION</p>
-    FIGURE_HTML
-    """
-    # <iframe width="1000" height="1000" frameborder="0" seamless="seamless" scrolling="no" \
-    # src="PLOT_URL.embed?width=1000&height=1000"></iframe>
+section_template = """    
+<!-- *** Section SECTION_NUMBER *** --->
+<h2>SECTION_NAME</h2>
+<p>SECTION_DESCRIPTION</p>
+FIGURE_HTML
+"""
+# <iframe width="1000" height="1000" frameborder="0" seamless="seamless" scrolling="no" \
+# src="PLOT_URL.embed?width=1000&height=1000"></iframe>
 
-    figures = dict(
-        deduplication=plot_deduplication_stats(
-            fastq_deduplication_path
-        ),  # Deduplication
-        flashed=plot_flash_summary(run_stats_path),  # Flashed
-        digestion_reads=plot_digestion_read_summary(
-            fastq_digestion_read_path
-        ),  # Digestion reads
-        digestion_hist=plot_digestion_histogram(
-            fastq_digestion_hist_path
-        ),  # Digestion histogram
-        alignment_filtering=plot_alignment_filtering_read_summary(
-            reporter_read_path
-        ),  # Filtering
-        reporters=plot_reporter_summary(reporter_cis_trans_path),  # Reporters
-        overall=plot_overall_summary(run_stats_path),  # Overall
-    )
+figures = dict(
+    deduplication=plot_deduplication_stats(
+        fastq_deduplication_path
+    ),  # Deduplication
+    flashed=plot_flash_summary(run_stats_path),  # Flashed
+    digestion_reads=plot_digestion_read_summary(
+        fastq_digestion_read_path
+    ),  # Digestion reads
+    digestion_hist=plot_digestion_histogram(
+        fastq_digestion_hist_path
+    ),  # Digestion histogram
+    alignment_filtering=plot_alignment_filtering_read_summary(
+        reporter_read_path
+    ),  # Filtering
+    reporters=plot_reporter_summary(reporter_cis_trans_path),  # Reporters
+    overall=plot_overall_summary(run_stats_path),  # Overall
+)
 
-    figure_name_to_title_mapping = dict(
-        deduplication="FASTQ PCR Duplicate Removal",
-        flashed="Read pair combination statistics (FLASh)",
-        digestion_reads="Fastq <em>in silico</em> digestion statistics (read pair level)",
-        digestion_hist="Fastq <em>in silico</em> digestion statistics (slice level)",
-        alignment_filtering="Alignment filtering statistics",
-        reporters="Identified reporter statistics",
-        overall="Pipeline run statistics",
-    )
+figure_name_to_title_mapping = dict(
+    deduplication="FASTQ PCR Duplicate Removal",
+    flashed="Read pair combination statistics (FLASh)",
+    digestion_reads="Fastq <em>in silico</em> digestion statistics (read pair level)",
+    digestion_hist="Fastq <em>in silico</em> digestion statistics (slice level)",
+    alignment_filtering="Alignment filtering statistics",
+    reporters="Identified reporter statistics",
+    overall="Pipeline run statistics",
+)
 
-    report_text_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "report_text.yml"
-    )
-    with open(report_text_path, "r") as r:
-        report_text = yaml.safe_load(r)
+report_text_path = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "report_text.yml"
+)
+with open(report_text_path, "r") as r:
+    report_text = yaml.safe_load(r)
 
-    with open(pipeline_report_path, "w") as report:
+with open(snakemake.output[0], "w") as report:
 
-        report.write(html_header)
+    report.write(html_header)
 
-        for ii, (fig_name, fig) in enumerate(figures.items()):
+    for ii, (fig_name, fig) in enumerate(figures.items()):
 
-            fig_html = fig.to_html(
-                full_html=False,
-                include_plotlyjs=True if ii == 0 else False,
-                auto_play=False,
-            )
-            fig_title = figure_name_to_title_mapping[fig_name]
-            fig_text = report_text[fig_title]
+        fig_html = fig.to_html(
+            full_html=False,
+            include_plotlyjs=True if ii == 0 else False,
+            auto_play=False,
+        )
+        fig_title = figure_name_to_title_mapping[fig_name]
+        fig_text = report_text[fig_title]
 
-            report.write(
-                section_template.replace("SECTION_NUMBER", str(ii))
-                .replace("SECTION_NAME", fig_title)
-                .replace("SECTION_DESCRIPTION", fig_text)
-                .replace("FIGURE_HTML", fig_html)
-            )
+        report.write(
+            section_template.replace("SECTION_NUMBER", str(ii))
+            .replace("SECTION_NAME", fig_title)
+            .replace("SECTION_DESCRIPTION", fig_text)
+            .replace("FIGURE_HTML", fig_html)
+        )
 
-        report.write(html_footer)
+    report.write(html_footer)

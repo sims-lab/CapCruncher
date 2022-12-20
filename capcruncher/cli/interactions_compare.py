@@ -3,7 +3,7 @@ import logging
 import os
 import re
 import sys
-from typing import Literal, Tuple
+from typing import Literal, Tuple, List, Optional, Union, Dict, Any, Callable
 import cooler
 
 import numpy as np
@@ -41,9 +41,10 @@ def concat(
     if not viewpoint:
         viewpoints = [vp.strip("/") for vp in cooler.fileops.list_coolers(infiles[0])]
     else:
-        viewpoints = [viewpoint, ]
+        viewpoints = [
+            viewpoint,
+        ]
 
-    
     union_by_viewpoint = dict()
 
     for viewpoint in viewpoints:
@@ -56,8 +57,12 @@ def concat(
                     delayed(
                         lambda uri: (
                             get_bedgraph_name_from_cooler(uri),
-                            CoolerBedGraph(uri, region_to_limit=region if region else None)
-                            .extract_bedgraph(normalisation=normalisation, **norm_kwargs)
+                            CoolerBedGraph(
+                                uri, region_to_limit=region if region else None
+                            )
+                            .extract_bedgraph(
+                                normalisation=normalisation, **norm_kwargs
+                            )
                             .pipe(BedTool.from_dataframe),
                         )
                     )(uri)
@@ -85,7 +90,7 @@ def concat(
             union.to_csv(output, sep="\t", index=False)
 
         union_by_viewpoint[viewpoint] = union
-    
+
     return union_by_viewpoint
 
 
@@ -109,7 +114,12 @@ def get_summary_functions(methods):
     return summary_functions
 
 
-def get_groups(columns, group_names, group_columns):
+def get_groups(
+    columns: Union[pd.Index, list],
+    group_names: List[str],
+    group_columns: List[Union[str, int]],
+) -> Dict[str, str]:
+    """Extracts groups from group_columns and returns a dictionary of column names to group names."""
 
     groups = dict()
 
@@ -125,12 +135,6 @@ def get_groups(columns, group_names, group_columns):
             groups[col_name] = group_name
 
     return groups
-
-
-# def get_grouped_dataframe(
-#     df: pd.DataFrame, group_name: str, groups: dict, agg_func: function
-# ):
-#     return df.loc[:, groups[group_name]].pipe(agg_func, axis=1)
 
 
 def summarise(
@@ -176,11 +180,12 @@ def summarise(
 
     # Write out groupby aggregations
     logging.info("Writing aggregations")
+
     for group in group_names:
         if output_format == "bedgraph":
 
             df_output = df_agg[["chrom", "start", "end", group, "aggregation"]]
-            
+
             for aggregation, df in df_output.groupby("aggregation"):
                 logging.info(f"Writing {group} {aggregation}")
                 df.drop(columns="aggregation").to_csv(

@@ -3,10 +3,13 @@ import pathlib
 import utils
 
 
-def get_fastq_partition_numbers_for_sample(wc):
+def get_fastq_partition_numbers_for_sample(wc, sample_name=None):
 
-    checkpoint_output = checkpoints.split.get(**wc).output[0]
-    sample_name = wc.sample
+    if not sample_name:
+        sample_name = wc.sample
+
+    checkpoint_output = checkpoints.split.get(sample=sample_name).output[0]    
+
     parts = glob_wildcards(
         os.path.join(
             checkpoint_output, "".join([sample_name, "_part{part}_{read}.fastq.gz"])
@@ -14,25 +17,6 @@ def get_fastq_partition_numbers_for_sample(wc):
     ).part
 
     return set(parts)
-
-
-def get_hashed_reads(wc):
-    return expand(
-        "capcruncher_preprocessing/02_deduplicated/{sample}/{sample}_{part}.pkl",
-        sample=wc.sample,
-        part=get_fastq_partition_numbers_for_sample(wc),
-    )
-
-
-# def aggregate(wc):
-#     files = expand(
-#         "capcruncher_preprocessing/05_digested/{sample}/{sample}_part{part}_{combined}.fastq.gz",
-#         sample=wc.sample,
-#         part=get_fastq_partition_numbers_for_sample(wc),
-#         combined=["flashed", "pe"],
-#     )
-#     assert files
-#     return files
 
 
 checkpoint split:
@@ -49,6 +33,8 @@ checkpoint split:
         compression_level=f"--compression_level {config['pipeline'].get('compression', 0)}"
         if COMPRESS_FASTQ
         else "",
+    log:
+        "logs/split/{sample}.log",
     shell:
         """
         mkdir {output} && \
@@ -66,7 +52,8 @@ checkpoint split:
         {params.gzip} \
         {params.compression_level} \
         -p \
-        {threads}
+        {threads} \
+        > {log} 2>&1
         """
 
 
@@ -76,6 +63,8 @@ rule deduplication_parse:
         fq2="capcruncher_preprocessing/01_split/{sample}/{sample}_part{part}_2.fastq.gz",
     output:
         temp("capcruncher_preprocessing/02_deduplicated/{sample}/{sample}_{part}.pkl"),
+    log:
+        "logs/deduplication_fastq/parse/{sample}_part{part}.log",
     shell:
         """
         capcruncher \
@@ -85,15 +74,21 @@ rule deduplication_parse:
         {input.fq1} \
         {input.fq2} \
         -o \
-        {output}
+        {output} \
+        > {log} 2>&1
         """
 
 
 rule deduplication_identify:
     input:
-        hashed_reads=get_hashed_reads,
+        hashed_reads=lambda wc: expand(
+            "capcruncher_preprocessing/02_deduplicated/{{sample}}/{{sample}}_{part}.pkl",
+            part=get_fastq_partition_numbers_for_sample(wc),
+        ),
     output:
         temp("capcruncher_preprocessing/02_deduplicated/{sample}/{sample}.pkl"),
+    log:
+        "logs/deduplication_fastq/identify/{sample}.log",
     shell:
         """
         capcruncher \
@@ -103,6 +98,7 @@ rule deduplication_identify:
         {input.hashed_reads} \
         -o \
         {output}
+        > {log} 2>&1
         """
 
 
@@ -118,12 +114,12 @@ rule deduplication_remove:
         fq2=temp(
             "capcruncher_preprocessing/02_deduplicated/{sample}/{sample}_part{part}_2.fastq.gz"
         ),
-        stats=temp(
-            "capcruncher_statistics/deduplication/data/{sample}_part{part}.deduplication.csv"
-        ),
+        stats="capcruncher_statistics/deduplication/data/{sample}_part{part}.deduplication.csv",
     params:
         prefix_fastq="capcruncher_preprocessing/02_deduplicated/{sample}/{sample}_part{part}",
         prefix_stats="capcruncher_statistics/deduplication/data/{sample}_part{part}",
+    log:
+        "logs/deduplication_fastq/remove/{sample}_part{part}.log",
     threads: 4
     shell:
         """
@@ -144,7 +140,8 @@ rule deduplication_remove:
         -p \
         {threads} \
         --hash-read-name \
-        --gzip
+        --gzip \
+        > {log} 2>&1
         """
 
 
@@ -177,9 +174,15 @@ rule flash:
         fq1="capcruncher_preprocessing/03_trimmed/{sample}/{sample}_part{part}_1.fastq.gz",
         fq2="capcruncher_preprocessing/03_trimmed/{sample}/{sample}_part{part}_2.fastq.gz",
     output:
-        flashed="capcruncher_preprocessing/04_flashed/{sample}/{sample}_part{part}.extendedFrags.fastq.gz",
-        pe1="capcruncher_preprocessing/04_flashed/{sample}/{sample}_part{part}.notCombined_1.fastq.gz",
-        pe2="capcruncher_preprocessing/04_flashed/{sample}/{sample}_part{part}.notCombined_2.fastq.gz",
+        flashed=temp(
+            "capcruncher_preprocessing/04_flashed/{sample}/{sample}_part{part}.extendedFrags.fastq.gz"
+        ),
+        pe1=temp(
+            "capcruncher_preprocessing/04_flashed/{sample}/{sample}_part{part}.notCombined_1.fastq.gz"
+        ),
+        pe2=temp(
+            "capcruncher_preprocessing/04_flashed/{sample}/{sample}_part{part}.notCombined_2.fastq.gz"
+        ),
     params:
         outdir="capcruncher_preprocessing/04_flashed/{sample}/{sample}_part{part}",
     threads: 8
@@ -195,7 +198,9 @@ rule digest_flashed_combined:
     input:
         flashed="capcruncher_preprocessing/04_flashed/{sample}/{sample}_part{part}.extendedFrags.fastq.gz",
     output:
-        digested="capcruncher_preprocessing/05_digested/{sample}/{sample}_part{part}_flashed.fastq.gz",
+        digested=temp(
+            "capcruncher_preprocessing/05_digested/{sample}/{sample}_part{part}_flashed.fastq.gz"
+        ),
         stats_read="capcruncher_statistics/digestion/data/{sample}_part{part}_flashed.digestion.read.summary.csv",
         stats_unfiltered="capcruncher_statistics/digestion/data/{sample}_part{part}_flashed.digestion.unfiltered.histogram.csv",
         stats_filtered="capcruncher_statistics/digestion/data/{sample}_part{part}_flashed.digestion.filtered.histogram.csv",
@@ -234,7 +239,9 @@ rule digest_flashed_pe:
         pe1="capcruncher_preprocessing/04_flashed/{sample}/{sample}_part{part}.notCombined_1.fastq.gz",
         pe2="capcruncher_preprocessing/04_flashed/{sample}/{sample}_part{part}.notCombined_2.fastq.gz",
     output:
-        digested="capcruncher_preprocessing/05_digested/{sample}/{sample}_part{part}_pe.fastq.gz",
+        digested=temp(
+            "capcruncher_preprocessing/05_digested/{sample}/{sample}_part{part}_pe.fastq.gz"
+        ),
         stats_read="capcruncher_statistics/digestion/data/{sample}_part{part}_pe.digestion.read.summary.csv",
         stats_unfiltered="capcruncher_statistics/digestion/data/{sample}_part{part}_pe.digestion.unfiltered.histogram.csv",
         stats_filtered="capcruncher_statistics/digestion/data/{sample}_part{part}_pe.digestion.filtered.histogram.csv",
@@ -267,10 +274,3 @@ rule digest_flashed_pe:
         {wildcards.sample} \
         > {log} 2>&1
         """
-
-
-# rule done:
-#     input:
-#         unpack(aggregate),
-#     output:
-#         touch("{sample}.done"),

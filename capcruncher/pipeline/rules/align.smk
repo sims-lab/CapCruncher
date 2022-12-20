@@ -9,6 +9,7 @@ def get_bam_partitions(wc):
     )
     return bams
 
+
 rule align_bowtie2:
     input:
         fastq="capcruncher_preprocessing/05_digested/{sample}/{sample}_part{part}_{combined}.fastq.gz",

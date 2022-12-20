@@ -72,7 +72,7 @@ def deduplicate(
     )
 
     # Calculate the number of slices in the input
-    n_reads_total = slices_tbl_raw.groupby("parent_id").count().execute(limit=None)
+    n_reads_total = slices_tbl_raw.groupby("parent_id").count()["count"].sum().execute(limit=None)
 
     # Calculate the number of slices in the output
     n_reads_unique = parent_ids_unique.shape[0]

@@ -8,7 +8,10 @@ from snakemake.utils import min_version
 
 import capcruncher.pipeline.utils as pipeline_utils
 
+
 configfile: "config.yml"
+
+
 # container: "library://asmith151/ngs-pipeline/ngs"
 
 ###########################
@@ -19,13 +22,21 @@ pipeline_utils.format_config_dict(config)
 ### Experimental design ####
 
 ## Essential files ##
-fastq_samples = pipeline_utils.GenericFastqSamples.from_files(list(pathlib.Path(".").glob("*.fastq*")))
+fastq_samples = pipeline_utils.GenericFastqSamples.from_files(
+    list(pathlib.Path(".").glob("*.fastq*"))
+)
 
 VIEWPOINTS = config["analysis"]["viewpoints"]
+VIEWPOINT_NAMES = pd.read_table(
+    VIEWPOINTS, names=["chrom", "start", "end", "name"], header=None
+)["name"].to_list()
+
 
 ## Analysis files ##
 if os.path.exists(config["analysis"].get("design", None)):
-    DESIGN = pd.read_table(config["analysis"]["design"], sep=r"\s+|,|\t", engine="python")
+    DESIGN = pd.read_table(
+        config["analysis"]["design"], sep=r"\s+|,|\t", engine="python"
+    )
 else:
     DESIGN = fastq_samples.experimental_design
 
@@ -37,31 +48,34 @@ HIGH_NUMBER_OF_VIEWPOINTS = pipeline_utils.has_high_viewpoint_number(VIEWPOINTS,
 BLACKLIST = pipeline_utils.get_blacklist(config)
 BINSIZES = pipeline_utils.get_binsizes(config)
 PERFORM_BINNING = True if all(bs > 0 for bs in BINSIZES) else False
-MAKE_HUB = pipeline_utils.is_on(config["hub"]["create"]) and not HIGH_NUMBER_OF_VIEWPOINTS
+MAKE_HUB = (
+    pipeline_utils.is_on(config["hub"]["create"]) and not HIGH_NUMBER_OF_VIEWPOINTS
+)
 PERFORM_PLOTTING = pipeline_utils.can_perform_plotting(config)
 FASTQ_DEDUPLICATE = config["deduplication"].get("pre-dedup", False)
 COMPRESS_FASTQ = config["pipeline"].get("compression", 0) != 0
 
 ## Pipeline variables ##
 SAMPLE_NAMES = DESIGN["sample"]
-FASTQ_FILE_NAMES = [*fastq_samples.design["fq1"].apply(str).to_list(), 
-                   *fastq_samples.design["fq2"].apply(str).to_list()]
+FASTQ_FILE_NAMES = [
+    *fastq_samples.design["fq1"].apply(str).to_list(),
+    *fastq_samples.design["fq2"].apply(str).to_list(),
+]
 
-include: "rules/digest.smk",
-include: "rules/fastq.smk",
-include: "rules/align.smk",
-include: "rules/annotate.smk",
-include: "rules/filter.smk",
-include: "rules/pileup.smk",
+
+include: "rules/digest.smk"
+include: "rules/fastq.smk"
+include: "rules/qc_fastq.smk"
+include: "rules/align.smk"
+include: "rules/annotate.smk"
+include: "rules/filter.smk"
+include: "rules/pileup.smk"
+include: "rules/compare.smk"
+include: "rules/statistics.smk"
+include: "rules/visualise.smk"
 
 
 rule all:
     input:
-        digested = "capcruncher_resources/restriction_enzyme_map/genome.digest.bed.gz",
-        done = expand("{sample}.done", sample=SAMPLE_NAMES),
-        
-
-
-    
-        
-
+        qc=rules.multiqc_raw.output.report,
+        hub=rules.create_ucsc_hub.output[0],

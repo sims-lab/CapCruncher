@@ -13,7 +13,7 @@ from capcruncher.tools.io import (
     FragmentCountingProcess,
     CCCountsWriterProcess,
 )
-import capcruncher.cli.reporters_store
+import capcruncher.cli.counts_store
 import capcruncher.tools.storage
 from capcruncher.tools.count import get_counts_from_tsv, get_counts_from_tsv_by_batch
 from capcruncher.utils import get_categories_from_hdf5_column, get_file_type
@@ -173,6 +173,6 @@ def count(
     # TODO: Allow other than cooler outputs
     logging.info(f"Making final cooler at {output}")
     output_files = glob.glob(os.path.join(tmpdir.name, "*.hdf5"))
-    capcruncher.cli.reporters_store.merge(output_files, output=output)
+    capcruncher.cli.counts_store.merge(output_files, output=output)
 
     tmpdir.cleanup()

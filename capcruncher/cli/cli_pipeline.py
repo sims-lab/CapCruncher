@@ -87,10 +87,9 @@ def pipeline_snakemake(pipeline_options, show_help=False, show_version=False):
 
     if pipeline_options:
         cmd.extend(pipeline_options)
+    
+    # Implicitly deal with a missing --cores option
+    if not "--cores" in pipeline_options and not "-c" in pipeline_options:
+        cmd.append("--cores 1")
         
     completed = subprocess.run(cmd)
-
-    if not completed.returncode == 0:
-        raise RuntimeError(
-            "CapCruncher pipeline failed. Check the log for details"
-        )

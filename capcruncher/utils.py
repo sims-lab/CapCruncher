@@ -319,6 +319,7 @@ def categorise_tracks(ser: pd.Series) -> list:
     mapping = {
         "raw": "Replicates",
         "normalised": "Replicates_Scaled",
+        "norm": "Replicates_Scaled",
         "summary": "Samples_Summarised",
         "subtraction": "Samples_Compared",
     }

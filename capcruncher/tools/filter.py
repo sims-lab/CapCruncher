@@ -83,9 +83,9 @@ class SliceFilter:
         # Tweak format slices dataframe to be consistent
         self.slices = slices.sort_values(["parent_read", "slice"]).assign(
             blacklist=lambda df: df["blacklist"].astype(float),
-            restriction_fragment=lambda df: df["restriction_fragment"].astype(
-                pd.Int64Dtype()
-            ),
+            restriction_fragment=lambda df: df["restriction_fragment"].astype(pd.Int64Dtype()),
+            capture_count=lambda df: df["capture_count"].fillna(0),
+            exclusion_count=lambda df: df["exclusion_count"].fillna(0),
         )
 
         if filter_stages:

@@ -12,7 +12,6 @@ import logging
 import glob
 from capcruncher.utils import get_file_type
 
-
 def strip_cmdline_args(args):
 
     formatted_args = dict()
@@ -86,7 +85,7 @@ def repartition_csvs(
 @click.argument("slices")
 @click.option("-o", "--output", help="Output file name")
 @click.option("-m", "--method", type=click.Choice(["capture", "tri", "tiled"]))
-@click.option("--file-type", type=click.Choice(["parquet", "hdf5", "tsv"]))
+@click.option("--file-type", type=click.Choice(["parquet", "hdf5", "tsv"]), default="parquet")
 @click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
 @click.option(
     "--read-type",
@@ -115,7 +114,9 @@ def cis_and_trans_stats(
     n_cores: int = 1,
     memory_limit: str = "1G",
 ):
-
+    import warnings 
+    warnings.filterwarnings("ignore")
+    
     from capcruncher.tools.filter import (
         CCSliceFilter,
         TriCSliceFilter,

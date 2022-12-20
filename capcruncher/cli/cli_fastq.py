@@ -2,6 +2,8 @@ from os import name
 import click
 from capcruncher.cli import UnsortedGroup
 
+import logging
+
 @click.group()
 def cli():
     """Contains methods for fastq splitting, deduplicating and digestion."""
