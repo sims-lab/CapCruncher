@@ -132,45 +132,6 @@ def bed_has_duplicate_names(bed: Union[str, BedTool]) -> bool:
         return True
 
 
-def get_re_site(recognition_site: str = None) -> str:
-
-    """
-    Obtains the recogniton sequence for a supplied restriction enzyme or correctly
-    formats a supplied recognition sequence.
-
-    Args:
-     cut_sequence - DNA sequence to use for fasta digestion e.g. "GATC"
-     restriction_enzyme - Name of restriction enzyme e.g. DpnII  (case insensitive)
-
-    Returns:
-     recognition sequence e.g. "GATC"
-
-    Raises:
-     ValueError: Error if restriction_enzyme is not in known enzymes
-
-    """
-
-    known_enzymes = {
-        "dpnii": "GATC",
-        "mboi": "GATC",
-        "hindiii": "AAGCTT",
-        "ecori": "GAATTC",
-        "nlaiii": "CATG",
-    }
-
-    if re.match(r"[GgAaTtCc]+", recognition_site):  # matches a DNA sequence
-        cutsite = recognition_site.upper()  # Just uppercase convert and return
-
-    elif recognition_site.lower() in known_enzymes:
-        cutsite = known_enzymes[recognition_site.lower()]
-
-    else:
-        logging.error("No restriction site or recognised enzyme provided")
-        raise ValueError("No restriction site or recognised enzyme provided")
-
-    return cutsite
-
-
 def hash_column(col: Iterable, hash_type=64) -> list:
     """
     Convinience function to perform hashing using xxhash on an iterable.

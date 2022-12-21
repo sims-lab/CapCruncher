@@ -1,7 +1,7 @@
 import pandas as pd
 
 from capcruncher.utils import read_dataframes
-from capcruncher.tools.statistics import collate_cis_trans_data
+from capcruncher.api.statistics import collate_cis_trans_data
 
 # Collate data
 df = collate_cis_trans_data(snakemake.input.cis_and_trans_stats)

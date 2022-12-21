@@ -7,7 +7,7 @@ import yaml
 import seaborn as sns
 
 import coolbox.api as cb
-from capcruncher.tools.plotting import (
+from capcruncher.api.plotting import (
     ScaleBar,
     SimpleBed,
     CCBigWig,

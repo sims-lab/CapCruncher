@@ -9,8 +9,7 @@ Script generates a bed file of restriction fragment locations in a given genome.
 """
 import pysam
 import xopen
-from capcruncher.tools.digest import DigestedChrom
-from capcruncher.utils import get_re_site
+from capcruncher.api.digest import DigestedChrom, get_re_site
 from typing import Iterator
 import os
 import logging

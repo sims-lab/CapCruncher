@@ -8,7 +8,7 @@ import cooler
 
 import numpy as np
 import pandas as pd
-from capcruncher.tools.pileup import CoolerBedGraph
+from capcruncher.api.pileup import CoolerBedGraph
 from capcruncher.utils import get_cooler_uri
 from joblib import Parallel, delayed
 from pybedtools import BedTool

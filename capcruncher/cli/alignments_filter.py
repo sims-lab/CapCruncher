@@ -5,8 +5,8 @@ import logging
 import numpy as np
 
 
-from capcruncher.tools.io import parse_bam
-from capcruncher.tools.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
+from capcruncher.api.io import parse_bam
+from capcruncher.api.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
 
 SLICE_FILTERS = {
     "capture": CCSliceFilter,

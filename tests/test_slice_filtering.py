@@ -4,9 +4,9 @@ import pysam
 import os
 import numpy as np
 
-from capcruncher.tools.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
+from capcruncher.api.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
 from capcruncher.cli.alignments_filter import merge_annotations
-from capcruncher.tools.io import parse_bam
+from capcruncher.api.io import parse_bam
 
 @pytest.fixture(scope="module")
 def data_path():

@@ -8,15 +8,12 @@ import more_itertools
 import multiprocessing
 
 import pandas as pd
-from capcruncher.tools.io import (
+from capcruncher.api.io import (
     CCParquetReaderProcess,
     FragmentCountingProcess,
     CCCountsWriterProcess,
 )
-import capcruncher.cli.counts_store
-import capcruncher.tools.storage
-from capcruncher.tools.count import get_counts_from_tsv, get_counts_from_tsv_by_batch
-from capcruncher.utils import get_categories_from_hdf5_column, get_file_type
+from capcruncher.api.storage import merge_coolers
 
 def get_number_of_reader_threads(n_cores):
     threads = (n_cores // 2)
@@ -173,6 +170,6 @@ def count(
     # TODO: Allow other than cooler outputs
     logging.info(f"Making final cooler at {output}")
     output_files = glob.glob(os.path.join(tmpdir.name, "*.hdf5"))
-    capcruncher.cli.counts_store.merge(output_files, output=output)
+    merge_coolers(output_files, output=output)
 
     tmpdir.cleanup()

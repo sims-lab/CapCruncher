@@ -1,5 +1,5 @@
 import pandas as pd
-from capcruncher.tools.statistics import read_dataframes, collate_read_data
+from capcruncher.api.statistics import read_dataframes, collate_read_data
 
 # Read in the data
 df = collate_read_data(snakemake.input)

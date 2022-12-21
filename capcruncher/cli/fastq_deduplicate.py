@@ -6,21 +6,15 @@ Created on Fri Oct  4 13:47:20 2019
 """
 import multiprocessing
 import os
-import sys
-from collections import Counter
-from multiprocessing import SimpleQueue
 from typing import List, Tuple, Union
-
-import click
 import numpy as np
 import pandas as pd
 import tqdm
-from capcruncher.tools.deduplicate import (ReadDeduplicationParserProcess,
+from capcruncher.api.deduplicate import (ReadDeduplicationParserProcess,
                                            ReadDuplicateRemovalProcess)
-from capcruncher.tools.io import FastqReaderProcess, FastqWriterProcess
-from capcruncher.tools.statistics import DeduplicationStatistics
+from capcruncher.api.io import FastqReaderProcess, FastqWriterProcess
+from capcruncher.api.statistics import DeduplicationStatistics
 from capcruncher.utils import get_file_type, load_dict, save_dict
-from xopen import xopen
 
 
 def parse(input_files: Tuple, output: os.PathLike = "out.json", read_buffer: int = 1e5):

@@ -1,6 +1,6 @@
 import pandas as pd
 from capcruncher.utils import read_dataframes
-from capcruncher.tools.statistics import collate_read_data, collate_histogram_data
+from capcruncher.api.statistics import collate_read_data, collate_histogram_data
 
 # Collate data
 df_read_data = collate_read_data(snakemake.input.read_level_stats)

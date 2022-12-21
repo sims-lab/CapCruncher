@@ -4,7 +4,7 @@ import queue
 from capcruncher.utils import MockFastqRecord
 import os
 from multiprocessing import SimpleQueue
-from capcruncher.tools.io import (
+from capcruncher.api.io import (
     FastqReaderProcess,
     FastqWriterProcess,
     FastqWriterSplitterProcess,

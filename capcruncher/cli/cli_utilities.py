@@ -117,7 +117,7 @@ def cis_and_trans_stats(
     import warnings 
     warnings.filterwarnings("ignore")
     
-    from capcruncher.tools.filter import (
+    from capcruncher.api.filter import (
         CCSliceFilter,
         TriCSliceFilter,
         TiledCSliceFilter,

@@ -6,11 +6,11 @@ import pandas as pd
 import pytest
 import ujson
 from capcruncher.cli import fastq_deduplicate
-from capcruncher.tools.deduplicate import (
+from capcruncher.api.deduplicate import (
     ReadDeduplicationParserProcess,
     ReadDuplicateRemovalProcess,
 )
-from capcruncher.tools.io import FastqReaderProcess
+from capcruncher.api.io import FastqReaderProcess
 from capcruncher.utils import MockFastqRecord, get_file_type, load_dict, save_dict
 from pybedtools.bedtool import BedTool
 import pysam

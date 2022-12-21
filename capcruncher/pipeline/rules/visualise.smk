@@ -43,3 +43,4 @@ rule create_ucsc_hub:
         "scripts/make_ucsc_hub.py"
 
 
+localrules: create_ucsc_hub

@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import pytest
-from capcruncher.tools.annotate import BedFileIntersection
+from capcruncher.api.annotate import BedFileIntersection
 from pandas.api.types import is_numeric_dtype, is_string_dtype, is_categorical_dtype, is_object_dtype
 import ray
 

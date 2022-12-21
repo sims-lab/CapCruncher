@@ -259,7 +259,7 @@ def count(*args, **kwargs):
             raise ValueError("Viewpoint path must be provided for cooler output")
 
 
-    from capcruncher.cli.interaction_count import count
+    from capcruncher.cli.interactions_count import count
 
     count(*args, **kwargs)
 
@@ -320,7 +320,7 @@ def store_fragments(*args, **kwargs):
     "capcruncher reporters count" and gerates a cooler formatted group in an HDF5 File.
     See `https://cooler.readthedocs.io/en/latest/` for further details.
     """
-    from capcruncher.cli.counts_store import fragments
+    from capcruncher.cli.interactions_store import fragments
 
     fragments(*args, **kwargs)
 
@@ -377,7 +377,7 @@ def store_bins(*args, **kwargs):
     genomic bins of a specified size. If the normalise option is selected,
     columns containing normalised counts are added to the pixels table of the output
     """
-    from capcruncher.cli.counts_store import bins
+    from capcruncher.cli.interactions_store import bins
 
     bins(*args, **kwargs)
 
@@ -392,9 +392,9 @@ def store_merge(*args, **kwargs):
     Produces a unified cooler with both restriction fragment and genomic bins whilst
     reducing the storage space required by hard linking the "bins" tables to prevent duplication.
     """
-    from capcruncher.cli.counts_store import merge
+    from capcruncher.api.storage import merge_coolers
 
-    merge(*args, **kwargs)
+    merge_coolers(*args, **kwargs)
 
 
 @cli.group()

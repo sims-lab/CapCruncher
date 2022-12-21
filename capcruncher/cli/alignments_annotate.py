@@ -11,7 +11,7 @@ warnings.simplefilter("ignore")
 import os
 
 import pandas as pd
-from capcruncher.tools.annotate import BedFileIntersection
+from capcruncher.api.annotate import BedFileIntersection
 from capcruncher.utils import (
     bed_has_name,
     convert_bed_to_dataframe,
@@ -103,15 +103,14 @@ def annotate(
     actions: Tuple = None,
     bed_files: Tuple = None,
     names: Tuple = None,
-    dtypes: Tuple[bool] = None,
     overlap_fractions: Tuple = None,
     output: os.PathLike = None,
     duplicates: str = "remove",
     n_cores: int = 1,
-    invalid_bed_action: str = "error",
     blacklist: str = "",
     prioritize_cis_slices: bool = False,
     priority_chroms: str = "",
+    **kwargs,
 ):
     """
     Annotates a bed file with other bed files using bedtools intersect.

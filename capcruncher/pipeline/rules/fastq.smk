@@ -1,6 +1,7 @@
 import os
 import pathlib
 import utils
+import json
 
 
 def get_fastq_partition_numbers_for_sample(wc, sample_name=None):
@@ -8,15 +9,28 @@ def get_fastq_partition_numbers_for_sample(wc, sample_name=None):
     if not sample_name:
         sample_name = wc.sample
 
-    checkpoint_output = checkpoints.split.get(sample=sample_name).output[0]    
+    n_partitions_path = f"capcruncher_resources/n_partitions/{sample_name}.json"
 
-    parts = glob_wildcards(
-        os.path.join(
-            checkpoint_output, "".join([sample_name, "_part{part}_{read}.fastq.gz"])
-        )
-    ).part
+    if os.path.exists(n_partitions_path):
+        with open(n_partitions_path, "r") as f:
+            n_partitions = json.load(f)
+    else:
+        checkpoint_output = checkpoints.split.get(sample=sample_name).output[0]
+        n_partitions = glob_wildcards(
+            os.path.join(
+                checkpoint_output, "".join([sample_name, "_part{part}_{read}.fastq.gz"])
+            )
+        ).part
 
-    return set(parts)
+        n_partitions = list(set(n_partitions))
+
+        if not os.path.exists("capcruncher_resources/n_partitions"):
+            os.makedirs("capcruncher_resources/n_partitions")
+
+        with open(n_partitions_path, "w") as f:
+            json.dump(n_partitions, f)
+
+    return n_partitions
 
 
 checkpoint split:
@@ -24,7 +38,7 @@ checkpoint split:
         fq1="{sample}_1.fastq.gz",
         fq2="{sample}_2.fastq.gz",
     output:
-        directory("capcruncher_preprocessing/01_split/{sample}"),
+        directory(temp("capcruncher_preprocessing/01_split/{sample}")),
     threads: 2
     params:
         prefix="capcruncher_preprocessing/01_split/{sample}/{sample}",
@@ -143,6 +157,36 @@ rule deduplication_remove:
         --gzip \
         > {log} 2>&1
         """
+
+
+# rule deduplication_finished:
+#     input:
+#         deduplication_performed=lambda wc: expand(
+#             "capcruncher_statistics/deduplication/data/{{sample}}_part{part}.deduplication.csv",
+#             part=get_fastq_partition_numbers_for_sample(wc),
+#         ),
+#     output:
+#         "capcruncher_reseources/sentinels/{sample}.deduplication_finished.sentinel",
+#     shell:
+#         """
+#         touch {output}
+#         """
+
+
+# rule remove_split_files:
+#     input:
+#         split_dir="capcruncher_preprocessing/01_split/{sample}/",
+#         deduplication_finished=rules.deduplication_finished.output,
+#     output:
+#         "capcruncher_resources/n_partitions/{sample}_removed.sentinel",
+#     log:
+#         "logs/remove_split_files/{sample}.log",
+#     shell:
+#         """
+#         rm -f {input.split_dir}/*.fastq.gz && \
+#         touch {output} && \
+#         echo "Removed split files for {wildcards.sample}" > {log}
+#         """
 
 
 rule trim:

@@ -5,7 +5,7 @@ import pytest
 import os
 
 from click.testing import CliRunner
-from capcruncher.tools.digest import DigestedRead, DigestedChrom, ReadDigestionProcess
+from capcruncher.api.digest import DigestedRead, DigestedChrom, ReadDigestionProcess
 from capcruncher.utils import MockFastaRecord, MockFastqRecord
 from multiprocessing import SimpleQueue
 

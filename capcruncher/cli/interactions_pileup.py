@@ -8,8 +8,8 @@ import tempfile
 from typing import Literal, Union
 
 import cooler
-from capcruncher.tools.pileup import CoolerBedGraph, CoolerBedGraphWindowed
-from capcruncher.tools.storage import CoolerBinner
+from capcruncher.api.pileup import CoolerBedGraph, CoolerBedGraphWindowed
+from capcruncher.api.storage import CoolerBinner
 
 
 def pileup(
