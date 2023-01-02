@@ -36,7 +36,6 @@ def pipeline(pipeline_options, show_help=False, show_version=False):
         click.echo(f"\n{output}")
         sys.exit(0)
 
-
     if pipeline_options:
         excluded_options = ["--version", "make", "run", "show"]
 
