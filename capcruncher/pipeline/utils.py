@@ -147,6 +147,8 @@ class GenericFastqSamples:
     @classmethod
     def from_files(cls, files: List[Union[pathlib.Path, str]]) -> (pd.DataFrame):
 
+        assert len(files) > 0, "No FASTQ files provided"
+
         try:
             df = pd.DataFrame(files, columns=["fn"])
 
