@@ -15,3 +15,14 @@ repos:
       - id: ruff
       # Respect `exclude` and `extend-exclude` settings.
         args: ["--force-exclude"]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0  # Use the ref you want to point at
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+    -   id: check-case-conflict
+    -   id: check-merge-conflict
+    -   id: check-symlinks
+    -   id: check-json
+    -   id: debug-statements
