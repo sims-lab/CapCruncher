@@ -3,14 +3,17 @@ from functools import cached_property
 from importlib import import_module, metadata
 import logging
 
-
 # create logger
-logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-formatter = logging.Formatter("%(levelname)s:%(asctime)s %(module)-20s %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+logging.getLogger("capcruncher")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(asctime)s %(module)-20s %(message)s")
+
+
+# logger = logging.getLogger("capcruncher")
+# handler = logging.StreamHandler()
+# formatter = logging.Formatter("%(levelname)s:%(asctime)s %(module)-20s %(message)s")
+# handler.setFormatter(formatter)
+# logger.addHandler(handler)
+# logger.setLevel(logging.WARNING)
 
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
@@ -61,16 +64,6 @@ def cli():
     An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.
     """
 
-
-# @cli.command()
-# def pipeline(**kwargs):
-#     """
-#     CapCruncher automated data processing pipeline methods.
-#     """
-#     from capcruncher.cli.cli_pipeline import pipeline
-#     pipeline(**kwargs)
-
-
 @cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_fastq:cli")
 def fastq():
     """
@@ -105,6 +98,10 @@ def plot():
 @cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_utilities:cli")
 def utilities():
     """Contains miscellaneous functions"""
+
+# Finally, import the pipeline command from the pipeline module
+import capcruncher.cli.cli_pipeline
+
 
 
 __all__ = [

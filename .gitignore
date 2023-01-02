@@ -16,3 +16,4 @@ docs/_build/
 pkgs/
 *.tar.gz
 *.bed.bgz
+_version.py

@@ -3,6 +3,7 @@ from capcruncher.cli import cli
 import click
 from importlib import metadata
 import subprocess
+import sys
 
 
 @cli.command(context_settings=dict(ignore_unknown_options=True), name="pipeline")
@@ -10,7 +11,7 @@ import subprocess
 @click.option("--version", "show_version", is_flag=True)
 @click.version_option(metadata.version(distribution_name="capcruncher"))
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
-def pipeline_snakemake(pipeline_options, show_help=False, show_version=False):
+def pipeline(pipeline_options, show_help=False, show_version=False):
 
     """Runs the data processing pipeline"""
 
@@ -23,6 +24,18 @@ def pipeline_snakemake(pipeline_options, show_help=False, show_version=False):
         "-s",
         f"{dir_package}/pipeline/snakefile",
     ]
+
+    if show_help:
+        # Run snakemake with --help
+        # Capture the output and replace usage: snakemake with usage: capcruncher pipeline
+        # Print the output
+        cmd.append("--help")
+        _completed = subprocess.run(cmd, capture_output=True, shell=False)
+        output = _completed.stdout.decode("utf-8")
+        output = output.replace("usage: snakemake", "usage: capcruncher pipeline")
+        click.echo(f"\n{output}")
+        sys.exit(0)
+
 
     if pipeline_options:
         excluded_options = ["--version", "make", "run", "show"]
