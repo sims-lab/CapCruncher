@@ -1,19 +1,13 @@
 import multiprocessing
-from posixpath import dirname
 import queue
-from capcruncher.utils import MockFastqRecord
 import os
-from multiprocessing import SimpleQueue
 from capcruncher.api.io import (
     FastqReaderProcess,
     FastqWriterProcess,
-    FastqWriterSplitterProcess,
 )
 import itertools
 import pysam
 import pytest
-import xopen
-import gzip
 
 # Pre-run setup
 

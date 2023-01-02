@@ -2,17 +2,10 @@ import glob
 import os
 import pickle
 
-import pandas as pd
 import pytest
 import ujson
 from capcruncher.cli import fastq_deduplicate
-from capcruncher.api.deduplicate import (
-    ReadDeduplicationParserProcess,
-    ReadDuplicateRemovalProcess,
-)
-from capcruncher.api.io import FastqReaderProcess
-from capcruncher.utils import MockFastqRecord, get_file_type, load_dict, save_dict
-from pybedtools.bedtool import BedTool
+from capcruncher.utils import get_file_type, load_dict
 import pysam
 
 
@@ -119,5 +112,6 @@ def test_fastq_duplicate_removal(
     assert len(outfiles) == len(infiles)
 
     assert (
-        len([r for r in pysam.FastxFile(outfiles[0])]) == stats.at["reads_unique", "stat"])
-
+        len([r for r in pysam.FastxFile(outfiles[0])])
+        == stats.at["reads_unique", "stat"]
+    )

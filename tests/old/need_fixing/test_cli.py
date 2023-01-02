@@ -361,7 +361,7 @@
 
 
 # def test_reporter_deduplicate_identify():
-    
+
 #     reporters_duplicated = os.path.join(dir_data, "test", "reporters_duplicated.tsv")
 #     reporters_duplicated_ids = os.path.join(dir_test, "test", "reporters_deduplicated.json")
 
@@ -398,15 +398,11 @@
 #             reporters_duplicated_ids
 #         ],
 #     )
-    
+
 #     assert result.exit_code == 0
 #     with xopen.xopen(reporters_duplicated_ids, "r") as r:
 #         ids_duplicated = {int(x) for x in ujson.load(r)}
 #     assert len(ids_duplicated) == 2
-
-
-
-
 
 
 # def test_reporter_count():
@@ -532,7 +528,7 @@
 #     assert result.exit_code == 0
 
 # def test_reporters_pileup():
-    
+
 #     runner = CliRunner()
 #     clr_path = os.path.join(dir_data, "test", "test.Slc25A37.hdf5")
 #     bdg_prefix = os.path.join(dir_test, "test", "test.Slc25A37")
@@ -552,11 +548,6 @@
 
 #     assert result.exit_code == 0
 #     assert os.path.exists(bdg_path)
- 
-
-
-
-
 
 
 # def test_plot_make_templates():
@@ -565,7 +556,7 @@
 #         import coolbox
 #         template = os.path.join(dir_test, "test", "test_pileup_template.yml")
 #         runner = CliRunner()
-        
+
 #         result = runner.invoke(
 #             cli,
 #             [
@@ -581,13 +572,12 @@
 #                 template.replace(".yml", "")
 #             ],
 #         )
-        
+
 #         assert result.exit_code == 0
 #         assert os.path.exists(template)
-    
+
 #     except ImportError:
 #         pass
-    
 
 
 # def test_plot_make_plots():
@@ -598,7 +588,7 @@
 #         plot = os.path.join(dir_test, "test", "test_pileup.svg")
 
 #         runner = CliRunner()
-        
+
 #         result = runner.invoke(
 #             cli,
 #             [
@@ -613,13 +603,12 @@
 #                 "--x-axis",
 #             ],
 #         )
-        
+
 #         assert result.exit_code == 0
 #         assert os.path.exists(plot)
 
 #     except ImportError:
 #         pass
-
 
 
 # def test_gtf_to_bed():

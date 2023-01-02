@@ -51,7 +51,7 @@
 
 #     with pytest.raises(ValueError):
 #         bed = format_coordinates('chrXXXXX1:1000-2000')
-    
+
 #     with pytest.raises(ValueError):
 #         bed = format_coordinates('chr1:1000:2000')
 

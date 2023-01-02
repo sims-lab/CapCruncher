@@ -1,10 +1,12 @@
 import os
 
-import numpy as np
-import pandas as pd
 import pytest
 from capcruncher.api.annotate import BedFileIntersection
-from pandas.api.types import is_numeric_dtype, is_string_dtype, is_categorical_dtype, is_object_dtype
+from pandas.api.types import (
+    is_numeric_dtype,
+    is_categorical_dtype,
+    is_object_dtype,
+)
 import ray
 
 
@@ -42,8 +44,22 @@ def data_path():
             1,
             is_categorical_dtype,
         ),
-        ("test_slices_sorted.bed", "bad_bed.bed", "count", "capture_count", 4, is_object_dtype),
-        ("test_slices_sorted.bed", "blank.bed","count", "capture_count", 4, is_object_dtype),
+        (
+            "test_slices_sorted.bed",
+            "bad_bed.bed",
+            "count",
+            "capture_count",
+            4,
+            is_object_dtype,
+        ),
+        (
+            "test_slices_sorted.bed",
+            "blank.bed",
+            "count",
+            "capture_count",
+            4,
+            is_object_dtype,
+        ),
     ],
 )
 def test_bed_intersection_succeeds(
@@ -64,7 +80,7 @@ def test_bed_intersection_succeeds(
 
 
 def test_bed_intersection_get_output(data_path):
-    
+
     bed1 = "test_slices_sorted.bed"
     bed2 = "test_capture.bed"
 
@@ -79,8 +95,9 @@ def test_bed_intersection_get_output(data_path):
     assert intersection.name == "capture"
     assert intersection.value_counts().loc["CAPTURE"] == 1
 
+
 def test_bed_intersection_count_output(data_path):
-    
+
     bed1 = "test_slices_sorted.bed"
     bed2 = "test_capture.bed"
 

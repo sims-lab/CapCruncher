@@ -33,7 +33,7 @@ def indicies(data_path, genome):
             output = os.path.join(data_path, "test_indicies.tar.gz")
 
             r = requests.get(url, stream=True)
-            with open(output, 'wb') as f:
+            with open(output, "wb") as f:
                 f.write(r.content)
 
             tar = tarfile.open(output)
@@ -60,19 +60,23 @@ def config_yaml(data_path):
     config = os.path.join(repo_dir, "config.yml")
     return config
 
+
 @pytest.fixture(scope="module")
 def binsizes():
     return np.random.randint(int(1e3), int(1e6), size=3)
+
 
 @pytest.fixture(scope="module")
 def run_directory_capture(tmpdir_factory):
     fn = tmpdir_factory.mktemp("data_capture")
     return fn
 
+
 @pytest.fixture(scope="module")
 def run_directory_tri(tmpdir_factory):
     fn = tmpdir_factory.mktemp("data_tri")
     return fn
+
 
 @pytest.fixture(scope="module")
 def run_directory_tiled(tmpdir_factory):
@@ -81,7 +85,9 @@ def run_directory_tiled(tmpdir_factory):
 
 
 @pytest.fixture(scope="module")
-def setup_pipeline_run_capture(data_path, run_directory_capture, genome, indicies, config_yaml):
+def setup_pipeline_run_capture(
+    data_path, run_directory_capture, genome, indicies, config_yaml
+):
 
     oligos = os.path.join(data_path, "mm9_capture_oligos_Slc25A37.bed")
     chromsizes = os.path.join(data_path, "chr14.fa.fai")
@@ -119,6 +125,7 @@ def setup_pipeline_run_capture(data_path, run_directory_capture, genome, indicie
                 writer.write(line)
 
     yield
+
 
 @pytest.fixture(scope="module")
 def setup_pipeline_run_tri(data_path, run_directory_tri, genome, indicies, config_yaml):
@@ -160,8 +167,11 @@ def setup_pipeline_run_tri(data_path, run_directory_tri, genome, indicies, confi
 
     yield
 
+
 @pytest.fixture(scope="module")
-def setup_pipeline_run_tiled(data_path, run_directory_tiled, genome, indicies, config_yaml, binsizes):
+def setup_pipeline_run_tiled(
+    data_path, run_directory_tiled, genome, indicies, config_yaml, binsizes
+):
 
     oligos = os.path.join(data_path, "mm9_capture_oligos_Slc25A37.bed")
     chromsizes = os.path.join(data_path, "chr14.fa.fai")
@@ -187,7 +197,7 @@ def setup_pipeline_run_tiled(data_path, run_directory_tiled, genome, indicies, c
         "PATH_TO_GENES_IN_BED12_FORMAT": os.path.join(data_path, "mm9_chr14_genes.bed"),
         "HUB_NAME": "CAPCRUNCHER_TEST_HUB",
         "REGIONS_FOR_NORM": os.path.join(data_path, "regions_for_norm.bed"),
-        "BIN_SIZES": " ".join([str(bs) for bs in binsizes])
+        "BIN_SIZES": " ".join([str(bs) for bs in binsizes]),
     }
 
     with open(config_yaml, "r") as config:
@@ -201,12 +211,14 @@ def setup_pipeline_run_tiled(data_path, run_directory_tiled, genome, indicies, c
 
     yield
 
+
 @pytest.mark.order(1)
 def test_pipeline_capture(setup_pipeline_run_capture):
 
-    cmd = f"capcruncher pipeline-smk -c 8 all -p"
+    cmd = "capcruncher pipeline-smk -c 8 all -p"
     completed = subprocess.run(cmd.split())
     assert completed.returncode == 0
+
 
 # @pytest.mark.order(1)
 # def test_pipeline_tri(setup_pipeline_run_tri):
@@ -222,17 +234,22 @@ def test_pipeline_capture(setup_pipeline_run_capture):
 #     completed = subprocess.run(cmd.split())
 #     assert completed.returncode == 0
 
+
 @pytest.mark.order(2)
 def test_digested_exists(run_directory_capture):
     assert len(
-        glob.glob(f"{run_directory_capture}/capcruncher_preprocessing/digested/*.fastq*")
+        glob.glob(
+            f"{run_directory_capture}/capcruncher_preprocessing/digested/*.fastq*"
+        )
     ) == (4 * 2)
+
 
 @pytest.mark.order(2)
 def test_stats_exist(run_directory_capture):
     assert os.path.exists(
         f"{run_directory_capture}/capcruncher_statistics/capcruncher_statistics.html"
     )
+
 
 @pytest.mark.order(2)
 @pytest.mark.parametrize("n_samples,n_groups,n_viewpoints", [(4, 2, 1)])
@@ -251,11 +268,14 @@ def test_bigwigs_exist(run_directory_capture, n_samples, n_groups, n_viewpoints)
         == n_bigwigs_expected
     )
 
+
 @pytest.mark.order(2)
 def test_reporters_are_binned(run_directory_tiled, binsizes):
     import cooler
 
-    example_cooler = os.path.join(run_directory_tiled, "capcruncher_analysis/reporters/counts/SAMPLE-A_REP1.hdf5")
+    example_cooler = os.path.join(
+        run_directory_tiled, "capcruncher_analysis/reporters/counts/SAMPLE-A_REP1.hdf5"
+    )
     cooler_groups = cooler.api.list_coolers(example_cooler)
     assert len(cooler_groups) == len(binsizes) + 1
 
@@ -264,10 +284,10 @@ def test_reporters_are_binned(run_directory_tiled, binsizes):
 def test_hub_exists(run_directory_capture):
     assert os.path.exists(f"{run_directory_capture}/hub_directory")
 
+
 @pytest.mark.order(2)
 def test_plot_template_exists(run_directory_capture):
     try:
-        import coolbox
 
         assert os.path.exists(
             f"{run_directory_capture}/capcruncher_plots/templates/Slc25A37.pileup.yml"
@@ -275,10 +295,10 @@ def test_plot_template_exists(run_directory_capture):
     except ImportError:
         pass
 
+
 @pytest.mark.order(2)
 def test_plot_exists(run_directory_capture):
     try:
-        import coolbox
 
         assert os.path.exists(
             f"{run_directory_capture}/capcruncher_plots/Slc25A37_chr14:69878554-69933221.svg"
