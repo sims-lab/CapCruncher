@@ -4,7 +4,7 @@ import ibis
 from ibis import _
 import pyarrow.dataset as ds
 import shutil
-
+import logging
 
 ibis.options.interactive = False
 
@@ -17,6 +17,7 @@ def deduplicate(
     stats_prefix: os.PathLike = "",
 ):
 
+    logging.info("Connecting to DuckDB")
     con = ibis.duckdb.connect()
     slices_tbl_raw = con.register(
         f"parquet://{slices}/*.parquet", table_name="slices_tbl"
@@ -24,6 +25,8 @@ def deduplicate(
 
     if read_type == "pe":
 
+        logging.info("Read type is PE")
+        logging.info("Identifying unique fragment IDs")
         query = (
             slices_tbl_raw[["chrom", "start", "end", "parent_id"]]
             .sort_by(["chrom", "start", "end", "parent_id"])
@@ -38,6 +41,10 @@ def deduplicate(
             .distinct()["pid"]
         )
     elif read_type == "flashed":
+
+        logging.info("Read type is Flashed")
+        logging.info("Identifying unique fragment IDs")
+
         query = (
             slices_tbl_raw[["coordinates", "parent_id"]]
             .groupby(by="parent_id", order_by=["coordinates"])
@@ -49,6 +56,7 @@ def deduplicate(
 
     parent_ids_unique = query.execute(limit=None)
 
+    logging.info("Writing deduplicated slices to disk")
     slices_unfiltered_ds = ds.dataset(slices, format="parquet")
     scanner = slices_unfiltered_ds.scanner(
         filter=ds.field("parent_id").isin(parent_ids_unique)
@@ -62,8 +70,16 @@ def deduplicate(
         output,
         format="parquet",
         partitioning_flavor="hive",
+        min_rows_per_group=0,
     )
 
+    # If the output directory is empty, create a dummy file to prevent downstream errors
+    if not os.path.exists(output):
+        os.makedirs(output)
+        df_dummy = scanner.to_table().to_pandas()
+        df_dummy.to_parquet(f"{output}/dummy.parquet", index=False)
+
+    logging.info("Calculating deduplication stats")
     # Calculate the number of slices in the input
     n_reads_total = (
         slices_tbl_raw.groupby("parent_id").count()["count"].sum().execute(limit=None)
@@ -80,6 +96,12 @@ def deduplicate(
     df_stats["read_type"] = read_type
     df_stats["read_number"] = 0
     df_stats["stage"] = "deduplicate_slices"
+    df_stats["stat"] = df_stats["stat"].fillna(0)
+
+    logging.info("Deduplication stats:")
+    logging.info(f"\n{df_stats.to_string()}")
+
+    logging.info("Writing deduplication stats to disk")
     df_stats.to_csv(f"{stats_prefix}.read.stats.csv", index=False)
 
     return df_stats
