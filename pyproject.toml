@@ -53,3 +53,11 @@ max-complexity = 10
 
 [tool.ruff.pydocstyle]
 convention = "google"
+
+[tool.snakefmt]
+line_length = 90
+include = '\.smk$|^Snakefile|\.py$'
+
+# snakefmt passes these options on to black
+[tool.black]
+skip_string_normalization = true

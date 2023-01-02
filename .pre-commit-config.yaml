@@ -27,3 +27,8 @@ repos:
         # pre-commit's default_language_version, see
         # https://pre-commit.com/#top_level-default_language_version
         language_version: python3.10
+
+  - repo: https://github.com/snakemake/snakefmt
+    rev: 0.5.0 # Replace by any tag/version ≥0.2.4 : https://github.com/snakemake/snakefmt/releases
+    hooks:
+      - id: snakefmt
