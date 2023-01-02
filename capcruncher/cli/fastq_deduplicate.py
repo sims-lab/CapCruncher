@@ -6,14 +6,15 @@ Created on Fri Oct  4 13:47:20 2019
 """
 import multiprocessing
 import os
-from typing import List, Tuple, Union
+from typing import Tuple
 import numpy as np
 import pandas as pd
 import tqdm
-from capcruncher.api.deduplicate import (ReadDeduplicationParserProcess,
-                                           ReadDuplicateRemovalProcess)
+from capcruncher.api.deduplicate import (
+    ReadDeduplicationParserProcess,
+    ReadDuplicateRemovalProcess,
+)
 from capcruncher.api.io import FastqReaderProcess, FastqWriterProcess
-from capcruncher.api.statistics import DeduplicationStatistics
 from capcruncher.utils import get_file_type, load_dict, save_dict
 
 
@@ -82,7 +83,7 @@ def identify(input_files: Tuple, output: os.PathLike = "duplicates.json"):
 
         for name_hash, sequence_hash in fastq_hashed_dict.items():
 
-            if not sequence_hash in sequences_dedup:
+            if sequence_hash not in sequences_dedup:
                 sequences_dedup.add(sequence_hash)
             else:
                 reads_duplicated.add(name_hash)
@@ -177,7 +178,6 @@ def remove(
 
     writer.start()
     reader.join()
-
 
     for _ in range(n_cores):
         readq.put_nowait(None)

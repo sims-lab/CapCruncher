@@ -9,7 +9,6 @@ import string
 import traceback
 from typing import Literal, Union
 
-import numpy as np
 import pandas as pd
 import pysam
 import tqdm
@@ -17,7 +16,7 @@ from capcruncher.api.count import (
     get_fragment_combinations,
     preprocess_reporters_for_counting,
 )
-from capcruncher.utils import get_timing, hash_column
+from capcruncher.utils import get_timing
 from pysam import FastxFile
 from xopen import xopen
 import xxhash
@@ -143,7 +142,7 @@ class FastqReadFormatterProcess(multiprocessing.Process):
 
             self.outq.put("END")
 
-        except Exception as e:
+        except Exception:
             traceback.format_exc()
             self.outq.put("END")
 
@@ -229,7 +228,7 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
                 reads = self.inq.get()
                 self.n_files_written += 1
 
-        except Exception as e:
+        except Exception:
             traceback.format_exc()
 
 
@@ -364,7 +363,7 @@ def parse_alignment(aln) -> CCAlignment:
             multimapped = 1
         else:
             multimapped = 0
-    
+
     return CCAlignment(
         slice_id=slice_id,
         slice_name=slice_name,
@@ -591,7 +590,9 @@ class CCParquetReaderProcess(multiprocessing.Process):
                         for vp, df_vp in df.groupby("viewpoint"):
                             if not df_vp.empty:
                                 vp_partitions[vp] += 1
-                                logging.info(f"Queuing {vp} partition {vp_partitions[vp]} for counting")
+                                logging.info(
+                                    f"Queuing {vp} partition {vp_partitions[vp]} for counting"
+                                )
                                 self.outq.put((vp, df_vp))
 
             except queue.Empty:
@@ -707,7 +708,7 @@ class CCHDF5WriterProcess(multiprocessing.Process):
                         if self.restriction_fragment_map and self.viewpoint_path:
 
                             from capcruncher.api.storage import create_cooler_cc
-                            
+
                             logging.info(f"Making temporary cooler for {vp}")
                             create_cooler_cc(
                                 output_prefix=self.path,

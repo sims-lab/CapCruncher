@@ -1,12 +1,10 @@
 import pandas as pd
 import numpy as np
-from pandas.core.base import DataError
 from pybedtools import BedTool
 import cooler
-from typing import Literal, Union
+from typing import Literal
 from capcruncher.api.storage import CoolerBinner
 from capcruncher.utils import is_valid_bed
-import os
 import logging
 
 
@@ -21,7 +19,13 @@ class CoolerBedGraph:
 
     """
 
-    def __init__(self, uri: str, sparse: bool = True, only_cis: bool = False, region_to_limit: str = None):
+    def __init__(
+        self,
+        uri: str,
+        sparse: bool = True,
+        only_cis: bool = False,
+        region_to_limit: str = None,
+    ):
         """
         Args:
             uri (str): Path to cooler group in hdf5 file.
@@ -38,7 +42,6 @@ class CoolerBedGraph:
         self.n_cis_interactions = self._cooler.info["metadata"]["n_cis_interactions"]
         logging.info(f"Processing {self.viewpoint_name}")
 
-        
         if only_cis:
             self._bins = self._cooler.bins().fetch(self.viewpoint_chrom)
             viewpoint_chrom_bins = self._bins["name"]
@@ -50,7 +53,7 @@ class CoolerBedGraph:
                 )
             )
             self._bins = self._cooler.bins().fetch(self.viewpoint_chrom)
-        
+
         elif region_to_limit:
             self._pixels = self._cooler.pixels().fetch(region_to_limit)
             self._bins = self._cooler.bins().fetch(region_to_limit)
@@ -59,9 +62,13 @@ class CoolerBedGraph:
             self._pixels = self._cooler.pixels()[:]
             # TODO: Avoid this if possible as reading all bins into memory
             self._bins = self._cooler.bins()[:]
-        
+
         # Ensure name column is present
-        self._bins = self._bins.assign(name=lambda df: df.index) if not "name" in self._bins.columns else self._bins
+        self._bins = (
+            self._bins.assign(name=lambda df: df.index)
+            if "name" not in self._bins.columns
+            else self._bins
+        )
         self._reporters = None
 
     def _get_reporters(self):
@@ -91,7 +98,8 @@ class CoolerBedGraph:
         )
 
     def extract_bedgraph(
-        self, normalisation: Literal["raw", "n_cis", "region"] = "raw", **norm_kwargs)  -> pd.DataFrame:
+        self, normalisation: Literal["raw", "n_cis", "region"] = "raw", **norm_kwargs
+    ) -> pd.DataFrame:
 
         logging.info("Generating bedgraph")
         df_bdg = (
@@ -109,7 +117,6 @@ class CoolerBedGraph:
             logging.info("Normalising bedgraph")
             self.normalise_bedgraph(df_bdg, method=normalisation, **norm_kwargs)
 
-        
         return df_bdg
 
     @property
@@ -148,9 +155,7 @@ class CoolerBedGraph:
             self._normalise_by_regions(bedgraph, scale_factor, region)
 
     def _normalise_by_n_cis(self, bedgraph, scale_factor: float):
-        bedgraph["count"] = (
-            bedgraph["count"] / self.n_cis_interactions
-        ) * scale_factor
+        bedgraph["count"] = (bedgraph["count"] / self.n_cis_interactions) * scale_factor
 
     def _normalise_by_regions(self, bedgraph, scale_factor: float, regions: str):
 
@@ -178,7 +183,6 @@ class CoolerBedGraph:
         total_counts_in_region = df_counts_in_regions["count"].sum()
 
         bedgraph["count"] = (bedgraph["count"] / total_counts_in_region) * scale_factor
-
 
 
 class CoolerBedGraphWindowed(CoolerBedGraph):

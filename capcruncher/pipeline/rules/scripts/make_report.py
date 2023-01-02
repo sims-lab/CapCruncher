@@ -1,6 +1,5 @@
 import os
 import pandas as pd
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -272,10 +271,9 @@ def format_alignment_filtering_read_stats(filtering_read_stats_path: os.PathLike
 
 
 def plot_alignment_filtering_read_summary(filtering_read_stats_path: os.PathLike):
-    
 
-    #breakpoint()
-    
+    # breakpoint()
+
     df = format_alignment_filtering_read_stats(filtering_read_stats_path)
 
     fig = px.bar(
@@ -365,7 +363,9 @@ def format_run_stats_for_overall_summary(run_stats_path: os.PathLike):
 
     df = df.assign(
         stat_type=lambda df: df["stat_type"].map(stat_type_mapping),
-        read_type=lambda df: df["read_type"].replace("flashed", "Combined").replace("pe", "Non-Combined"),
+        read_type=lambda df: df["read_type"]
+        .replace("flashed", "Combined")
+        .replace("pe", "Non-Combined"),
         sample=lambda df: df["sample"].str.replace("_", " "),
     )
 
@@ -420,7 +420,6 @@ def plot_overall_summary(run_stats_path: os.PathLike):
     return fig
 
 
-
 # Get paths
 fastq_deduplication_path = snakemake.input.fastq_deduplication
 fastq_digestion_hist_path = snakemake.input.digestion_histogram
@@ -454,7 +453,7 @@ html_header = """
 html_footer = """</body>
                     </html>"""
 
-section_template = """    
+section_template = """
 <!-- *** Section SECTION_NUMBER *** --->
 <h2>SECTION_NAME</h2>
 <p>SECTION_DESCRIPTION</p>
@@ -464,9 +463,7 @@ FIGURE_HTML
 # src="PLOT_URL.embed?width=1000&height=1000"></iframe>
 
 figures = dict(
-    deduplication=plot_deduplication_stats(
-        fastq_deduplication_path
-    ),  # Deduplication
+    deduplication=plot_deduplication_stats(fastq_deduplication_path),  # Deduplication
     flashed=plot_flash_summary(run_stats_path),  # Flashed
     digestion_reads=plot_digestion_read_summary(
         fastq_digestion_read_path

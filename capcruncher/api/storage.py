@@ -9,7 +9,7 @@ import functools
 import itertools
 import logging
 import ujson
-from typing import Iterable, Tuple, Union, List, Dict, Optional, Literal
+from typing import Iterable, Tuple, Union, List, Dict, Literal
 import pyranges as pr
 import re
 
@@ -441,7 +441,7 @@ class CoolerBinner:
 
         fragment_to_bins_mapping = self.fragment_to_genomic_mapping
 
-        pixels = pixels.assign(
+        pixels = self.cooler.pixels()[:].assign(
             "genomic_bin1_id",
             lambda df: df["bin1_id"].map(fragment_to_bins_mapping),
             "genomic_bin2_id",
@@ -525,7 +525,6 @@ class CoolerBinner:
         )
 
         return cooler_fn
-
 
 
 def link_common_cooler_tables(clr: os.PathLike):
@@ -648,7 +647,7 @@ def merge_coolers(coolers: Tuple, output: os.PathLike):
             viewpoints = list(src.keys())
 
             for viewpoint in viewpoints:
-                if not "resolutions" in list(src[viewpoint].keys()):
+                if "resolutions" not in list(src[viewpoint].keys()):
                     coolers_to_merge[viewpoint].append(f"{clr}::/{viewpoint}")
                 else:
                     for resolution in src[viewpoint]["resolutions"].keys():

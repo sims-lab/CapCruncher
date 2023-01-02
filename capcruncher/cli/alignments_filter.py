@@ -1,8 +1,6 @@
 import os
-from typing import Literal
 import pandas as pd
 import logging
-import numpy as np
 
 
 from capcruncher.api.io import parse_bam
@@ -34,11 +32,12 @@ def merge_annotations(slices: pd.DataFrame, annotations: os.PathLike) -> pd.Data
      pd.DataFrame: Merged dataframe
     """
 
-    df_ann = (pd.read_parquet(annotations)
-                .rename(columns={"Chromosome": "chrom", "Start": "start", "End": "end"})
-                .set_index(["slice_name", "chrom", "start"])
-                .drop(columns="end", errors="ignore")
-                )
+    df_ann = (
+        pd.read_parquet(annotations)
+        .rename(columns={"Chromosome": "chrom", "Start": "start", "End": "end"})
+        .set_index(["slice_name", "chrom", "start"])
+        .drop(columns="end", errors="ignore")
+    )
     slices = slices.join(df_ann, how="inner").reset_index()
 
     return slices
@@ -118,7 +117,7 @@ def filter(
     logging.info("Merging bam file with annotations")
     df_alignment = merge_annotations(df_alignment, annotations)
 
-    if not "blacklist" in df_alignment.columns:
+    if "blacklist" not in df_alignment.columns:
         df_alignment["blacklist"] = 0
 
     # Initialise SliceFilter
@@ -136,18 +135,18 @@ def filter(
     slice_filter.filter_slices()
 
     if slice_stats:
-        slice_stats_path=f"{stats_prefix}.slice.stats.csv"
+        slice_stats_path = f"{stats_prefix}.slice.stats.csv"
         logging.info(f"Writing slice statistics to {slice_stats_path}")
         slice_filter.filter_stats.to_csv(slice_stats_path, index=False)
 
     if read_stats:
-        read_stats_path=f"{stats_prefix}.read.stats.csv"
+        read_stats_path = f"{stats_prefix}.read.stats.csv"
         logging.info(f"Writing read statistics to {read_stats_path}")
         slice_filter.read_stats.to_csv(read_stats_path, index=False)
 
     # Save reporter stats
     if cis_and_trans_stats:
-        logging.info(f"Writing reporter statistics")
+        logging.info("Writing reporter statistics")
         slice_filter.cis_or_trans_stats.to_csv(
             f"{stats_prefix}.reporter.stats.csv", index=False
         )
@@ -159,7 +158,7 @@ def filter(
     df_capture = slice_filter.captures
 
     if fragments:
-        logging.info(f"Writing reporters at the fragment level")
+        logging.info("Writing reporters at the fragment level")
         df_fragments = (
             slice_filter_class(df_slices)
             .fragments.join(
@@ -170,26 +169,24 @@ def filter(
             )
             .assign(id=lambda df: df["id"].astype("int64"))  # Enforce type
         )
-        
-    
+
         df_fragments.to_parquet(
             f"{output_prefix}.fragments.parquet",
             compression="snappy",
             engine="pyarrow",
         )
 
-    logging.info(f"Writing reporters slices")
+    logging.info("Writing reporters slices")
 
     # Enforce dtype for parent_id
     df_slices_with_viewpoint = df_slices_with_viewpoint.assign(
         parent_id=lambda df: df["parent_id"].astype("int64")
     )
-    
-    
+
     df_slices_with_viewpoint.to_parquet(
-            f"{output_prefix}.slices.parquet",
-            compression="snappy",
-            engine="pyarrow",
+        f"{output_prefix}.slices.parquet",
+        compression="snappy",
+        engine="pyarrow",
     )
 
-    logging.info(f"Completed analysis of bam file")
+    logging.info("Completed analysis of bam file")

@@ -1,14 +1,7 @@
-import logging
-from typing import Iterable, List, Literal, Tuple
 import pandas as pd
 import os
-import numpy as np
 import ibis
 from ibis import _
-import duckdb
-import pyarrow as pa
-import pyarrow.compute as pc
-import pyarrow.parquet as pq
 import pyarrow.dataset as ds
 import shutil
 
@@ -25,7 +18,9 @@ def deduplicate(
 ):
 
     con = ibis.duckdb.connect()
-    slices_tbl_raw = con.register(f"parquet://{slices}/*.parquet", table_name="slices_tbl")
+    slices_tbl_raw = con.register(
+        f"parquet://{slices}/*.parquet", table_name="slices_tbl"
+    )
 
     if read_type == "pe":
 
@@ -39,10 +34,8 @@ def deduplicate(
                 slice_l_end=_.end.last(),
             )
             .groupby(["slice_f_chrom", "slice_f_start", "slice_l_end"])
-            .mutate(pid=_.parent_id.first())
-            [["pid"]]
-            .distinct()
-            ["pid"]
+            .mutate(pid=_.parent_id.first())[["pid"]]
+            .distinct()["pid"]
         )
     elif read_type == "flashed":
         query = (
@@ -72,7 +65,9 @@ def deduplicate(
     )
 
     # Calculate the number of slices in the input
-    n_reads_total = slices_tbl_raw.groupby("parent_id").count()["count"].sum().execute(limit=None)
+    n_reads_total = (
+        slices_tbl_raw.groupby("parent_id").count()["count"].sum().execute(limit=None)
+    )
 
     # Calculate the number of slices in the output
     n_reads_unique = parent_ids_unique.shape[0]

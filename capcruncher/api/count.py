@@ -1,16 +1,15 @@
-
-from typing import Union
 import pandas as pd
 from collections import defaultdict
 import itertools
-import xopen
 import os
 from tqdm import tqdm
 import logging
 
 
 def get_fragment_combinations(df: pd.DataFrame):
-    return [sorted(comb) for comb in itertools.combinations(df["restriction_fragment"], 2)]
+    return [
+        sorted(comb) for comb in itertools.combinations(df["restriction_fragment"], 2)
+    ]
 
 
 def subsample_reporters_from_df(df: pd.DataFrame, subsample: float):
@@ -22,19 +21,16 @@ def subsample_reporters_from_df(df: pd.DataFrame, subsample: float):
         subsample_options = {"n": subsample}
 
     # Generate a subsample of fragments and slice these from the reporter dataframe
-    df_reporters = df[
-        df["parent_id"].isin(df["parent_id"].sample(**subsample_options))
-    ]
+    df_reporters = df[df["parent_id"].isin(df["parent_id"].sample(**subsample_options))]
 
     return df_reporters
 
 
 def remove_exclusions_from_df(df: pd.DataFrame):
-    #TODO: remove this slight dtype hack
+    # TODO: remove this slight dtype hack
     df = df.astype({"viewpoint": str})
-    #df.loc[:, "viewpoint"] = df.loc[:, "viewpoint"].astype(str)
+    # df.loc[:, "viewpoint"] = df.loc[:, "viewpoint"].astype(str)
     return df.query("viewpoint != exclusion")
-
 
 
 def preprocess_reporters_for_counting(df: pd.DataFrame, **kwargs):
@@ -49,14 +45,13 @@ def preprocess_reporters_for_counting(df: pd.DataFrame, **kwargs):
     # Remove the capture site
     if kwargs.get("remove_viewpoints"):
         logging.info("Removing viewpoints")
-        df_reporters = df_reporters.query('capture_count == 0')
+        df_reporters = df_reporters.query("capture_count == 0")
 
     # Subsample at the fragment level
     if kwargs.get("subsample"):
         df_reporters = subsample_reporters_from_df(df_reporters, kwargs["subsample"])
-    
-    return df_reporters
 
+    return df_reporters
 
 
 def count_re_site_combinations(
@@ -82,7 +77,9 @@ def count_re_site_combinations(
     # For each set of ligated fragments
     for ii, (group_name, frag) in enumerate(tqdm(groups)):
 
-        for rf1, rf2 in itertools.combinations(frag[column], 2):  # Get fragment combinations
+        for rf1, rf2 in itertools.combinations(
+            frag[column], 2
+        ):  # Get fragment combinations
             # TODO: Notice a high amount of multicaptures (same oligo) not being removed.
             # Need to track this down but for now will explicitly prevent the same bin appearing twice.
             if not rf1 == rf2:

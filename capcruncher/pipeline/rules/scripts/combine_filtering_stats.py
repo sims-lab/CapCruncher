@@ -1,6 +1,3 @@
-import pandas as pd
-
-from capcruncher.utils import read_dataframes
 from capcruncher.api.statistics import collate_read_data, collate_slice_data
 
 # Collate data

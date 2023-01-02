@@ -2,17 +2,14 @@ import itertools
 import logging
 import os
 import re
-import sys
-from typing import Literal, Tuple, List, Optional, Union, Dict, Any, Callable
+from typing import Literal, Tuple, List, Union, Dict
 import cooler
 
-import numpy as np
 import pandas as pd
 from capcruncher.api.pileup import CoolerBedGraph
 from capcruncher.utils import get_cooler_uri
 from joblib import Parallel, delayed
 from pybedtools import BedTool
-from collections import defaultdict
 
 
 def get_bedgraph_name_from_cooler(cooler_filename):
@@ -129,7 +126,7 @@ def get_groups(
             try:
                 col = int(col)
                 col_name = columns[col]
-            except Exception as e:
+            except Exception:
                 col_name = col
 
             groups[col_name] = group_name

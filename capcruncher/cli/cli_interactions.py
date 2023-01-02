@@ -1,6 +1,5 @@
 import click
 
-import logging
 
 @click.group()
 def cli():
@@ -21,7 +20,8 @@ def cli():
     default="",
 )
 @click.option(
-    "--sample-name", help="Name of sample e.g. DOX_treated_1", default="sample")
+    "--sample-name", help="Name of sample e.g. DOX_treated_1", default="sample"
+)
 @click.option(
     "--read-type",
     help="Type of read",
@@ -42,6 +42,7 @@ def deduplicate(*args, **kwargs):
     """
 
     from capcruncher.cli.interactions_deduplicate import deduplicate
+
     deduplicate(*args, **kwargs)
 
 
@@ -251,13 +252,14 @@ def count(*args, **kwargs):
     Options to ignore unwanted counts e.g. excluded regions or capture fragments are provided.
     In addition the number of reporter fragments can be subsampled if required.
     """
-    
+
     if kwargs.get("output_as_cooler"):
         if not kwargs.get("fragment_map"):
-            raise ValueError("Restriction fragment map must be provided for cooler output")
+            raise ValueError(
+                "Restriction fragment map must be provided for cooler output"
+            )
         elif not kwargs.get("viewpoint_path"):
             raise ValueError("Viewpoint path must be provided for cooler output")
-
 
     from capcruncher.cli.interactions_count import count
 

@@ -1,5 +1,5 @@
 import click
-import logging
+
 
 @click.group()
 def cli():
@@ -171,7 +171,6 @@ def filter(*args, **kwargs):
     from capcruncher.cli.alignments_filter import filter
 
     filter(*args, **kwargs)
-
 
 
 # @deduplicate.command()

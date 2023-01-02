@@ -1,5 +1,3 @@
-from concurrent.futures import thread
-import xopen
 import os
 import logging
 import tempfile
@@ -7,7 +5,6 @@ import glob
 import more_itertools
 import multiprocessing
 
-import pandas as pd
 from capcruncher.api.io import (
     CCParquetReaderProcess,
     FragmentCountingProcess,
@@ -15,8 +12,9 @@ from capcruncher.api.io import (
 )
 from capcruncher.api.storage import merge_coolers
 
+
 def get_number_of_reader_threads(n_cores):
-    threads = (n_cores // 2)
+    threads = n_cores // 2
 
     if 1 < threads < 4:
         threads = threads
@@ -24,10 +22,8 @@ def get_number_of_reader_threads(n_cores):
         threads = 1
     else:
         threads = 4
-    
+
     return threads
-
-
 
 
 def count(
@@ -72,7 +68,7 @@ def count(
         columns=[
             "viewpoint",
         ],
-        engine="pyarrow"
+        engine="pyarrow",
     )
 
     viewpoints_col = ddf["viewpoint"].cat.as_known()
@@ -96,7 +92,6 @@ def count(
     viewpoints_queue = multiprocessing.Queue()
     slices_queue = multiprocessing.Queue()
     counts_queue = multiprocessing.Queue()
-    
 
     reader = CCParquetReaderProcess(
         path=reporters,
@@ -109,9 +104,9 @@ def count(
     n_reading_threads = get_number_of_reader_threads(n_cores=n_cores)
     pyarrow.set_cpu_count(n_reading_threads)
 
-    n_worker_processes = ((n_cores - n_reading_threads) // 2)
+    n_worker_processes = (n_cores - n_reading_threads) // 2
     n_counting_processes = n_worker_processes if n_worker_processes > 1 else 1
-    n_writing_processes =  n_counting_processes
+    n_writing_processes = n_counting_processes
 
     logging.info(f"Starting {n_reading_threads} reader threads")
 
@@ -143,11 +138,10 @@ def count(
     for process in processes:
         process.start()
 
-
     for vp_chunk in more_itertools.chunked(viewpoints, 10):
         viewpoints_queue.put(vp_chunk)
 
-    viewpoints_queue.put(None) # Sentinel value to signal end of viewpoints
+    viewpoints_queue.put(None)  # Sentinel value to signal end of viewpoints
     reader.join()
 
     # End the counting inqueue

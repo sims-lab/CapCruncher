@@ -32,7 +32,7 @@ def run_unix_split(
 
     cmd = f"""zcat {fn} | split FILTER -l {n_reads * 4} -d --additional-suffix=_{read_number}.fastq - {output_prefix}_part;"""
 
-    if not ".gz" in fn:
+    if ".gz" not in fn:
         cmd = cmd.replace("zcat", "cat")
 
     if gzip:

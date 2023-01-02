@@ -5,11 +5,10 @@ import logging
 import os
 import subprocess
 import tempfile
-from typing import Literal, Union
+from typing import Literal
 
 import cooler
-from capcruncher.api.pileup import CoolerBedGraph, CoolerBedGraphWindowed
-from capcruncher.api.storage import CoolerBinner
+from capcruncher.api.pileup import CoolerBedGraph
 
 
 def pileup(
@@ -48,9 +47,9 @@ def pileup(
     """
 
     viewpoint_names = viewpoint_names or [
-        v.strip("/") for v in cooler.fileops.list_coolers(uri) if not "resolutions" in v
+        v.strip("/") for v in cooler.fileops.list_coolers(uri) if "resolutions" not in v
     ]
-    
+
     logging.info(f"Performing pileup for {viewpoint_names}")
 
     bin_bedgraph = True if binsize > 0 else False
@@ -67,7 +66,7 @@ def pileup(
         except Exception as e:
             logging.info(f"Exception {e} occured while looking for: {viewpoint_name}")
             raise (f"Cannot find {viewpoint_name} in cooler file")
-            
+
         bedgraph = CoolerBedGraph(uri=cooler_group, sparse=sparse).extract_bedgraph(
             normalisation=normalisation,
             region=normalisation_regions,
@@ -84,9 +83,9 @@ def pileup(
                 header=False,
                 index=False,
             )
-        
+
         elif format == "bigwig":
-            
+
             clr = cooler.Cooler(cooler_group)
 
             with tempfile.NamedTemporaryFile() as chromsizes_tmp:
@@ -94,10 +93,11 @@ def pileup(
                     clr.chromsizes.to_csv(chromsizes_tmp, sep="\t", header=False)
                     bedgraph.to_csv(bedgraph_tmp, sep="\t", index=False, header=False)
 
-                    result = subprocess.run(["bedGraphToBigWig", bedgraph_tmp.name, chromsizes_tmp.name, f"{output_prefix}.{viewpoint_name}.bigWig"])
-
-
-
-
-            
-
+                    _result = subprocess.run(
+                        [
+                            "bedGraphToBigWig",
+                            bedgraph_tmp.name,
+                            chromsizes_tmp.name,
+                            f"{output_prefix}.{viewpoint_name}.bigWig",
+                        ]
+                    )

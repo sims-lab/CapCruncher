@@ -83,7 +83,9 @@ class SliceFilter:
         # Tweak format slices dataframe to be consistent
         self.slices = slices.sort_values(["parent_read", "slice"]).assign(
             blacklist=lambda df: df["blacklist"].astype(float),
-            restriction_fragment=lambda df: df["restriction_fragment"].astype(pd.Int64Dtype()),
+            restriction_fragment=lambda df: df["restriction_fragment"].astype(
+                pd.Int64Dtype()
+            ),
             capture_count=lambda df: df["capture_count"].fillna(0),
             exclusion_count=lambda df: df["exclusion_count"].fillna(0),
         )
@@ -119,7 +121,7 @@ class SliceFilter:
         ]
 
         for col in columns_required:
-            if not col in df.columns:
+            if col not in df.columns:
                 raise KeyError(f'Required column "{col}" not in slices dataframe')
 
         return True
@@ -151,7 +153,7 @@ class SliceFilter:
         all_filters = itertools.chain.from_iterable(filters.values())
 
         for filt in all_filters:
-            if not filt in self.filters:
+            if filt not in self.filters:
                 raise AttributeError(
                     f"Required filter: {filt} not present. Check for correct spelling and format."
                 )
@@ -693,13 +695,11 @@ class CCSliceFilter(SliceFilter):
         Removes the fragment if it has no reporter slices present (Common)
 
         """
-        fragments_partial = (
-            self.slices.groupby("parent_id").agg(
-                n_capture=("capture_count", "sum"),
-                n_mapped=("mapped", "sum"),
-                n_blacklist=("blacklist", "sum"),
-                n_exclusions=("exclusion_count", lambda ser: ser.sum()),
-            )
+        fragments_partial = self.slices.groupby("parent_id").agg(
+            n_capture=("capture_count", "sum"),
+            n_mapped=("mapped", "sum"),
+            n_blacklist=("blacklist", "sum"),
+            n_exclusions=("exclusion_count", lambda ser: ser.sum()),
         )
 
         fragments_with_reporters = fragments_partial.query(

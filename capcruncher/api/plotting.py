@@ -1,11 +1,9 @@
 import math
 import os
-from typing import Union
 
 import coolbox.api as cb
 import cooler
 import iced
-import matplotlib
 import matplotlib.colors as colors
 import numpy as np
 import pandas as pd
@@ -16,11 +14,9 @@ from matplotlib import cm, transforms
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Polygon
 from pybedtools import BedTool
-from scipy.ndimage import interpolation
 
 
 class CCMatrix(cb.Cool):
-
     def __init__(
         self,
         file: os.PathLike,
@@ -29,7 +25,7 @@ class CCMatrix(cb.Cool):
         remove_viewpoint=False,
         **kwargs,
     ):
-        
+
         self.binsize = binsize
         self.viewpoint = viewpoint
         self.remove_viewpoint = remove_viewpoint
@@ -38,10 +34,10 @@ class CCMatrix(cb.Cool):
         self.properties["name"] = f"CCMatrix.{self.properties.get('title')}"
         super(CCMatrix, self).__init__(file, **kwargs)
         # Need to override the coolbox default if we need a cmap to be set
-        self.properties['color'] = kwargs.get('color', self.properties['color'])
+        self.properties["color"] = kwargs.get("color", self.properties["color"])
 
         # Override the defaults
-        self.properties['balance'] = 'no'
+        self.properties["balance"] = "no"
 
         if not self._cooler_store_has_binsize:
             raise ValueError(
@@ -50,8 +46,6 @@ class CCMatrix(cb.Cool):
 
         self.cooler = cooler.Cooler(f"{file}::{viewpoint}/resolutions/{binsize}")
         self.capture_bins = self.cooler.info["metadata"]["viewpoint_bins"]
-
-
 
     def _cooler_store_has_binsize(self):
         clrs = cooler.fileops.list_coolers(self.file)
@@ -92,7 +86,7 @@ class CCMatrix(cb.Cool):
         elif normalization_method == "ice":
             matrix = self.get_matrix(coordinates)
             matrix = np.nan_to_num(matrix)
-            #matrix = iced.filter.filter_low_counts(matrix, percentage=0.04)
+            # matrix = iced.filter.filter_low_counts(matrix, percentage=0.04)
             matrix_normalised = iced.normalization.ICE_normalization(
                 matrix, **normalisation_kwargs
             )  # Get iced matrix
@@ -103,10 +97,12 @@ class CCMatrix(cb.Cool):
             matrix_ice = iced.normalization.ICE_normalization(
                 matrix, **normalisation_kwargs
             )  # Get iced matrix
-            matrix_normalised = matrix_ice / int(
-                self.cooler.info["metadata"]["n_cis_interactions"]
-            ) * 1e6 # Correct for number of interactions * 1e6
-        
+            matrix_normalised = (
+                matrix_ice
+                / int(self.cooler.info["metadata"]["n_cis_interactions"])
+                * 1e6
+            )  # Correct for number of interactions * 1e6
+
         elif normalization_method == "icen_scale":
             matrix = self.get_matrix(coordinates)
             matrix = np.nan_to_num(matrix)
@@ -122,10 +118,12 @@ class CCMatrix(cb.Cool):
 
         return matrix_normalised
 
-    def fetch_data(self, gr: cb.GenomeRange, gr2: cb.GenomeRange = None, **kwargs) -> np.ndarray:
+    def fetch_data(
+        self, gr: cb.GenomeRange, gr2: cb.GenomeRange = None, **kwargs
+    ) -> np.ndarray:
 
         norm = self.properties.get("normalization", "raw")
-        matrix =  self.get_matrix_normalised(
+        matrix = self.get_matrix_normalised(
             f"{gr.chrom}:{gr.start}-{gr.end}", normalization_method=norm, **kwargs
         )
         return self.fill_zero_nan(matrix)
@@ -135,9 +133,8 @@ class CCMatrix(cb.Cool):
         # Code taken and adapted from coolbox
         gr = GenomeRange(gr)
 
-
-        if 'JuiceBox' in self.properties["color"]:
-            cmap = CCMatrix.get_juicebox_cmaps()[self.properties['color']]
+        if "JuiceBox" in self.properties["color"]:
+            cmap = CCMatrix.get_juicebox_cmaps()[self.properties["color"]]
         else:
             cmap = cm.get_cmap(self.properties["color"])
 
@@ -149,7 +146,7 @@ class CCMatrix(cb.Cool):
         arr = self.matrix
         c_min, c_max = self.matrix_val_range
 
-        if self.properties['max_value'] == 'auto':
+        if self.properties["max_value"] == "auto":
             matrix_triu = np.triu(self.matrix)
             c_max = np.percentile(matrix_triu, 98)
 
@@ -174,7 +171,7 @@ class CCMatrix(cb.Cool):
                 transform=tr + ax.transData,
                 extent=(gr.start, gr.end, gr.start, gr.end),
                 aspect="auto",
-                interpolation='none'
+                interpolation="none",
             )
 
         elif gr2 is None and self.style == self.STYLE_WINDOW:
@@ -199,7 +196,6 @@ class CCMatrix(cb.Cool):
                 transform=tr + ax.transData,
                 extent=(gr.start, gr.end, gr.start, gr.end),
                 aspect="auto",
-
             )
         else:
             if gr2 is None:
@@ -218,21 +214,24 @@ class CCMatrix(cb.Cool):
             img.set_norm(colors.Normalize(vmin=c_min, vmax=c_max))
 
         return img
-    
+
     @staticmethod
     def get_juicebox_cmaps():
         JuiceBoxLikeColor = LinearSegmentedColormap.from_list(
-        'interaction', ['#FFFFFF', '#FFDFDF', '#FF7575', '#FF2626', '#F70000'])
+            "interaction", ["#FFFFFF", "#FFDFDF", "#FF7575", "#FF2626", "#F70000"]
+        )
         JuiceBoxLikeColor.set_bad("white")
         JuiceBoxLikeColor.set_under("white")
         JuiceBoxLikeColor2 = LinearSegmentedColormap.from_list(
-            'interaction', ['#FFFFFF', '#FFDFAF', '#FF7555', '#FF2600', '#F70000'])
+            "interaction", ["#FFFFFF", "#FFDFAF", "#FF7555", "#FF2600", "#F70000"]
+        )
         JuiceBoxLikeColor2.set_bad("white")
         JuiceBoxLikeColor2.set_under("white")
 
         return {
             "JuiceBoxLike": JuiceBoxLikeColor,
-            "JuiceBoxLike2": JuiceBoxLikeColor2,}
+            "JuiceBoxLike2": JuiceBoxLikeColor2,
+        }
 
 
 class CCBigWig(cb.BigWig):
@@ -254,9 +253,9 @@ class CCBigWig(cb.BigWig):
 
     def plot_fragments(self, ax, gr, **kwargs):
         data = self.fetch_data(gr, **kwargs)
-        alpha = self.properties.get("alpha", 1.0)
-        threshold = self.properties.get("threshold", 0)
-        offset = gr.start
+        _alpha = self.properties.get("alpha", 1.0)
+        _threshold = self.properties.get("threshold", 0)
+        _offset = gr.start
         bp_proportion = 1 / (data["end"].max() - data["start"].min())
 
         for row in data.itertuples():
@@ -422,16 +421,14 @@ class CCBigWigCollection(Track):
             zorder=1,
         )
 
-        
         min_val = self.properties.get("min_value")
         max_val = self.properties.get("max_value")
 
-        ymin =  round(scores.min()) if min_val == "auto" else min_val
-        ymax =  round(scores.max() + data["sem"].max()) if max_val == "auto" else max_val
+        ymin = round(scores.min()) if min_val == "auto" else min_val
+        ymax = round(scores.max() + data["sem"].max()) if max_val == "auto" else max_val
 
         ax.set_xlim(gr.start, gr.end)
         ax.set_ylim(ymin, ymax)
-        
 
         self.plot_data_range(ax, ymin, ymax, self.properties["data_range_style"], gr)
         self.plot_label()
@@ -443,7 +440,7 @@ class CCBigWigCollection(Track):
             try:
                 y_ax = self.y_ax
                 self.plot_yaxis_range(ax, y_ax)
-            except AttributeError as e:
+            except AttributeError:
                 self.plot_data_range(ax, ymin, ymax, "text", gr)
 
     def plot_yaxis_range(self, plot_axis, y_ax):
@@ -503,7 +500,9 @@ class CCBigWigCollection(Track):
         ydelta = ymax - ymin
 
         # set min max
-        format_lim = lambda lim: int(lim) if float(lim) % 1 == 0 else f"{lim:.2f}"
+        def format_lim(lim):
+            return int(lim) if float(lim) % 1 == 0 else f"{lim:.2f}"
+
         ymax_print = format_lim(ymax)
         ymin_print = format_lim(ymin)
         small_x = 0.01 * gr.length
@@ -637,24 +636,25 @@ class SimpleBed(cb.BED):
         ax.set_xlim(gr.start, gr.end)
         ax.set_ylim(0, 1)
 
+
 class XAxisGenomic(cb.XAxis):
     def __init__(self, **kwargs):
         super(XAxisGenomic, self).__init__()
         self.properties.update(kwargs)
-    
+
     def plot(self, ax, gr: GenomeRange, **kwargs):
         self.ax = ax
 
         ax.set_xlim(gr.start, gr.end)
         ticks = np.linspace(gr.start, gr.end, 10)
-        labels = [f'{x:,.0f}' for x in ticks]
+        labels = [f"{x:,.0f}" for x in ticks]
 
         ax.axis["x"] = ax.new_floating_axis(0, 0.5)
         ax.axis["x"].axis.set_ticks(ticks)
         ax.axis["x"].axis.set_ticklabels(labels)
-        ax.axis['x'].axis.set_tick_params(which='minor', bottom='on')
+        ax.axis["x"].axis.set_tick_params(which="minor", bottom="on")
 
         ax.axis["x"].major_ticklabels.set(size=10)
 
-        if 'where' in self.properties and self.properties['where'] == 'top':
+        if "where" in self.properties and self.properties["where"] == "top":
             ax.axis["x"].set_axis_direction("top")

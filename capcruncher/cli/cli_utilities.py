@@ -1,16 +1,14 @@
-from email.policy import default
 import subprocess
 from tempfile import NamedTemporaryFile
 from typing import Iterable, List, Literal
 import click
-from capcruncher.cli import UnsortedGroup
 import ast
 import pandas as pd
 from cgatcore.iotools import touch_file
 import os
 import logging
-import glob
 from capcruncher.utils import get_file_type
+
 
 def strip_cmdline_args(args):
 
@@ -85,7 +83,9 @@ def repartition_csvs(
 @click.argument("slices")
 @click.option("-o", "--output", help="Output file name")
 @click.option("-m", "--method", type=click.Choice(["capture", "tri", "tiled"]))
-@click.option("--file-type", type=click.Choice(["parquet", "hdf5", "tsv"]), default="parquet")
+@click.option(
+    "--file-type", type=click.Choice(["parquet", "hdf5", "tsv"]), default="parquet"
+)
 @click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
 @click.option(
     "--read-type",
@@ -114,9 +114,10 @@ def cis_and_trans_stats(
     n_cores: int = 1,
     memory_limit: str = "1G",
 ):
-    import warnings 
+    import warnings
+
     warnings.filterwarnings("ignore")
-    
+
     from capcruncher.api.filter import (
         CCSliceFilter,
         TriCSliceFilter,
@@ -171,7 +172,7 @@ def cis_and_trans_stats(
             scheduler_port=0,
             local_directory=os.environ.get("TMPDIR", "/tmp/"),
             memory_limit=memory_limit,
-        ) as client:
+        ) as _client:
 
             ddf = dd.read_parquet(slices, engine="pyarrow")
 
@@ -226,7 +227,7 @@ def merge_capcruncher_slices(
         processes=True,
         scheduler_port=0,
         local_directory=os.environ.get("TMPDIR", "/tmp/"),
-    ) as client:
+    ) as _client:
 
         storage_kwargs = {}
         output_format = get_file_type(outfile)
@@ -275,7 +276,6 @@ def merge_capcruncher_slices(
 
         elif output_format == "parquet":
 
-            import pyarrow as pa
             import pyarrow.dataset as ds
 
             datasets = ds.dataset([ds.dataset(fn) for fn in infiles])

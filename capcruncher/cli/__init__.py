@@ -1,11 +1,7 @@
 import click
-import os
 from functools import cached_property
 from importlib import import_module, metadata
-import subprocess
-import warnings
 import logging
-import sys
 
 
 # create logger
@@ -65,7 +61,6 @@ def cli():
     An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.
     """
 
-from capcruncher.cli.cli_pipeline import pipeline
 
 # @cli.command()
 # def pipeline(**kwargs):

@@ -4,7 +4,7 @@
 This pipeline processes data from Capture-C/NG Capture-C/Tri-C and Tiled-C sequencing
 protocols designed to identify 3D interactions in the genome from a specified viewpoint.
 
-It takes Illumina paired-end sequencing reads in fastq format 
+It takes Illumina paired-end sequencing reads in fastq format
 (gzip compression is prefered) as input and performs the following steps:
 
 1. Identifies all restriction fragments in the genome
@@ -18,7 +18,7 @@ It takes Illumina paired-end sequencing reads in fastq format
 9. Analysis of alignment statistics (picard CollectAlignmentSummaryMetrics, multiqc)
 10. Annotation of mapped reads with overlaps of capture probes, exclusion regions, blacklist, restriction fragments
 11. Removal of non-reporter slices and indentification of reporters
-12. Removal of PCR duplicates (exact coordinate matches) 
+12. Removal of PCR duplicates (exact coordinate matches)
 13. Storage of reporters in `cooler format <https.//cooler.readthedocs.io/en/latest/datamodel.html>`
 14. Generation of bedgraphs/BigWigs.
 15. Collation of run statistics and generation of a run report
@@ -29,30 +29,27 @@ Optional:
 * Generation of a UCSC track hub for visualisation.
 * Differential interaction identification.
 * Generation of subtraction bedgraphs for between condition comparisons
-* Plotting of heatmaps.  
+* Plotting of heatmaps.
 
 
 @authors: asmith, dsims
 """
 
-from collections import defaultdict
-import os
-import re
-import sys
-import pickle
-from cgatcore import pipeline as P
-from cgatcore.iotools import touch_file, zap_file
-import itertools
-import warnings
 import glob
-import shutil
-from cgatcore.pipeline.parameters import PARAMS
-from pybedtools.bedtool import BedTool
+import itertools
 import logging
-
-warnings.simplefilter("ignore", category=RuntimeWarning)
+import os
+import pickle
+import re
+import shutil
+import sys
+import warnings
+from collections import defaultdict
 
 import pandas as pd
+from cgatcore import pipeline as P
+from cgatcore.iotools import touch_file, zap_file
+from pybedtools.bedtool import BedTool
 from ruffus import (
     active_if,
     add_inputs,
@@ -60,19 +57,21 @@ from ruffus import (
     follows,
     merge,
     mkdir,
+    originate,
     regex,
     transform,
-    originate,
-)
-from capcruncher.tools.statistics import (
-    collate_slice_data,
-    collate_read_data,
-    collate_cis_trans_data,
-    collate_histogram_data,
-    extract_trimming_stats,
 )
 
-from capcruncher.utils import convert_bed_to_dataframe, is_on, is_none, is_valid_bed
+from capcruncher.api.statistics import (
+    collate_cis_trans_data,
+    collate_histogram_data,
+    collate_read_data,
+    collate_slice_data,
+    extract_trimming_stats,
+)
+from capcruncher.utils import convert_bed_to_dataframe, is_none, is_on, is_valid_bed
+
+warnings.simplefilter("ignore", category=RuntimeWarning)
 
 
 ##############################
@@ -156,10 +155,9 @@ except ValueError:
 
 # Check if the plotting packages are installed
 try:
-    import coolbox
 
     MAKE_PLOTS = is_valid_bed(P.PARAMS.get("plot_coordinates"), verbose=False)
-except ImportError as e:
+except ImportError:
     logging.warning(
         "Plotting capabilities not installed. For plotting please run: pip install capcruncher[plotting]"
     )
@@ -204,7 +202,7 @@ def check_config():
     ]
 
     for key in essential_keys:
-        if not key in P.PARAMS:
+        if key not in P.PARAMS:
             raise ValueError(
                 f"No value provided for {key} in config.yml. Please correct this and re-run."
             )
@@ -1699,7 +1697,7 @@ def generate_bin_conversion_tables(outfile):
                 fragments=frags,
                 binsize=int(bs),
             )
-            bct = (
+            _bct = (
                 gb.bin_conversion_table
             )  # Property is cached so need to call it to make sure it is present.
             binner_dict[int(bs)] = gb
@@ -1743,10 +1741,7 @@ def reporters_store_binned(infile, outfile):
         "store",
         "bins",
         clr,
-        *[
-            f"-b {bin_size}"
-            for bin_size in BINSIZES
-        ],
+        *[f"-b {bin_size}" for bin_size in BINSIZES],
         "--conversion_tables",
         conversion_tables,
         "--normalise",
@@ -2125,8 +2120,9 @@ def viewpoints_to_bigbed(infile, outfile):
 def hub_make(infiles, outfile):
     """Creates a ucsc hub from the pipeline output"""
 
-    import trackhub
     import seaborn as sns
+    import trackhub
+
     from capcruncher.utils import categorise_tracks
 
     # Extract statistics
@@ -2380,7 +2376,7 @@ def plot_heatmaps_make_templates(infiles, outfile):
 
     statements = list()
     for viewpoint in df_viewpoints["name"].unique():
-        for bin_size in BINSIZES: 
+        for bin_size in BINSIZES:
             statements.append(
                 " ".join(
                     [
@@ -2394,7 +2390,10 @@ def plot_heatmaps_make_templates(infiles, outfile):
                         "-b",
                         str(bin_size),
                         "-o",
-                        outfile.replace("heatmaps.sentinel", f"{viewpoint}_resolution_{bin_size}.heatmap.yml"),
+                        outfile.replace(
+                            "heatmaps.sentinel",
+                            f"{viewpoint}_resolution_{bin_size}.heatmap.yml",
+                        ),
                     ]
                 )
             )
@@ -2533,7 +2532,7 @@ if __name__ == "__main__":
         "-h" in sys.argv or "--help" in sys.argv
     ):  # If --help then just run the pipeline without setup
         P.main(sys.argv)
-    elif not "make" in sys.argv:
+    elif "make" not in sys.argv:
         P.main(sys.argv)
     else:
         check_config()

@@ -5,8 +5,7 @@ import re
 import time
 from datetime import timedelta
 from functools import wraps
-from typing import Callable, Generator, Iterable, List, Literal, Tuple, Union
-import numpy as np
+from typing import Callable, Generator, Iterable, Tuple, Union
 import pandas as pd
 import pybedtools
 import ujson
@@ -102,11 +101,11 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
     except Exception as e:
 
         if isinstance(e, FileNotFoundError):
-            logging.debug(f"Bed file not found")
+            logging.debug("Bed file not found")
 
         elif isinstance(e, IndexError):
             logging.debug(
-                f"Wrong number of fields detected check separator/ number of columns"
+                "Wrong number of fields detected check separator/ number of columns"
             )
 
         else:
@@ -375,11 +374,11 @@ def is_tabix(file: str):
 
     try:
         tbx = pysam.TabixFile(file)
-        chroms = tbx.contigs
+        _chroms = tbx.contigs
         _is_tabix = True
 
     except (OSError) as e:
-        pass
+        logging.warn(e)
 
     return _is_tabix
 
@@ -388,7 +387,7 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
     """Converts coordinates supplied in string format or a .bed file to a BedTool.
 
     Args:
-        coordinates (Union[str, os.PathLike]): Coordinates in the form chr:start-end or a path.
+        coordinates (Union[str, os.PathLike]): Coordinates in the form chr:start-end/path.
     Raises:
         ValueError: Inputs must be supplied in the correct format.
 
@@ -427,7 +426,7 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
 
     else:
         raise ValueError(
-            """Coordinates not provided in the correct format. Provide coordinates in the form chr[NUMBER]:[START]-[END] or a .bed file"""
+            """Provide coordinates in the form chr[NUMBER]:[START]-[END]/BED file"""
         )
 
     return bt
@@ -520,56 +519,6 @@ def get_file_type(fn: os.PathLike) -> str:
     except KeyError as e:
         logging.debug(f"File extension {ext} is not supported")
         raise e
-
-
-def get_categories_from_hdf5_column(
-    path: os.PathLike,
-    key: str,
-    column: str,
-    null_value: Union[Literal["."], int, float] = ".",
-) -> List[str]:
-    """Extracts all categories from pytables table column.
-
-    Args:
-        path (os.PathLike): Path to hdf5 store
-        key (str): Table name
-        column (str): Column name from which to extract categories
-        null_value (Union[Literal[, optional): [description]. Defaults to ".".
-
-    Returns:
-        List[str]: Category names
-    """
-
-    df_test = pd.read_hdf(path, key, start=0, stop=10)
-
-    # If its a category get from the cat codes
-    if isinstance(df_test.dtypes[column], pd.CategoricalDtype):
-        return [
-            cat
-            for cat in df_test[column].cat.categories.values
-            if not cat == null_value
-        ]
-
-    # Try to extract from the metadata
-    try:
-        with pd.HDFStore(path, "r") as store:
-            # s = store.get_storer(key)
-            # values = getattr(s.attrs, column)
-            values = store[f"{key}_category_metadata"][column].unique()
-            return values
-    except AttributeError:
-        # Just determine from sampling all of the data (HIGHLY inefficient)
-        import dask.dataframe as dd
-        import dask.distributed
-
-        with dask.distributed.Client(processes=True) as client:
-            values = [
-                x
-                for x in dd.read_hdf(path, key, columns=column)[column]
-                .unique()
-                .compute()
-            ]
-        return values
 
 
 def get_cooler_uri(store: os.PathLike, viewpoint: str, resolution: Union[str, int]):

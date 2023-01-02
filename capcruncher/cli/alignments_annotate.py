@@ -1,16 +1,16 @@
 import itertools
 import logging
+import os
 import sys
 import warnings
 from typing import Tuple, Union
-import ray
 
 import numpy as np
-
-warnings.simplefilter("ignore")
-import os
-
 import pandas as pd
+import pysam
+import ray
+from pybedtools import BedTool, MalformedBedLineError
+
 from capcruncher.api.annotate import BedFileIntersection
 from capcruncher.utils import (
     bed_has_name,
@@ -18,8 +18,9 @@ from capcruncher.utils import (
     convert_bed_to_pr,
     is_valid_bed,
 )
-from pybedtools import BedTool, MalformedBedLineError
-import pysam
+
+warnings.simplefilter("ignore")
+
 
 pysam.set_verbosity(0)
 

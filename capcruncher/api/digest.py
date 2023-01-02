@@ -4,9 +4,10 @@ import re
 import pysam
 import multiprocessing
 import numpy as np
-from typing import Iterable, Union, List
+from typing import Iterable, List
 from capcruncher.api.statistics import DigestionStats
 import pandas as pd
+
 
 def get_re_site(recognition_site: str = None) -> str:
 
@@ -45,6 +46,7 @@ def get_re_site(recognition_site: str = None) -> str:
         raise ValueError("No restriction site or recognised enzyme provided")
 
     return cutsite
+
 
 class DigestedChrom:
     """
@@ -310,7 +312,7 @@ class ReadDigestionProcess(multiprocessing.Process):
         self.read_type = digestion_kwargs.get("read_type", "flashed")
         self._stat_container = DigestionStats
 
-        if not "cutsite" in digestion_kwargs:
+        if "cutsite" not in digestion_kwargs:
             raise KeyError("Cutsite is required to be present in digestion arguments")
 
     def _digest_reads(self, reads, **digestion_kwargs):
@@ -412,7 +414,9 @@ class ReadDigestionProcess(multiprocessing.Process):
             try:
                 df_stats = pd.concat(dframes_stats)
                 df_stats_aggregated = (
-                    df_stats.groupby(["read_type", "read_number", "unfiltered", "filtered"])
+                    df_stats.groupby(
+                        ["read_type", "read_number", "unfiltered", "filtered"]
+                    )
                     .sum()
                     .reset_index()
                 )

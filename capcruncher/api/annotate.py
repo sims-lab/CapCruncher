@@ -1,17 +1,15 @@
 import logging
-from typing import Union, Literal
 import warnings
-import numpy as np
-import ray
-import pybedtools
-import pyranges as pr
-
-warnings.simplefilter("ignore", category=RuntimeWarning)
+from typing import Union
 
 import pandas as pd
-from pybedtools import BedTool
+import pybedtools
+import pyranges as pr
+import ray
 
 from capcruncher.utils import convert_bed_to_pr
+
+warnings.simplefilter("ignore", category=RuntimeWarning)
 
 
 @ray.remote
@@ -76,7 +74,9 @@ class BedFileIntersection:
                 _intersection = self._count_intersection(pr_b)
 
         except (OSError, IndexError, FileNotFoundError, StopIteration, AssertionError):
-            logging.error(f"Bed file {self.b} raised an error. Skipping {self.name} intersection.")
+            logging.error(
+                f"Bed file {self.b} raised an error. Skipping {self.name} intersection."
+            )
             _intersection = pd.Series(
                 data=pd.NA,
                 index=self.pr_a.df["Name"],

@@ -1,18 +1,14 @@
 import logging
 import os
-import pickle
 import tempfile
-from typing import Iterable, Tuple
+from typing import Tuple
 import pandas as pd
 from capcruncher.api.storage import (
     CoolerBinner,
-    GenomicBinner,
     create_cooler_cc,
-    link_common_cooler_tables,
     merge_coolers,
 )
 import cooler
-
 
 
 def fragments(
@@ -154,11 +150,9 @@ def bins(
             clr_binner = CoolerBinner(
                 cooler_group=clr, binner=conversion_tables[binsize]
             )
-            
+
             clr_binner.to_cooler(binning_output)
             clr_tempfiles.append(binning_output)
 
     # Final cooler output
     merge_coolers(clr_tempfiles, output)
-
-

@@ -1,5 +1,4 @@
 import os
-import sys
 from collections import namedtuple, OrderedDict
 import matplotlib
 import pandas as pd
@@ -80,7 +79,15 @@ def make_template(
     )
     genes = namedtuple(
         "genes",
-        field_names=["file", "type", "style", "gene_style", "color", "display", "fontsize"],
+        field_names=[
+            "file",
+            "type",
+            "style",
+            "gene_style",
+            "color",
+            "display",
+            "fontsize",
+        ],
         defaults=["genes", "gene", "normal", "bed_rgb", "stacked", 7.5],
     )
 
@@ -104,7 +111,9 @@ def make_template(
     if design_matrix:
 
         # Assuming design matrix has columns: sample  condition
-        df_design = pd.read_csv(design_matrix, sep=r",|\s+|\t", index_col="sample", engine="python")
+        df_design = pd.read_csv(
+            design_matrix, sep=r",|\s+|\t", index_col="sample", engine="python"
+        )
         df_fnames = (
             pd.Series(files).loc[lambda ser: ser.str.contains(".bigWig")].to_frame("fn")
         )
@@ -140,7 +149,7 @@ def make_template(
     # Deal with the rest of the files
     for fn in files:
 
-        if not fn in processed_files:
+        if fn not in processed_files:
 
             fn_base = os.path.basename(fn).replace(".gz", "")
             fn_no_ext, ext = os.path.splitext(fn_base)
@@ -158,7 +167,11 @@ def make_template(
 
 
 def plot_reporters(
-    region: str, config: os.PathLike, output: str, x_axis=False, no_scale_bar=False,
+    region: str,
+    config: os.PathLike,
+    output: str,
+    x_axis=False,
+    no_scale_bar=False,
 ):
 
     track_type_to_track_class_mapping = {
