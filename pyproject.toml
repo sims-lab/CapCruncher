@@ -39,6 +39,7 @@ dummy-variable-rgx = "_[a-z0-9]+(\\s+|:|$)"
 max-complexity = 10
 
 [tool.ruff.per-file-ignores]
+"capcruncher/__init__.py" = ["F401", "E402"]
 "capcruncher/pipeline/rules/scripts/make_report.py" = ["F821"]
 "capcruncher/pipeline/rules/scripts/make_ucsc_hub.py" = ["F821"]
 "capcruncher/pipeline/rules/scripts/combine_stats_read_level.py" = ["F821"]
