@@ -1,18 +1,11 @@
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
-]
+requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 line-length = 88
-
-# Enable Pyflakes `E` and `F` codes by default.
 select = ["E", "F"]
-ignore = []
-
-# Exclude a variety of commonly ignored directories.
+ignore = ["E501"]
 exclude = [
     ".bzr",
     ".direnv",
@@ -35,15 +28,27 @@ exclude = [
     "venv",
     "*.smk",
     "snakefile",
+    "old/"
 ]
-per-file-ignores = {}
 
-# Allow unused variables when underscore-prefixed.
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+dummy-variable-rgx = "_[a-z0-9]+(\\s+|:|$)"
 
-# Assume Python 3.10.
-target-version = "py310"
 
 [tool.ruff.mccabe]
 # Unlike Flake8, default to a complexity level of 10.
 max-complexity = 10
+
+[tool.ruff.per-file-ignores]
+"capcruncher/pipeline/rules/scripts/make_report.py" = ["F821"]
+"capcruncher/pipeline/rules/scripts/make_ucsc_hub.py" = ["F821"]
+"capcruncher/pipeline/rules/scripts/combine_stats_read_level.py" = ["F821"]
+"capcruncher/pipeline/rules/scripts/combine_alignment_deduplication_stats.py" = [
+    "F821",
+]
+"capcruncher/pipeline/rules/scripts/combine_cis_and_trans_stats.py" = ["F821"]
+"capcruncher/pipeline/rules/scripts/combine_filtering_stats.py" = ["F821"]
+"capcruncher/pipeline/rules/scripts/combine_deduplication_stats.py" = ["F821"]
+"capcruncher/pipeline/rules/scripts/combine_digestion_stats.py" = ["F821"]
+
+[tool.ruff.pydocstyle]
+convention = "google"
