@@ -1,6 +1,7 @@
 import os
 import sys
 import pathlib
+import shutil
 
 import pandas as pd
 import pyranges as pr
@@ -95,3 +96,7 @@ rule all:
         ),
         hub=rules.create_ucsc_hub.output[0],
 
+onerror:
+    log_out = "capcruncher_error.log"
+    shutil.copyfile(log, log_out)
+    print(f"An error occurred. Please check the log file {log_out} for more information.")
