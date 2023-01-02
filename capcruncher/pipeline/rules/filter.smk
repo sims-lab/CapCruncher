@@ -104,10 +104,8 @@ rule remove_duplicate_coordinates_flashed:
     input:
         slices_directory=rules.split_flashed_and_pe_datasets.output.slices_flashed,
     output:
-        slices=temp(
-            directory(
-                "capcruncher_filter/03_remove_duplicate_coordinates/{sample}/flashed"
-            )
+        slices=directory(
+            temp("capcruncher_filter/03_remove_duplicate_coordinates/{sample}/flashed")
         ),
         stats_read="capcruncher_statistics/deduplication_by_coordinate/data/{sample}_flashed.read.stats.csv",
     params:
@@ -135,8 +133,8 @@ rule remove_duplicate_coordinates_pe:
     input:
         slices_directory=rules.split_flashed_and_pe_datasets.output.slices_pe,
     output:
-        slices=temp(
-            directory("capcruncher_filter/03_remove_duplicate_coordinates/{sample}/pe")
+        slices=directory(
+            temp("capcruncher_filter/03_remove_duplicate_coordinates/{sample}/pe")
         ),
         stats_read="capcruncher_statistics/deduplication_by_coordinate/data/{sample}_pe.read.stats.csv",
     params:
