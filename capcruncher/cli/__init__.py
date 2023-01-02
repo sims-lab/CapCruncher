@@ -5,7 +5,9 @@ import logging
 
 # create logger
 logging.getLogger("capcruncher")
-logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(asctime)s %(module)-20s %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(levelname)s:%(asctime)s %(module)-20s %(message)s"
+)
 
 
 # logger = logging.getLogger("capcruncher")
@@ -64,6 +66,7 @@ def cli():
     An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.
     """
 
+
 @cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_fastq:cli")
 def fastq():
     """
@@ -99,9 +102,9 @@ def plot():
 def utilities():
     """Contains miscellaneous functions"""
 
+
 # Finally, import the pipeline command from the pipeline module
 import capcruncher.cli.cli_pipeline
-
 
 
 __all__ = [
