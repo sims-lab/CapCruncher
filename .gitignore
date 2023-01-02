@@ -14,5 +14,5 @@ capcruncher.egg-info/
 dist/
 docs/_build/
 pkgs/
-test_indicies.tar.gz
-tests/data/data_for_pipeline_run/mm9_chr14_genes.bed.bgz
+*.tar.gz
+*.bed.bgz
