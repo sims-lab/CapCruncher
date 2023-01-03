@@ -29,6 +29,7 @@ repos:
         language_version: python3.10
 
   - repo: https://github.com/snakemake/snakefmt
-    rev: 0.5.0 # Replace by any tag/version ≥0.2.4 : https://github.com/snakemake/snakefmt/releases
+    rev: v0.8.0 # Replace by any tag/version ≥0.2.4 : https://github.com/snakemake/snakefmt/releases
     hooks:
       - id: snakefmt
+        args: []

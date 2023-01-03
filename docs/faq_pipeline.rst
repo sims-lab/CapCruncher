@@ -40,7 +40,7 @@ A common error when running the pipeline is:
 
 This error occurrs because you are not connected to the cluster.
 See :ref:`Recommendations prior to installation`  for how to add DRMAA_LIBRARY_PATH to your bashrc.
-Alternatively, if you do not want to use a cluster you can run the pipeline in :ref:`local mode <Step 4 - Running the pipeline>`. 
+Alternatively, if you do not want to use a cluster you can run the pipeline in :ref:`local mode <Step 4 - Running the pipeline>`.
 
 KeyError: 'missing parameter accessed'
 ======================================

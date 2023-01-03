@@ -17,3 +17,5 @@ pkgs/
 *.tar.gz
 *.bed.bgz
 _version.py
+*.log
+cliff.toml

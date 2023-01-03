@@ -55,7 +55,7 @@ max-complexity = 10
 convention = "google"
 
 [tool.snakefmt]
-line_length = 90
+line_length = 88
 include = '\.smk$|^Snakefile|\.py$'
 
 # snakefmt passes these options on to black

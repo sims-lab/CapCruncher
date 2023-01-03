@@ -49,12 +49,14 @@ rule compare_interactions:
             group=DESIGN["condition"].unique(),
             method=get_summary_methods(),
         ),
-        bedgraphs_compare = expand(
+        bedgraphs_compare=expand(
             "capcruncher_compare/02_compare_interactions/{comparison}.{method}-subtraction.{{viewpoint}}.bedgraph",
-            comparison=[f"{a}-{b}" for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)],
+            comparison=[
+            f"{a}-{b}"
+                for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
+            ],
             method=get_summary_methods(),
         ),
-    
     params:
         output_prefix="capcruncher_compare/02_compare_interactions/",
         summary_methods=" ".join([f"-m {m}" for m in get_summary_methods()]),
@@ -79,6 +81,7 @@ rule compare_interactions:
         > {log} 2>&1
         """
 
+
 use rule bedgraph_to_bigwig as bigwig_compared with:
     input:
         bedgraph="capcruncher_compare/02_compare_interactions/{comparison}.{method}-subtraction.{viewpoint}.bedgraph",
@@ -88,6 +91,7 @@ use rule bedgraph_to_bigwig as bigwig_compared with:
         chrom_sizes=config["genome"]["chrom_sizes"],
     log:
         "logs/bedgraph_to_bigwig/{comparison}.{method}-subtraction.{viewpoint}.log",
+
 
 use rule bedgraph_to_bigwig as bigwig_summarised with:
     input:

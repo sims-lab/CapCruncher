@@ -12,6 +12,7 @@ rule viewpoints_to_bigbed:
         rm {output}.tmp
         """
 
+
 rule create_ucsc_hub:
     input:
         bigwigs_per_viewpoint=expand(
@@ -22,8 +23,8 @@ rule create_ucsc_hub:
         ),
         bigwigs_compared=expand(
             "capcruncher_compare/03_bigwig/{comparison}/{comparison}.{method}-subtraction.{viewpoint}.bw",
-        comparison=[
-        f"{a}-{b}"
+            comparison=[
+            f"{a}-{b}"
                 for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
             ],
             method=get_summary_methods(),
@@ -38,9 +39,10 @@ rule create_ucsc_hub:
         viewpoints=rules.viewpoints_to_bigbed.output[0],
         report=rules.make_report.output[0],
     output:
-        directory(config["hub"]["dir"])
+        directory(config["hub"]["dir"]),
     script:
         "scripts/make_ucsc_hub.py"
 
 
-localrules: create_ucsc_hub
+localrules:
+    create_ucsc_hub,

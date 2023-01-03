@@ -1,6 +1,7 @@
 import json
 import pyranges as pr
 
+
 def validate_blacklist(blacklist):
     """Validate blacklist file."""
 
@@ -96,7 +97,7 @@ rule exclusions:
     shell:
         """
         bedtools slop -i {input.viewpoints} -g {params.genome} -b {params.exclusion_zone} |
-        bedtools subtract -a - -b  {input.viewpoints} > {output.exclusions} 
+        bedtools subtract -a - -b  {input.viewpoints} > {output.exclusions}
         """
 
 

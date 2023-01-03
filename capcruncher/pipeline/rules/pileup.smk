@@ -168,6 +168,3 @@ rule bedgraph_to_bigwig:
         bedGraphToBigWig {input.bedgraph}.sorted {params.chrom_sizes} {output.bigwig}
         rm {input.bedgraph}.sorted
         """
-
-
-

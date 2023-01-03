@@ -2,7 +2,7 @@ name: Python package
 
 on: [push]
 
-env: 
+env:
   CACHE_NUMBER: 0
 
 jobs:
@@ -14,20 +14,20 @@ jobs:
         python-version: [3.8]
 
     steps:
-      
+
     - uses: actions/checkout@v2
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}   
-    
+        python-version: ${{ matrix.python-version }}
+
     - name: Install OS dependencies
       run: |
         sudo apt-get update
         sudo apt-get install libcurl4-openssl-dev
 
-       
+
     - name: Restore bowtie2 cache
       uses: actions/cache@v2
       with:
@@ -48,11 +48,11 @@ jobs:
       shell: bash -l {0}
       run: |
         mamba env update -n test -f testing.yml
-    
+
     - name: Check installed packages
       shell: bash -l {0}
       run: |
-        mamba info 
+        mamba info
 
     - name: Install the package
       shell: bash -l {0}

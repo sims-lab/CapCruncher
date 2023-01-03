@@ -9,8 +9,8 @@ CapCruncher documentation
 CapCruncher is a package explicitly designed for processing Capture-C, Tri-C and Tiled-C data.
 It consists of a configurable data processing pipeline and a supporting command line interface
 to enable fine-grained control over the analysis. Unlike other pipelines that are designed to process
-Hi-C or Capture-HiC data, the filtering steps in CapCruncher are specifically optimised Capture-C, Tri-C 
-and Tiled-C datasets. 
+Hi-C or Capture-HiC data, the filtering steps in CapCruncher are specifically optimised Capture-C, Tri-C
+and Tiled-C datasets.
 
 
 .. toctree::
@@ -22,4 +22,3 @@ and Tiled-C datasets.
    cli.rst
    capcruncher_module_documentation/modules.rst
    glossary.rst
-
