@@ -6,6 +6,9 @@ from typing import Literal
 from capcruncher.api.storage import CoolerBinner
 from capcruncher.utils import is_valid_bed
 import logging
+import ray
+import re
+import pyranges as pr
 
 
 class CoolerBedGraph:
@@ -372,3 +375,39 @@ class CCBedgraph(object):
 
         else:
             return NotImplementedError()
+
+
+@ray.remote
+def cooler_to_bedgraph(
+    clr: str, regions_of_interest: str = None, viewpoint_distance: int = None, **kwargs
+) -> pd.DataFrame:
+
+    if viewpoint_distance:
+        viewpoint_coords = cooler.Cooler(clr).info["metadata"]["viewpoint_coords"][0]
+        viewpoint_coords = re.split("[:-]", viewpoint_coords)
+        region_to_limit = f"{viewpoint_coords[0]}:{int(viewpoint_coords[1]) - viewpoint_distance}-{int(viewpoint_coords[1]) + viewpoint_distance}"
+    else:
+        region_to_limit = None
+
+    norm = kwargs.get("normalisation", "raw")
+    scale_factor = kwargs.get("scale_factor", 1e6)
+    region = kwargs.get("region", None)
+
+    bedgraph = CoolerBedGraph(clr, region_to_limit=region_to_limit).extract_bedgraph(
+        normalisation=norm,
+        scale_factor=scale_factor,
+        region=region,
+    )
+
+    if regions_of_interest:
+        pr_roi = pr.read_bed(regions_of_interest)
+        pr_bedgraph = bedgraph.rename(
+            columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
+        ).pipe(pr.PyRanges)
+        pr_bedgraph = pr_bedgraph.join(pr_roi, strandedness="same")
+
+        bedgraph = pr_bedgraph.df.rename(
+            columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
+        )[["chrom", "start", "end", "score"]]
+
+    return bedgraph

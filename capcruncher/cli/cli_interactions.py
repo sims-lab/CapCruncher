@@ -47,79 +47,6 @@ def deduplicate(*args, **kwargs):
 
 
 @cli.command()
-@click.argument("union_bedgraph")
-@click.option(
-    "-n",
-    "--capture_name",
-    help="Name of capture probe, must be present in viewpoint file.",
-    required=True,
-)
-@click.option(
-    "-c",
-    "--capture_viewpoints",
-    help="Path to capture viewpoints bed file",
-    required=True,
-)
-@click.option(
-    "-o",
-    "--output_prefix",
-    help="Output prefix for pairwise statistical comparisons",
-    default="out",
-)
-@click.option(
-    "--design_matrix",
-    help="Path tsv file containing sample annotations (N_SAMPLES * N_INFO_COLUMNS)",
-    default=None,
-)
-@click.option(
-    "--grouping_col", help="Column to use for grouping replicates", default="condition"
-)
-@click.option(
-    "--threshold_count",
-    help="Minimum count required to be considered for analysis",
-    default=20,
-    type=click.FLOAT,
-)
-@click.option(
-    "--threshold_q",
-    help="Upper threshold of q-value required for output.",
-    default=0.05,
-    type=click.FLOAT,
-)
-@click.option(
-    "--threshold_mean",
-    help="Minimum mean count required for output.",
-    default=0,
-    type=click.FLOAT,
-)
-def differential(*args, **kwargs):
-    """
-    Identifies differential interactions between conditions.
-
-    Parses a union bedgraph containg reporter counts from at least two conditions with
-    two or more replicates for a single capture probe and outputs differential interaction
-    results. Following filtering to ensure that the number of interactions is above the required
-    threshold (--threshold_count), diffxpy is used to run a wald test after
-    fitting a negative binomial model to the interaction counts.The options to filter
-    results can be filtered by a minimum mean value (threshold_mean) and/or
-    maximum q-value (threshold-q) are also provided.
-
-    Notes:
-
-     Currently both the capture viewpoints and the name of the probe being analysed must
-     be provided in order to correctly extract cis interactions.
-
-     If a N_SAMPLE * METADATA design matrix has not been supplied, the script
-     assumes that the standard replicate naming structure has been followed
-     i.e. SAMPLE_CONDITION_REPLICATE_(1|2).fastq.gz.
-    """
-
-    from capcruncher.cli.interactions_differential import differential
-
-    differential(*args, **kwargs)
-
-
-@cli.command()
 @click.argument("uri")
 @click.option(
     "-n",
@@ -389,7 +316,7 @@ def store_bins(*args, **kwargs):
 @click.option("-o", "--output", help="Output file name")
 def store_merge(*args, **kwargs):
     """
-    Merges capcruncher cooler files together.
+    Merges capcruncher HDF5 files together.
 
     Produces a unified cooler with both restriction fragment and genomic bins whilst
     reducing the storage space required by hard linking the "bins" tables to prevent duplication.
@@ -402,11 +329,15 @@ def store_merge(*args, **kwargs):
 @cli.group()
 def compare():
 
-    """
-    Compare bedgraphs and CapCruncher cooler files.
+    r"""Compare bedgraphs and CapCruncher cooler files.
 
-    These commands allow for specific viewpoints to be extracted from cooler files
-    and perform user defined groupby aggregations.
+    These commands allow for specific viewpoints to be extracted from CapCruncher HDF5 files and perform:
+
+        1. User defined groupby aggregations.
+
+        2. Comparisons between conditions.
+
+        3. Identification of differential interactions between conditions.
 
     See subcommands for details.
 
@@ -484,3 +415,46 @@ def bedgraphs_summarise(*args, **kwargs):
     from capcruncher.cli.interactions_compare import summarise
 
     summarise(*args, **kwargs)
+
+
+@compare.command(name="differential")
+@click.argument("interaction_files", required=True, nargs=-1)
+@click.option(
+    "-o", "--output-prefix", help="Output file prefix", default="differential"
+)
+@click.option("-v", "--viewpoint", help="Viewpoint to extract", required=True)
+@click.option("-d", "--design-matrix", help="Design matrix file", required=True)
+@click.option("-c", "--contrast", help="Contrast to test", default="condition")
+@click.option(
+    "-r",
+    "--regions-of-interest",
+    help="Regions of interest to test for differential interactions",
+    default=None,
+)
+@click.option(
+    "--viewpoint-distance",
+    help="Distance from viewpoint to test for differential interactions",
+    default=None,
+    type=click.INT,
+)
+@click.option(
+    "--threshold-count",
+    help="Minimum number of interactions to test for differential interactions",
+    default=20,
+)
+@click.option(
+    "--threshold-q",
+    help="Minimum q-value to test for differential interactions",
+    default=0.05,
+)
+def bedgraphs_differential(*args, **kwargs):
+    """Perform differential testing on CapCruncher HDF5 files.
+
+    This command performs differential testing on CapCruncher HDF5 files. It requires a design matrix
+    and a contrast to test. The design matrix should be a tab separated file with the first column
+    containing the sample names and the remaining columns containing the conditions. The contrast
+    should specify the name of the column in the design matrix to test. The output is a tab separated bedgraph.
+    """
+    from capcruncher.cli.interactions_differential import differential
+
+    differential(*args, **kwargs)
