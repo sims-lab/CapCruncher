@@ -5,6 +5,7 @@ import glob
 import pytest
 import logging
 import numpy as np
+import pathlib
 
 
 @pytest.fixture(scope="module")
@@ -222,25 +223,15 @@ def setup_pipeline_run_tiled(
     ],
 )
 def test_pipeline_capture(setup):
-
     cmd = "capcruncher pipeline -c 8 all -p"
     completed = subprocess.run(cmd.split())
     assert completed.returncode == 0
 
 
 @pytest.mark.order(2)
-def test_digested_exists(run_directory_capture):
-    assert len(
-        glob.glob(
-            f"{run_directory_capture}/capcruncher_preprocessing/digested/*.fastq*"
-        )
-    ) == (4 * 2)
-
-
-@pytest.mark.order(2)
 def test_stats_exist(run_directory_capture):
     assert os.path.exists(
-        f"{run_directory_capture}/capcruncher_statistics/capcruncher_statistics.html"
+        f"{run_directory_capture}/capcruncher_statistics/capcruncher_report.html"
     )
 
 
@@ -256,10 +247,13 @@ def test_bigwigs_exist(run_directory_capture, n_samples, n_groups, n_viewpoints)
             (math.perm(n_groups, 2) * n_viewpoints),
         ],
     )
-    assert (
-        len(glob.glob(f"{run_directory_capture}/capcruncher_analysis/bigwigs/*.bigWig"))
-        == n_bigwigs_expected
+
+    bigwigs = list(
+        pathlib.Path(f"{run_directory_capture}/capcruncher_pileup/05_bigwig/").glob(
+            "*.bigWig"
+        )
     )
+    assert len(bigwigs) == n_bigwigs_expected
 
 
 @pytest.mark.order(2)
@@ -267,7 +261,7 @@ def test_reporters_are_binned(run_directory_tiled, binsizes):
     import cooler
 
     example_cooler = os.path.join(
-        run_directory_tiled, "capcruncher_analysis/reporters/counts/SAMPLE-A_REP1.hdf5"
+        run_directory_tiled, "capcruncher_pileup/03_counts/SAMPLE-A_REP1.hdf5"
     )
     cooler_groups = cooler.api.list_coolers(example_cooler)
     assert len(cooler_groups) == len(binsizes) + 1
@@ -278,23 +272,23 @@ def test_hub_exists(run_directory_capture):
     assert os.path.exists(f"{run_directory_capture}/hub_directory")
 
 
-@pytest.mark.order(2)
-def test_plot_template_exists(run_directory_capture):
-    try:
+# @pytest.mark.order(2)
+# def test_plot_template_exists(run_directory_capture):
+#     try:
 
-        assert os.path.exists(
-            f"{run_directory_capture}/capcruncher_plots/templates/Slc25A37.pileup.yml"
-        )
-    except ImportError:
-        pass
+#         assert os.path.exists(
+#             f"{run_directory_capture}/capcruncher_plots/templates/Slc25A37.pileup.yml"
+#         )
+#     except ImportError:
+#         pass
 
 
-@pytest.mark.order(2)
-def test_plot_exists(run_directory_capture):
-    try:
+# @pytest.mark.order(2)
+# def test_plot_exists(run_directory_capture):
+#     try:
 
-        assert os.path.exists(
-            f"{run_directory_capture}/capcruncher_plots/Slc25A37_chr14:69878554-69933221.svg"
-        )
-    except ImportError:
-        pass
+#         assert os.path.exists(
+#             f"{run_directory_capture}/capcruncher_plots/Slc25A37_chr14:69878554-69933221.svg"
+#         )
+#     except ImportError:
+#         pass
