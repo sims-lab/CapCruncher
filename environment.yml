@@ -6,17 +6,19 @@ channels:
 dependencies:
   - bedtools
   - bowtie2>=2.4.4
-  - cgatcore
   - click<=8.1.0
   - cooler
   - dask>2020.12.0,<=2022.8.0
+  - duckdb
   - fastqc
   - flash
+  - ibis-framework
   - iced
   - joblib
   - more-itertools
   - multiqc
   - natsort
+  - numpy
   - pandas<=1.5.2
   - pip<=22.2.2
   - plotly>5.0.0,<=5.10.0
@@ -27,9 +29,9 @@ dependencies:
   - python>=3.8,<3.11
   - ray-core<=2.0.1
   - samtools<=1.15.1
-  - snakemake>=7.19.1
   - seaborn
   - setuptools>50.1.0,<=65.0.1
+  - snakemake>=7.19.1
   - tqdm
   - trackhub
   - trim-galore
