@@ -19,6 +19,7 @@ pyranges
 pysam>0.15.0,<=0.19.1
 pyyaml>=6.0
 seaborn
+snakemake
 sqlalchemy>=1.3.18
 tqdm
 trackhub
