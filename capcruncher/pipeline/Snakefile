@@ -51,8 +51,8 @@ COMPRESS_FASTQ = config["pipeline"].get("compression", 0) != 0
 ## Pipeline variables
 SAMPLE_NAMES = DESIGN["sample"]
 FASTQ_FILE_NAMES = [
-    *DESIGN["fq1"].apply(str).to_list(),
-    *DESIGN["fq2"].apply(str).to_list(),
+    *fastq_samples.sample_details["fq1"].apply(str).to_list(),
+    *fastq_samples.sample_details["fq2"].apply(str).to_list(),
 ]
 
 

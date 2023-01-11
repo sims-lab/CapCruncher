@@ -137,12 +137,12 @@ class GenericFastqSamples:
     def __init__(self, design):
 
         # Expected columns: sample, fq1, fq2
-        self.design = design
-        self.design = self.design.assign(
-            paired=(~self.design[["fq1", "fq2"]].isna().any(axis=1))
+        self.sample_details = design
+        self.sample_details = self.sample_details.assign(
+            paired=(~self.sample_details[["fq1", "fq2"]].isna().any(axis=1))
         )
 
-        assert self.design["paired"].all(), "All files must be paired"
+        assert self.sample_details["paired"].all(), "All files must be paired"
 
     @classmethod
     def from_files(cls, files: List[Union[pathlib.Path, str]]) -> (pd.DataFrame):
@@ -176,14 +176,14 @@ class GenericFastqSamples:
 
     @property
     def fastq_files(self):
-        return sorted([*self.design["fq1"], *self.design["fq2"]])
+        return sorted([*self.sample_details["fq1"], *self.sample_details["fq2"]])
 
     @property
     def sample_names_all(self):
-        return self.design["sample"].to_list()
+        return self.sample_details["sample"].to_list()
 
     @property
     def experimental_design(self):
-        return self.design.assign(
-            condition=self.design["sample"].split("_").str[1]
+        return self.sample_details.assign(
+            condition=self.sample_details["sample"].split("_").str[1]
         ).loc[:, ["sample", "condition"]]
