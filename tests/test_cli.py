@@ -458,7 +458,7 @@ def test_reporters_count(
     result = cli_runner.invoke(
         cli,
         [
-            "reporters",
+            "interactions",
             "count",
             slices,
             "-o",
@@ -499,9 +499,8 @@ def test_reporters_store_binned(
     result = cli_runner.invoke(
         cli,
         [
-            "reporters",
-            "store",
-            "bins",
+            "interactions",
+            "fragments-to-bins",
             clr,
             "-o",
             output,
@@ -537,8 +536,7 @@ def test_reporters_store_merge(
     result = cli_runner.invoke(
         cli,
         [
-            "reporters",
-            "store",
+            "interactions",
             "merge",
             *hdf5_files,
             "-o",
@@ -579,7 +577,7 @@ def test_reporters_pileup(
     result = cli_runner.invoke(
         cli,
         [
-            "reporters",
+            "interactions",
             "pileup",
             clr,
             "-o",
