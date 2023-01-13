@@ -18,7 +18,7 @@ dependencies:
   - more-itertools
   - multiqc
   - natsort
-  - numpy
+  - numpy<=1.23
   - pandas<=1.5.2
   - pip<=22.2.2
   - plotly>5.0.0,<=5.10.0
