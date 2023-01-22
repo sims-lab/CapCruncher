@@ -2,30 +2,12 @@ import subprocess
 from tempfile import NamedTemporaryFile
 from typing import Iterable, List, Literal
 import click
-import ast
 import pandas as pd
 from cgatcore.iotools import touch_file
 import os
 import logging
 from capcruncher.utils import get_file_type
-
-
-def strip_cmdline_args(args):
-
-    formatted_args = dict()
-    for arg in args:
-        key, value = arg.split("=")
-
-        if "\\t" in value:
-            formatted_args[key] = "\t"
-        else:
-
-            try:
-                formatted_args[key] = ast.literal_eval(value)
-            except SyntaxError:
-                formatted_args[key] = value
-
-    return formatted_args
+import ibis
 
 
 @click.group()
@@ -51,32 +33,6 @@ def gtf_to_bed12(gtf: str, output: str):
     with open(output, "w") as w:
         for gene, df in df_gtf.sort_values(["seqname", "start"]).groupby("geneid"):
             w.write(gtf_line_to_bed12_line(df) + "\n")
-
-
-@cli.command()
-@click.argument("infiles", nargs=-1, required=True)
-@click.option("-s", "--partition-size", default="2GB")
-@click.option("-o", "--out-glob", required=True)
-@click.option("-r", "--read-args", multiple=True)
-@click.option("-w", "--write-args", multiple=True)
-def repartition_csvs(
-    infiles: Iterable,
-    out_glob: str,
-    partition_size: str,
-    read_args: tuple = None,
-    write_args: tuple = None,
-):
-
-    import dask.dataframe as dd
-
-    read_args = strip_cmdline_args(read_args)
-    write_args = strip_cmdline_args(write_args)
-
-    (
-        dd.read_csv(infiles, **read_args)
-        .repartition(partition_size=partition_size)
-        .to_csv(out_glob, **write_args)
-    )
 
 
 @cli.command()
@@ -114,82 +70,55 @@ def cis_and_trans_stats(
     n_cores: int = 1,
     memory_limit: str = "1G",
 ):
-    import warnings
+    con = ibis.duckdb.connect()
 
-    warnings.filterwarnings("ignore")
+    if not os.path.isdir(slices):
+        tbl = con.register(f"parquet://{slices}", table_name="slices_tbl")
+    else:
+        tbl = con.register(f"parquet://{slices}/*.parquet", table_name="slices_tbl")
 
-    from capcruncher.api.filter import (
-        CCSliceFilter,
-        TriCSliceFilter,
-        TiledCSliceFilter,
+    tbl = tbl.mutate(capture=tbl["capture"].fillna("reporter")).select(
+        ["capture", "parent_id", "chrom", "viewpoint", "pe"]
     )
 
-    filters = {
-        "capture": CCSliceFilter,
-        "tri": TriCSliceFilter,
-        "tiled": TiledCSliceFilter,
-    }
-    slice_filterer = filters.get(method)
+    tbl_reporter = tbl[(tbl["capture"] == "reporter")].drop(
+        ["viewpoint", "pe", "capture"]
+    )
 
-    if file_type == "tsv":
-        df_slices = pd.read_csv(slices, sep="\t")
+    tbl_capture = tbl[~(tbl["capture"] == "reporter")]
 
-        try:
-            slice_filterer(
-                df_slices, sample_name=sample_name, read_type=read_type
-            ).cis_or_trans_stats.to_csv(output, index=False)
-        except Exception as e:
-            logging.info(f"Exception: {e} occured with {slices}")
-            touch_file(output)
+    tbl_merge = tbl_capture.join(
+        tbl_reporter,
+        predicates=[
+            "parent_id",
+        ],
+        suffixes=["_capture", "_reporter"],
+        how="left",
+    )
 
-    elif file_type == "hdf5":
+    tbl_merge = tbl_merge.mutate(
+        is_cis=(tbl_merge["chrom_capture"] == tbl_merge["chrom_reporter"])
+    )
 
-        slices_iterator = pd.read_hdf(slices, "slices", chunksize=1e6, iterator=True)
-        slice_stats = pd.DataFrame()
+    df_cis_and_trans = (
+        tbl_merge.groupby(["viewpoint", "is_cis", "pe"]).size()
+    ).execute(limit=None)
 
-        for df in slices_iterator:
-            sf = slice_filterer(df, sample_name=sample_name, read_type=read_type)
-            stats = sf.cis_or_trans_stats
-
-            slice_stats = (
-                pd.concat([slice_stats, stats])
-                .groupby(["viewpoint", "cis/trans", "sample", "read_type"])
-                .sum()
-                .reset_index()
-            )
-
-        slice_stats.to_csv(output, index=False)
-
-    elif file_type == "parquet":
-
-        import dask.dataframe as dd
-        import dask.distributed
-
-        with dask.distributed.Client(
-            n_workers=n_cores,
-            dashboard_address=None,
-            processes=True,
-            scheduler_port=0,
-            local_directory=os.environ.get("TMPDIR", "/tmp/"),
-            memory_limit=memory_limit,
-        ) as _client:
-
-            ddf = dd.read_parquet(slices, engine="pyarrow")
-
-            ddf_cis_trans_stats = ddf.map_partitions(
-                lambda df: slice_filterer(
-                    df, sample_name=sample_name, read_type=read_type
-                ).cis_or_trans_stats
-            )
-
-            ddf_cis_trans_stats_summary = (
-                ddf_cis_trans_stats.groupby(
-                    ["viewpoint", "cis/trans", "sample", "read_type"]
+    df_cis_and_trans = (
+        df_cis_and_trans.rename(columns={"pe": "read_type", "is_cis": "cis/trans"})
+        .assign(
+            sample="SAMPLEX",
+            **{
+                "cis/trans": lambda df: df["cis/trans"].map(
+                    {True: "cis", False: "trans"}
                 )
-                .sum()
-                .reset_index()
-            )
-            ddf_cis_trans_stats_summary.to_csv(output, index=False, single_file=True)
+            },
+        )
+        .loc[lambda df: ~df["viewpoint"].isna()]
+        .sort_values(["viewpoint", "read_type", "cis/trans"])
+    )
+
+    df_cis_and_trans.to_csv(output, index=False)
 
 
 @cli.command()
