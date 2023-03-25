@@ -136,187 +136,6 @@ def create_cooler_cc(
     return cooler_fn
 
 
-# class GenomicBinner:
-#     """
-#     Provides a conversion table for converting two sets of bins.
-
-#     Attributes:
-#      chromsizes (pd.Series): Series indexed by chromosome name containg chromosome sizes in bp
-#      fragments (pd.DataFrame): DataFrame containing bins to convert to equal genomic intervals
-#      binsize (int): Genomic bin size
-#      min_overlap (float): Minimum degree of intersection to define an overlap.
-#      n_cores (int): Number of cores to use for bin intersection.
-
-#     """
-
-#     def __init__(
-#         self,
-#         chromsizes: Union[os.PathLike, pd.DataFrame, pd.Series],
-#         fragments: pd.DataFrame,
-#         binsize: int = 5000,
-#         n_cores: int = 8,
-#         method: Literal["midpoint", "overlap"] = "midpoint",
-#         min_overlap: float = 0.2,
-#     ):
-#         """
-#         Args:
-#          chromsizes (Union[os.PathLike, pd.DataFrame, pd.Series]): Series indexed by chromosome name containg chromosome sizes in bp
-#          fragments (pd.DataFrame): DataFrame containing bins to convert to equal genomic intervals
-#          binsize (int, optional): Genomic window size. Defaults to 5000.
-#          n_cores (int, optional): Number of cores to use for bin intersection.. Defaults to 8.
-#          min_overlap (float, optional): Minimum degree of intersection to define an overlap.Only used for "overlap" method. Defaults to 0.2.
-#         """
-
-#         if not method in ["midpoint", "overlap"]:
-#             raise ValueError('Method should be either "midpoint" or "overlap"')
-
-#         self.method = method
-#         self.chromsizes = self._format_chromsizes(chromsizes)
-#         self.fragments = self._format_fragments(fragments)
-#         self.binsize = binsize
-#         self.min_overlap = min_overlap
-
-#         self.bins_genomic = self._get_bins()
-#         self._bin_conversion_table = None
-#         self.n_cores = n_cores
-
-#     def _get_bins(self):
-#         return (
-#             cooler.util.make_bintable(chromsizes=self.chromsizes, binsize=self.binsize)
-#             .reset_index()
-#             .rename(columns={"index": "name"})[["chrom", "start", "end", "name"]]
-#             .assign(
-#                 start=lambda df: df["start"].astype(int),
-#                 end=lambda df: df["end"].astype(int),
-#             )
-#         )
-
-#     def _format_chromsizes(self, chromsizes):
-
-#         _chromsizes = pd.Series(dtype=np.int64)
-#         if isinstance(chromsizes, str):
-#             _chromsizes = pd.read_csv(
-#                 chromsizes,
-#                 sep="\t",
-#                 header=None,
-#                 names=["chrom", "size"],
-#                 usecols=[0, 1],
-#                 index_col=0,
-#             )["size"].sort_index(key=natsort_key)
-
-#         elif isinstance(chromsizes, pd.DataFrame):
-#             if chromsizes.index.astype(str).str.contains("^chr.*"):
-#                 _chromsizes = chromsizes.iloc[:, 0]
-
-#         elif isinstance(chromsizes, pd.Series):
-#             _chromsizes = chromsizes
-
-#         if not _chromsizes.empty:
-#             return _chromsizes
-#         else:
-#             raise ValueError("Chromsizes supplied in the wrong format")
-
-#     def _natsort_dataframe(self, df, column):
-
-#         df_by_key = {k: df for k, df in df.groupby(column)}
-
-#         _df = pd.DataFrame()
-#         for k in natsorted(df_by_key):
-#             if _df is not None:
-#                 _df = pd.concat([_df, df_by_key[k]])
-#             else:
-#                 _df = df_by_key[k]
-
-#         return _df
-
-#     def _format_fragments(self, fragments):
-
-#         # Read the fragments
-#         if isinstance(fragments, str):
-#             _fragments = pd.read_csv(
-#                 fragments,
-#                 sep="\t",
-#                 index_col=0,
-#                 header=None,
-#                 names=["chrom", "start", "end", "name"],
-#             )
-#         elif isinstance(fragments, pd.DataFrame):
-#             _fragments = fragments
-
-#             if not "name" in _fragments.columns:
-#                 _fragments = _fragments.reset_index().rename(columns={"index": "name"})[
-#                     ["chrom", "start", "end", "name"]
-#                 ]
-
-#         # Adjust fragments based on method
-#         if self.method == "midpoint":
-#             lengths = _fragments["end"] - fragments["start"]
-#             midpoint = _fragments["start"] + (lengths // 2)
-
-#             _fragments["start"] = midpoint
-#             _fragments["end"] = midpoint + 1
-
-#         return self._natsort_dataframe(_fragments, "chrom")
-
-#     def _get_bin_conversion_table(self) -> pd.DataFrame:
-
-#         # Split bins by chromosome
-#         bins_genomic_by_chrom = split_intervals_on_chrom(self.bins_genomic)
-#         bins_fragments_by_chrom = split_intervals_on_chrom(self.fragments)
-
-#         # Identify shared chromosomes (all should be represented)
-#         shared_chroms = set(bins_fragments_by_chrom) & set(bins_genomic_by_chrom)
-
-#         # Perform intersection of bins by chromosome
-#         bins_intersections = Parallel(n_jobs=self.n_cores)(
-#             delayed(intersect_bins)(
-#                 bins_fragments_by_chrom[chrom],
-#                 bins_genomic_by_chrom[chrom],
-#                 loj=True,
-#                 sorted=True,
-#                 f=self.min_overlap if self.method == "overlap" else 1e-9,
-#             )
-#             for chrom in natsorted(shared_chroms)
-#         )
-
-#         # Concatenate intersected dataframes and replace labels for clarity
-#         df_bins_intersections = pd.concat(bins_intersections, ignore_index=True).rename(
-#             columns=lambda c: c.replace("_1", "_fragment").replace("_2", "_bin")
-#         )
-
-#         # # Calculate overlap fraction
-#         # df_bins_intersections["overlap_fraction"] = df_bins_intersections["overlap"] / (
-#         #     df_bins_intersections["end_fragment"]
-#         #     - df_bins_intersections["start_fragment"]
-#         # )
-
-#         return df_bins_intersections
-
-#     @property
-#     def bins(self) -> pd.DataFrame:
-#         """
-#         Equal genomic bins.
-
-#         Returns:
-#          pd.DataFrame: DataFrame in bed format.
-#         """
-#         return self.bins_genomic
-
-#     @property
-#     def bin_conversion_table(self) -> pd.DataFrame:
-#         """
-
-#         Returns:
-#          pd.DataFrame: Conversion table containing coordinates and ids of intersecting bins.
-#         """
-
-#         if self._bin_conversion_table is not None:
-#             return self._bin_conversion_table
-#         else:
-#             self._bin_conversion_table = self._get_bin_conversion_table()
-#             return self._bin_conversion_table
-
-
 class CoolerBinner:
     def __init__(
         self,
@@ -331,6 +150,8 @@ class CoolerBinner:
 
         self.cooler_group = cooler_group
         self.binsize = binsize
+        self.method = method
+        self.minimum_overlap = minimum_overlap
 
         if isinstance(cooler_group, str):
             self.cooler = cooler.Cooler(cooler_group)
@@ -343,20 +164,14 @@ class CoolerBinner:
 
         self.n_cis_interactions = self.cooler.info["metadata"]["n_cis_interactions"]
         self.n_cis_interaction_correction = n_cis_interaction_correction
-        self.n_rf_per_bin_correction = n_rf_per_bin_correction
+        self.n_restriction_fragment_correction = n_rf_per_bin_correction
         self.scale_factor = scale_factor
 
     @functools.cached_property
-    def genomic_bins(self, binsize: int = None) -> pr.PyRanges:
-
-        if binsize is None:
-            binsize = self.binsize
-        if binsize is None:
-            raise ValueError("binsize must be specified")
-
+    def genomic_bins(self) -> pr.PyRanges:
         return (
-            cooler.binnify(binsize=1000, chromsizes=self.cooler.chromsizes)
-            .assign(genomic_bin_id=lambda df: df.index.to_series())
+            cooler.binnify(binsize=self.binsize, chromsizes=self.cooler.chromsizes)
+            .assign(genomic_bin_id=lambda df: df.reset_index().index.to_series())
             .rename(columns={"chrom": "Chromosome", "start": "Start", "end": "End"})
             .pipe(pr.PyRanges)
         )
@@ -382,9 +197,11 @@ class CoolerBinner:
         Translate genomic bins to fragment bins
         """
 
+        fragment_bins = self.fragment_bins
+
         if self.method == "midpoint":
             fragment_bins = (
-                self.fragment_bins.as_df()
+                fragment_bins.as_df()
                 .assign(
                     Start=lambda df: df["Start"] + (df["End"] - df["Start"]) / 2,
                     End=lambda df: df["Start"] + 1,
@@ -401,18 +218,13 @@ class CoolerBinner:
                 pr_fragment_to_bins["Overlap"] >= self.minimum_overlap
             ]
 
-        return pr_fragment_to_bins
-
-    def _add_n_fragment_information(self) -> pd.DataFrame:
-        """
-        Get genomic bin attributes
-        """
-
-        fragment_to_bins = self.fragment_to_genomic_table.assign(
+        # Add number of fragments per bin
+        pr_fragment_to_bins = pr_fragment_to_bins.assign(
             "n_fragments_per_bin",
             lambda df: df.groupby("genomic_bin_id")["fragment_id"].transform("nunique"),
         )
-        return fragment_to_bins
+
+        return pr_fragment_to_bins
 
     @functools.cached_property
     def fragment_to_genomic_mapping(self) -> Dict[int, int]:
@@ -430,61 +242,63 @@ class CoolerBinner:
     def pixels(self) -> pd.DataFrame:
         """
         Translate fragment pixels to genomic pixels
-
-        fragment_to_bins: dict,
-        pixels: pd.DataFrame,
-        n_restriction_fragment_correction: bool = True,
-        n_cis_interaction_correction: bool = True,
-        n_cis_interactions: int = None,
-        scale_factor: int = 1_000_000,
         """
 
         fragment_to_bins_mapping = self.fragment_to_genomic_mapping
 
         pixels = self.cooler.pixels()[:].assign(
-            "genomic_bin1_id",
-            lambda df: df["bin1_id"].map(fragment_to_bins_mapping),
-            "genomic_bin2_id",
-            lambda df: df["bin2_id"].map(fragment_to_bins_mapping),
+            genomic_bin1_id=lambda df: df["bin1_id"].map(fragment_to_bins_mapping),
+            genomic_bin2_id=lambda df: df["bin2_id"].map(fragment_to_bins_mapping),
+        )
+
+        # Sum the counts of pixels that map to the same genomic bins
+        pixels = (
+            pixels.groupby(["genomic_bin1_id", "genomic_bin2_id"])
+            .agg(
+                count=("count", "sum"),
+            )
+            .reset_index()
         )
 
         # Normalize pixels if specified
-
         if self.n_restriction_fragment_correction:
+
             n_fragments_per_bin = (
                 self.fragment_to_genomic_table.as_df()
                 .set_index("genomic_bin_id")["n_fragments_per_bin"]
                 .to_dict()
             )
             pixels = pixels.assign(
-                "n_fragments_per_bin1",
-                lambda df: df["genomic_bin1_id"].map(n_fragments_per_bin),
-                "n_fragments_per_bin2",
-                lambda df: df["genomic_bin2_id"].map(n_fragments_per_bin),
-            )
-            n_fragments_per_bin_correction = (
-                pixels["n_fragments_per_bin1"] * pixels["n_fragments_per_bin2"]
-            )
-            pixels = pixels.assign(
-                "count_n_rf_norm",
-                lambda df: df["count"] / n_fragments_per_bin_correction,
+                n_fragments_per_bin1=lambda df: df["genomic_bin1_id"].map(
+                    n_fragments_per_bin
+                ),
+                n_fragments_per_bin2=lambda df: df["genomic_bin2_id"].map(
+                    n_fragments_per_bin
+                ),
+                n_fragments_per_bin_correction=lambda df: (
+                    df["n_fragments_per_bin1"] + df["n_fragments_per_bin2"]
+                ),
+                count_n_rf_norm=lambda df: df["count"]
+                / df["n_fragments_per_bin_correction"],
             )
 
         if self.n_cis_interaction_correction:
             pixels = pixels.assign(
-                "count_n_cis_norm",
-                lambda df: (df["count"] / self.n_cis_interactions) * self.scale_factor,
+                count_n_cis_norm=lambda df: (df["count"] / self.n_cis_interactions)
+                * self.scale_factor,
             )
 
         if self.n_cis_interaction_correction and self.n_restriction_fragment_correction:
             pixels = pixels.assign(
-                "count_n_cis_rf_norm",
-                lambda df: (pixels["count_n_rf_norm"] / self.n_cis_interactions)
-                * self.scale_factor,
+                count_n_cis_rf_norm=lambda df: (
+                    pixels["count_n_rf_norm"] / self.n_cis_interactions
+                )
+                * self.scale_factor
             )
 
         return pixels
 
+    @functools.cached_property
     def viewpoint_bins(self) -> List[int]:
         """
         Return list of viewpoint bins
@@ -512,16 +326,36 @@ class CoolerBinner:
 
         metadata = {**self.cooler.info["metadata"]}
         metadata["viewpoint_bins"] = [int(x) for x in self.viewpoint_bins]
-
         cooler_fn = f"{store}::/{metadata['viewpoint_name']}/resolutions/{self.binsize}"
+
+        pixels = (
+            self.pixels.drop(
+                columns=[
+                    "bin1_id",
+                    "bin2_id",
+                    "n_fragments_per_bin1",
+                    "n_fragments_per_bin2",
+                    "n_fragments_per_bin_correction",
+                ],
+                errors="ignore",
+            )
+            .rename(
+                columns={"genomic_bin1_id": "bin1_id", "genomic_bin2_id": "bin2_id"}
+            )
+            .loc[:, lambda df: ["bin1_id", "bin2_id", "count", *df.columns[3:]]]
+        )
+
+        bins = self.genomic_bins.as_df().rename(
+            columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
+        )
 
         cooler.create_cooler(
             cooler_fn,
-            bins=self.bins,
-            pixels=self.pixels,
+            bins=bins,
+            pixels=pixels,
             metadata=metadata,
             mode="w" if not os.path.exists(store) else "a",
-            columns=self.pixels.columns[2:],
+            columns=pixels.columns[2:],
         )
 
         return cooler_fn
