@@ -3,12 +3,17 @@ import os
 import tempfile
 from typing import Tuple
 import pandas as pd
+import ray
 from capcruncher.api.storage import (
     CoolerBinner,
     create_cooler_cc,
     merge_coolers,
 )
 import cooler
+import warnings
+
+# warnings.filterwarnings("ignore", category=DeprecationWarning)
+# warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 def fragments(
@@ -85,6 +90,18 @@ def fragments(
         )
 
 
+@ray.remote(num_cpus=1)
+def _bin_cooler(clr_in: os.PathLike, clr_out: os.PathLike, binsize: int, **kwargs):
+
+    clr_binner = CoolerBinner(
+        cooler_group=clr_in,
+        binsize=binsize,
+        **kwargs,
+    )
+    clr_binner.to_cooler(clr_out)
+    return clr_out
+
+
 def bins(
     cooler_path: os.PathLike,
     output: os.PathLike,
@@ -93,6 +110,7 @@ def bins(
     scale_factor: int = 1e6,
     overlap_fraction: float = 1e-9,
     conversion_tables: os.PathLike = None,
+    n_cores: int = 1,
     **kwargs,
 ):
     """
@@ -102,57 +120,46 @@ def bins(
     genomic bins of a specified size. If the normalise option is selected,
     columns containing normalised counts are added to the pixels table of the output
 
-
-    Notes:
-     To avoid repeatedly calculating restriction fragment to bin conversions,
-     bin conversion tables (a .pkl file containing a dictionary of
-     `:class:capcruncher.tools.storage.GenomicBinner` objects, one per binsize) can be supplied.
-
-
+    \f
     Args:
-     cooler_fn (os.PathLike): Path to cooler file. Nested coolers can be specified by STORE_FN.hdf5::/PATH_TO_COOLER
-     output (os.PathLike): Path for output binned cooler file.
-     binsizes (Tuple, optional): Genomic window sizes to use for binning. Defaults to None.
-     normalise (bool, optional): Normalise the number of interactions to total number of cis interactions (True). Defaults to False.
-     n_cores (int, optional): Number of cores to use for binning. Performed in parallel by chromosome. Defaults to 1.
-     scale_factor (int, optional): Scaling factor to use for normalising interactions. Defaults to 1e6.
-     overlap_fraction (float, optional): Minimum fraction to use for defining overlapping bins. Defaults to 1e-9.
+        cooler_path (os.PathLike): Path to cooler file.
+        output (os.PathLike): Path to output cooler file.
+        binsizes (Tuple, optional): Binsizes to bin cooler file to. Defaults to None.
+        normalise (bool, optional): Whether to normalise counts. Defaults to True.
+        scale_factor (int, optional): Scale factor for normalisation. Defaults to 1e6.
+        overlap_fraction (float, optional): Minimum overlap fraction for binning. Defaults to 1e-9.
+        conversion_tables (os.PathLike, optional): Path to conversion tables. Defaults to None.
+        n_cores (int, optional): Number of cores to use. Defaults to 1.
+
     """
     clr_groups = cooler.api.list_coolers(cooler_path)
 
-    # if conversion_tables:
-    #     logging.info("Loading conversion tables")
-    #     with open(conversion_tables, "rb") as f:
-    #         try:
-    #             conversion_tables = pickle.load(f)
-    #         except:
-    #             raise ValueError("Conversion tables are not in a valid format.")
-    # else:
-    #     logging.info("Generating conversion tables")
-    #     clr_example = cooler.Cooler(f"{cooler_path}::{clr_groups[0]}")
-    #     conversion_tables = {
-    #         binsize: GenomicBinner(
-    #             chromsizes=clr_example.chromsizes,
-    #             fragments=clr_example.bins()[:],
-    #             binsize=binsize,
-    #         )
-    #         for binsize in binsizes
-    #     }
+    assert clr_groups, "No cooler groups found in file"
+    assert binsizes, "No binsizes provided"
 
+    ray.init(num_cpus=n_cores)
     clr_tempfiles = []
+
     for binsize in binsizes:
         for clr_group in clr_groups:
 
-            binning_output = tempfile.NamedTemporaryFile().name
-
             logging.info(f"Processing {clr_group}")
-            clr = cooler.Cooler(f"{cooler_path}::{clr_group}")
-            clr_binner = CoolerBinner(
-                cooler_group=clr, binner=conversion_tables[binsize]
+            clr_in = cooler.Cooler(f"{cooler_path}::{clr_group}")
+            clr_out = tempfile.NamedTemporaryFile().name
+
+            # TODO: Integrate these ino the CLI
+            default_kwargs = dict(
+                method="midpoint",
+                minimum_overlap=0.51,
+                n_cis_interaction_correction=True,
+                n_rf_per_bin_correction=True,
+                scale_factor=1_000_000,
             )
 
-            clr_binner.to_cooler(binning_output)
-            clr_tempfiles.append(binning_output)
+            clr_tempfiles.append(
+                _bin_cooler.remote(clr_in, clr_out, binsize, **default_kwargs)
+            )
 
     # Final cooler output
+    clr_tempfiles = ray.get(clr_tempfiles)
     merge_coolers(clr_tempfiles, output)
