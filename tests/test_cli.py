@@ -352,72 +352,35 @@ def test_alignment_filter(
 
 
 @pytest.mark.parametrize(
-    "fragments,output",
-    [
-        (
-            "fragments.flashed.parquet",
-            "dup.flashed.pkl",
-        ),
-        (
-            "fragments.pe.parquet",
-            "dup.pe.pkl",
-        ),
-    ],
-)
-def test_alignment_deduplicate_fragments(
-    cli_runner, data_deduplication_alignments, tmpdir, fragments, output
-):
-
-    fragments = os.path.join(data_deduplication_alignments, fragments)
-    output = os.path.join(tmpdir, output)
-
-    result = cli_runner.invoke(
-        cli,
-        [
-            "alignments",
-            "deduplicate",
-            "identify",
-            fragments,
-            "-o",
-            output,
-        ],
-    )
-    assert result.exit_code == 0
-    assert os.path.exists(output)
-
-
-@pytest.mark.parametrize(
-    "slices,duplicates,output",
+    "slices,read_type,output",
     [
         (
             "slices.flashed.parquet",
-            "duplicates.flashed.pkl",
+            "flashed",
             "deduplicated.flashed.parquet",
         ),
         (
             "slices.pe.parquet",
-            "duplicates.pe.pkl",
+            "pe",
             "deduplicated.pe.parquet",
         ),
     ],
 )
-def test_alignment_deduplicate_slices(
-    cli_runner, data_deduplication_alignments, tmpdir, slices, duplicates, output
+def test_interactions_deduplicate(
+    cli_runner, data_deduplication_alignments, tmpdir, slices, read_type, output
 ):
 
     slices = os.path.join(data_deduplication_alignments, slices)
-    duplicates = os.path.join(data_deduplication_alignments, duplicates)
     output = os.path.join(tmpdir, output)
 
     result = cli_runner.invoke(
         cli,
         [
-            "alignments",
+            "interactions",
             "deduplicate",
-            "remove",
+            "--read-type",
+            read_type,
             slices,
-            "-d",
-            duplicates,
             "-o",
             output,
         ],
