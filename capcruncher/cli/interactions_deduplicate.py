@@ -19,9 +19,13 @@ def deduplicate(
 
     logging.info("Connecting to DuckDB")
     con = ibis.duckdb.connect()
-    slices_tbl_raw = con.register(
-        f"parquet://{slices}/*.parquet", table_name="slices_tbl"
-    )
+
+    if not os.path.isdir(slices):
+        slices_tbl_raw = con.register(f"parquet://{slices}", table_name="slices_tbl")
+    else:
+        slices_tbl_raw = con.register(
+            f"parquet://{slices}/*.parquet", table_name="slices_tbl"
+        )
 
     if read_type == "pe":
 
@@ -77,7 +81,7 @@ def deduplicate(
     if not os.path.exists(output):
         os.makedirs(output)
         df_dummy = scanner.to_table().to_pandas()
-        df_dummy.to_parquet(f"{output}/dummy.parquet", index=False)
+        df_dummy.to_parquet(f"{output}/dummy.parquet")
 
     logging.info("Calculating deduplication stats")
     # Calculate the number of slices in the input
