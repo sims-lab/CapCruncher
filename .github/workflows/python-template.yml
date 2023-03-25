@@ -57,7 +57,7 @@ jobs:
     - name: Install the package
       shell: bash -l {0}
       run: |
-        pip install .[plotting]
+        pip install .
 
     - name: Test with pytest and generate report
       shell: bash -l {0}
