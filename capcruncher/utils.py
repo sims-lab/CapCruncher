@@ -53,10 +53,7 @@ def is_on(param: str) -> bool:
         - 1
     """
     values = ["true", "t", "on", "yes", "y", "1"]
-    if str(param).lower() in values:
-        return True
-    else:
-        return False
+    return str(param).lower() in values
 
 
 def is_off(param: str):
