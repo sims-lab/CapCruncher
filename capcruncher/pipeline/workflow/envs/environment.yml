@@ -1,0 +1,35 @@
+name: ngs
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8
+  - pip
+  - pip:
+    - wget
+    - lanceotron
+    - git+https://github.com/alsmith151/ucsc_hub_maker.git
+  - bowtie2
+  - samtools>1.7
+  - deeptools
+  - trim-galore
+  - fastqc
+  - multiqc
+  - trackhub
+  - seaborn
+  - click
+  - cookiecutter
+  - ucsc-bigbedtobed
+  - pybigwig
+  - picard-slim
+  - macs2
+  - ucsc-fetchchromsizes
+  - ucsc-bedtobigbed
+  - ucsc-bedgraphtobigwig
+  - homer
+  - pybedtools
+  - snakemake
+  - subread
+  - star
+  - numpy>=1.19

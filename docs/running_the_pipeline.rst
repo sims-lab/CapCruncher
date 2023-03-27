@@ -168,9 +168,9 @@ The pipeline generates several key outputs:
 Statistics for the pipeline run
 *******************************
 
-The *capcruncher_statistics/* folder contains all of the relevant statistics
+The *capcruncher_output/statistics/* folder contains all of the relevant statistics
 for the pipeline run, an aggregated summary of all run statistics can be found in
-*capcruncher_statistics/capcruncher_statistics.html*. An example can be found `here <_static/capcruncher_statistics.html>`_.
+*capcruncher_output/statistics/capcruncher_output/statistics.html*. An example can be found `here <_static/capcruncher_output/statistics.html>`_.
 
 
 Reporters for each sample aggregated by viewpoint

@@ -231,7 +231,7 @@ def test_pipeline_capture(setup):
 @pytest.mark.order(2)
 def test_stats_exist(run_directory_capture):
     assert os.path.exists(
-        f"{run_directory_capture}/capcruncher_statistics/capcruncher_report.html"
+        f"{run_directory_capture}/capcruncher_output/statistics/capcruncher_report.html"
     )
 
 
@@ -249,9 +249,9 @@ def test_bigwigs_exist(run_directory_capture, n_samples, n_groups, n_viewpoints)
     )
 
     bigwigs = list(
-        pathlib.Path(f"{run_directory_capture}/capcruncher_pileup/05_bigwig/").glob(
-            "*.bigWig"
-        )
+        pathlib.Path(
+            f"{run_directory_capture}/capcruncher_output/pileups/bigwigs/"
+        ).glob("*.bigWig")
     )
     assert len(bigwigs) == n_bigwigs_expected
 
@@ -261,7 +261,7 @@ def test_reporters_are_binned(run_directory_tiled, binsizes):
     import cooler
 
     example_cooler = os.path.join(
-        run_directory_tiled, "capcruncher_pileup/03_counts/SAMPLE-A_REP1.hdf5"
+        run_directory_tiled, "capcruncher_output/pileups/counts/SAMPLE-A_REP1.hdf5"
     )
     cooler_groups = cooler.api.list_coolers(example_cooler)
     assert len(cooler_groups) == len(binsizes) + 1

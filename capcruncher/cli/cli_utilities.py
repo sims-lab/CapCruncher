@@ -38,37 +38,11 @@ def gtf_to_bed12(gtf: str, output: str):
 @cli.command()
 @click.argument("slices")
 @click.option("-o", "--output", help="Output file name")
-@click.option("-m", "--method", type=click.Choice(["capture", "tri", "tiled"]))
-@click.option(
-    "--file-type", type=click.Choice(["parquet", "hdf5", "tsv"]), default="parquet"
-)
 @click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
-@click.option(
-    "--read-type",
-    help="Type of read",
-    default="flashed",
-    type=click.Choice(["flashed", "pe"], case_sensitive=False),
-)
-@click.option(
-    "-p",
-    "--n_cores",
-    help="Number of parallel processes to use",
-    default=1,
-)
-@click.option(
-    "--memory-limit",
-    help="Maximum amount of memory to use.",
-    default="1G",
-)
 def cis_and_trans_stats(
     slices: str,
     output: str,
-    method: Literal["capture", "tri", "tiled"],
-    file_type: str = "hdf5",
-    sample_name: str = "",
-    read_type: str = "",
-    n_cores: int = 1,
-    memory_limit: str = "1G",
+    sample_name: str,
 ):
     con = ibis.duckdb.connect()
 
@@ -107,7 +81,7 @@ def cis_and_trans_stats(
     df_cis_and_trans = (
         df_cis_and_trans.rename(columns={"pe": "read_type", "is_cis": "cis/trans"})
         .assign(
-            sample="SAMPLEX",
+            sample=sample_name,
             **{
                 "cis/trans": lambda df: df["cis/trans"].map(
                     {True: "cis", False: "trans"}

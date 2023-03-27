@@ -236,7 +236,7 @@
 # @pytest.mark.order(2)
 # def test_stats_exist(run_directory_capture):
 #     assert os.path.exists(
-#         f"{run_directory_capture}/capcruncher_statistics/capcruncher_statistics.html"
+#         f"{run_directory_capture}/capcruncher_output/statistics/capcruncher_output/statistics.html"
 #     )
 
 # @pytest.mark.order(2)

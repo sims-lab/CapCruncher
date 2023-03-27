@@ -24,7 +24,7 @@ Leftover ctmpXXX.sh files can be safely deleted if the pipeline has stopped runn
 To restart the pipeline from the beginning for any reason, simply delete all
 processed files and re-run the pipeline::
 
-    rm -rf capcruncher_preprocessing/ capcruncher_analysis/ capcruncher_compare/ statistics/ pipeline.log
+    rm -rf capcruncher_preprocessing/ capcruncher_analysis/ capcruncher_output/comparisons/ statistics/ pipeline.log
     capcruncher pipeline make
 
 

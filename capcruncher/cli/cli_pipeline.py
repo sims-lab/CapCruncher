@@ -22,7 +22,7 @@ def pipeline(pipeline_options, show_help=False, show_version=False):
     cmd = [
         "snakemake",
         "-s",
-        f"{dir_package}/pipeline/Snakefile",
+        f"{dir_package}/pipeline/workflow/Snakefile",
     ]
 
     if show_help:
