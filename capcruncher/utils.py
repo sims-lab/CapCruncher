@@ -293,6 +293,13 @@ def convert_bed_to_pr(
     bed: Union[str, pybedtools.BedTool, pd.DataFrame, pr.PyRanges, ray.ObjectRef],
     ignore_ray_objrefs=True,
 ) -> pr.PyRanges:
+    """Converts a bed file to a PyRanges object.
+    Args:
+        bed (Union[str, pybedtools.BedTool, pd.DataFrame, pr.PyRanges, ray.ObjectRef]): Bed file to convert.
+        ignore_ray_objrefs (bool, optional): If False, allows for ray object references to be used instead python objects. Defaults to True.
+    Returns:
+        pr.PyRanges: PyRanges object.
+    """
 
     if isinstance(bed, str):
         converted = pr.read_bed(bed)

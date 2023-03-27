@@ -133,57 +133,58 @@ def group_files_by_regex(files: List, regex: str):
     )
 
 
-class GenericFastqSamples:
+class FastqSamples:
     def __init__(self, design):
 
         # Expected columns: sample, fq1, fq2
-        self.sample_details = design
-        self.sample_details = self.sample_details.assign(
-            paired=(~self.sample_details[["fq1", "fq2"]].isna().any(axis=1))
+        self._design = design
+        self._design = self._design.assign(
+            paired=(~self._design[["fq1", "fq2"]].isna().any(axis=1))
         )
 
-        assert self.sample_details["paired"].all(), "All files must be paired"
-
     @classmethod
-    def from_files(cls, files: List[Union[pathlib.Path, str]]) -> (pd.DataFrame):
+    def from_files(cls, files: List[Union[pathlib.Path, str]]) -> "FastqSamples":
 
-        assert len(files) > 0, "No FASTQ files provided"
+        df = pd.DataFrame(files, columns=["fn"])
 
-        try:
-            df = pd.DataFrame(files, columns=["fn"])
+        df[["sample", "read"]] = (
+            df["fn"].apply(str).str.extract("(?!.*/)?(.*).*_R?([12]).fastq.gz")
+        )
 
-            df[["sample", "read"]] = (
-                df["fn"].apply(str).str.extract("(?!.*/)?(.*).*_R?([12]).fastq(?!.gz)?")
-            )
+        df["sample"] = df["sample"].apply(
+            lambda p: pathlib.Path(p).name
+            if isinstance(p, pathlib.Path)
+            else os.path.basename(p)
+        )
+        df["read"] = "fq" + df["read"]
 
-            df["sample"] = df["sample"].apply(
-                lambda p: pathlib.Path(p).name
-                if isinstance(p, pathlib.Path)
-                else os.path.basename(p)
-            )
-            df["read"] = "fq" + df["read"]
+        df = (
+            df.pivot(columns="read", index=["sample"])
+            .droplevel(level=0, axis=1)
+            .reset_index()
+        )
 
-            df = (
-                df.pivot(columns="read", index=["sample"])
-                .droplevel(level=0, axis=1)
-                .reset_index()
-            )
-
-            return cls(design=df)
-        except TypeError:
-            logging.exception("Samples not named correctly")
-            raise ValueError("Could not determine sample name from the file name")
+        return cls(design=df)
 
     @property
     def fastq_files(self):
-        return sorted([*self.sample_details["fq1"], *self.sample_details["fq2"]])
+        return sorted([*self._design["fq1"], *self._design["fq2"]])
 
     @property
     def sample_names_all(self):
-        return self.sample_details["sample"].to_list()
+        return self._design["sample"].to_list()
 
     @property
-    def experimental_design(self):
-        return self.sample_details.assign(
-            condition=self.sample_details["sample"].split("_").str[1]
-        ).loc[:, ["sample", "condition"]]
+    def translation(self):
+        fq_translation = {}
+        for sample in self._design.itertuples():
+            for read in [1, 2]:
+                fq_translation[f"{sample.sample}_{read}.fastq.gz"] = os.path.realpath(
+                    str(getattr(sample, f"fq{read}"))
+                )
+
+        return fq_translation
+
+    @property
+    def design(self):
+        return self._design

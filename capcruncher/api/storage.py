@@ -113,6 +113,7 @@ def create_cooler_cc(
             f'{c["chrom"]}:{c["start"]}-{c["end"]}' for c in viewpoint_coords
         ],
         "n_cis_interactions": int(n_cis_interactions),
+        "n_total_interactions": int(pixels["count"].sum()),
     }
 
     if os.path.exists(
@@ -326,6 +327,7 @@ class CoolerBinner:
 
         metadata = {**self.cooler.info["metadata"]}
         metadata["viewpoint_bins"] = [int(x) for x in self.viewpoint_bins]
+        metadata["n_interactions_total"] = int(self.cooler.pixels()[:]["count"].sum())
         cooler_fn = f"{store}::/{metadata['viewpoint_name']}/resolutions/{self.binsize}"
 
         pixels = (
