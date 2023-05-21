@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 import os
 import pickle
 import re
@@ -22,7 +22,7 @@ def read_dataframes(filenames: Iterable, **kwargs):
         try:
             df = pd.read_csv(fn, **kwargs)
         except (pd.errors.EmptyDataError):
-            logging.warning(f"{fn} is empty")
+            logger.warning(f"{fn} is empty")
 
         if not df.empty:
             dframes.append(df)
@@ -98,15 +98,15 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
     except Exception as e:
 
         if isinstance(e, FileNotFoundError):
-            logging.debug("Bed file not found")
+            logger.debug("Bed file not found")
 
         elif isinstance(e, IndexError):
-            logging.debug(
+            logger.debug(
                 "Wrong number of fields detected check separator/ number of columns"
             )
 
         else:
-            logging.debug(f"Exception raised {e}")
+            logger.debug(f"Exception raised {e}")
 
 
 def bed_has_name(bed: Union[str, BedTool]) -> bool:
@@ -244,7 +244,7 @@ def get_timing(task_name=None) -> Callable:
             time_end = time.perf_counter()
 
             time_taken = timedelta(seconds=(time_end - time_start))
-            logging.info(f"Completed {task_name} in {time_taken} (hh:mm:ss.ms)")
+            logger.info(f"Completed {task_name} in {time_taken} (hh:mm:ss.ms)")
             return result
 
         return wrapped
@@ -334,7 +334,7 @@ def convert_bed_to_pr(
     elif isinstance(bed, ray.ObjectRef):
 
         if ignore_ray_objrefs:
-            logging.warning("Assuming ObjectRef is a PyRanges")
+            logger.warning("Assuming ObjectRef is a PyRanges")
             converted = bed
         else:
             bed = ray.get(bed)
@@ -363,7 +363,7 @@ def convert_bed_to_dataframe(
 
     elif isinstance(bed, ray.ObjectRef):
         if ignore_ray_objrefs:
-            logging.warning("Assuming ObjectRef is a PyRanges")
+            logger.warning("Assuming ObjectRef is a PyRanges")
             bed_conv = bed
         else:
             bed = ray.get(bed)
@@ -382,7 +382,7 @@ def is_tabix(file: str):
         _is_tabix = True
 
     except (OSError) as e:
-        logging.warn(e)
+        logger.warn(e)
 
     return _is_tabix
 
@@ -521,7 +521,7 @@ def get_file_type(fn: os.PathLike) -> str:
     try:
         return file_types[ext]
     except KeyError as e:
-        logging.debug(f"File extension {ext} is not supported")
+        logger.debug(f"File extension {ext} is not supported")
         raise e
 
 

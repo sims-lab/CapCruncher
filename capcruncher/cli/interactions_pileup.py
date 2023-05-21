@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
+from loguru import logger
 import os
 import subprocess
 import tempfile
@@ -50,7 +50,7 @@ def pileup(
         v.strip("/") for v in cooler.fileops.list_coolers(uri) if "resolutions" not in v
     ]
 
-    logging.info(f"Performing pileup for {viewpoint_names}")
+    logger.info(f"Performing pileup for {viewpoint_names}")
 
     bin_bedgraph = True if binsize > 0 else False
 
@@ -64,7 +64,7 @@ def pileup(
         try:
             cooler.fileops.is_cooler(cooler_group)
         except Exception as e:
-            logging.info(f"Exception {e} occured while looking for: {viewpoint_name}")
+            logger.info(f"Exception {e} occured while looking for: {viewpoint_name}")
             raise (f"Cannot find {viewpoint_name} in cooler file")
 
         bedgraph = CoolerBedGraph(uri=cooler_group, sparse=sparse).extract_bedgraph(
@@ -73,7 +73,7 @@ def pileup(
             scale_factor=scale_factor,
         )
 
-        logging.info(f"Generated bedgraph for {viewpoint_name}")
+        logger.info(f"Generated bedgraph for {viewpoint_name}")
 
         if format == "bedgraph":
 

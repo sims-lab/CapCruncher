@@ -1,9 +1,10 @@
-import pandas as pd
-from collections import defaultdict
 import itertools
 import os
+from collections import defaultdict
+
+import pandas as pd
+from loguru import logger
 from tqdm import tqdm
-import logging
 
 
 def get_fragment_combinations(df: pd.DataFrame):
@@ -14,7 +15,7 @@ def get_fragment_combinations(df: pd.DataFrame):
 
 def subsample_reporters_from_df(df: pd.DataFrame, subsample: float):
 
-    logging.info("Subsampling data")
+    logger.info("Subsampling data")
     if isinstance(subsample, float):
         subsample_options = {"frac": subsample}
     elif isinstance(subsample, int):
@@ -39,12 +40,12 @@ def preprocess_reporters_for_counting(df: pd.DataFrame, **kwargs):
     df_reporters = df.query("restriction_fragment != -1")
 
     if kwargs.get("remove_exclusions"):
-        logging.info("Removing excluded regions")
+        logger.info("Removing excluded regions")
         df_reporters = remove_exclusions_from_df(df_reporters)
 
     # Remove the capture site
     if kwargs.get("remove_viewpoints"):
-        logging.info("Removing viewpoints")
+        logger.info("Removing viewpoints")
         df_reporters = df_reporters.query("capture_count == 0")
 
     # Subsample at the fragment level
@@ -96,12 +97,12 @@ def get_counts_from_tsv_by_batch(reporters: os.PathLike, chunksize: int, **kwarg
     ligated_rf_counts = defaultdict(int)
     for ii, df_reporters in enumerate(df_reporters_iterator):
 
-        logging.info(f"Processing chunk #{ii+1} of {chunksize} slices")
+        logger.info(f"Processing chunk #{ii+1} of {chunksize} slices")
 
         reporters = preprocess_reporters_for_counting(df_reporters, **kwargs)
         fragments = reporters.groupby("parent_id")
 
-        logging.info("Counting")
+        logger.info("Counting")
         ligated_rf_counts = count_re_site_combinations(
             fragments, column="restriction_fragment", counts=ligated_rf_counts
         )
@@ -116,7 +117,7 @@ def get_counts_from_tsv(reporters: os.PathLike, **kwargs):
     reporters = preprocess_reporters_for_counting(df_reporters, **kwargs)
     fragments = reporters.groupby("parent_id")
 
-    logging.info("Counting")
+    logger.info("Counting")
     ligated_rf_counts = count_re_site_combinations(
         fragments, column="restriction_fragment"
     )

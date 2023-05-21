@@ -7,7 +7,7 @@ import cooler
 import h5py
 import functools
 import itertools
-import logging
+from loguru import logger
 import ujson
 from typing import Iterable, Tuple, Union, List, Dict, Literal
 import pyranges as pr
@@ -21,7 +21,7 @@ def get_viewpoint_coords(viewpoint_file: str, viewpoint_name: str):
     try:
         viewpoints = [row for index, row in df_viewpoints.iterrows()]
     except IndexError:
-        logging.error("Oligo name cannot be found within viewpoints")
+        logger.error("Oligo name cannot be found within viewpoints")
         viewpoints = None
 
     return viewpoints
@@ -376,7 +376,7 @@ def link_common_cooler_tables(clr: os.PathLike):
      clr (os.PathLike): Path to cooler hdf5 produced by the merge command.
     """
 
-    logging.info("Making links to common cooler tables to conserve disk space")
+    logger.info("Making links to common cooler tables to conserve disk space")
 
     with h5py.File(clr, "a") as f:
 
@@ -469,7 +469,7 @@ def merge_coolers(coolers: Tuple, output: os.PathLike):
     from collections import defaultdict
     import cooler
 
-    logging.info("Merging cooler files")
+    logger.info("Merging cooler files")
 
     coolers_to_merge = defaultdict(list)
 

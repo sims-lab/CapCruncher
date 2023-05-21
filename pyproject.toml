@@ -1,6 +1,40 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = [
+    "setuptools >= 61.0",
+    "wheel",
+    "setuptools_scm[toml]>=6.2",
+]
 build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "capcruncher"
+authors = [{"name" =  "Alastair Smith", "email" = "alastair.smith@ndcls.ox.ac.uk"}]
+description = "An end-to-end solution for processing Capture-C, Tri-C and Tiled-C data"
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.8"
+dynamic = ["version", "dependencies"]
+
+
+[tool.setuptools.packages.find]
+include = ["capcruncher", "capcruncher.*"]
+
+
+[tool.setuptools_scm]
+local_scheme = "no-local-version"
+write_to = "capcruncher/_version.py"
+
+[project.optional-dependencies]
+stats = ["pydeseq2"]
+plotting = ["coolbox"]
+experimental = ["capcruncher-tools"]
+
+[project.urls]
+repo = "https://github.com/sims-lab/CapCruncher.git"
+
+
+
 
 [tool.ruff]
 line-length = 88
@@ -61,3 +95,5 @@ include = '\.smk$|^Snakefile|\.py$'
 # snakefmt passes these options on to black
 [tool.black]
 skip_string_normalization = true
+
+

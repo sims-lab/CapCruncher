@@ -5,7 +5,7 @@ import cooler
 from typing import Literal
 from capcruncher.api.storage import CoolerBinner
 from capcruncher.utils import is_valid_bed
-import logging
+from loguru import logger
 import ray
 import re
 import pyranges as pr
@@ -37,13 +37,13 @@ class CoolerBedGraph:
         self._sparse = sparse
         self._only_cis = only_cis
 
-        logging.info(f"Reading {uri}")
+        logger.info(f"Reading {uri}")
         self._cooler = cooler.Cooler(uri)
         self.viewpoint_name = self._cooler.info["metadata"]["viewpoint_name"]
         self._viewpoint_bins = self._cooler.info["metadata"]["viewpoint_bins"]
         self.viewpoint_chrom = self._cooler.info["metadata"]["viewpoint_chrom"][0]
         self.n_cis_interactions = self._cooler.info["metadata"]["n_cis_interactions"]
-        logging.info(f"Processing {self.viewpoint_name}")
+        logger.info(f"Processing {self.viewpoint_name}")
 
         if only_cis:
             self._bins = self._cooler.bins().fetch(self.viewpoint_chrom)
@@ -76,7 +76,7 @@ class CoolerBedGraph:
 
     def _get_reporters(self):
 
-        logging.info("Extracting reporters")
+        logger.info("Extracting reporters")
         concat_ids = pd.concat([self._pixels["bin1_id"], self._pixels["bin2_id"]])
         concat_ids_filt = concat_ids.loc[lambda ser: ser.isin(self._viewpoint_bins)]
         pixels = self._pixels.loc[concat_ids_filt.index]
@@ -104,7 +104,7 @@ class CoolerBedGraph:
         self, normalisation: Literal["raw", "n_cis", "region"] = "raw", **norm_kwargs
     ) -> pd.DataFrame:
 
-        logging.info("Generating bedgraph")
+        logger.info("Generating bedgraph")
         df_bdg = (
             self._bins.merge(
                 self.reporters,
@@ -117,7 +117,7 @@ class CoolerBedGraph:
         )
 
         if not normalisation == "raw":
-            logging.info("Normalising bedgraph")
+            logger.info("Normalising bedgraph")
             self.normalise_bedgraph(df_bdg, method=normalisation, **norm_kwargs)
 
         return df_bdg

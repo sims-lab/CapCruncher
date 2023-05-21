@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 import pytest
 import os
 from click.testing import CliRunner
@@ -434,8 +434,8 @@ def test_reporters_count(
         ],
     )
 
-    logging.debug(result.stdout)
-    logging.debug(result.exception)
+    logger.debug(result.stdout)
+    logger.debug(result.exception)
     assert result.exit_code == 0
     assert os.path.exists(output)
 

@@ -8,7 +8,7 @@ Created on Wed Jan  8 15:45:09 2020
 Script splits a fastq into specified chunks
 """
 
-import logging
+from loguru import logger
 from multiprocessing import SimpleQueue
 from typing import Tuple
 import subprocess
@@ -16,6 +16,7 @@ import glob
 import os
 import re
 from joblib import Parallel, delayed
+from typing import Literal
 
 
 def run_unix_split(
@@ -42,16 +43,18 @@ def run_unix_split(
 
     statement.append(cmd)
 
-    logging.info(f"Running: {cmd}")
+    logger.info(f"Running: {cmd}")
     subprocess.run(" ".join(statement), shell=True)
 
 
 def split(
     input_files: Tuple,
-    method: str = "unix",
+    method: Literal["python", "unix", "seqkit"] = "unix",
+    split_type: Literal["n-reads", "n-parts"] = "n-reads",
     output_prefix: os.PathLike = "split",
     compression_level: int = 5,
     n_reads: int = 1000000,
+    n_parts: int = 1,
     gzip: bool = True,
     n_cores: int = 1,
 ):
@@ -77,7 +80,7 @@ def split(
         FastqReadFormatterProcess,
     )
 
-    if method == "python":
+    if split_type ==  "n-reads" and method == "python":
         readq = SimpleQueue()
         writeq = SimpleQueue()
 
@@ -112,7 +115,7 @@ def split(
             proc.join()
             proc.terminate()
 
-    elif method == "unix":  # Using unix split to perform the splitting
+    elif split_type ==  "n-reads" and method == "unix":  # Using unix split to perform the splitting
 
         tasks = []
         n_cores_per_task = (n_cores // 2) if (n_cores // 2) > 1 else 1
@@ -142,3 +145,8 @@ def split(
             part_no = int(re.match(r"(?:.*)_part(\d+)_[1|2].*", fn).group(1))
             dest = re.sub(r"_part\d+_", f"_part{part_no}_", src)
             os.rename(src, dest)
+        
+    # elif split_type ==  "n-reads" and method == "seqkit":
+
+    #     cmd  = ["seqkit", "split2", "-1", input]
+

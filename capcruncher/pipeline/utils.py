@@ -4,7 +4,7 @@ from typing import Dict, List, Union
 
 import pandas as pd
 import pyranges as pr
-import logging
+from loguru import logger
 import os
 
 from capcruncher import utils
@@ -75,7 +75,7 @@ def get_design_matrix(fastqs: List[Union[str, pathlib.Path]]):
     df["condition"] = df["sample"].str.split(".fastq").str[0].str.split("_").str[-1]
 
     if df["condition"].isna().any():
-        logging.warn(
+        logger.warn(
             "Failed to identify conditions from fastq files. Please format as sample_CONDITION_READ.fastq(.gz)"
         )
         df["condition"].fillna("UNKNOWN")
@@ -114,7 +114,7 @@ def can_perform_plotting(config):
     try:
         pass
     except ImportError:
-        logging.warning(
+        logger.warning(
             "Plotting capabilities not installed. For plotting please run: pip install capcruncher[plotting]"
         )
         return False

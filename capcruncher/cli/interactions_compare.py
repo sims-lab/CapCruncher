@@ -1,5 +1,5 @@
 import itertools
-import logging
+from loguru import logger
 import os
 import re
 from typing import Literal, Tuple, List, Union, Dict
@@ -145,23 +145,23 @@ def summarise(
     subtraction: bool = False,
 ):
 
-    logging.info(f"Reading {infile}")
+    logger.info(f"Reading {infile}")
     df_union = pd.read_csv(infile, sep="\t")
     df_counts = df_union.iloc[:, 3:]
 
     summary_functions = get_summary_functions(summary_methods)
 
-    logging.info("Identifying groups")
+    logger.info("Identifying groups")
     groups = (
         get_groups(df_counts.columns, group_names, group_columns)
         if group_names
         else {col: "summary" for col in df_counts.columns}
     )  # Use all columns if no groups provided
 
-    logging.info(f"Extracted groups: {groups}")
+    logger.info(f"Extracted groups: {groups}")
 
     # Perform all groupby aggregations.
-    logging.info(f"Performing all aggregations: {summary_methods}")
+    logger.info(f"Performing all aggregations: {summary_methods}")
     df_agg = (
         df_union.iloc[:, 3:]
         .transpose()  # Transpose to enable groupby funcs
@@ -176,7 +176,7 @@ def summarise(
     )
 
     # Write out groupby aggregations
-    logging.info("Writing aggregations")
+    logger.info("Writing aggregations")
 
     for group in group_names:
         if output_format == "bedgraph":
@@ -184,7 +184,7 @@ def summarise(
             df_output = df_agg[["chrom", "start", "end", group, "aggregation"]]
 
             for aggregation, df in df_output.groupby("aggregation"):
-                logging.info(f"Writing {group} {aggregation}")
+                logger.info(f"Writing {group} {aggregation}")
                 df.drop(columns="aggregation").to_csv(
                     f"{output_prefix}{group}.{aggregation}-summary{suffix}.bedgraph",
                     sep="\t",
@@ -196,7 +196,7 @@ def summarise(
             df_output.to_csv(f"{output_prefix}{group}{suffix}.tsv")
 
     # Perform permutations
-    logging.info("Performing subtractions")
+    logger.info("Performing subtractions")
     if subtraction:
         subtractions_performed = list()
         for group_a, group_b in itertools.permutations(group_names, 2):
@@ -207,7 +207,7 @@ def summarise(
 
         if output_format == "bedgraph":
             for sub in subtractions_performed:
-                logging.info(f"Writing {output_prefix} {sub} {aggregation}")
+                logger.info(f"Writing {output_prefix} {sub} {aggregation}")
                 df_output = df_agg[["chrom", "start", "end", sub, "aggregation"]]
                 for aggregation, df in df_output.groupby("aggregation"):
                     df.drop(columns="aggregation").to_csv(

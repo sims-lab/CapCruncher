@@ -1,5 +1,5 @@
 import glob
-import logging
+from loguru import logger
 import multiprocessing
 import os
 import pathlib
@@ -83,17 +83,17 @@ class FastqReaderProcess(multiprocessing.Process):
                 if read_counter % self.read_buffer == 0 and not read_counter == 0:
                     self.outq.put(buffer.copy())
                     buffer.clear()
-                    logging.info(f"{read_counter} reads parsed (batch)")
+                    logger.info(f"{read_counter} reads parsed (batch)")
                     rc = read_counter
                 else:
                     rc = read_counter
 
             self.outq.put(buffer)  # Deal with remainder
             self.outq.put_nowait(None)  # Poison pill to terminate queue
-            logging.info(f"{rc} reads parsed (final)")
+            logger.info(f"{rc} reads parsed (final)")
 
         except Exception as e:
-            logging.info(f"Reader failed with exception: {e}")
+            logger.info(f"Reader failed with exception: {e}")
             raise
 
         finally:
@@ -575,7 +575,7 @@ class CCParquetReaderProcess(multiprocessing.Process):
                     df = self._select_by_viewpoint_batch(viewpoints_to_find)
                     for vp, df_vp in df.groupby("viewpoint"):
                         if not df_vp.empty:
-                            logging.info(f"Queuing {vp} for counting")
+                            logger.info(f"Queuing {vp} for counting")
                             self.outq.put((vp, df_vp))
 
                 elif (
@@ -590,7 +590,7 @@ class CCParquetReaderProcess(multiprocessing.Process):
                         for vp, df_vp in df.groupby("viewpoint"):
                             if not df_vp.empty:
                                 vp_partitions[vp] += 1
-                                logging.info(
+                                logger.info(
                                     f"Queuing {vp} partition {vp_partitions[vp]} for counting"
                                 )
                                 self.outq.put((vp, df_vp))
@@ -709,7 +709,7 @@ class CCHDF5WriterProcess(multiprocessing.Process):
 
                             from capcruncher.api.storage import create_cooler_cc
 
-                            logging.info(f"Making temporary cooler for {vp}")
+                            logger.info(f"Making temporary cooler for {vp}")
                             create_cooler_cc(
                                 output_prefix=self.path,
                                 pixels=df,
@@ -789,7 +789,7 @@ class CCCountsWriterProcess(multiprocessing.Process):
 
                             from capcruncher.api.storage import create_cooler_cc
 
-                            logging.info(f"Making temporary cooler for {vp}")
+                            logger.info(f"Making temporary cooler for {vp}")
                             create_cooler_cc(
                                 output_prefix=path,
                                 pixels=df,

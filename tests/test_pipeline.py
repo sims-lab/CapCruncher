@@ -3,7 +3,7 @@ import subprocess
 import shutil
 import glob
 import pytest
-import logging
+from loguru import logger
 import numpy as np
 import pathlib
 
@@ -42,7 +42,7 @@ def indicies(data_path, genome):
             tar.close()
             os.remove(output)
             os.rename(data_path + "/test_indicies", indicies)
-            logging.info("Downloaded indicies")
+            logger.info("Downloaded indicies")
 
         except Exception as e:
             print(e)

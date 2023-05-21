@@ -1,4 +1,3 @@
-import logging
 import warnings
 from typing import Union
 
@@ -6,6 +5,7 @@ import pandas as pd
 import pybedtools
 import pyranges as pr
 import ray
+from loguru import logger
 
 from capcruncher.utils import convert_bed_to_pr
 
@@ -74,7 +74,7 @@ class BedFileIntersection:
                 _intersection = self._count_intersection(pr_b)
 
         except (OSError, IndexError, FileNotFoundError, StopIteration, AssertionError):
-            logging.error(
+            logger.error(
                 f"Bed file {self.b} raised an error. Skipping {self.name} intersection."
             )
             _intersection = pd.Series(

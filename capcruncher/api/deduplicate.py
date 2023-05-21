@@ -1,5 +1,5 @@
 import functools
-import logging
+from loguru import logger
 import multiprocessing
 import os
 import queue
@@ -200,7 +200,7 @@ def remove_duplicates_from_parquet(
         .compute()
     )
 
-    logging.info("Loading and filtering slices")
+    logger.info("Loading and filtering slices")
 
     # Load and filter data
     slice_dataset = ds.dataset(
@@ -212,7 +212,7 @@ def remove_duplicates_from_parquet(
         filter=~ds.field("parent_id").isin(duplicates)
     )
 
-    logging.info("Writing unique slices")
+    logger.info("Writing unique slices")
     ds.write_dataset(
         slice_dataset_scanner, output, format="parquet", partitioning_flavor="hive"
     )

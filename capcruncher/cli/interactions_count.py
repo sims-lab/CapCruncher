@@ -1,5 +1,5 @@
 import os
-import logging
+from loguru import logger
 import tempfile
 import glob
 import more_itertools
@@ -61,7 +61,7 @@ def count(
     import pyarrow
     import dask.dataframe as dd
 
-    logging.info(f"Examining viewpoints from parquet file: {reporters}")
+    logger.info(f"Examining viewpoints from parquet file: {reporters}")
     # Unsure of the best way to do this. Will just load the first partion vp column and extract
     ddf = dd.read_parquet(
         reporters,
@@ -75,8 +75,8 @@ def count(
     viewpoint_sizes = viewpoints_col.value_counts().compute()
     viewpoints = list(viewpoints_col.cat.categories)
 
-    logging.info(f"Number of viewpoints: {len(viewpoints)}")
-    logging.info(f"Number of slices per viewpoint: {viewpoint_sizes.to_dict()}")
+    logger.info(f"Number of viewpoints: {len(viewpoints)}")
+    logger.info(f"Number of slices per viewpoint: {viewpoint_sizes.to_dict()}")
 
     MAX_SLICE_NUMBER = 1e6
 
@@ -108,7 +108,7 @@ def count(
     n_counting_processes = n_worker_processes if n_worker_processes > 1 else 1
     n_writing_processes = n_counting_processes
 
-    logging.info(f"Starting {n_reading_threads} reader threads")
+    logger.info(f"Starting {n_reading_threads} reader threads")
 
     counters = [
         FragmentCountingProcess(
@@ -162,7 +162,7 @@ def count(
 
     # Merge the output files together
     # TODO: Allow other than cooler outputs
-    logging.info(f"Making final cooler at {output}")
+    logger.info(f"Making final cooler at {output}")
     output_files = glob.glob(os.path.join(tmpdir.name, "*.hdf5"))
     merge_coolers(output_files, output=output)
 

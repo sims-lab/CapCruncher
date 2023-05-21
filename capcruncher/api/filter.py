@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 import pandas as pd
 import os
 import numpy as np
@@ -272,15 +272,15 @@ class SliceFilter:
                 try:
                     self.current_filter = filt
                     # Call all of the filters in the filter_stages dict in order
-                    logging.info(f"Filtering slices: {filt}")
+                    logger.info(f"Filtering slices: {filt}")
                     getattr(self, filt)()  # Gets and calls the selected method
-                    logging.info(f"Completed: {filt}")
-                    logging.info(f"Number of slices: {self.slices.shape[0]}")
-                    logging.info(
+                    logger.info(f"Completed: {filt}")
+                    logger.info(f"Number of slices: {self.slices.shape[0]}")
+                    logger.info(
                         f'Number of reads: {self.slices["parent_read"].nunique()}'
                     )
                 except Exception as e:
-                    logging.error(f"Exception {e} raised during {filt} filtering")
+                    logger.error(f"Exception {e} raised during {filt} filtering")
                     raise e
 
                 if output_slices == "filter":

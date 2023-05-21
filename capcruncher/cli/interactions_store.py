@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 import os
 import tempfile
 from typing import Tuple
@@ -143,7 +143,7 @@ def bins(
     for binsize in binsizes:
         for clr_group in clr_groups:
 
-            logging.info(f"Processing {clr_group}")
+            logger.info(f"Processing {clr_group}")
             clr_in = cooler.Cooler(f"{cooler_path}::{clr_group}")
             clr_out = tempfile.NamedTemporaryFile().name
 

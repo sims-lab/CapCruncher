@@ -3,7 +3,7 @@
 import os
 import pandas as pd
 import itertools
-import logging
+from loguru import logger
 
 
 import ray
@@ -97,26 +97,26 @@ def differential(
         threshold_mean (float, optional): Minimum mean value for output. Defaults to 0.
     """
     # Load design matrix
-    logging.info("Loading design matrix.")
+    logger.info("Loading design matrix.")
     df_design = pd.read_table(
         design_matrix, index_col=0, sep="\s+|,|\t", engine="python"
     )
 
     # Set-up tasks for bedgraph generation
-    logging.info("Validating viewpoint distance and regions of interest.")
+    logger.info("Validating viewpoint distance and regions of interest.")
     assert len(interaction_files) >= 2, "No interaction files provided."
     assert (
         regions_of_interest or viewpoint_distance
     ), "No regions of interest or viewpoint distance provided."
 
-    logging.info("Extracting interaction counts.")
+    logger.info("Extracting interaction counts.")
 
     if regions_of_interest:
-        logging.info(
+        logger.info(
             f"Using supplied regions of interest file {regions_of_interest} to restrict analysis"
         )
     else:
-        logging.info(
+        logger.info(
             f"Using distance from viewpoint of {viewpoint_distance} to restrict analysis"
         )
 
@@ -133,7 +133,7 @@ def differential(
     # Execute tasks
     bedgraphs = {k: ray.get(v) for k, v in bedgraph_futures.items()}
 
-    logging.info("Concatenating interactions.")
+    logger.info("Concatenating interactions.")
     # Concatenate bedgraphs
     df_counts = pd.concat(
         [
@@ -153,7 +153,7 @@ def differential(
     ).fillna(0)
 
     # Filter out any interacting fragments with less than threshold_counts
-    logging.info(f"Removing interactions with less than {threshold_count} counts.")
+    logger.info(f"Removing interactions with less than {threshold_count} counts.")
     df_counts = df_counts.loc[lambda df: (df >= threshold_count).all(axis=1)]
 
     # At the time of writing. PyDeseq2 doese not support multiple comparisons.
@@ -181,7 +181,7 @@ def differential(
 
     # Execute tasks
     for (group_a, group_b), future in comparison_futures.items():
-        logging.info(f"Running comparison: {group_a} vs {group_b}")
+        logger.info(f"Running comparison: {group_a} vs {group_b}")
         df_results = ray.get(future)
 
         # Write result

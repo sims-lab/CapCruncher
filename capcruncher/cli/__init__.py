@@ -1,22 +1,7 @@
 import click
 from functools import cached_property
 from importlib import import_module, metadata
-import logging
-
-# create logger
-logging.getLogger("capcruncher")
-logging.basicConfig(
-    level=logging.INFO, format="%(levelname)s:%(asctime)s %(module)-20s %(message)s"
-)
-
-
-# logger = logging.getLogger("capcruncher")
-# handler = logging.StreamHandler()
-# formatter = logging.Formatter("%(levelname)s:%(asctime)s %(module)-20s %(message)s")
-# handler.setFormatter(formatter)
-# logger.addHandler(handler)
-# logger.setLevel(logging.WARNING)
-
+from loguru import logger
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 

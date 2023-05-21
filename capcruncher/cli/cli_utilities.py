@@ -5,7 +5,7 @@ import click
 import pandas as pd
 from cgatcore.iotools import touch_file
 import os
-import logging
+from loguru import logger
 from capcruncher.utils import get_file_type
 import ibis
 
