@@ -52,6 +52,27 @@ rule filter_alignments:
         """
 
 
+rule count_identified_viewpoints:
+    input:
+        slices=lambda wildcards: expand(
+            "capcruncher_output/alignment_filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet",
+            sample=[
+                wildcards.sample,
+            ],
+            part=get_fastq_partition_numbers_for_sample(wildcards),
+            combined=[
+                "flashed",
+                "pe",
+            ],
+        ),
+    output:
+        stats="capcruncher_output/statistics/identified_viewpoints/data/{sample}.identified_viewpoints.stats.csv",
+    params:
+        slices_dir = lambda wc: "capcruncher_output/alignment_filtering/initial/{sample}/",
+    script:
+        "../scripts/count_identified_viewpoints.py"
+
+
 rule split_flashed_and_pe_datasets:
     input:
         slices_flashed=lambda wildcards: expand(
