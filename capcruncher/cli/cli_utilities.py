@@ -56,7 +56,7 @@ def cis_and_trans_stats(
     )
 
     tbl_reporter = tbl[(tbl["capture"] == "reporter")].drop(
-        ["viewpoint", "pe", "capture"]
+        "viewpoint", "pe", "capture"
     )
 
     tbl_capture = tbl[~(tbl["capture"] == "reporter")]
@@ -75,7 +75,7 @@ def cis_and_trans_stats(
     )
 
     df_cis_and_trans = (
-        tbl_merge.groupby(["viewpoint", "is_cis", "pe"]).size()
+        tbl_merge.group_by(["viewpoint", "is_cis", "pe"]).size()
     ).execute(limit=None)
 
     df_cis_and_trans = (

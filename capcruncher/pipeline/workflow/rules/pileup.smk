@@ -28,7 +28,7 @@ rule count:
     output:
         temp("capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5"),
     params:
-        viewpoints=lambda wc: get_existing_viewpoints(wc),
+        viewpoints=[f"-v {v}" for v in VIEWPOINT_NAMES],
     log:
         "capcruncher_output/logs/counts/{sample}.log",
     threads: 12
@@ -40,7 +40,7 @@ rule count:
         {input.slices} \
         -o {output} \
         -f {input.restriction_fragment_map} \
-        -v {params.viewpoints} \
+        {params.viewpoints} \
         --cooler-output \
         -p {threads} \
         > {log} 2>&1
@@ -89,50 +89,9 @@ rule merge_counts:
         """
 
 
-checkpoint check_viewpoints_exist:
-    input:
-        cooler="capcruncher_output/{sample}/{sample}.hdf5",
-    output:
-        "capcruncher_output/resources/viewpoints/{sample}_{viewpoint}",
-    params:
-        outdir="capcruncher_output/resources/viewpoints",
-        sample=lambda wc: wc.sample,
-    log:
-        "capcruncher_output/logs/check_viewpoints_exist/{sample}_{viewpoint}.log",
-    script:
-        "../scripts/identify_viewpoints_with_interactions.py"
-
-
-def get_existing_viewpoints(wc):
-    output = checkpoints.check_viewpoints_exist.get(**wc).output
-    samples, viewpoints = glob_wildcards(
-        f"capcruncher_output/resources/viewpoints/{wc.sample}_{wc.viewpoint}"
-    )
-    return expand(
-        "capcruncher_output/resources/viewpoints/{sample}_{viewpoint}",
-        sample=samples,
-        viewpoint=viewpoints,
-    )
-
-
-def get_existing_viewpoints(wc):
-    samples, viewpoints = glob_wildcards(
-        f"capcruncher_output/resources/viewpoints/{wc.sample}_{wc.viewpoint}"
-    )
-    return viewpoints
-
-
-rule viewpoint_check:
-    input:
-        get_existing_viewpoints,
-    output:
-        touch("capcruncher_output/resources/viewpoints/{sample}.txt"),
-
-
 rule bedgraph_raw:
     input:
         cooler=rules.merge_counts.output,
-        viewpoint=rules.viewpoint_check.output,
     output:
         bedgraph="capcruncher_output/pileups/bedgraphs/{sample}/raw/{sample}_{viewpoint}.bedgraph",
     log:
@@ -156,7 +115,6 @@ rule bedgraph_raw:
 rule bedgraph_normalised:
     input:
         cooler=rules.merge_counts.output,
-        viewpoint=rules.viewpoint_check.output,
     output:
         bedgraph="capcruncher_output/pileups/bedgraphs/{sample}/norm/{sample}_{viewpoint}.bedgraph",
     log:

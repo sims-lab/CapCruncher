@@ -5,21 +5,24 @@ import cooler
 import pandas as pd
 from collections import defaultdict
 import ujson as json
+import pathlib
 
 
-cooler_uri = snakemake.input[0]
-viewpoints_total_counts = defaultdict(int)
+coolers = snakemake.input[0]
+samples = snakemake.params.samples
 
-# Check all groups in the cooler file to see if they have any counts
-viewpoints = cooler.api.list_coolers(cooler_uri)
+for (sample, clr) in zip(samples, coolers):
+    viewpoints_per_sample = []
+    # Check all groups in the cooler file to see if they have any counts
+    viewpoints = cooler.api.list_coolers(clr)
 
-for viewpoint in viewpoints:
-    clr = cooler.Cooler(f"{cooler_uri}::{viewpoint}")
-    viewpoints_total_counts[viewpoint] = clr.pixels()[:].sum()
+    for viewpoint in viewpoints:
+        clr = cooler.Cooler(f"{clr}::{viewpoint}")
+        count = clr.pixels()[:].sum()
 
-    if viewpoints_total_counts[viewpoint] > 0:
-        # Output a dummy file to indicate that the viewpoint is present
-        with open(
-            f"{snakemake.params.outdir}/{snakemake.params.sample}_{viewpoint}", "w"
-        ) as f:
-            pass
+        if count > 0:
+            viewpoints_per_sample.append(viewpoint)
+
+    # Save the viewpoints with counts to a file
+    with open(pathlib.Path(snakemake.params.outdir) / f"{sample}.json", "w") as f:
+        json.dump(viewpoints_per_sample, f)

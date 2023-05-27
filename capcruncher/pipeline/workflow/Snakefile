@@ -47,7 +47,9 @@ HIGH_NUMBER_OF_VIEWPOINTS = capcruncher.pipeline.utils.has_high_viewpoint_number
 
 ## Optional
 FASTQ_DEDUPLICATE = config["deduplication"].get("pre-dedup", False)
+AGGREGATE_SAMPLES = DESIGN["sample"].nunique() > 1
 COMPARE_SAMPLES = DESIGN["condition"].nunique() > 1
+
 PERFORM_PLOTTING = capcruncher.pipeline.utils.can_perform_plotting(config)
 PERFORM_BINNING = capcruncher.pipeline.utils.can_perform_binning(config)
 
@@ -71,6 +73,29 @@ rule all:
     input:
         qc=rules.multiqc.output[0],
         report="capcruncher_output/statistics/capcruncher_report.html",
+        bigwigs=expand(
+            "capcruncher_output/pileups/bigwigs/{sample}/{norm}/{sample}_{viewpoint}.bigWig",
+            sample=SAMPLE_NAMES,
+            norm=["raw", "norm"],
+            viewpoint=VIEWPOINT_NAMES,
+        ),
+        bigwigs_summary=expand(
+            "capcruncher_output/comparisons/bigwigs/{group}/{group}.{method}-summary.{viewpoint}.bigWig",
+            group=DESIGN["condition"].unique(),
+            method=get_summary_methods(),
+        )
+        if AGGREGATE_SAMPLES
+        else [],
+        bigwigs_comparison=expand(
+            "capcruncher_output/comparisons/bigwigs/{comparison}/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
+            comparison=[
+            f"{a}-{b}"
+                for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
+            ],
+            method=get_summary_methods(),
+        )
+        if COMPARE_SAMPLES
+        else [],
         hub=rules.create_ucsc_hub.output[0],
 
 

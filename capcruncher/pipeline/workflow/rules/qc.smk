@@ -1,4 +1,11 @@
 import os
+import pathlib
+
+
+def get_fastq_basename(wildcards, output):
+    return pathlib.Path(
+        FASTQ_SAMPLES.translation[f"{wildcards.sample}_{wildcards.read}.fastq.gz"]
+    ).stem
 
 
 rule fastqc:
@@ -9,12 +16,10 @@ rule fastqc:
     params:
         outdir="capcruncher_output/qc/fastqc",
         tmpdir="capcruncher_output/qc/fastqc/{sample}_{read}",
-        basename=lambda wc, output: FASTQ_SAMPLES.translation[
-            f"{wc.sample}_{wc.read}.fastq.gz"
-        ].replace(".fastq.gz", ""),
+        basename=lambda wc, output: get_fastq_basename(wc, output),
     threads: 12
     resources:
-        mem_mb=500,
+        mem_mb=1024,
     log:
         "capcruncher_output/logs/fastqc/{sample}_{read}.log",
     shell:
