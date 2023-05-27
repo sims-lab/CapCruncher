@@ -3,14 +3,16 @@ import os
 
 rule fastqc:
     input:
-        fq="{sample}_{read}.fastq.gz",
+        fq=lambda wc: FASTQ_SAMPLES.translation[f"{wc.sample}_{wc.read}.fastq.gz"],
     output:
         qc="capcruncher_output/qc/fastqc/{sample}_{read}_fastqc.html",
     params:
         outdir="capcruncher_output/qc/fastqc",
         tmpdir="capcruncher_output/qc/fastqc/{sample}_{read}",
-        basename=lambda wc, output: f"{wc.sample}_{wc.read}",
-    threads: 4
+        basename=lambda wc, output: FASTQ_SAMPLES.translation[
+            f"{wc.sample}_{wc.read}.fastq.gz"
+        ].replace(".fastq.gz", ""),
+    threads: 12
     resources:
         mem_mb=500,
     log:
@@ -18,7 +20,7 @@ rule fastqc:
     shell:
         """
         mkdir -p {params.tmpdir} &&
-        fastqc -o {params.tmpdir} {input.fq} > {log} 2>&1 &&
+        fastqc -o {params.tmpdir} {input.fq} -t {threads} > {log} 2>&1 &&
         mv {params.tmpdir}/{params.basename}_fastqc.html {output.qc} &&
         mv {params.tmpdir}/{params.basename}_fastqc.zip {params.outdir}/{wildcards.sample}_{wildcards.read}_fastqc.zip &&
         rm -r {params.tmpdir}

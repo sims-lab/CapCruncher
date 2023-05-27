@@ -83,16 +83,27 @@ def get_design_matrix(fastqs: List[Union[str, pathlib.Path]]):
     return df[["sample_name", "condition"]].drop_duplicates()
 
 
-def get_binsizes(config):
-    try:
+def get_bin_sizes(config):
+
+    binsizes = config["analysis"].get("bin_sizes")
+
+    if binsizes is None:
+        binsizes = []
+    elif isinstance(binsizes, int):
+        binsizes = [binsizes]
+    elif isinstance(binsizes, str):
         binsizes = [
             int(bs)
             for bs in re.split(
                 r"[,;]\s*|\s+", str(config["analysis"].get("bin_sizes", "0"))
             )
         ]
-    except ValueError:
-        binsizes = []
+    elif isinstance(binsizes, list):
+        binsizes = [int(bs) for bs in binsizes]
+    else:
+        raise ValueError(
+            "Invalid bin size(s). Please specify as int, comma separated string or list of ints."
+        )
 
     return binsizes
 
@@ -120,6 +131,18 @@ def can_perform_plotting(config):
         return False
 
     return utils.is_valid_bed(config["plot"].get("coordinates"), verbose=False)
+
+
+def can_perform_binning(config):
+
+    perform_binning = False
+    bin_sizes = config["analysis"].get("bin_sizes", None)
+    if isinstance(bin_sizes, int) and bin_sizes > 0:
+        perform_binning = True
+    elif isinstance(bin_sizes, list) and all([bs > 0 for bs in bin_sizes]):
+        perform_binning = True
+
+    return perform_binning
 
 
 def group_files_by_regex(files: List, regex: str):
@@ -163,6 +186,14 @@ class FastqSamples:
             .droplevel(level=0, axis=1)
             .reset_index()
         )
+
+        # Format to check for
+        # CONDITION-A_REPLICATE-IDENTIFIER_READNUMBER
+        try:
+            df[["condition", "replicate"]] = df["sample"].str.split("_", expand=True)
+        except ValueError:
+            logger.warning("Failed to identify conditions from fastq files.")
+            df["condition"] = "UNKNOWN"
 
         return cls(design=df)
 

@@ -24,7 +24,7 @@ rule align_bowtie2:
         options=config["align"].get("options", ""),
     threads: 4
     log:
-        "logs/align/{sample}_{part}_{combined}.log",
+        "capcruncher_output/logs/align/{sample}_{part}_{combined}.log",
     shell:
         """
         {params.aligner} {params.index_flag} {params.indices} {params.options} -p {threads} {input.fastq} 2> {log} |
@@ -41,7 +41,7 @@ rule sort_bam_partitions:
         ),
     threads: 4
     log:
-        "logs/align/{sample}_{part}_{combined}_sort.log",
+        "capcruncher_output/logs/align/{sample}_{part}_{combined}_sort.log",
     shell:
         """
         samtools sort -@ {threads} -o {output.bam} {input.bam} 2> {log}
@@ -55,7 +55,7 @@ rule merge_bam_partitions:
         bam="capcruncher_output/aligned/{sample}.bam",
     shell:
         """
-        samtools merge {output.bam} {input.bam}
+        samtools merge -o {output.bam} {input.bam}
         """
 
 

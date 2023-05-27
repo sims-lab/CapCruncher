@@ -2,6 +2,7 @@ import os
 import sys
 import pathlib
 import shutil
+import json
 
 import pandas as pd
 import pyranges as pr
@@ -39,14 +40,16 @@ VIEWPOINT_NAMES = pd.read_table(
 
 N_SAMPLES = DESIGN["sample"].nunique()
 ANALYSIS_METHOD = config["analysis"].get("method", "capture")
+BIN_SIZES = capcruncher.pipeline.utils.get_bin_sizes(config)
 HIGH_NUMBER_OF_VIEWPOINTS = capcruncher.pipeline.utils.has_high_viewpoint_number(
     VIEWPOINTS, config
 )
 
 ## Optional
-PERFORM_PLOTTING = capcruncher.pipeline.utils.can_perform_plotting(config)
 FASTQ_DEDUPLICATE = config["deduplication"].get("pre-dedup", False)
-COMPRESS_FASTQ = config["pipeline"].get("compression", 0) != 0
+COMPARE_SAMPLES = DESIGN["condition"].nunique() > 1
+PERFORM_PLOTTING = capcruncher.pipeline.utils.can_perform_plotting(config)
+PERFORM_BINNING = capcruncher.pipeline.utils.can_perform_binning(config)
 
 ## Pipeline variables
 SAMPLE_NAMES = FASTQ_SAMPLES.sample_names_all
@@ -67,27 +70,7 @@ include: "rules/visualise.smk"
 rule all:
     input:
         qc=rules.multiqc.output[0],
-        # bigwigs_per_viewpoint=expand(
-        #     "capcruncher_output/pileups/bigwigs/{sample}/{norm}/{sample}.{norm}.{viewpoint}.bw",
-        #     sample=SAMPLE_NAMES,
-        #     norm=["raw", "norm"],
-        #     viewpoint=VIEWPOINT_NAMES,
-        # ),
-        # bigwigs_compared=expand(
-        #     "capcruncher_output/comparisons/bigwigs/{comparison}/{comparison}.{method}-subtraction.{viewpoint}.bw",
-        #     comparison=[
-        #     f"{a}-{b}"
-        #         for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
-        #     ],
-        #     method=get_summary_methods(),
-        #     viewpoint=VIEWPOINT_NAMES,
-        # ),
-        # bigwigs_summarised=expand(
-        #     "capcruncher_output/comparisons/bigwigs/{group}/{group}.{method}-summary.{viewpoint}.bw",
-        #     group=DESIGN["condition"].unique(),
-        #     method=get_summary_methods(),
-        #     viewpoint=VIEWPOINT_NAMES,
-        # ),
+        report="capcruncher_output/statistics/capcruncher_report.html",
         hub=rules.create_ucsc_hub.output[0],
 
 

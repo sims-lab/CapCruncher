@@ -1,27 +1,6 @@
 import itertools
 
 
-rule union_bedgraph:
-    input:
-        expand(
-            "capcruncher_output/pileups/bedgraphs/{sample}/norm/{sample}.norm.{{viewpoint}}.bedgraph",
-            sample=DESIGN["sample"].to_list(),
-        ),
-    output:
-        "capcruncher_output/comparisons/counts_per_viewpoint/{viewpoint}.tsv",
-    params:
-        sample_names=" ".join(DESIGN["sample"].to_list()),
-    shell:
-        """
-        bedtools \
-        unionbedg \
-        -i {input} \
-        -header \
-        -names {params.sample_names} \
-        > {output}
-        """
-
-
 def get_summary_methods():
     return [
         m
@@ -40,9 +19,30 @@ def identify_columns_based_on_condition():
     return condition_args_str
 
 
+rule union_bedgraph:
+    input:
+        expand(
+            "capcruncher_output/pileups/bedgraphs/{sample}/{{norm}}/{sample}_{{viewpoint}}.bedgraph",
+            sample=SAMPLE_NAMES,
+        ),
+    output:
+        "capcruncher_output/comparisons/counts_per_viewpoint/{norm}/{viewpoint}.tsv",
+    params:
+        sample_names=" ".join(SAMPLE_NAMES),
+    shell:
+        """
+        bedtools \
+        unionbedg \
+        -i {input} \
+        -header \
+        -names {params.sample_names} \
+        > {output}
+        """
+
+
 rule compare_interactions:
     input:
-        "capcruncher_output/comparisons/counts_per_viewpoint/{viewpoint}.tsv",
+        "capcruncher_output/comparisons/counts_per_viewpoint/{norm}/{viewpoint}.tsv",
     output:
         bedgraphs_summary=expand(
             "capcruncher_output/comparisons/summaries_and_subtractions/{group}.{method}-summary.{{viewpoint}}.bedgraph",
@@ -63,7 +63,7 @@ rule compare_interactions:
         names=" ".join([f"-n {group}" for group in DESIGN["condition"].unique()]),
         conditions=identify_columns_based_on_condition(),
     log:
-        "logs/compare_interactions/{viewpoint}.log",
+        "capcruncher_output/logs/compare_interactions/{viewpoint}.log",
     shell:
         """
         capcruncher \
@@ -86,19 +86,19 @@ use rule bedgraph_to_bigwig as bigwig_compared with:
     input:
         bedgraph="capcruncher_output/comparisons/summaries_and_subtractions/{comparison}.{method}-subtraction.{viewpoint}.bedgraph",
     output:
-        bigwig="capcruncher_output/comparisons/bigwigs/{comparison}/{comparison}.{method}-subtraction.{viewpoint}.bw",
+        bigwig="capcruncher_output/comparisons/bigwigs/{comparison}/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
     params:
         chrom_sizes=config["genome"]["chrom_sizes"],
     log:
-        "logs/bedgraph_to_bigwig/{comparison}.{method}-subtraction.{viewpoint}.log",
+        "capcruncher_output/logs/bedgraph_to_bigwig/{comparison}.{method}-subtraction.{viewpoint}.log",
 
 
 use rule bedgraph_to_bigwig as bigwig_summarised with:
     input:
         bedgraph="capcruncher_output/comparisons/summaries_and_subtractions/{group}.{method}-summary.{viewpoint}.bedgraph",
     output:
-        bigwig="capcruncher_output/comparisons/bigwigs/{group}/{group}.{method}-summary.{viewpoint}.bw",
+        bigwig="capcruncher_output/comparisons/bigwigs/{group}/{group}.{method}-summary.{viewpoint}.bigWig",
     params:
         chrom_sizes=config["genome"]["chrom_sizes"],
     log:
-        "logs/bedgraph_to_bigwig/{group}.{method}-summary.{viewpoint}.log",
+        "capcruncher_output/logs/bedgraph_to_bigwig/{group}.{method}-summary.{viewpoint}.log",

@@ -120,7 +120,6 @@ def merge_capcruncher_slices(
     category_cols: List[str] = None,
     n_cores: int = 1,
 ):
-
     import dask.dataframe as dd
     import dask.distributed
 
@@ -131,7 +130,6 @@ def merge_capcruncher_slices(
         scheduler_port=0,
         local_directory=os.environ.get("TMPDIR", "/tmp/"),
     ) as _client:
-
         storage_kwargs = {}
         output_format = get_file_type(outfile)
 
@@ -178,7 +176,6 @@ def merge_capcruncher_slices(
                     )
 
         elif output_format == "parquet":
-
             import pyarrow.dataset as ds
 
             datasets = ds.dataset([ds.dataset(fn) for fn in infiles])
@@ -217,7 +214,6 @@ def viewpoint_coordinates(
     recognition_site: str = "dpnii",
     output: os.PathLike = "viewpoint_coordinates.bed",
 ):
-
     # import dask.distributed
     import concurrent.futures
     from capcruncher.cli import genome_digest
@@ -232,7 +228,6 @@ def viewpoint_coordinates(
     viewpoints_aligned_bam = NamedTemporaryFile("r+")
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
-
         # Digest genome to find restriction fragments
         digestion = executor.submit(
             genome_digest.digest,

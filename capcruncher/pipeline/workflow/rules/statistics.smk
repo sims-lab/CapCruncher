@@ -61,7 +61,7 @@ rule combine_stats_fastq_deduplication:
 
 rule combine_stats_digestion:
     input:
-        unpack(get_digestion_statistics),
+        unpack(lambda wc: get_digestion_statistics(wc)),
     output:
         read_data="capcruncher_output/statistics/digestion/fastq_digestion.csv",
         histogram="capcruncher_output/statistics/digestion/fastq_digestion.histogram.csv",
@@ -99,7 +99,7 @@ rule merge_stats_filtering_and_alignment_deduplication:
     output:
         "capcruncher_output/statistics/filtering_and_alignment_deduplication.csv",
     log:
-        "logs/merge_stats_filtering_and_alignment_deduplication.log",
+        "capcruncher_output/logs/merge_stats_filtering_and_alignment_deduplication.log",
     shell:
         """
         cat {input.filtering} > {output}

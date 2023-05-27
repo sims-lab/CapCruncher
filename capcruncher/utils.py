@@ -98,15 +98,15 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
     except Exception as e:
 
         if isinstance(e, FileNotFoundError):
-            logger.debug("Bed file not found")
+            logger.warning(f"Bed file: {bed} not found")
 
         elif isinstance(e, IndexError):
-            logger.debug(
+            logger.warning(
                 "Wrong number of fields detected check separator/ number of columns"
             )
 
         else:
-            logger.debug(f"Exception raised {e}")
+            logger.warning(f"Exception raised {e}")
 
 
 def bed_has_name(bed: Union[str, BedTool]) -> bool:

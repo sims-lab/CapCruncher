@@ -111,7 +111,7 @@ rule annotate:
         else "",
     threads: 6
     log:
-        "logs/capcruncher_output/annotate/{sample}/{sample}_part{part}_{combined}.log",
+        "capcruncher_output/logs/capcruncher_output/annotate/{sample}/{sample}_part{part}_{combined}.log",
     shell:
         """
         capcruncher \

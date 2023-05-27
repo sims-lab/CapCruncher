@@ -17,6 +17,9 @@ for viewpoint in viewpoints:
     clr = cooler.Cooler(f"{cooler_uri}::{viewpoint}")
     viewpoints_total_counts[viewpoint] = clr.pixels()[:].sum()
 
-# Output the total counts for each viewpoint as json
-with open(snakemake.output[0], "w") as f:
-    json.dump(viewpoints_total_counts, f)
+    if viewpoints_total_counts[viewpoint] > 0:
+        # Output a dummy file to indicate that the viewpoint is present
+        with open(
+            f"{snakemake.params.outdir}/{snakemake.params.sample}_{viewpoint}", "w"
+        ) as f:
+            pass

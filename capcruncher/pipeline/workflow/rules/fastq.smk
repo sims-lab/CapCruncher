@@ -33,22 +33,18 @@ def get_fastq_partition_numbers_for_sample(wc, sample_name=None):
 
 checkpoint split:
     input:
-        fq1="{sample}_1.fastq.gz",
-        fq2="{sample}_2.fastq.gz",
+        fq1=lambda wc: FASTQ_SAMPLES.translation[f"{wc.sample}_1.fastq.gz"],
+        fq2=lambda wc: FASTQ_SAMPLES.translation[f"{wc.sample}_2.fastq.gz"],
     output:
         directory("capcruncher_output/fastq/split/{sample}"),
-    threads: 2
+    threads: config["pipeline"].get("n_cores", 1)
+    wildcard_constraints:
+        sample="^.*?/(.*)$",
     params:
         prefix="capcruncher_output/fastq/split/{sample}/{sample}",
         n_reads=str(config["split"].get("n_reads", 1e6)),
-        gzip="--gzip" if COMPRESS_FASTQ else "--no-gzip",
-        compression_level=" ".join(
-            ["--compression_level", str(config['pipeline'].get('compression', 0))]
-        )
-        if COMPRESS_FASTQ
-        else "",
     log:
-        "logs/split/{sample}.log",
+        "capcruncher_output/logs/split/{sample}.log",
     shell:
         """
         mkdir {output} && \
@@ -63,8 +59,7 @@ checkpoint split:
         {params.prefix} \
         -n \
         {params.n_reads} \
-        {params.gzip} \
-        {params.compression_level} \
+        --gzip \
         -p \
         {threads} \
         > {log} 2>&1
@@ -78,7 +73,7 @@ rule deduplication_parse:
     output:
         temp("capcruncher_output/fastq/deduplicated/{sample}/{sample}_{part}.pkl"),
     log:
-        "logs/deduplication_fastq/parse/{sample}_part{part}.log",
+        "capcruncher_output/logs/deduplication_fastq/parse/{sample}_part{part}.log",
     shell:
         """
         capcruncher \
@@ -102,7 +97,7 @@ rule deduplication_identify:
     output:
         temp("capcruncher_output/fastq/deduplicated/{sample}/{sample}.pkl"),
     log:
-        "logs/deduplication_fastq/identify/{sample}.log",
+        "capcruncher_output/logs/deduplication_fastq/identify/{sample}.log",
     shell:
         """
         capcruncher \
@@ -133,7 +128,7 @@ rule deduplication_remove:
         prefix_fastq="capcruncher_output/fastq/deduplicated/{sample}/{sample}_part{part}",
         prefix_stats="capcruncher_output/statistics/deduplication/data/{sample}_part{part}",
     log:
-        "logs/deduplication_fastq/remove/{sample}_part{part}.log",
+        "capcruncher_output/logs/deduplication_fastq/remove/{sample}_part{part}.log",
     threads: 4
     shell:
         """
@@ -161,8 +156,8 @@ rule deduplication_remove:
 
 rule trim:
     input:
-        fq1="capcruncher_output/fastq/deduplicated/{sample}/{sample}_part{part}_1.fastq.gz",
-        fq2="capcruncher_output/fastq/deduplicated/{sample}/{sample}_part{part}_2.fastq.gz",
+        fq1=rules.deduplication_remove.output.fq1,
+        fq2=rules.deduplication_remove.output.fq2,
     output:
         trimmed1=temp(
             "capcruncher_output/fastq/trimmed/{sample}/{sample}_part{part}_1.fastq.gz"
@@ -174,7 +169,7 @@ rule trim:
         outdir="capcruncher_output/fastq/trimmed/{sample}/",
     threads: 4
     log:
-        "logs/trimming/{sample}_{part}.log",
+        "capcruncher_output/logs/trimming/{sample}_{part}.log",
     shell:
         """
            trim_galore --cores {threads} --trim-n --paired --output_dir {params.outdir} {input.fq1} {input.fq2} >> {log} 2>&1 &&
@@ -185,8 +180,8 @@ rule trim:
 
 rule flash:
     input:
-        fq1="capcruncher_output/fastq/trimmed/{sample}/{sample}_part{part}_1.fastq.gz",
-        fq2="capcruncher_output/fastq/trimmed/{sample}/{sample}_part{part}_2.fastq.gz",
+        fq1=rules.trim.output.trimmed1,
+        fq2=rules.trim.output.trimmed2,
     output:
         flashed=temp(
             "capcruncher_output/fastq/flashed/{sample}/{sample}_part{part}.extendedFrags.fastq.gz"
@@ -201,7 +196,7 @@ rule flash:
         outdir="capcruncher_output/fastq/flashed/{sample}/{sample}_part{part}",
     threads: 8
     log:
-        "logs/flash/{sample}_{part}.log",
+        "capcruncher_output/logs/flash/{sample}_{part}.log",
     shell:
         """
         flash {input.fq1} {input.fq2} -o {params.outdir} -t {threads} -z --compress-prog-args pigz > {log} 2>&1
@@ -210,7 +205,7 @@ rule flash:
 
 rule digest_flashed_combined:
     input:
-        flashed="capcruncher_output/fastq/flashed/{sample}/{sample}_part{part}.extendedFrags.fastq.gz",
+        flashed=rules.flash.output.flashed,
     output:
         digested=temp(
             "capcruncher_output/fastq/digested/{sample}/{sample}_part{part}_flashed.fastq.gz"
@@ -223,7 +218,7 @@ rule digest_flashed_combined:
         restriction_site=config["analysis"]["restriction_enzyme"],
     threads: 4
     log:
-        "logs/digestion/{sample}_{part}.log",
+        "capcruncher_output/logs/digestion/{sample}_{part}.log",
     shell:
         """
         capcruncher \
@@ -250,8 +245,8 @@ rule digest_flashed_combined:
 
 rule digest_flashed_pe:
     input:
-        pe1="capcruncher_output/fastq/flashed/{sample}/{sample}_part{part}.notCombined_1.fastq.gz",
-        pe2="capcruncher_output/fastq/flashed/{sample}/{sample}_part{part}.notCombined_2.fastq.gz",
+        pe1=rules.flash.output.pe1,
+        pe2=rules.flash.output.pe2,
     output:
         digested=temp(
             "capcruncher_output/fastq/digested/{sample}/{sample}_part{part}_pe.fastq.gz"
@@ -264,7 +259,7 @@ rule digest_flashed_pe:
         restriction_site=config["analysis"]["restriction_enzyme"],
     threads: 4
     log:
-        "logs/digestion/{sample}_{part}.log",
+        "capcruncher_output/logs/digestion/{sample}_{part}.log",
     shell:
         """
         capcruncher \
