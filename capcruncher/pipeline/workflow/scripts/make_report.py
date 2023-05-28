@@ -6,6 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import yaml
+import pathlib
 
 
 def plot_deduplication_stats(deduplication_summary_path: os.PathLike):
@@ -490,9 +491,10 @@ figure_name_to_title_mapping = dict(
     overall="Pipeline run statistics",
 )
 
-report_text_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "report_text.yml"
-)
+report_text_path = (
+    pathlib.Path(__file__).parent.parent / "data" / "report_text.yml"
+).resolve()
+
 with open(report_text_path, "r") as r:
     report_text = yaml.safe_load(r)
 
