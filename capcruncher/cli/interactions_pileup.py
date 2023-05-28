@@ -78,7 +78,7 @@ def pileup(
         if format == "bedgraph":
 
             bedgraph.to_csv(
-                f'{output_prefix}.{viewpoint_name}.bedgraph{".gz" if gzip else ""}',
+                f'{output_prefix}_{viewpoint_name}.bedgraph{".gz" if gzip else ""}',
                 sep="\t",
                 header=False,
                 index=False,
@@ -98,6 +98,6 @@ def pileup(
                             "bedGraphToBigWig",
                             bedgraph_tmp.name,
                             chromsizes_tmp.name,
-                            f"{output_prefix}.{viewpoint_name}.bigWig",
+                            f"{output_prefix}_{viewpoint_name}.bigWig",
                         ]
                     )

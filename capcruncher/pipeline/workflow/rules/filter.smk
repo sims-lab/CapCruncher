@@ -166,4 +166,5 @@ rule cis_and_trans_stats:
         cis-and-trans-stats \
         {input.slices} \
         --sample-name {params.sample_name} \
+        -o {output.stats} \
         """

@@ -25,13 +25,12 @@ rule count:
     input:
         slices=rules.combine_flashed_and_pe_post_deduplication.output.slices,
         restriction_fragment_map=rules.digest_genome.output.bed,
+        viewpoints=VIEWPOINTS,
     output:
         temp("capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5"),
-    params:
-        viewpoints=[f"-v {v}" for v in VIEWPOINT_NAMES],
     log:
         "capcruncher_output/logs/counts/{sample}.log",
-    threads: 12
+    threads: len(VIEWPOINT_NAMES)
     shell:
         """
         capcruncher \
@@ -40,7 +39,7 @@ rule count:
         {input.slices} \
         -o {output} \
         -f {input.restriction_fragment_map} \
-        {params.viewpoints} \
+        -v {input.viewpoints} \
         --cooler-output \
         -p {threads} \
         > {log} 2>&1
@@ -97,7 +96,8 @@ rule bedgraph_raw:
     log:
         "capcruncher_output/logs/bedgraph_raw/{sample}_{viewpoint}.log",
     params:
-        output_prefix=lambda wc, output: f"capcruncher_output/pileups/bedgraphs/{wc.sample}/raw/{wc.sample}.raw",
+        output_prefix=lambda wc, output: pathlib.Path(output.bedgraph).parent
+        / f"{wc.sample}",
         viewpoint=lambda wc, output: wc.viewpoint,
     shell:
         """
@@ -120,7 +120,8 @@ rule bedgraph_normalised:
     log:
         "capcruncher_output/logs/bedgraph_norm/{sample}_{viewpoint}.log",
     params:
-        output_prefix=lambda wc, output: f"capcruncher_output/pileups/bedgraphs/{wc.sample}/norm/{wc.sample}.norm",
+        output_prefix=lambda wc, output: pathlib.Path(output.bedgraph).parent
+        / f"{wc.sample}",
         viewpoint=lambda wc, output: wc.viewpoint,
         normalisation=get_normalisation_from_config,
         scale_factor=config["normalisation"].get("scale_factor", int(1e6)),

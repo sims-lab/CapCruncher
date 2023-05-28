@@ -20,8 +20,6 @@ def get_number_of_reader_threads(n_cores):
         threads = threads
     elif threads < 1:
         threads = 1
-    else:
-        threads = 4
 
     return threads
 
@@ -59,21 +57,14 @@ def count(
     """
 
     import pyarrow
-    import dask.dataframe as dd
+    import pandas as pd
 
     logger.info(f"Examining viewpoints from parquet file: {reporters}")
     # Unsure of the best way to do this. Will just load the first partion vp column and extract
-    ddf = dd.read_parquet(
-        reporters,
-        columns=[
-            "viewpoint",
-        ],
-        engine="pyarrow",
-    )
 
-    viewpoints_col = ddf["viewpoint"].cat.as_known()
-    viewpoint_sizes = viewpoints_col.value_counts().compute()
-    viewpoints = list(viewpoints_col.cat.categories)
+    df = pd.read_parquet(reporters, engine="pyarrow", columns=["viewpoint"])
+    viewpoints = df["viewpoint"].cat.categories.to_list()
+    viewpoint_sizes = df["viewpoint"].value_counts()
 
     logger.info(f"Number of viewpoints: {len(viewpoints)}")
     logger.info(f"Number of slices per viewpoint: {viewpoint_sizes.to_dict()}")
