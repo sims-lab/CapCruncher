@@ -1,0 +1,530 @@
+---
+title: "CapCruncher Run Report"
+author: "CapCruncher"
+date: today
+format:
+  html:
+    toc: true
+    theme: cosmo
+    embed-resources: true
+---
+
+
+```{python}
+
+import os
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import yaml
+import pathlib
+
+
+def plot_deduplication_stats(deduplication_summary_path: os.PathLike):
+
+    df = (
+        pd.read_csv(deduplication_summary_path)
+        .sort_values("sample")
+        .replace("reads_unique", "Unique Reads")
+        .replace("reads_removed", "Duplicated Reads")
+    )
+
+    fig = px.bar(
+        data_frame=df.query('stat_type != "reads_total"'),
+        x="stat",
+        y="sample",
+        color="stat_type",
+        template="plotly_white",
+        category_orders={
+            "sample": sorted(df["sample"].unique()),
+            "stat_type": ["Unique Reads", "Duplicated Reads"],
+        },
+        color_discrete_sequence=["#F9A65A", "grey"],
+    )
+    # fig.for_each_trace(lambda t: t.update(name=" ".join(t.name.split("_"))))
+    fig.update_layout(legend_title_text="")
+    fig.update_yaxes(title="")
+    fig.update_xaxes(title="Number of Reads")
+    fig.update_traces(marker_line_width=0)
+
+    return fig
+
+
+def plot_trimming_summary(trimming_summary_path: os.PathLike):
+
+    df = pd.read_csv(trimming_summary_path)
+    n_samples = len(df["sample"].unique())
+
+    df_summary = df.query(
+        'stat_type == "adapters_removed" or stat_type == "reads_total"'
+    ).sort_values(["sample", "read_number"])
+
+    subplot_specs = [[{"type": "pie"} for i in range(2)] for j in range(n_samples)]
+    fig = make_subplots(
+        rows=n_samples,
+        cols=2,
+        specs=subplot_specs,
+        row_titles=sorted(df_summary["sample"].str.replace("_", " ").unique()),
+        column_titles=["Read 1", "Read 2"],
+    )
+
+    for ii, (sample, df_sample) in enumerate(df_summary.groupby("sample")):
+        for jj in range(0, 2):
+
+            df_read_number = df_sample.query(f"read_number == {jj+1}")
+
+            fig.add_trace(
+                go.Pie(
+                    labels=df_read_number["stat_type"]
+                    .str.replace("_", " ")
+                    .str.title(),
+                    values=df_read_number["stat"],
+                    name=f"{sample} {jj+1}",
+                    domain={
+                        "row": 1,
+                    },
+                ),
+                row=ii + 1,
+                col=jj + 1,
+            )
+
+    return fig
+
+
+def format_run_stats_for_flash_figure(
+    run_stats_path: os.PathLike,
+) -> pd.DataFrame:
+
+    df = pd.read_csv(run_stats_path)
+    df_summary = (
+        df.loc[df["stage"].isin(["digestion"])]
+        .loc[lambda df: df["stat_type"] == "unfiltered"]
+        .assign(
+            read_type=lambda df: df["read_type"]
+            .replace("flashed", "Combined")
+            .replace("pe", "Not Combined")
+        )
+        .groupby(["sample", "stage", "stat_type", "read_type"])["stat"]
+        .mean()
+        .reset_index()
+        .sort_values("sample")
+    )
+
+    return df_summary
+
+
+def plot_flash_summary(run_stats_path: os.PathLike):
+
+    df = format_run_stats_for_flash_figure(run_stats_path)
+    fig = px.bar(
+        df,
+        x="stat",
+        y="read_type",
+        color="read_type",
+        animation_frame="sample",
+        range_x=[0, df["stat"].max()],
+        template="plotly_white",
+        color_discrete_sequence=["#599AD3", "#9E66AB"],
+    )
+
+    fig.update_xaxes(title="Number of Read Pairs")
+    fig.update_yaxes(title="")
+    fig.update_layout(legend_title_text="")
+    fig.update_traces(width=0.5)
+
+    try:
+        fig["layout"]["updatemenus"] = None
+        # fig["layout"]["updatemenus"][0].update(dict(y=1.2, pad={"b": 10, "t": 0, "l": 0}, x=0))
+        fig["layout"]["sliders"][0]["pad"] = {"b": 10, "t": 25}
+        fig["layout"]["sliders"][0]["x"] = 0
+        fig["layout"]["sliders"][0]["len"] = 1
+
+    except (KeyError, IndexError):  # Might only have one sample
+        pass
+
+    return fig
+
+
+def format_digestion_stats_at_read_level(
+    digestion_stats_reads_path: os.PathLike,
+):
+
+    df = pd.read_csv(digestion_stats_reads_path)
+
+    df = df.query("read_number != 2").assign(
+        read_type=lambda df: df["read_type"]
+        .replace("flashed", "Combined")
+        .replace("pe", "Non-Combined"),
+        stat_type=lambda df: df["stat_type"]
+        .replace("unfiltered", "All Read Pairs")
+        .replace("filtered", "Read Pairs With Valid Slices"),
+        sample=lambda df: df["sample"].str.replace("_", " "),
+    )
+    return df.sort_values("sample")
+
+
+def plot_digestion_read_summary(digestion_stats_reads_path):
+
+    df = format_digestion_stats_at_read_level(digestion_stats_reads_path)
+    fig = px.bar(
+        data_frame=df,
+        x="stat",
+        y="stat_type",
+        color="read_type",
+        animation_frame="sample",
+        template="plotly_white",
+        range_x=[0, df.groupby(["sample", "stat_type"])["stat"].sum().max()],
+        category_orders={
+            "sample": sorted(df["sample"]),
+            "read_type": ["Combined", "Non-Combined"],
+            "stat_type": ["All Read Pairs", "Read Pairs With Valid Slices"],
+        },
+        color_discrete_sequence=["#599AD3", "#9E66AB"],
+    )
+    fig.update_layout(
+        legend_title_text="",
+        margin={"b": 10},
+    )
+    fig.update_yaxes(title="")
+    # fig.update_xaxes(matches=None, showticklabels=True)
+    fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
+    fig.layout["xaxis"]["title"]["text"] = "Number of Slices"
+    fig.update_traces(marker_line_width=0)
+    fig.update_traces(width=0.5)
+
+    try:
+        fig["layout"]["updatemenus"] = None
+        # fig["layout"]["updatemenus"][0].update(dict(y=1.2, pad={"b": 10, "t": 0, "l": 0}, x=0))
+        fig["layout"]["sliders"][0]["pad"] = {"b": 10, "t": 25}
+        fig["layout"]["sliders"][0]["x"] = 0
+        fig["layout"]["sliders"][0]["len"] = 1
+
+    except (KeyError, IndexError):  # Might only have one sample
+        pass
+
+    return fig
+
+
+def plot_digestion_histogram(digestion_stats_histogram_path: os.PathLike):
+
+    df = pd.read_csv(digestion_stats_histogram_path)
+
+    df["filtered"] = df["filtered"].map({0: "Pre-filtering", 1: "Post-filtering"})
+    df["read_type"] = df["read_type"].map(
+        {"flashed": "Combined Reads", "pe": "Non-Combined Reads"}
+    )
+
+    df = df.sort_values(["sample", "n_slices", "filtered", "read_type"])
+
+    fig = px.bar(
+        data_frame=df,
+        x="n_slices",
+        y="count",
+        color="filtered",
+        pattern_shape="read_type",
+        animation_frame="sample",
+        animation_group="n_slices",
+        barmode="group",
+        category_orders={"filtered": ["Pre-filtering", "Post-filtering"]},
+        template="plotly_white",
+        range_x=[0, df["n_slices"].max()],
+        range_y=[0, df["count"].max()],
+        color_discrete_sequence=["#599AD3", "#9E66AB"],
+    )
+
+    fig.update_xaxes(title="")
+    fig.update_yaxes(title="")
+    fig.update_layout(legend_title_text="")
+    fig.update_xaxes(dtick=1)
+
+    try:
+        fig["layout"]["updatemenus"] = None
+        # fig["layout"]["updatemenus"][0].update(dict(y=1, pad={"b": 10, "t": 0}, x=0))
+        fig["layout"]["sliders"][0]["pad"] = {"r": 10, "b": 5, "t": 10}
+        fig["layout"]["sliders"][0]["x"] = 0
+        fig["layout"]["sliders"][0]["len"] = 1
+    except (KeyError, IndexError):
+        pass
+
+    return fig
+
+
+def format_alignment_filtering_read_stats(filtering_read_stats_path: os.PathLike):
+    df = pd.read_csv(filtering_read_stats_path)
+    df = (
+        df.sort_values("stat", ascending=False)
+        .query('stat_type != "not-deduplicated"')
+        .replace("duplicate_filtered", "partial_duplicate_removal")
+        .replace("deduplicated", "full_PCR_duplicate_removal")
+        .assign(
+            stat_type=lambda df: df["stat_type"]
+            .str.replace("_", " ")
+            .str.title()
+            .str.replace("Pcr", "PCR"),
+            read_type=lambda df: df["read_type"]
+            .replace("flashed", "Combined")
+            .replace("pe", "Non-Combined"),
+            sample=lambda df: df["sample"].str.replace("_", " "),
+        )
+    )
+    df.loc[
+        (df["stat_type"] == "Full PCR Duplicate Removal")
+        & (df["read_type"] == "Non-Combined"),
+        "stat",
+    ] = (
+        df.loc[
+            (df["stat_type"] == "Full PCR Duplicate Removal")
+            & (df["read_type"] == "Non-Combined"),
+            "stat",
+        ]
+        // 2
+    )
+    return df.sort_values(
+        ["sample", "read_type", "stat"], ascending=[True, True, False]
+    )
+
+
+def plot_alignment_filtering_read_summary(filtering_read_stats_path: os.PathLike):
+
+    # breakpoint()
+
+    df = format_alignment_filtering_read_stats(filtering_read_stats_path)
+
+    fig = px.bar(
+        df,
+        x="stat",
+        y="stat_type",
+        color="read_type",
+        barmode="group",
+        animation_frame="sample",
+        animation_group="stat_type",
+        template="plotly_white",
+        category_orders={
+            "stat_type": df["stat_type"].unique(),
+            "read_type": list(reversed(["Combined", "Non-Combined"])),
+        },
+        range_x=[0, df["stat"].max()],
+        color_discrete_sequence=list(reversed(["#599AD3", "#9E66AB"])),
+    )
+
+    fig.update_xaxes(title="")
+    fig.update_yaxes(title="")
+    fig.update_layout(legend_title_text="", legend_traceorder="reversed")
+
+    try:
+        fig["layout"]["updatemenus"] = None
+        # fig["layout"]["updatemenus"][0].update(dict(y=1.1, pad={"b": 5, "t": 0}, x=0))
+        fig["layout"]["sliders"][0]["pad"] = {"r": 10, "b": 5, "t": 10}
+        fig["layout"]["sliders"][0]["x"] = 0
+        fig["layout"]["sliders"][0]["len"] = 1
+    except (KeyError, IndexError):
+        pass
+
+    return fig
+
+
+def plot_reporter_summary(reporter_stats_path: os.PathLike):
+    df = pd.read_csv(reporter_stats_path)
+    df = df.groupby(["sample", "viewpoint", "cis/trans"]).sum().reset_index()
+    df = df.replace("cis", "Cis").replace("trans", "Trans")
+
+    fig = px.bar(
+        df.sort_values(["sample", "viewpoint"]),
+        x="viewpoint",
+        y="count",
+        color="cis/trans",
+        barmode="group",
+        animation_frame="sample",
+        range_y=[0, df["count"].max()],
+        template="plotly_white",
+        color_discrete_sequence=["#9CCB86", "#CF597E"],
+    )
+
+    fig.update_xaxes(title="")
+    fig.update_yaxes(title="")
+    fig.update_layout(legend_title_text="")
+
+    try:
+        fig["layout"]["updatemenus"] = None
+        # fig["layout"]["updatemenus"][0].update(
+        #     dict(y=1.2, pad={"l": 0, "b": 10, "t": 0}, x=0)
+        # )
+        fig["layout"]["sliders"][0]["pad"] = {"r": 0, "b": 5, "t": 50}
+        fig["layout"]["sliders"][0]["x"] = 0
+        fig["layout"]["sliders"][0]["len"] = 1
+    except (KeyError, IndexError):
+        pass
+
+    return fig
+
+
+def format_run_stats_for_overall_summary(run_stats_path: os.PathLike):
+
+    df = pd.read_csv(run_stats_path)
+    df = df.sort_values("stat", ascending=False)
+
+    stat_type_mapping = {
+        "reads_total": "Total Reads",
+        "reads_unique": "PCR Duplicate Filtered (1st pass)",
+        "unfiltered": "Passed Trimming and Combining",
+        "filtered": "Passed Minimum Slice Length Filter",
+        "mapped": "Mapped to Reference genome",
+        "contains_single_capture": "Contains one Viewpoint Slice",
+        "contains_capture_and_reporter": "Contains one Viewpoint and at least one Reporter Slice",
+        "duplicate_filtered": "PCR Duplicate Filtered (2nd pass, partial)",
+        "deduplicated": "PCR Duplicate Filtered (final pass)",
+    }
+
+    df = df.assign(
+        stat_type=lambda df: df["stat_type"].map(stat_type_mapping),
+        read_type=lambda df: df["read_type"]
+        .replace("flashed", "Combined")
+        .replace("pe", "Non-Combined"),
+        sample=lambda df: df["sample"].str.replace("_", " "),
+    )
+
+    df = df.sort_values("sample")
+    return df
+
+
+def plot_overall_summary(run_stats_path: os.PathLike):
+
+    df = format_run_stats_for_overall_summary(run_stats_path)
+    stat_type_order = (
+        df.groupby(["sample", "stat_type", "read_type", "read_number"])["stat"]
+        .sum()
+        .sort_values(ascending=False)
+        .reset_index()["stat_type"]
+        .unique()
+    )
+
+    fig = px.bar(
+        df,
+        x="stat",
+        y="stat_type",
+        color="read_type",
+        animation_frame="sample",
+        animation_group="stat_type",
+        barmode="relative",
+        template="plotly_white",
+        category_orders={
+            "sample": sorted(df["sample"].unique()),
+            "read_type": ["Combined", "Non-Combined"],
+            "stat_type": stat_type_order,
+        },
+        color_discrete_sequence=["#599AD3", "#9E66AB"],
+    )
+
+    fig.update_xaxes(title="")
+    fig.update_yaxes(title="")
+    fig.update_layout(legend_title_text="")
+    fig.update_traces(marker_line_width=0)
+
+    try:
+        fig["layout"]["updatemenus"] = None
+        # fig["layout"]["updatemenus"][0].update(
+        #     dict(y=1.1, pad={"l": 0, "b": 5, "t": 0}, x=0)
+        # )
+        fig["layout"]["sliders"][0]["pad"] = {"r": 0, "b": 5, "t": 10}
+        fig["layout"]["sliders"][0]["x"] = 0
+        fig["layout"]["sliders"][0]["len"] = 1
+    except (KeyError, IndexError):
+        pass
+
+    return fig
+```
+
+```{python}
+#| tags: [parameters]
+fastq_deduplication_path = ""
+fastq_digestion_hist_path = ""
+fastq_digestion_read_path = ""
+reporter_read_path = ""
+reporter_cis_trans_path = ""
+run_stats_path = ""
+```
+
+# FASTQ PCR Duplicate Removal:
+
+Fastq files (after partitioning) are examined for fragments (R1 + R2) that appear to be PCR duplicates.
+Duplicates are identified by comparing the concatenated R1 and R2 sequences and filtering out exact matches.
+
+This is only the first pass of PCR duplicate removal as single base changes will be ignored. The aim here is to remove as many duplicate fragments as possible to reduce the amount of downstream processing required.
+
+Approximately 5-20% of fragments are typically removed by this step.
+
+```{python}
+plot_deduplication_stats(fastq_deduplication_path)
+```
+
+<!-- # Trimming:
+
+Following initial PCR duplicate removal fastq files are trimmed to remove sequencing adapters.
+
+These plots provide a brief summary of the number of adapters identified and removed.
+
+```{python} -->
+
+
+# Read pair combination statistics (FLASh):
+
+After the removal of adapters read pairs are combined (if any overlap exists) using `FLASh` to generate combined fragments (refered to as `flashed`). Non-combined read pairs that do not have a sufficient overlap  (refered to as `paired-end` or `pe`) are maintained as read pairs in separate fastq files.
+
+```{python}
+plot_flash_summary(run_stats_path)
+```
+
+# Fastq *in silico* digestion statistics (read pair level):
+
+Following read pair combination, the combined or non-combined fragments are examined for recognition sites of the restriction enzyme used for the assay. A valid digesion of a fragment (above the minimum threshold set) results in one or more restriction fragments, refered to as `slices`.
+
+Flashed read pairs are treated differently from paired-end read pairs as we expect to observe the ligation junction in the flashed fragment. Therefore, if no recognition sites are identified, the fragment is marked as invalid and is discarded. Non-combined (paired-end) reads are unlikely to contain the ligation junction and therefore if no restriction sites are identified, the individual read pairs are not discarded.
+
+## Digestion statistics summarised at the read pair level.
+
+The number of valid and invalid fragments are displayed. `slices` are considered invalid for the following reasons:
+
+* No restriction sites identified if the read pair is combined (`flashed`)
+* The fragment is shorter than the minimum length specified (default 18 bp)
+
+```{python}
+plot_digestion_read_summary(fastq_digestion_read_path)
+```
+
+## Histogram of the number of `slices` per fragment.
+
+This histogram displays the number of `slices` identified per fragment, split by flashed/pe status and pre/post filtering.
+
+```{python}
+plot_digestion_histogram(fastq_digestion_hist_path)
+```
+
+# Alignment filtering statistics:
+
+After alignment to the reference genome and annotation with viewpoint probes, excluded regions and restriction fragments. Aligned `slices` are filtered and all fragments that do not contain one viewpoint slice and one or more reporter slice(s) (i.e. `slices` that are not viewpoint or appear in excluded regions) are removed.
+
+This chart shows the number of read pairs removed at each stage of the filtering, split by `flashed`/`pe` status.
+
+```{python}
+plot_alignment_filtering_read_summary(reporter_read_path)
+```
+
+# Identified reporter statistics:
+
+`slices` from the same read fragment as a viewpoint `slices` are termed "reporters", these are used to determine interations with the viewpoint restriction fragment.
+
+This chart displays the number of `cis` (same chromosome as viewpoint) or `trans` (different chromosome to viewpoint) reporters identified, separated by viewpoint.
+
+```{python}
+plot_reporter_summary(reporter_cis_trans_path)
+```
+
+
+# Pipeline run statistics:
+
+This chart displays the combined statistics from the entire pipeline run summarised at the read pair level.
+
+```{python}
+plot_overall_summary(run_stats_path)
+```

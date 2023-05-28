@@ -1,4 +1,4 @@
-click<8.2.0
+click<=8.2.0
 cooler
 duckdb
 h5py
@@ -15,12 +15,13 @@ pybedtools
 pyranges
 pysam>0.15.0,<=0.19.1
 pyyaml>=6.0
+quarto
 ray<=2.0.1
 seaborn
 snakemake
 tqdm
-tracknado
 trackhub
+tracknado
 ujson
 xopen
 xxhash

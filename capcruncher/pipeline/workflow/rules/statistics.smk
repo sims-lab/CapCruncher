@@ -134,6 +134,7 @@ rule combine_stats_read_level:
 
 rule make_report:
     input:
+        template=workflow.source_path("../report/capcruncher_report.qmd"),
         fastq_deduplication=rules.combine_stats_fastq_deduplication.output[0],
         digestion_read=rules.combine_stats_digestion.output.read_data,
         digestion_histogram=rules.combine_stats_digestion.output.histogram,
@@ -142,5 +143,26 @@ rule make_report:
         read_level_stats=rules.combine_stats_read_level.output[0],
     output:
         "capcruncher_output/statistics/capcruncher_report.html",
-    script:
-        "../scripts/make_report.py"
+    params:
+        outdir=lambda wildcards, output: pathlib.Path(output[0]).parent,
+    log:
+        "capcruncher_output/logs/make_report.log",
+    shell:
+        """
+        cp {input.template} {params.outdir}
+
+        quarto \
+        render \
+        {params.outdir}/capcruncher_report.qmd \
+        --to html \
+        --execute \
+        -P fastq_deduplication_path:$(realpath {input.fastq_deduplication}) \
+        -P fastq_digestion_read_path:$(realpath {input.digestion_read}) \
+        -P fastq_digestion_hist_path:$(realpath {input.digestion_histogram}) \
+        -P reporter_read_path:$(realpath {input.reporters}) \
+        -P reporter_cis_trans_path:$(realpath {input.cis_and_trans_stats}) \
+        -P run_stats_path:$(realpath {input.read_level_stats}) \
+        --log {log}
+
+        rm {params.outdir}/capcruncher_report.qmd
+        """
