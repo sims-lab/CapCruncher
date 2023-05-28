@@ -5,7 +5,7 @@ import pathlib
 def get_fastq_basename(wildcards, output):
     return pathlib.Path(
         FASTQ_SAMPLES.translation[f"{wildcards.sample}_{wildcards.read}.fastq.gz"]
-    ).stem
+    ).stem.replace(".fastq", "")
 
 
 rule fastqc:
