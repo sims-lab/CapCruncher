@@ -59,7 +59,7 @@ rule count_identified_viewpoints:
             sample=[
                 wildcards.sample,
             ],
-            part=get_fastq_partition_numbers_for_sample(wildcards),
+            part=get_parts(wildcards),
             combined=[
                 "flashed",
                 "pe",
@@ -80,7 +80,7 @@ rule split_flashed_and_pe_datasets:
             sample=[
                 wildcards.sample,
             ],
-            part=get_fastq_partition_numbers_for_sample(wildcards),
+            part=get_parts(wildcards),
             combined=[
                 "flashed",
             ],
@@ -90,7 +90,7 @@ rule split_flashed_and_pe_datasets:
             sample=[
                 wildcards.sample,
             ],
-            part=get_fastq_partition_numbers_for_sample(wildcards),
+            part=get_parts(wildcards),
             combined=[
                 "pe",
             ],

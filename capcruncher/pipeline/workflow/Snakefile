@@ -69,6 +69,11 @@ include: "rules/statistics.smk"
 include: "rules/visualise.smk"
 
 
+wildcard_constraints:
+    sample="|".join(SAMPLE_NAMES),
+    part=r"\d+",
+
+
 rule all:
     input:
         qc=rules.multiqc.output[0],

@@ -13,4 +13,5 @@ rule digest_genome:
         """
         capcruncher genome digest {input.fasta} -r {params.enzyme_or_site} -o {output.bed}.tmp --sort -l {output.stats} > {log} 2>&1 &&
         pigz -p {threads} {output.bed}.tmp -c > {output.bed} 2> {log}
+        rm {output.bed}.tmp
         """

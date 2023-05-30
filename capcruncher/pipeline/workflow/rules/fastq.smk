@@ -1,34 +1,37 @@
 import os
 import pathlib
 import json
+import re
 
 
-def get_fastq_partition_numbers_for_sample(wc, sample_name=None):
+def get_parts(wc, sample_name=None):
+
     if not sample_name:
         sample_name = wc.sample
 
-    n_partitions_path = f"capcruncher_output/resources/n_partitions/{sample_name}.json"
+    checkpoint_output = checkpoints.split.get(sample=sample_name).output[0]
 
-    if os.path.exists(n_partitions_path):
-        with open(n_partitions_path, "r") as f:
-            n_partitions = json.load(f)
-    else:
-        checkpoint_output = checkpoints.split.get(sample=sample_name).output[0]
-        n_partitions = glob_wildcards(
-            os.path.join(
-                checkpoint_output, "".join([sample_name, "_part{part}_{read}.fastq.gz"])
-            )
-        ).part
+    parts = set()
+    pattern = re.compile(r"(.*?)_part(\d+)_[12].fastq.gz")
+    for fn in pathlib.Path(checkpoint_output).glob("*.fastq.gz"):
+        parts.add(pattern.match(fn.name).group(2))
 
-        n_partitions = list(set(n_partitions))
+    return list(parts)
 
-        if not os.path.exists("capcruncher_output/resources/n_partitions"):
-            os.makedirs("capcruncher_output/resources/n_partitions")
 
-        with open(n_partitions_path, "w") as f:
-            json.dump(n_partitions, f)
+def get_fastq_parts(wc):
+    return expand(
+        "capcruncher_output/fastq/split/{{sample}}/{{sample}}_part{part}_{read}.fastq.gz",
+        part=get_parts(wc),
+        read=["1", "2"],
+    )
 
-    return n_partitions
+
+def get_pickles(wc):
+    return expand(
+        "capcruncher_output/fastq/deduplicated/{{sample}}/{{sample}}_{part}.pkl",
+        part=get_parts(wc),
+    )
 
 
 checkpoint split:
@@ -38,8 +41,6 @@ checkpoint split:
     output:
         directory("capcruncher_output/fastq/split/{sample}"),
     threads: config["pipeline"].get("n_cores", 1)
-    wildcard_constraints:
-        sample="^.*?/(.*)$",
     params:
         prefix="capcruncher_output/fastq/split/{sample}/{sample}",
         n_reads=str(config["split"].get("n_reads", 1e6)),
@@ -90,14 +91,12 @@ rule deduplication_parse:
 
 rule deduplication_identify:
     input:
-        hashed_reads=lambda wc: expand(
-            "capcruncher_output/fastq/deduplicated/{{sample}}/{{sample}}_{part}.pkl",
-            part=get_fastq_partition_numbers_for_sample(wc),
-        ),
+        hashed_reads=get_pickles,
     output:
         temp("capcruncher_output/fastq/deduplicated/{sample}/{sample}.pkl"),
     log:
         "capcruncher_output/logs/deduplication_fastq/identify/{sample}.log",
+    threads: 3
     shell:
         """
         capcruncher \
@@ -194,7 +193,7 @@ rule flash:
         ),
     params:
         outdir="capcruncher_output/fastq/flashed/{sample}/{sample}_part{part}",
-    threads: 8
+    threads: 12
     log:
         "capcruncher_output/logs/flash/{sample}_{part}.log",
     shell:
@@ -216,7 +215,7 @@ rule digest_flashed_combined:
     params:
         prefix_stats="capcruncher_output/statistics/digestion/data/{sample}_part{part}_flashed",
         restriction_site=config["analysis"]["restriction_enzyme"],
-    threads: 4
+    threads: 8
     log:
         "capcruncher_output/logs/digestion/{sample}_{part}.log",
     shell:
@@ -257,7 +256,7 @@ rule digest_flashed_pe:
     params:
         prefix_stats="capcruncher_output/statistics/digestion/data/{sample}_part{part}_pe",
         restriction_site=config["analysis"]["restriction_enzyme"],
-    threads: 4
+    threads: 8
     log:
         "capcruncher_output/logs/digestion/{sample}_{part}.log",
     shell:

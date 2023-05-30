@@ -10,7 +10,7 @@ def get_digestion_statistics(wc):
 
     stat_prefixes = []
     for sample in SAMPLE_NAMES:
-        for part in get_fastq_partition_numbers_for_sample(wc, sample_name=sample):
+        for part in get_parts(wc, sample_name=sample):
             for combined in ["flashed", "pe"]:
                 stat_prefixes.append(
                     f"capcruncher_output/statistics/digestion/data/{sample}_part{part}_{combined}."
@@ -32,7 +32,7 @@ def get_filtering_statistics(wc):
 
     stat_prefixes = []
     for sample in SAMPLE_NAMES:
-        for part in get_fastq_partition_numbers_for_sample(wc, sample_name=sample):
+        for part in get_parts(wc, sample_name=sample):
             for combined in ["flashed", "pe"]:
                 stat_prefixes.append(
                     f"capcruncher_output/statistics/filtering/data/{sample}_part{part}_{combined}."
@@ -46,13 +46,20 @@ def get_filtering_statistics(wc):
     return stat_files
 
 
+def get_stat_parts(wc):
+
+    files = []
+    for sample in SAMPLE_NAMES:
+        for part in get_parts(wc, sample_name=sample):
+            files.append(
+                f"capcruncher_output/statistics/deduplication/data/{sample}_part{part}.deduplication.csv"
+            )
+    return files
+
+
 rule combine_stats_fastq_deduplication:
     input:
-        fastq_deduplication=lambda wc: [
-            f"capcruncher_output/statistics/deduplication/data/{sample}_part{part}.deduplication.csv"
-            for sample in SAMPLE_NAMES
-            for part in get_fastq_partition_numbers_for_sample(wc, sample_name=sample)
-        ],
+        fastq_deduplication=get_stat_parts,
     output:
         "capcruncher_output/statistics/deduplication/fastq_deduplication.csv",
     script:

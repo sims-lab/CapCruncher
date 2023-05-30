@@ -1,21 +1,9 @@
-def get_bam_partitions(wc):
-    bams = expand(
-        "capcruncher_output/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam",
-        sample=[
-            wc.sample,
-        ],
-        part=get_fastq_partition_numbers_for_sample(wc),
-        combined=["flashed", "pe"],
-    )
-    return bams
-
-
 rule align_bowtie2:
     input:
         fastq="capcruncher_output/fastq/digested/{sample}/{sample}_part{part}_{combined}.fastq.gz",
     output:
         bam=temp(
-            "capcruncher_output/aligned/{sample}/{sample}_part{part}_{combined, (flashed|pe)}.bam"
+            "capcruncher_output/aligned/{sample}/{sample}_part{part}_{combined,(flashed|pe)}.bam"
         ),
     params:
         aligner=config["align"]["aligner"],
@@ -50,7 +38,11 @@ rule sort_bam_partitions:
 
 rule merge_bam_partitions:
     input:
-        bam=get_bam_partitions,
+        bam=lambda wc: expand(
+            "capcruncher_output/aligned/{{sample}}/{{sample}}_part{part}_{combined}.sorted.bam",
+            part=get_parts(wc),
+            combined=["flashed", "pe"],
+        ),
     output:
         bam="capcruncher_output/aligned/{sample}.bam",
     shell:
