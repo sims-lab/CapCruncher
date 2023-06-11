@@ -1,5 +1,4 @@
 def validate_custom_filtering():
-
     custom_filter_stages = config["analysis"].get("custom_filtering", "")
     if not custom_filter_stages:
         cf = ""

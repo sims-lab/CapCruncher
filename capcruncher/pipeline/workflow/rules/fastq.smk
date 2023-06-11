@@ -40,7 +40,7 @@ checkpoint split:
         fq2=lambda wc: FASTQ_SAMPLES.translation[f"{wc.sample}_2.fastq.gz"],
     output:
         directory("capcruncher_output/fastq/split/{sample}"),
-    threads: config["pipeline"].get("n_cores", 1)
+    threads: 4
     params:
         prefix="capcruncher_output/fastq/split/{sample}/{sample}",
         n_reads=str(config["split"].get("n_reads", 1e6)),

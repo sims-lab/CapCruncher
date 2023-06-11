@@ -27,6 +27,7 @@ rule create_ucsc_hub:
             "capcruncher_output/comparisons/bigwigs/{group}/{group}.{method}-summary.{viewpoint}.bigWig",
             group=DESIGN["condition"].unique(),
             method=get_summary_methods(),
+            viewpoint=VIEWPOINT_NAMES,
         )
         if AGGREGATE_SAMPLES
         else [],
@@ -37,6 +38,7 @@ rule create_ucsc_hub:
                 for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
             ],
             method=get_summary_methods(),
+            viewpoint=VIEWPOINT_NAMES,
         )
         if COMPARE_SAMPLES
         else [],

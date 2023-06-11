@@ -42,7 +42,7 @@ rule union_bedgraph:
 
 rule compare_interactions:
     input:
-        "capcruncher_output/comparisons/counts_per_viewpoint/{norm}/{viewpoint}.tsv",
+        "capcruncher_output/comparisons/counts_per_viewpoint/norm/{viewpoint}.tsv",
     output:
         bedgraphs_summary=expand(
             "capcruncher_output/comparisons/summaries_and_subtractions/{group}.{method}-summary.{{viewpoint}}.bedgraph",
