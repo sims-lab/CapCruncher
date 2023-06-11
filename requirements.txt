@@ -3,7 +3,6 @@ cooler
 duckdb
 h5py
 ibis-framework[duckdb]
-joblib
 loguru
 more-itertools
 natsort
@@ -16,8 +15,9 @@ pyranges
 pysam>0.15.0,<=0.19.1
 pyyaml>=6.0
 quarto
-ray<=2.0.1
+ray
 seaborn
+sh
 snakemake
 tqdm
 trackhub
