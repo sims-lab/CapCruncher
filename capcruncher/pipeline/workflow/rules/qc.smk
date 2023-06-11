@@ -17,7 +17,7 @@ rule fastqc:
         outdir="capcruncher_output/qc/fastqc",
         tmpdir="capcruncher_output/qc/fastqc/{sample}_{read}",
         basename=lambda wc, output: get_fastq_basename(wc, output),
-    threads: 12
+    threads: 1
     resources:
         mem_mb=1024,
     log:

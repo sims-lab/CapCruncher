@@ -41,6 +41,9 @@ checkpoint split:
     output:
         directory("capcruncher_output/fastq/split/{sample}"),
     threads: 4
+    resources:
+        mem_mb=1000,
+        time="1-03:00:00",
     params:
         prefix="capcruncher_output/fastq/split/{sample}/{sample}",
         n_reads=str(config["split"].get("n_reads", 1e6)),
