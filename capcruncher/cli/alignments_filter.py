@@ -109,82 +109,86 @@ def filter(
      cis_and_trans_stats (bool, optional): Enables cis/trans statistics to be output. Defaults to True.
     """
 
-    # Read bam file and merege annotations
-    logger.info("Loading bam file")
-    df_alignment = parse_bam(bam)
-    logger.info("Merging bam file with annotations")
-    df_alignment = merge_annotations(df_alignment, annotations)
+    with logger.catch():
+        # Read bam file and merege annotations
+        logger.info("Loading bam file")
+        df_alignment = parse_bam(bam)
+        logger.info("Merging bam file with annotations")
+        df_alignment = merge_annotations(df_alignment, annotations)
 
-    if "blacklist" not in df_alignment.columns:
-        df_alignment["blacklist"] = 0
+        if "blacklist" not in df_alignment.columns:
+            df_alignment["blacklist"] = 0
 
-    # Initialise SliceFilter
-    # If no custom filtering, will use the class default.
-    slice_filter_class = SLICE_FILTERS[method]
-    slice_filter = slice_filter_class(
-        slices=df_alignment,
-        sample_name=sample_name,
-        read_type=read_type,
-        filter_stages=custom_filtering,
-    )
-
-    # Filter slices using the slice_filter
-    logger.info(f"Filtering slices with method: {method}")
-    slice_filter.filter_slices()
-
-    if slice_stats:
-        slice_stats_path = f"{stats_prefix}.slice.stats.csv"
-        logger.info(f"Writing slice statistics to {slice_stats_path}")
-        slice_filter.filter_stats.to_csv(slice_stats_path, index=False)
-
-    if read_stats:
-        read_stats_path = f"{stats_prefix}.read.stats.csv"
-        logger.info(f"Writing read statistics to {read_stats_path}")
-        slice_filter.read_stats.to_csv(read_stats_path, index=False)
-
-    # Save reporter stats
-    if cis_and_trans_stats:
-        logger.info("Writing reporter statistics")
-        slice_filter.cis_or_trans_stats.to_csv(
-            f"{stats_prefix}.reporter.stats.csv", index=False
+        # Initialise SliceFilter
+        # If no custom filtering, will use the class default.
+        slice_filter_class = SLICE_FILTERS[method]
+        slice_filter = slice_filter_class(
+            slices=df_alignment,
+            sample_name=sample_name,
+            read_type=read_type,
+            filter_stages=custom_filtering,
         )
 
-    # Output slices filtered by viewpoint
+        # Filter slices using the slice_filter
+        logger.info(f"Filtering slices with method: {method}")
+        slice_filter.filter_slices()
 
-    df_slices = slice_filter.slices
-    df_slices_with_viewpoint = slice_filter.slices_with_viewpoint
-    df_capture = slice_filter.captures
+        if slice_stats:
+            slice_stats_path = f"{stats_prefix}.slice.stats.csv"
+            logger.info(f"Writing slice statistics to {slice_stats_path}")
+            slice_filter.filter_stats.to_csv(slice_stats_path, index=False)
 
-    if fragments:
-        logger.info("Writing reporters at the fragment level")
-        df_fragments = (
-            slice_filter_class(df_slices)
-            .fragments.join(
-                df_capture["capture"], lsuffix="_slices", rsuffix="_capture"
+        if read_stats:
+            read_stats_path = f"{stats_prefix}.read.stats.csv"
+            logger.info(f"Writing read statistics to {read_stats_path}")
+            slice_filter.read_stats.to_csv(read_stats_path, index=False)
+
+        # Save reporter stats
+        if cis_and_trans_stats:
+            logger.info("Writing reporter statistics")
+            slice_filter.cis_or_trans_stats.to_csv(
+                f"{stats_prefix}.reporter.stats.csv", index=False
             )
-            .rename(
-                columns={"capture_slices": "capture", "capture_capture": "viewpoint"}
+
+        # Output slices filtered by viewpoint
+
+        df_slices = slice_filter.slices
+        df_slices_with_viewpoint = slice_filter.slices_with_viewpoint
+        df_capture = slice_filter.captures
+
+        if fragments:
+            logger.info("Writing reporters at the fragment level")
+            df_fragments = (
+                slice_filter_class(df_slices)
+                .fragments.join(
+                    df_capture["capture"], lsuffix="_slices", rsuffix="_capture"
+                )
+                .rename(
+                    columns={
+                        "capture_slices": "capture",
+                        "capture_capture": "viewpoint",
+                    }
+                )
+                .assign(id=lambda df: df["id"].astype("int64"))  # Enforce type
             )
-            .assign(id=lambda df: df["id"].astype("int64"))  # Enforce type
+
+            df_fragments.to_parquet(
+                f"{output_prefix}.fragments.parquet",
+                compression="snappy",
+                engine="pyarrow",
+            )
+
+        logger.info("Writing reporters slices")
+
+        # Enforce dtype for parent_id
+        df_slices_with_viewpoint = df_slices_with_viewpoint.assign(
+            parent_id=lambda df: df["parent_id"].astype("int64")
         )
 
-        df_fragments.to_parquet(
-            f"{output_prefix}.fragments.parquet",
+        df_slices_with_viewpoint.to_parquet(
+            f"{output_prefix}.slices.parquet",
             compression="snappy",
             engine="pyarrow",
         )
 
-    logger.info("Writing reporters slices")
-
-    # Enforce dtype for parent_id
-    df_slices_with_viewpoint = df_slices_with_viewpoint.assign(
-        parent_id=lambda df: df["parent_id"].astype("int64")
-    )
-
-    df_slices_with_viewpoint.to_parquet(
-        f"{output_prefix}.slices.parquet",
-        compression="snappy",
-        engine="pyarrow",
-    )
-
-    logger.info("Completed analysis of bam file")
+        logger.info("Completed analysis of BAM file")
