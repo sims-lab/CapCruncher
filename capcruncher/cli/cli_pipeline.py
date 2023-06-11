@@ -48,3 +48,24 @@ def pipeline(pipeline_options, show_help=False, show_version=False):
         cmd.append("--cores 1")
 
     _completed = subprocess.run(cmd)
+
+
+@cli.command(name="pipeline-config")
+@click.option("-h", "--help", "show_help", is_flag=True)
+@click.option("--version", "show_version", is_flag=True)
+@click.version_option(metadata.version(distribution_name="capcruncher"))
+@click.option(
+    "-i", "--input", "input_files", type=click.Path(exists=True), multiple=True
+)
+@click.option("--generate-design", is_flag=True)
+def pipeline_config(*args, **kwargs):
+    """Configures the data processing pipeline"""
+
+    from cookiecutter.main import cookiecutter
+    import pathlib
+
+    fn = pathlib.Path(__file__).resolve()
+    dir_cli = fn.parent
+    dir_package = dir_cli.parent
+
+    cookiecutter(str(dir_package / "pipeline" / "config"))
