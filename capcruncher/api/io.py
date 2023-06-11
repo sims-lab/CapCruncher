@@ -406,6 +406,7 @@ def parse_bam(bam):
     """
 
     # Load reads into dataframe
+    logger.info("Parsing BAM file")
     df_bam = pd.DataFrame(
         [
             parse_alignment(aln)
@@ -414,6 +415,7 @@ def parse_bam(bam):
     )
 
     # Perform dtype conversions
+    logger.info("Converting dtypes")
     df_bam["chrom"] = df_bam["chrom"].astype("category")
     pe_category = pd.CategoricalDtype(["flashed", "pe"])
     df_bam["pe"] = df_bam["pe"].astype(
@@ -421,6 +423,8 @@ def parse_bam(bam):
     )  # Only the one type present so need to include both
 
     df_bam.set_index(["slice_name", "chrom", "start"], inplace=True)
+
+    logger.info("Finished parsing BAM file")
     return df_bam
 
 
