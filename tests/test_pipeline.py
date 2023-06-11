@@ -6,6 +6,20 @@ import pytest
 from loguru import logger
 import numpy as np
 import pathlib
+from cookiecutter.main import cookiecutter
+from datetime import datetime
+
+
+@pytest.fixture(scope="module")
+def temp_dir(tmpdir_factory):
+    return tmpdir_factory.mktemp("test_pipeline")
+
+
+@pytest.fixture(scope="module")
+def package_path():
+    fn = os.path.realpath(__file__)
+    dirname = os.path.dirname(fn)
+    return os.path.dirname(dirname)
 
 
 @pytest.fixture(scope="module")
@@ -17,13 +31,17 @@ def data_path():
 
 
 @pytest.fixture(scope="module")
-def genome(data_path):
+def fasta(data_path):
     return os.path.join(data_path, "chr14.fa.gz")
 
 
 @pytest.fixture(scope="module")
-def indicies(data_path, genome):
+def genome():
+    return "mm9"
 
+
+@pytest.fixture(scope="module")
+def indicies(data_path, genome):
     indicies = os.path.join(data_path, "chr14_bowtie2_indicies")
     if not os.path.exists(indicies):
         try:
@@ -55,189 +73,130 @@ def indicies(data_path, genome):
 
 
 @pytest.fixture(scope="module")
-def config_yaml(data_path):
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    repo_dir = os.path.dirname(current_dir)
-    config = os.path.join(repo_dir, "config.yml")
-    return config
-
-
-@pytest.fixture(scope="module")
 def binsizes():
     return np.random.randint(int(1e3), int(1e6), size=3)
 
 
 @pytest.fixture(scope="module")
-def run_directory_capture(tmpdir_factory):
-    fn = tmpdir_factory.mktemp("data_capture")
-    return fn
+def plot_coords(data_path):
+    return os.path.join(data_path, "mm9_capture_viewpoints_Slc25A37.bed")
 
 
 @pytest.fixture(scope="module")
-def run_directory_tri(tmpdir_factory):
-    fn = tmpdir_factory.mktemp("data_tri")
-    return fn
+def design(data_path):
+    return os.path.join(data_path, "design_matrix.tsv")
 
 
 @pytest.fixture(scope="module")
-def run_directory_tiled(tmpdir_factory):
-    fn = tmpdir_factory.mktemp("data_tiled")
-    return fn
+def viewpoints(data_path):
+    return os.path.join(data_path, "mm9_capture_viewpoints_Slc25A37.bed")
 
 
 @pytest.fixture(scope="module")
-def setup_pipeline_run_capture(
-    data_path, run_directory_capture, genome, indicies, config_yaml
+def fastqs(data_path):
+    return glob.glob(os.path.join(data_path, "*.fastq*"))
+
+
+@pytest.fixture(scope="module")
+def chromsizes(data_path):
+    return os.path.join(data_path, "chr14.fa.fai")
+
+
+@pytest.fixture(scope="module")
+def run_dir_capture(temp_dir):
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    project_id = "project_name"
+    assay = "capture"
+    return os.path.join(temp_dir, f"{current_date}_{project_id}_{assay}")
+
+
+@pytest.fixture(scope="module")
+def run_dir_tiled(temp_dir):
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    project_id = "project_name"
+    assay = "tiled"
+    return os.path.join(temp_dir, f"{current_date}_{project_id}_{assay}")
+
+
+@pytest.fixture(scope="module", params=["capture", "tri", "tiled"])
+def config(
+    temp_dir,
+    package_path,
+    fasta,
+    indicies,
+    binsizes,
+    viewpoints,
+    chromsizes,
+    design,
+    plot_coords,
+    request,
 ):
+    cwd = os.getcwd()
+    os.chdir(temp_dir)
 
-    oligos = os.path.join(data_path, "mm9_capture_oligos_Slc25A37.bed")
-    chromsizes = os.path.join(data_path, "chr14.fa.fai")
-    fastq = glob.glob(os.path.join(data_path, "*.fastq*"))
+    method = request.param
 
-    os.chdir(run_directory_capture)
+    cookiecutter(
+        f"{package_path}/pipeline/config/",
+        extra_context={
+            "method": method,
+            "design": design,
+            "viewpoints": viewpoints,
+            "genome": "mm9",
+            "is_custom_genome": "no",
+            "genome_organism": "Mus musculus",
+            "genome_fasta": fasta,
+            "genome_chromosome_sizes": chromsizes,
+            "genome_indicies": indicies,
+            "restriction_enzyme": "dpnii",
+            "remove_blacklist": "no",
+            "genomic_bin_size": binsizes,
+            "prioritize_cis_slices": "yes",
+            "priority_chromosomes": "viewpoints",
+            "make_ucsc_hub": "yes",
+            "ucsc_hub_directory": ".",
+            "ucsc_hub_name": "CCHUB_TEST",
+            "ucsc_hub_email": "Email address (UCSC required)",
+            "ucsc_track_color_by": "samplename",
+            "make_plots": "yes",
+            "plotting_coordinates": plot_coords,
+            "plotting_normalisation": "n_interactions",
+        },
+        no_input=True,
+    )
 
-    for fn in fastq:
-        shutil.copy(fn, ".")
+    # Move config files and fastq files
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    project_id = "project_name"
+    assay = method.lower().split("-")[0]
+    os.chdir(f"{current_date}_{project_id}_{assay}")
 
-    ## Read config and replace with correct paths
-    replacements = {
-        "ANALYSIS_METHOD": "capture",
-        "PATH_TO_VIEWPOINTS": oligos,
-        "PATH_TO_GENOME_FASTA": genome,
-        "PATH_TO_ALIGNER_INDICIES": indicies,
-        "PATH_TO_CHROMOSOME_SIZES": chromsizes,
-        "PATH_TO_HUB_DIRECTORY": os.path.join(run_directory_capture, "hub_directory"),
-        "PATH_TO_PLOTTING_COORDINATES": os.path.join(data_path, "plot_coords.bed"),
-        "PATH_TO_TSV_FORMATTED_DESIGN_MATRIX": os.path.join(
-            data_path, "design_matrix.tsv"
-        ),
-        "PATH_TO_GENES_IN_BED12_FORMAT": os.path.join(data_path, "mm9_chr14_genes.bed"),
-        "HUB_NAME": "CAPCRUNCHER_TEST_HUB",
-        "REGIONS_FOR_NORM": os.path.join(data_path, "regions_for_norm.bed"),
-    }
-
-    with open(config_yaml, "r") as config:
-        with open("config.yml", "w") as writer:
-            for line in config:
-                for key in replacements:
-                    if key in line:
-                        line = line.replace(key, replacements[key])
-
-                writer.write(line)
-
-    yield
-
-
-@pytest.fixture(scope="module")
-def setup_pipeline_run_tri(data_path, run_directory_tri, genome, indicies, config_yaml):
-
-    oligos = os.path.join(data_path, "mm9_capture_oligos_Slc25A37.bed")
-    chromsizes = os.path.join(data_path, "chr14.fa.fai")
-    fastq = glob.glob(os.path.join(data_path, "*.fastq*"))
-
-    os.chdir(run_directory_tri)
-
-    for fn in fastq:
-        shutil.copy(fn, ".")
-
-    ## Read config and replace with correct paths
-    replacements = {
-        "ANALYSIS_METHOD": "tri",
-        "PATH_TO_VIEWPOINTS": oligos,
-        "PATH_TO_GENOME_FASTA": genome,
-        "PATH_TO_ALIGNER_INDICIES": indicies,
-        "PATH_TO_CHROMOSOME_SIZES": chromsizes,
-        "PATH_TO_HUB_DIRECTORY": os.path.join(run_directory_tri, "hub_directory"),
-        "PATH_TO_PLOTTING_COORDINATES": os.path.join(data_path, "plot_coords.bed"),
-        "PATH_TO_TSV_FORMATTED_DESIGN_MATRIX": os.path.join(
-            data_path, "design_matrix.tsv"
-        ),
-        "PATH_TO_GENES_IN_BED12_FORMAT": os.path.join(data_path, "mm9_chr14_genes.bed"),
-        "HUB_NAME": "CAPCRUNCHER_TEST_HUB",
-        "REGIONS_FOR_NORM": os.path.join(data_path, "regions_for_norm.bed"),
-    }
-
-    with open(config_yaml, "r") as config:
-        with open("config.yml", "w") as writer:
-            for line in config:
-                for key in replacements:
-                    if key in line:
-                        line = line.replace(key, replacements[key])
-
-                writer.write(line)
+    for fq in fastqs:
+        fq_new = pathlib.Path(fq.name)
+        fq_new.symlink_to(fq)
 
     yield
 
-
-@pytest.fixture(scope="module")
-def setup_pipeline_run_tiled(
-    data_path, run_directory_tiled, genome, indicies, config_yaml, binsizes
-):
-
-    oligos = os.path.join(data_path, "mm9_capture_oligos_Slc25A37.bed")
-    chromsizes = os.path.join(data_path, "chr14.fa.fai")
-    fastq = glob.glob(os.path.join(data_path, "*.fastq*"))
-
-    os.chdir(run_directory_tiled)
-
-    for fn in fastq:
-        shutil.copy(fn, ".")
-
-    ## Read config and replace with correct paths
-    replacements = {
-        "ANALYSIS_METHOD": "tiled",
-        "PATH_TO_VIEWPOINTS": oligos,
-        "PATH_TO_GENOME_FASTA": genome,
-        "PATH_TO_ALIGNER_INDICIES": indicies,
-        "PATH_TO_CHROMOSOME_SIZES": chromsizes,
-        "PATH_TO_HUB_DIRECTORY": os.path.join(run_directory_tiled, "hub_directory"),
-        "PATH_TO_PLOTTING_COORDINATES": os.path.join(data_path, "plot_coords.bed"),
-        "PATH_TO_TSV_FORMATTED_DESIGN_MATRIX": os.path.join(
-            data_path, "design_matrix.tsv"
-        ),
-        "PATH_TO_GENES_IN_BED12_FORMAT": os.path.join(data_path, "mm9_chr14_genes.bed"),
-        "HUB_NAME": "CAPCRUNCHER_TEST_HUB",
-        "REGIONS_FOR_NORM": os.path.join(data_path, "regions_for_norm.bed"),
-        "BIN_SIZES": " ".join([str(bs) for bs in binsizes]),
-    }
-
-    with open(config_yaml, "r") as config:
-        with open("config.yml", "w") as writer:
-            for line in config:
-                for key in replacements:
-                    if key in line:
-                        line = line.replace(key, replacements[key])
-
-                writer.write(line)
-
-    yield
+    os.chdir(cwd)
 
 
 @pytest.mark.order(1)
-@pytest.mark.parametrize(
-    "setup",
-    [
-        pytest.lazy_fixture("setup_pipeline_run_capture"),
-        pytest.lazy_fixture("setup_pipeline_run_tri"),
-        pytest.lazy_fixture("setup_pipeline_run_tiled"),
-    ],
-)
-def test_pipeline_capture(setup):
-    cmd = "capcruncher pipeline -c 8 all -p"
-    completed = subprocess.run(cmd.split())
-    assert completed.returncode == 0
+def test_pipeline(config):
+    from sh import capcruncher
+
+    capcruncher.pipeline("-c", "8", "all", "-p")
 
 
 @pytest.mark.order(2)
-def test_stats_exist(run_directory_capture):
+def test_stats_exist(run_dir_capture):
     assert os.path.exists(
-        f"{run_directory_capture}/capcruncher_output/statistics/capcruncher_report.html"
+        f"{run_dir_capture}/capcruncher_output/statistics/capcruncher_report.html"
     )
 
 
 @pytest.mark.order(2)
 @pytest.mark.parametrize("n_samples,n_groups,n_viewpoints", [(4, 2, 1)])
-def test_bigwigs_exist(run_directory_capture, n_samples, n_groups, n_viewpoints):
+def test_bigwigs_exist(run_dir_capture, n_samples, n_groups, n_viewpoints):
     import math
 
     n_bigwigs_expected = sum(
@@ -249,46 +208,24 @@ def test_bigwigs_exist(run_directory_capture, n_samples, n_groups, n_viewpoints)
     )
 
     bigwigs = list(
-        pathlib.Path(
-            f"{run_directory_capture}/capcruncher_output/pileups/bigwigs/"
-        ).glob("*.bigWig")
+        pathlib.Path(f"{run_dir_capture}/capcruncher_output/pileups/bigwigs/").glob(
+            "*.bigWig"
+        )
     )
     assert len(bigwigs) == n_bigwigs_expected
 
 
 @pytest.mark.order(2)
-def test_reporters_are_binned(run_directory_tiled, binsizes):
+def test_reporters_are_binned(run_dir_tiled, binsizes):
     import cooler
 
     example_cooler = os.path.join(
-        run_directory_tiled, "capcruncher_output/pileups/counts/SAMPLE-A_REP1.hdf5"
+        run_dir_tiled, "capcruncher_output/pileups/counts/SAMPLE-A_REP1.hdf5"
     )
     cooler_groups = cooler.api.list_coolers(example_cooler)
     assert len(cooler_groups) == len(binsizes) + 1
 
 
 @pytest.mark.order(2)
-def test_hub_exists(run_directory_capture):
-    assert os.path.exists(f"{run_directory_capture}/hub_directory")
-
-
-# @pytest.mark.order(2)
-# def test_plot_template_exists(run_directory_capture):
-#     try:
-
-#         assert os.path.exists(
-#             f"{run_directory_capture}/capcruncher_plots/templates/Slc25A37.pileup.yml"
-#         )
-#     except ImportError:
-#         pass
-
-
-# @pytest.mark.order(2)
-# def test_plot_exists(run_directory_capture):
-#     try:
-
-#         assert os.path.exists(
-#             f"{run_directory_capture}/capcruncher_plots/Slc25A37_chr14:69878554-69933221.svg"
-#         )
-#     except ImportError:
-#         pass
+def test_hub_exists(run_dir_capture):
+    assert os.path.exists(f"{run_dir_capture}/CCHUB_TEST")
