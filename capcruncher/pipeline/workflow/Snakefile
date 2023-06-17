@@ -8,6 +8,7 @@ import pandas as pd
 import pyranges as pr
 import snakemake.utils
 import capcruncher.pipeline.utils
+import importlib.util
 
 snakemake.utils.min_version('7.19.1')
 
@@ -55,6 +56,15 @@ PERFORM_BINNING = capcruncher.pipeline.utils.can_perform_binning(config)
 ## Pipeline variables
 ASSAY = config["analysis"]["method"]
 SAMPLE_NAMES = FASTQ_SAMPLES.sample_names_all
+
+# Optional
+
+## Check if capcruncher_tools is installed
+if importlib.util.find_spec("capcruncher_tools"):
+    print("CapCruncherTools is installed. Enabling CapCruncherTools functions.")
+    CAPCRUNCHER_TOOLS = True
+else:
+    CAPCRUNCHER_TOOLS = False
 
 
 include: "rules/digest.smk"

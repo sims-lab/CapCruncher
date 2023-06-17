@@ -5,7 +5,6 @@ import re
 
 
 def get_parts(wc, sample_name=None):
-
     if not sample_name:
         sample_name = wc.sample
 
@@ -70,114 +69,170 @@ checkpoint split:
         """
 
 
-rule deduplication_parse:
-    input:
-        fq1="capcruncher_output/fastq/split/{sample}/{sample}_part{part}_1.fastq.gz",
-        fq2="capcruncher_output/fastq/split/{sample}/{sample}_part{part}_2.fastq.gz",
-    output:
-        temp("capcruncher_output/fastq/deduplicated/{sample}/{sample}_{part}.pkl"),
-    log:
-        "capcruncher_output/logs/deduplication_fastq/parse/{sample}_part{part}.log",
-    shell:
-        """
-        capcruncher \
-        fastq \
-        deduplicate \
-        parse \
-        {input.fq1} \
-        {input.fq2} \
-        -o \
-        {output} \
-        > {log} 2>&1
-        """
+if not CAPCRUNCHER_TOOLS:
 
+    rule deduplication_parse:
+        input:
+            fq1="capcruncher_output/fastq/split/{sample}/{sample}_part{part}_1.fastq.gz",
+            fq2="capcruncher_output/fastq/split/{sample}/{sample}_part{part}_2.fastq.gz",
+        output:
+            temp("capcruncher_output/fastq/deduplicated/{sample}/{sample}_{part}.pkl"),
+        log:
+            "capcruncher_output/logs/deduplication_fastq/parse/{sample}_part{part}.log",
+        shell:
+            """
+            capcruncher \
+            fastq \
+            deduplicate \
+            parse \
+            {input.fq1} \
+            {input.fq2} \
+            -o \
+            {output} \
+            > {log} 2>&1
+            """
 
-rule deduplication_identify:
-    input:
-        hashed_reads=get_pickles,
-    output:
-        temp("capcruncher_output/fastq/deduplicated/{sample}/{sample}.pkl"),
-    log:
-        "capcruncher_output/logs/deduplication_fastq/identify/{sample}.log",
-    threads: 3
-    shell:
-        """
-        capcruncher \
-        fastq \
-        deduplicate \
-        identify \
-        {input.hashed_reads} \
-        -o \
-        {output}
-        > {log} 2>&1
-        """
+    rule deduplication_identify:
+        input:
+            hashed_reads=get_pickles,
+        output:
+            temp("capcruncher_output/fastq/deduplicated/{sample}/{sample}.pkl"),
+        log:
+            "capcruncher_output/logs/deduplication_fastq/identify/{sample}.log",
+        threads: 3
+        shell:
+            """
+            capcruncher \
+            fastq \
+            deduplicate \
+            identify \
+            {input.hashed_reads} \
+            -o \
+            {output}
+            > {log} 2>&1
+            """
 
+    rule deduplication_remove:
+        input:
+            fq1="capcruncher_output/fastq/split/{sample}/{sample}_part{part}_1.fastq.gz",
+            fq2="capcruncher_output/fastq/split/{sample}/{sample}_part{part}_2.fastq.gz",
+            ids_duplicated="capcruncher_output/fastq/deduplicated/{sample}/{sample}.pkl",
+        output:
+            fq1=temp(
+                "capcruncher_output/fastq/deduplicated/{sample}/{sample}_part{part}_1.fastq.gz"
+            ),
+            fq2=temp(
+                "capcruncher_output/fastq/deduplicated/{sample}/{sample}_part{part}_2.fastq.gz"
+            ),
+            stats="capcruncher_output/statistics/deduplication/data/{sample}_part{part}.deduplication.csv",
+        params:
+            prefix_fastq="capcruncher_output/fastq/deduplicated/{sample}/{sample}_part{part}",
+            prefix_stats="capcruncher_output/statistics/deduplication/data/{sample}_part{part}",
+        log:
+            "capcruncher_output/logs/deduplication_fastq/remove/{sample}_part{part}.log",
+        threads: 4
+        shell:
+            """
+            capcruncher \
+            fastq \
+            deduplicate \
+            remove \
+            {input.fq1} \
+            {input.fq2} \
+            -d \
+            {input.ids_duplicated} \
+            --sample-name \
+            {wildcards.sample} \
+            --stats-prefix \
+            {params.prefix_stats} \
+            -o \
+            {params.prefix_fastq} \
+            -p \
+            {threads} \
+            --hash-read-name \
+            --gzip \
+            > {log} 2>&1
+            """
 
-rule deduplication_remove:
-    input:
-        fq1="capcruncher_output/fastq/split/{sample}/{sample}_part{part}_1.fastq.gz",
-        fq2="capcruncher_output/fastq/split/{sample}/{sample}_part{part}_2.fastq.gz",
-        ids_duplicated="capcruncher_output/fastq/deduplicated/{sample}/{sample}.pkl",
-    output:
-        fq1=temp(
-            "capcruncher_output/fastq/deduplicated/{sample}/{sample}_part{part}_1.fastq.gz"
-        ),
-        fq2=temp(
-            "capcruncher_output/fastq/deduplicated/{sample}/{sample}_part{part}_2.fastq.gz"
-        ),
-        stats="capcruncher_output/statistics/deduplication/data/{sample}_part{part}.deduplication.csv",
-    params:
-        prefix_fastq="capcruncher_output/fastq/deduplicated/{sample}/{sample}_part{part}",
-        prefix_stats="capcruncher_output/statistics/deduplication/data/{sample}_part{part}",
-    log:
-        "capcruncher_output/logs/deduplication_fastq/remove/{sample}_part{part}.log",
-    threads: 4
-    shell:
-        """
-        capcruncher \
-        fastq \
-        deduplicate \
-        remove \
-        {input.fq1} \
-        {input.fq2} \
-        -d \
-        {input.ids_duplicated} \
-        --sample-name \
-        {wildcards.sample} \
-        --stats-prefix \
-        {params.prefix_stats} \
-        -o \
-        {params.prefix_fastq} \
-        -p \
-        {threads} \
-        --hash-read-name \
-        --gzip \
-        > {log} 2>&1
-        """
+    rule trim:
+        input:
+            fq1="capcruncher_output/fastq/deduplicated/{sample}/{sample}_part{part}_1.fastq.gz",
+            fq2="capcruncher_output/fastq/deduplicated/{sample}/{sample}_part{part}_2.fastq.gz",
+        output:
+            trimmed1=temp(
+                "capcruncher_output/fastq/trimmed/{sample}/{sample}_part{part}_1.fastq.gz"
+            ),
+            trimmed2=temp(
+                "capcruncher_output/fastq/trimmed/{sample}/{sample}_part{part}_2.fastq.gz"
+            ),
+        params:
+            outdir="capcruncher_output/fastq/trimmed/{sample}/",
+        threads: 4
+        log:
+            "capcruncher_output/logs/trimming/{sample}_{part}.log",
+        shell:
+            """
+            trim_galore --cores {threads} --trim-n --paired --output_dir {params.outdir} {input.fq1} {input.fq2} >> {log} 2>&1 &&
+            mv {params.outdir}/{wildcards.sample}_part{wildcards.part}_1_val_1.fq.gz {output.trimmed1} &&
+            mv {params.outdir}/{wildcards.sample}_part{wildcards.part}_2_val_2.fq.gz {output.trimmed2}
+            """
 
+else:
 
-rule trim:
-    input:
-        fq1=rules.deduplication_remove.output.fq1,
-        fq2=rules.deduplication_remove.output.fq2,
-    output:
-        trimmed1=temp(
-            "capcruncher_output/fastq/trimmed/{sample}/{sample}_part{part}_1.fastq.gz"
-        ),
-        trimmed2=temp(
-            "capcruncher_output/fastq/trimmed/{sample}/{sample}_part{part}_2.fastq.gz"
-        ),
-    params:
-        outdir="capcruncher_output/fastq/trimmed/{sample}/",
-    threads: 4
-    log:
-        "capcruncher_output/logs/trimming/{sample}_{part}.log",
-    shell:
-        """
-           trim_galore --cores {threads} --trim-n --paired --output_dir {params.outdir} {input.fq1} {input.fq2} >> {log} 2>&1 &&
-           mv {params.outdir}/{wildcards.sample}_part{wildcards.part}_1_val_1.fq.gz {output.trimmed1} &&
-           mv {params.outdir}/{wildcards.sample}_part{wildcards.part}_2_val_2.fq.gz {output.trimmed2}
-        """
+    checkpoint deduplication:
+        input:
+            fq1=lambda wc: expand(
+                "capcruncher_output/fastq/split/{{sample}}/{{sample}}_part{part}_1.fastq.gz",
+                part=get_parts(wc),
+            ),
+            fq2=lambda wc: expand(
+                "capcruncher_output/fastq/split/{{sample}}/{{sample}}_part{part}_2.fastq.gz",
+                part=get_parts(wc),
+            ),
+        output:
+            fastq_dir=directory("capcruncher_output/fastq/deduplicated/{sample}/"),
+            stats="capcruncher_output/statistics/deduplication/data/{sample}.deduplication.csv",
+        params:
+            prefix_stats="capcruncher_output/statistics/deduplication/data/{sample}/",
+        log:
+            "capcruncher_output/logs/deduplication_fastq/{sample}.log",
+        threads: 12
+        shell:
+            """
+            mkdir {params.prefix_stats} &&
+            capcruncher-tools fastq-deduplicate -1 {input.fq1} -2 {input.fq2} -o {output.fastq_dir} --stats-prefix {params.prefix_stats} --sample-name {wildcards.sample} > {log} 2>&1
+            """
+
+    def get_deduplicated_fastq(wc):
+        checkpoint_output = checkpoints.deduplication.get(sample=wc.sample).output[
+            0
+        ]
+        return {
+            "fq1": f"capcruncher_output/fastq/deduplicated/{wc.sample}/{wc.sample}_part{wc.part}_1.fastq.gz",
+            "fq2": f"capcruncher_output/fastq/deduplicated/{wc.sample}/{wc.sample}_part{wc.part}_2.fastq.gz",
+        }
+
+    rule trim:
+        input:
+            unpack(get_deduplicated_fastq),
+        output:
+            trimmed1=temp(
+                "capcruncher_output/fastq/trimmed/{sample}/{sample}_part{part}_1.fastq.gz"
+            ),
+            trimmed2=temp(
+                "capcruncher_output/fastq/trimmed/{sample}/{sample}_part{part}_2.fastq.gz"
+            ),
+        params:
+            outdir="capcruncher_output/fastq/trimmed/{sample}/",
+        threads: 4
+        log:
+            "capcruncher_output/logs/trimming/{sample}_{part}.log",
+        shell:
+            """
+            trim_galore --cores {threads} --trim-n --paired --output_dir {params.outdir} {input.fq1} {input.fq2} >> {log} 2>&1 &&
+            mv {params.outdir}/{wildcards.sample}_part{wildcards.part}_1_val_1.fq.gz {output.trimmed1} &&
+            mv {params.outdir}/{wildcards.sample}_part{wildcards.part}_2_val_2.fq.gz {output.trimmed2}
+            """
 
 
 rule flash:
