@@ -62,6 +62,8 @@ rule compare_interactions:
         summary_methods=" ".join([f"-m {m}" for m in get_summary_methods()]),
         names=" ".join([f"-n {group}" for group in DESIGN["condition"].unique()]),
         conditions=identify_columns_based_on_condition(),
+    resources:
+        mem_mb=5000,
     log:
         "capcruncher_output/logs/compare_interactions/{viewpoint}.log",
     shell:

@@ -42,7 +42,7 @@ checkpoint split:
     threads: 4
     resources:
         mem_mb=1000,
-        time="1-03:00:00",
+        time="0-03:00:00",
     params:
         prefix="capcruncher_output/fastq/split/{sample}/{sample}",
         n_reads=str(config["split"].get("n_reads", 1e6)),
@@ -77,6 +77,8 @@ if not CAPCRUNCHER_TOOLS:
             fq2="capcruncher_output/fastq/split/{sample}/{sample}_part{part}_2.fastq.gz",
         output:
             temp("capcruncher_output/fastq/deduplicated/{sample}/{sample}_{part}.pkl"),
+        resources:
+            mem_mb=2000,
         log:
             "capcruncher_output/logs/deduplication_fastq/parse/{sample}_part{part}.log",
         shell:
@@ -99,6 +101,8 @@ if not CAPCRUNCHER_TOOLS:
             temp("capcruncher_output/fastq/deduplicated/{sample}/{sample}.pkl"),
         log:
             "capcruncher_output/logs/deduplication_fastq/identify/{sample}.log",
+        resources:
+            mem_mb=5000,
         threads: 3
         shell:
             """
@@ -128,6 +132,8 @@ if not CAPCRUNCHER_TOOLS:
         params:
             prefix_fastq="capcruncher_output/fastq/deduplicated/{sample}/{sample}_part{part}",
             prefix_stats="capcruncher_output/statistics/deduplication/data/{sample}_part{part}",
+        resources:
+            mem_mb=2000,
         log:
             "capcruncher_output/logs/deduplication_fastq/remove/{sample}_part{part}.log",
         threads: 4
@@ -168,6 +174,8 @@ if not CAPCRUNCHER_TOOLS:
         params:
             outdir="capcruncher_output/fastq/trimmed/{sample}/",
         threads: 4
+        resources:
+            mem_mb=2000,
         log:
             "capcruncher_output/logs/trimming/{sample}_{part}.log",
         shell:
@@ -197,6 +205,8 @@ else:
         log:
             "capcruncher_output/logs/deduplication_fastq/{sample}.log",
         threads: 12
+        resources:
+            mem_mb=3000,
         shell:
             """
             mkdir {params.prefix_stats} &&
@@ -225,6 +235,8 @@ else:
         params:
             outdir="capcruncher_output/fastq/trimmed/{sample}/",
         threads: 4
+        resources:
+            mem_mb=2000,
         log:
             "capcruncher_output/logs/trimming/{sample}_{part}.log",
         shell:
@@ -252,6 +264,8 @@ rule flash:
     params:
         outdir="capcruncher_output/fastq/flashed/{sample}/{sample}_part{part}",
     threads: 12
+    resources:
+        mem_mb=1000,
     log:
         "capcruncher_output/logs/flash/{sample}_{part}.log",
     shell:
@@ -274,6 +288,8 @@ rule digest_flashed_combined:
         prefix_stats="capcruncher_output/statistics/digestion/data/{sample}_part{part}_flashed",
         restriction_site=config["analysis"]["restriction_enzyme"],
     threads: 8
+    resources:
+        mem_mb=2000,
     log:
         "capcruncher_output/logs/digestion/{sample}_{part}.log",
     shell:
@@ -315,6 +331,8 @@ rule digest_flashed_pe:
         prefix_stats="capcruncher_output/statistics/digestion/data/{sample}_part{part}_pe",
         restriction_site=config["analysis"]["restriction_enzyme"],
     threads: 8
+    resources:
+        mem_mb=2000,
     log:
         "capcruncher_output/logs/digestion/{sample}_{part}.log",
     shell:

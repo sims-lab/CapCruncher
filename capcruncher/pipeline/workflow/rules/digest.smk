@@ -9,6 +9,8 @@ rule digest_genome:
     params:
         enzyme_or_site=config["analysis"]["restriction_enzyme"],
     threads: 4
+    resources:
+        mem_mb=2000,
     shell:
         """
         capcruncher genome digest {input.fasta} -r {params.enzyme_or_site} -o {output.bed}.tmp --sort -l {output.stats} > {log} 2>&1 &&

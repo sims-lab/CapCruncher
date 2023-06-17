@@ -31,6 +31,8 @@ rule count:
     log:
         "capcruncher_output/logs/counts/{sample}.log",
     threads: len(VIEWPOINT_NAMES)
+    resources:
+        mem_mb=3000,
     shell:
         """
         capcruncher \
@@ -56,6 +58,8 @@ rule bin_counts:
     log:
         "capcruncher_output/logs/bin_counts/{sample}.log",
     threads: 4
+    resources:
+        mem_mb=3000,
     shell:
         """
         capcruncher \

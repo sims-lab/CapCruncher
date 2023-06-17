@@ -110,6 +110,8 @@ rule annotate:
         if config["analysis_optional"].get("prioritize_cis_slices", "")
         else "",
     threads: 6
+    resources:
+        mem_mb=5000,
     log:
         "capcruncher_output/logs/capcruncher_output/annotate/{sample}/{sample}_part{part}_{combined}.log",
     shell:

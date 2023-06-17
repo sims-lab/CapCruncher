@@ -31,6 +31,8 @@ rule filter_alignments:
         ),
         read_type=lambda wildcards, output: wildcards.combined,
         custom_filtering=validate_custom_filtering(),
+    resources:
+        mem_mb=5000,
     log:
         "capcruncher_output/statistics/filtering/logs/{sample}_part{part}_{combined}.log",
     shell:
@@ -68,6 +70,8 @@ rule count_identified_viewpoints:
         stats="capcruncher_output/statistics/identified_viewpoints/data/{sample}.identified_viewpoints.stats.csv",
     params:
         slices_dir=lambda wc: "capcruncher_output/alignment_filtering/initial/{sample}/",
+    resources:
+        mem_mb=3000,
     script:
         "../scripts/count_identified_viewpoints.py"
 
@@ -126,6 +130,8 @@ rule remove_duplicate_coordinates:
             ".read.stats.csv", ""
         ),
         read_type=lambda wildcards, output: wildcards.combined,
+    resources:
+        mem_mb=32_000,
     log:
         "capcruncher_output/logs/remove_duplicate_coordinates/{sample}_{combined}.log",
     script:
@@ -156,6 +162,8 @@ rule cis_and_trans_stats:
     params:
         sample_name=lambda wildcards, output: wildcards.sample,
         analysis_method=config["analysis"]["method"],
+    resources:
+        mem_mb=3000,
     log:
         "capcruncher_output/logs/cis_and_trans_stats/{sample}.log",
     shell:

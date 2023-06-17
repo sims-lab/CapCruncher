@@ -5,6 +5,8 @@ rule align_bowtie2:
         bam=temp(
             "capcruncher_output/aligned/{sample}/{sample}_part{part}_{combined,(flashed|pe)}.bam"
         ),
+    resources:
+        mem_mb=4000,
     params:
         aligner=config["align"]["aligner"],
         index_flag=config["align"].get("index_flag", ""),
