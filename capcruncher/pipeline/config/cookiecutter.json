@@ -12,7 +12,7 @@
   "genome_organism": "Species name (optional)",
   "genome_fasta": "PATH TO GENOME FASTA ",
   "genome_chromosome_sizes": "PATH TO CHROMSOME SIZES",
-  "genome_indicies": "PATH TO BOWTIE2 INDsICIES (include the prefix)",
+  "genome_indicies": "PATH TO BOWTIE2 INDICIES (include the prefix)",
   "genome_two_bit": "PATH TO 2BIT FILE (ignore if not a custom genome)",
   "restriction_enzyme": "dpnii",
   "remove_blacklist": ["yes", "no"],
