@@ -57,13 +57,28 @@ def get_stat_parts(wc):
     return files
 
 
-rule combine_stats_fastq_deduplication:
-    input:
-        fastq_deduplication=get_stat_parts,
-    output:
-        "capcruncher_output/statistics/deduplication/fastq_deduplication.csv",
-    script:
-        "../scripts/combine_deduplication_stats.py"
+if not CAPCRUNCHER_TOOLS:
+
+    rule combine_stats_fastq_deduplication:
+        input:
+            fastq_deduplication=get_stat_parts,
+        output:
+            "capcruncher_output/statistics/deduplication/fastq_deduplication.csv",
+        script:
+            "../scripts/combine_deduplication_stats.py"
+
+else:
+
+    rule combine_stats_fastq_deduplication:
+        input:
+            fastq_deduplication=expand(
+                "capcruncher_output/statistics/deduplication/data/{sample}.deduplication.csv",
+                sample=SAMPLE_NAMES,
+            ),
+        output:
+            "capcruncher_output/statistics/deduplication/fastq_deduplication.csv",
+        script:
+            "../scripts/combine_deduplication_stats.py"
 
 
 rule combine_stats_digestion:
