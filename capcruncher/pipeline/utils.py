@@ -168,6 +168,10 @@ class FastqSamples:
     @classmethod
     def from_files(cls, files: List[Union[pathlib.Path, str]]) -> "FastqSamples":
 
+        if not len(files) > 0:
+            logger.error("No fastq files found.")
+            raise ValueError("No fastq files found.")
+
         df = pd.DataFrame(files, columns=["fn"])
 
         df[["sample", "read"]] = (
