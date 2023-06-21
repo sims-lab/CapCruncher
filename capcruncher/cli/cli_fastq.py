@@ -39,6 +39,12 @@ def cli():
     "--gzip/--no-gzip", help="Determines if files are gziped or not", default=False
 )
 @click.option("-p", "--n_cores", default=1, type=click.INT)
+@click.option(
+    "-s",
+    "--suffix",
+    help="Suffix to add to output files (ignore {read_number}.fastq as this is added automatically)",
+    default="",
+)
 def split(*args, **kwargs):
     """
     Splits fastq file(s) into equal chunks of n reads.

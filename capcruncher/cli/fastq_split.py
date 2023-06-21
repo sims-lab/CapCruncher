@@ -26,12 +26,18 @@ def run_unix_split(
     output_prefix: os.PathLike = "",
     gzip: bool = False,
     n_cores=1,
+    suffix: str = "",
     **kwargs,
 ):
 
     statement = []
 
-    cmd = f"""zcat {fn} | split FILTER -l {n_reads * 4} -d --additional-suffix=_{read_number}.fastq - {output_prefix}_part;"""
+    if suffix:
+        split_suffix = f"{suffix}_{read_number}.fastq"
+    else:
+        split_suffix = f"_{read_number}.fastq"
+
+    cmd = f"""zcat {fn} | split FILTER -l {n_reads * 4} -d --additional-suffix={split_suffix} - {output_prefix}_part;"""
 
     if ".gz" not in fn:
         cmd = cmd.replace("zcat", "cat")
@@ -55,6 +61,7 @@ def split(
     compression_level: int = 5,
     n_reads: int = 1000000,
     n_parts: int = 1,
+    suffix: str = "",
     gzip: bool = True,
     n_cores: int = 1,
 ):
@@ -80,7 +87,7 @@ def split(
         FastqReadFormatterProcess,
     )
 
-    if split_type ==  "n-reads" and method == "python":
+    if split_type == "n-reads" and method == "python":
         readq = SimpleQueue()
         writeq = SimpleQueue()
 
@@ -115,7 +122,9 @@ def split(
             proc.join()
             proc.terminate()
 
-    elif split_type ==  "n-reads" and method == "unix":  # Using unix split to perform the splitting
+    elif (
+        split_type == "n-reads" and method == "unix"
+    ):  # Using unix split to perform the splitting
 
         tasks = []
         n_cores_per_task = (n_cores // 2) if (n_cores // 2) > 1 else 1
@@ -132,6 +141,7 @@ def split(
                 compression_level=compression_level,
                 output_prefix=output_prefix,
                 n_cores=n_cores_per_task,
+                suffix=suffix,
             )
 
             tasks.append(t)
@@ -142,11 +152,12 @@ def split(
         # The suffixes are in the format 00, 01, 02 etc need to replace with int
         for fn in glob.glob(f"{output_prefix}_part*"):
             src = fn
-            part_no = int(re.match(r"(?:.*)_part(\d+)_[1|2].*", fn).group(1))
+            part_no = int(
+                re.match(r"(?:.*)_part(\d+)_.*([1|2])?.fastq(.gz)?", fn).group(1)
+            )
             dest = re.sub(r"_part\d+_", f"_part{part_no}_", src)
             os.rename(src, dest)
-        
+
     # elif split_type ==  "n-reads" and method == "seqkit":
 
     #     cmd  = ["seqkit", "split2", "-1", input]
-
