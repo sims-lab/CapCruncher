@@ -30,7 +30,7 @@ rule count:
         temp("capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5"),
     log:
         "capcruncher_output/logs/counts/{sample}.log",
-    threads: len(VIEWPOINT_NAMES)
+    threads: 8
     resources:
         mem_mb=lambda wc, attempt: 2000 * 2**attempt,
     params:
