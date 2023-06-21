@@ -102,7 +102,9 @@ rule annotate:
         exclusions="capcruncher_output/annotate/exclude.bed",
         viewpoints=config["analysis"]["viewpoints"],
     output:
-        annotated="capcruncher_output/annotate/{sample}/{sample}_part{part}_{combined}.parquet",
+        annotated=temp(
+            "capcruncher_output/annotate/{sample}/{sample}_part{part}_{combined}.parquet"
+        ),
     params:
         annotation_files_and_params=format_annotation_parameters(),
         priority_chromosomes=format_priority_chromosome_list(),
