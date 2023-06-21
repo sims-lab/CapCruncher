@@ -84,36 +84,66 @@ wildcard_constraints:
     part=r"\d+",
 
 
+def get_pileups(
+    method: Literal["capture", "tri", "tiled"],
+    samples_aggregate: bool,
+    samples_compare: bool,
+) -> list[str]:
+
+    bigwigs = []
+    if method in ["capture", "tri"]:
+        bigwigs.extend(
+            expand(
+                "capcruncher_output/pileups/bigwigs/{sample}/{norm}/{sample}_{viewpoint}.bigWig",
+                sample=SAMPLE_NAMES,
+                norm=["raw", "norm"],
+                viewpoint=VIEWPOINT_NAMES,
+            ),
+        )
+
+        if samples_aggregate:
+            bigwigs.extend(
+                expand(
+                    "capcruncher_output/pileups/bigwigs/{group}/{norm}/{group}_{viewpoint}.bigWig",
+                    group=DESIGN["condition"].unique(),
+                    norm=["raw", "norm"],
+                    viewpoint=VIEWPOINT_NAMES,
+                ),
+            )
+
+        if samples_compare:
+            bigwigs.extend(
+                expand(
+                    "capcruncher_output/pileups/bigwigs/{comparison}/{norm}/{comparison}_{viewpoint}.bigWig",
+                    comparison=[
+                        f"{a}-{b}"
+                        for a, b in itertools.permutations(
+                            DESIGN["condition"].unique(), 2
+                        )
+                    ],
+                    norm=["raw", "norm"],
+                    viewpoint=VIEWPOINT_NAMES,
+                ),
+            )
+
+    elif method == "tiled":
+        pass
+
+    return bigwigs
+
+
 rule all:
     input:
         qc=rules.multiqc.output[0],
         report="capcruncher_output/statistics/capcruncher_report.html",
-        bigwigs=expand(
-            "capcruncher_output/pileups/bigwigs/{sample}/{norm}/{sample}_{viewpoint}.bigWig",
+        pileups=get_pileups(ANALYSIS_METHOD, AGGREGATE_SAMPLES, COMPARE_SAMPLES),
+        counts=expand(
+            "capcruncher_output/{sample}/{sample}.hdf5",
             sample=SAMPLE_NAMES,
-            norm=["raw", "norm"],
-            viewpoint=VIEWPOINT_NAMES,
         ),
-        bigwigs_summary=expand(
-            "capcruncher_output/comparisons/bigwigs/{group}/{group}.{method}-summary.{viewpoint}.bigWig",
-            group=DESIGN["condition"].unique(),
-            method=get_summary_methods(),
-            viewpoint=VIEWPOINT_NAMES,
-        )
-        if AGGREGATE_SAMPLES
+        hub=rules.create_ucsc_hub.output[0]
+        if ANALYSIS_METHOD in ["capture", "tri"]
         else [],
-        bigwigs_comparison=expand(
-            "capcruncher_output/comparisons/bigwigs/{comparison}/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
-            comparison=[
-            f"{a}-{b}"
-                for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
-            ],
-            method=get_summary_methods(),
-            viewpoint=VIEWPOINT_NAMES,
-        )
-        if COMPARE_SAMPLES
-        else [],
-        hub=rules.create_ucsc_hub.output[0],
 
 
 onerror:
