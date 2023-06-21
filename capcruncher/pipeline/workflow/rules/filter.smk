@@ -53,27 +53,27 @@ rule filter_alignments:
         """
 
 
-rule count_identified_viewpoints:
-    input:
-        slices=lambda wildcards: expand(
-            "capcruncher_output/alignment_filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet",
-            sample=[
-                wildcards.sample,
-            ],
-            part=get_parts(wildcards),
-            combined=[
-                "flashed",
-                "pe",
-            ],
-        ),
-    output:
-        stats="capcruncher_output/statistics/identified_viewpoints/data/{sample}.identified_viewpoints.stats.csv",
-    params:
-        slices_dir=lambda wc: "capcruncher_output/alignment_filtering/initial/{sample}/",
-    resources:
-        mem_mb=3000,
-    script:
-        "../scripts/count_identified_viewpoints.py"
+# rule count_identified_viewpoints:
+#     input:
+#         slices=lambda wildcards: expand(
+#             "capcruncher_output/alignment_filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet",
+#             sample=[
+#                 wildcards.sample,
+#             ],
+#             part=get_rebalanced_parts(wildcards, combined=),
+#             combined=[
+#                 "flashed",
+#                 "pe",
+#             ],
+#         ),
+#     output:
+#         stats="capcruncher_output/statistics/identified_viewpoints/data/{sample}.identified_viewpoints.stats.csv",
+#     params:
+#         slices_dir=lambda wc: "capcruncher_output/alignment_filtering/initial/{sample}/",
+#     resources:
+#         mem_mb=3000,
+#     script:
+#         "../scripts/count_identified_viewpoints.py"
 
 
 rule split_flashed_and_pe_datasets:
@@ -83,7 +83,7 @@ rule split_flashed_and_pe_datasets:
             sample=[
                 wildcards.sample,
             ],
-            part=get_parts(wildcards),
+            part=get_rebalanced_parts(wildcards, combined="flashed"),
             combined=[
                 "flashed",
             ],
@@ -93,7 +93,7 @@ rule split_flashed_and_pe_datasets:
             sample=[
                 wildcards.sample,
             ],
-            part=get_parts(wildcards),
+            part=get_rebalanced_parts(wildcards, combined="pe"),
             combined=[
                 "pe",
             ],
@@ -132,6 +132,7 @@ rule remove_duplicate_coordinates:
         read_type=lambda wildcards, output: wildcards.combined,
     resources:
         mem_mb=32_000,
+    threads: 12
     log:
         "capcruncher_output/logs/remove_duplicate_coordinates/{sample}_{combined}.log",
     script:

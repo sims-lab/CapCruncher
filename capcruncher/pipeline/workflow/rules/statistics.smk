@@ -10,8 +10,8 @@ def get_digestion_statistics(wc):
 
     stat_prefixes = []
     for sample in SAMPLE_NAMES:
-        for part in get_parts(wc, sample_name=sample):
-            for combined in ["flashed", "pe"]:
+        for combined in ["flashed", "pe"]:
+            for part in get_rebalanced_parts(wc, combined=combined, sample=sample):
                 stat_prefixes.append(
                     f"capcruncher_output/statistics/digestion/data/{sample}_part{part}_{combined}."
                 )
@@ -32,8 +32,8 @@ def get_filtering_statistics(wc):
 
     stat_prefixes = []
     for sample in SAMPLE_NAMES:
-        for part in get_parts(wc, sample_name=sample):
-            for combined in ["flashed", "pe"]:
+        for combined in ["flashed", "pe"]:
+            for part in get_rebalanced_parts(wc, combined=combined, sample=sample):
                 stat_prefixes.append(
                     f"capcruncher_output/statistics/filtering/data/{sample}_part{part}_{combined}."
                 )
@@ -50,7 +50,7 @@ def get_stat_parts(wc):
 
     files = []
     for sample in SAMPLE_NAMES:
-        for part in get_parts(wc, sample_name=sample):
+        for part in get_parts(wc):
             files.append(
                 f"capcruncher_output/statistics/deduplication/data/{sample}_part{part}.deduplication.csv"
             )
@@ -171,8 +171,8 @@ rule make_report:
         "capcruncher_output/logs/make_report.log",
     shell:
         """
-        cp {input.template} {params.outdir}
-
+        cp {input.template} {params.outdir};
+        export XDG_RUNTIME_DIR=$(mktemp -d);
         quarto \
         render \
         {params.outdir}/capcruncher_report.qmd \

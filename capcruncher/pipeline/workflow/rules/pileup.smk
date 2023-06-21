@@ -32,9 +32,12 @@ rule count:
         "capcruncher_output/logs/counts/{sample}.log",
     threads: len(VIEWPOINT_NAMES)
     resources:
-        mem_mb=3000,
+        mem_mb=lambda wc, attempt: 2000 * 2**attempt,
+    params:
+        outdir="capcruncher_output/pileups/counts_by_restriction_fragment",
     shell:
         """
+        mkdir -p {params.outdir} && \
         capcruncher \
         interactions \
         count \

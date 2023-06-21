@@ -38,13 +38,31 @@ rule sort_bam_partitions:
         """
 
 
+def get_rebalanced_bam(wc):
+
+    parts_combined = get_rebalanced_parts(wc, combined="flashed")
+    parts_pe = get_rebalanced_parts(wc, combined="pe")
+
+    bam_combined = expand(
+        "capcruncher_output/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam",
+        sample=wc.sample,
+        part=parts_combined,
+        combined=["flashed"],
+    )
+
+    bam_pe = expand(
+        "capcruncher_output/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam",
+        sample=wc.sample,
+        part=parts_pe,
+        combined=["pe"],
+    )
+
+    return bam_combined + bam_pe
+
+
 rule merge_bam_partitions:
     input:
-        bam=lambda wc: expand(
-            "capcruncher_output/aligned/{{sample}}/{{sample}}_part{part}_{combined}.sorted.bam",
-            part=get_parts(wc),
-            combined=["flashed", "pe"],
-        ),
+        bam=get_rebalanced_bam,
     output:
         bam="capcruncher_output/aligned/{sample}.bam",
     shell:
@@ -55,7 +73,7 @@ rule merge_bam_partitions:
 
 rule index_bam:
     input:
-        bam=rules.merge_bam_partitions.output.bam,
+        bam="capcruncher_output/aligned/{sample}.bam",
     output:
         bam="capcruncher_output/aligned/{sample}.bam.bai",
     shell:
