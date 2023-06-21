@@ -4,25 +4,32 @@ import click
 from importlib import metadata
 import subprocess
 import sys
+import pathlib
 
 
 @cli.command(context_settings=dict(ignore_unknown_options=True), name="pipeline")
 @click.option("-h", "--help", "show_help", is_flag=True)
 @click.option("--version", "show_version", is_flag=True)
+@click.option(
+    "--logo/--no-logo",
+    default=True,
+    help="Show the capcruncher logo",
+    show_default=True,
+)
 @click.version_option(metadata.version(distribution_name="capcruncher"))
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
-def pipeline(pipeline_options, show_help=False, show_version=False):
+def pipeline(pipeline_options, show_help=False, show_version=False, logo=True):
 
     """Runs the data processing pipeline"""
 
-    fn = os.path.abspath(__file__)
-    dir_cli = os.path.dirname(fn)
-    dir_package = os.path.dirname(dir_cli)
+    fn = pathlib.Path(__file__).resolve()
+    dir_cli = fn.parent
+    dir_package = dir_cli.parent
 
     cmd = [
         "snakemake",
         "-s",
-        f"{dir_package}/pipeline/workflow/Snakefile",
+        str(dir_package / "pipeline/workflow/Snakefile"),
     ]
 
     if show_help:
@@ -46,6 +53,10 @@ def pipeline(pipeline_options, show_help=False, show_version=False):
     # Implicitly deal with a missing --cores option
     if "--cores" not in pipeline_options and "-c" not in pipeline_options:
         cmd.append("--cores 1")
+
+    if logo:
+        with open(dir_package / "data" / "logo.txt", "r") as f:
+            click.echo(f.read())
 
     _completed = subprocess.run(cmd)
 
