@@ -49,7 +49,9 @@ HIGH_NUMBER_OF_VIEWPOINTS = capcruncher.pipeline.utils.has_high_viewpoint_number
 ## Optional
 AGGREGATE_SAMPLES = DESIGN["sample"].nunique() > 1
 COMPARE_SAMPLES = DESIGN["condition"].nunique() > 1
-
+PERFORM_DIFFERENTIAL_ANALYSIS = (
+    config["differential"]["contrast"] in DESIGN.columns
+) and COMPARE_SAMPLES
 PERFORM_PLOTTING = capcruncher.pipeline.utils.can_perform_plotting(config)
 PERFORM_BINNING = capcruncher.pipeline.utils.can_perform_binning(config)
 
@@ -89,7 +91,6 @@ def get_pileups(
     samples_aggregate: bool,
     samples_compare: bool,
 ) -> list[str]:
-
     bigwigs = []
     if method in ["capture", "tri"]:
         bigwigs.extend(
@@ -143,6 +144,12 @@ rule all:
         ),
         hub=rules.create_ucsc_hub.output[0]
         if ANALYSIS_METHOD in ["capture", "tri"]
+        else [],
+        differential=expand(
+            "capcruncher_output/differential/{viewpoint}",
+            viewpoint=VIEWPOINT_NAMES,
+        )
+        if PERFORM_DIFFERENTIAL_ANALYSIS
         else [],
 
 

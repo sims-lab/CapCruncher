@@ -10,7 +10,6 @@ def get_summary_methods():
 
 
 def identify_columns_based_on_condition():
-
     condition_args = []
     for group_name, columns in DESIGN.groupby("condition").groups.items():
         condition_args.append(f"-c {','.join(str(c) for c in columns)}")
@@ -104,3 +103,37 @@ use rule bedgraph_to_bigwig as bigwig_summarised with:
         chrom_sizes=config["genome"]["chrom_sizes"],
     log:
         "capcruncher_output/logs/bedgraph_to_bigwig/{group}.{method}-summary.{viewpoint}.log",
+
+
+rule differential_interactions:
+    input:
+        counts=expand("capcruncher_output/{sample}/{sample}.hdf5", sample=SAMPLE_NAMES),
+        design_matrix=DESIGN,
+    output:
+        directory(
+            "capcruncher_output/comparisons/differential_interactions/{viewpoint}"
+        ),
+    params:
+        output_prefix="capcruncher_output/comparisons/differential_interactions/{viewpoint}",
+        viewpoint="{viewpoint}",
+        contrast=config["differential"]["contrast"],
+        viewpoint_distance=config["differential"]["distance"],
+    resources:
+        mem_mb=5000,
+    log:
+        "capcruncher_output/logs/differential_interactions/{viewpoint}.log",
+    shell:
+        """
+        capcruncher \
+        interactions \
+        compare \
+        differential \
+        {input.counts} \
+        --design-matrix
+        {input.design_matrix} \
+        -o {params.output_prefix} \
+        -v {params.viewpoint} \
+        -c {params.contrast} \
+        --viewpoint-distance {params.viewpoint_distance} \
+        > {log} 2>&1
+        """

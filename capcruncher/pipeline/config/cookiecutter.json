@@ -27,5 +27,7 @@
   "ucsc_track_color_by": ["none", "samplename", "method"],
   "make_plots": ["yes", "no"],
   "plotting_coordinates": "PATH TO PLOTTING COORDINATES",
-  "plotting_normalisation": ["raw", "n_interactions", "n_rf_n_interactions", "ice", "icen"]
+  "plotting_normalisation": ["raw", "n_interactions", "n_rf_n_interactions", "ice", "icen_cis"],
+  "differential_contrast": "Column name for differential contrast in design matrix (optional)"
+
   }

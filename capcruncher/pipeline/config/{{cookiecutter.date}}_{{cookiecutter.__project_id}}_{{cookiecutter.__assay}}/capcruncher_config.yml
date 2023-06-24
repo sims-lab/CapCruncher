@@ -153,11 +153,6 @@ align:
     # (Optional)
     options: -p 6 --very-sensitive
 
-alignments_filter:
-    # Maximum memory for alignment filtering
-    # Increase if the number of reads per partition has been increased from the default
-    memory: 5G
-
 analysis_optional:
 
     # Path to a YAML file containing the filter order to be applied to slices.
@@ -220,3 +215,12 @@ compare:
     # e.g.  mean,sum,median
     # (Optional)
     summary_methods: mean
+
+differential:
+    # Column in the design matrix to use for comparisons.
+    # (Optional)
+    contrast: {{cookiecutter.differential_contrast}}
+
+    # Distance from the viewpoint to use for differential analysis.
+    # (Optional)
+    distance: 100000
