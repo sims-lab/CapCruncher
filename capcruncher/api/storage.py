@@ -148,7 +148,6 @@ class CoolerBinner:
         n_rf_per_bin_correction: bool = True,
         scale_factor: int = 1_000_000,
     ) -> None:
-
         self.cooler_group = cooler_group
         self.binsize = binsize
         self.method = method
@@ -172,7 +171,12 @@ class CoolerBinner:
     def genomic_bins(self) -> pr.PyRanges:
         return (
             cooler.binnify(binsize=self.binsize, chromsizes=self.cooler.chromsizes)
-            .assign(genomic_bin_id=lambda df: df.reset_index().index.to_series())
+            .sort_values(by=["chrom", "start", "end"])
+            .assign(
+                genomic_bin_id=lambda df: df.reset_index(drop=True)
+                .index.to_series()
+                .values
+            )
             .rename(columns={"chrom": "Chromosome", "start": "Start", "end": "End"})
             .pipe(pr.PyRanges)
         )
@@ -263,7 +267,6 @@ class CoolerBinner:
 
         # Normalize pixels if specified
         if self.n_restriction_fragment_correction:
-
             n_fragments_per_bin = (
                 self.fragment_to_genomic_table.as_df()
                 .set_index("genomic_bin_id")["n_fragments_per_bin"]
@@ -324,7 +327,6 @@ class CoolerBinner:
         return pr_viewpoint.join(self.genomic_bins).df["genomic_bin_id"].to_list()
 
     def to_cooler(self, store: os.PathLike):
-
         metadata = {**self.cooler.info["metadata"]}
         metadata["viewpoint_bins"] = [int(x) for x in self.viewpoint_bins]
         metadata["n_interactions_total"] = int(self.cooler.pixels()[:]["count"].sum())
@@ -345,10 +347,16 @@ class CoolerBinner:
                 columns={"genomic_bin1_id": "bin1_id", "genomic_bin2_id": "bin2_id"}
             )
             .loc[:, lambda df: ["bin1_id", "bin2_id", "count", *df.columns[3:]]]
+            .sort_values(by=["bin1_id", "bin2_id"])
         )
 
-        bins = self.genomic_bins.as_df().rename(
-            columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
+        bins = (
+            self.genomic_bins.df.rename(
+                columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
+            )
+            .sort_values("genomic_bin_id")
+            .assign(bin_id=lambda df: df["genomic_bin_id"])
+            .set_index("genomic_bin_id")
         )
 
         cooler.create_cooler(
@@ -358,6 +366,9 @@ class CoolerBinner:
             metadata=metadata,
             mode="w" if not os.path.exists(store) else "a",
             columns=pixels.columns[2:],
+            dtypes=dict(zip(pixels.columns[2:], ["float32"] * len(pixels.columns[2:]))),
+            ensure_sorted=True,
+            ordered=True,
         )
 
         return cooler_fn
