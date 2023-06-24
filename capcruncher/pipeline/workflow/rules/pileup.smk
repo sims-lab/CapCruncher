@@ -21,34 +21,69 @@ def get_normalisation_from_config(wc):
     return "--normalisation n_cis"
 
 
-rule count:
-    input:
-        slices=rules.combine_flashed_and_pe_post_deduplication.output.slices,
-        restriction_fragment_map=rules.digest_genome.output.bed,
-        viewpoints=VIEWPOINTS,
-    output:
-        temp("capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5"),
-    log:
-        "capcruncher_output/logs/counts/{sample}.log",
-    threads: 8
-    resources:
-        mem_mb=lambda wc, attempt: 2000 * 2**attempt,
-    params:
-        outdir="capcruncher_output/pileups/counts_by_restriction_fragment",
-    shell:
-        """
-        mkdir -p {params.outdir} && \
-        capcruncher \
-        interactions \
-        count \
-        {input.slices} \
-        -o {output} \
-        -f {input.restriction_fragment_map} \
-        -v {input.viewpoints} \
-        --cooler-output \
-        -p {threads} \
-        > {log} 2>&1
-        """
+if CAPCRUNCHER_TOOLS:
+
+    rule count:
+        input:
+            slices=rules.combine_flashed_and_pe_post_deduplication.output.slices,
+            restriction_fragment_map=rules.digest_genome.output.bed,
+            viewpoints=VIEWPOINTS,
+        output:
+            temp(
+                "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5"
+            ),
+        log:
+            "capcruncher_output/logs/counts/{sample}.log",
+        threads: 8
+        resources:
+            mem_mb=lambda wc, attempt: 3000 * 2**attempt,
+        params:
+            outdir="capcruncher_output/pileups/counts_by_restriction_fragment",
+        shell:
+            """
+            mkdir -p {params.outdir} && \
+            capcruncher-tools \
+            count \
+            {input.slices} \
+            -o {output} \
+            -f {input.restriction_fragment_map} \
+            -v {input.viewpoints} \
+            -p {threads} \
+            > {log} 2>&1
+            """
+
+else:
+
+    rule count:
+        input:
+            slices=rules.combine_flashed_and_pe_post_deduplication.output.slices,
+            restriction_fragment_map=rules.digest_genome.output.bed,
+            viewpoints=VIEWPOINTS,
+        output:
+            temp(
+                "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5"
+            ),
+        log:
+            "capcruncher_output/logs/counts/{sample}.log",
+        threads: 8
+        resources:
+            mem_mb=lambda wc, attempt: 3000 * 2**attempt,
+        params:
+            outdir="capcruncher_output/pileups/counts_by_restriction_fragment",
+        shell:
+            """
+            mkdir -p {params.outdir} && \
+            capcruncher \
+            interactions \
+            count \
+            {input.slices} \
+            -o {output} \
+            -f {input.restriction_fragment_map} \
+            -v {input.viewpoints} \
+            --cooler-output \
+            -p {threads} \
+            > {log} 2>&1
+            """
 
 
 rule bin_counts:
@@ -57,7 +92,7 @@ rule bin_counts:
     output:
         temp("capcruncher_output/pileups/counts_by_genomic_bin/{sample}.hdf5"),
     params:
-        bin_size=["-b {b}" for b in BIN_SIZES],
+        bin_size=[f"-b {b}" for b in BIN_SIZES],
     log:
         "capcruncher_output/logs/bin_counts/{sample}.log",
     threads: 4
