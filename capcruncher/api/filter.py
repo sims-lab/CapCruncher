@@ -101,7 +101,6 @@ class SliceFilter:
         self.current_filter = ""
 
     def _required_columns_present(self, df) -> bool:
-
         columns_required = [
             "parent_id",
             "slice_name",
@@ -139,7 +138,6 @@ class SliceFilter:
         elif os.path.exists(filter_stages) and (
             ".yaml" in filter_stages or ".yml" in filter_stages
         ):
-
             import yaml
 
             with open(filter_stages, "r") as f:
@@ -268,7 +266,6 @@ class SliceFilter:
 
         for stage, filters in self.filter_stages.items():
             for filt in filters:
-
                 try:
                     self.current_filter = filt
                     # Call all of the filters in the filter_stages dict in order
@@ -373,7 +370,6 @@ class SliceFilter:
         if (
             self.slices["pe"].iloc[:100].str.contains("pe").sum() > 1
         ):  # at least one un-flashed
-
             fragments_partial = (
                 self.slices.groupby("parent_id")
                 .agg(coords=("coordinates", "|".join))
@@ -424,7 +420,6 @@ class SliceFilter:
 
     @property
     def slices_with_viewpoint(self):
-
         slices = self.slices.set_index("parent_id")
         captures = self.captures.set_index("parent_id")
         return (
@@ -819,7 +814,6 @@ class TriCSliceFilter(CCSliceFilter):
      filter_stats (pd.DataFrame): Provides statistics of read filtering."""
 
     def __init__(self, slices, filter_stages=None, **sample_kwargs):
-
         if filter_stages:
             self.filter_stages = filter_stages
         else:
@@ -895,7 +889,6 @@ class TiledCSliceFilter(SliceFilter):
     """
 
     def __init__(self, slices, filter_stages=None, **sample_kwargs):
-
         if not filter_stages:
             filter_stages = {
                 "pre-filtering": [
@@ -954,7 +947,6 @@ class TiledCSliceFilter(SliceFilter):
 
     @property
     def slice_stats(self):
-
         slices = self.slices.copy()
         if slices.empty:  # Deal with empty dataframe i.e. no valid slices
             for col in slices:
@@ -1002,7 +994,6 @@ class TiledCSliceFilter(SliceFilter):
         for capture_site, df_cap in self.slices.query("capture_count == 1").groupby(
             "capture"
         ):
-
             capture_chrom = df_cap.iloc[0]["chrom"]
             df_primary_capture = df_cap.groupby(
                 "parent_read"
@@ -1072,3 +1063,13 @@ class TiledCSliceFilter(SliceFilter):
             .loc[~multicapture_fragments]
             .reset_index()
         )
+
+    def remove_religation(self):
+        frag_comp = (
+            self.slices.sort_values(["restriction_fragment"])
+            .groupby("parent_id")["restriction_fragment"]
+            .transform("diff")
+            .fillna(-1)
+        )
+        not_religated = (frag_comp > 1) | (frag_comp == -1)
+        self.slices = self.slices.loc[not_religated]
