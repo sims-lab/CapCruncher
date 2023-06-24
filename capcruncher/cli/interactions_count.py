@@ -69,7 +69,7 @@ def count(
     logger.info(f"Number of viewpoints: {len(viewpoints)}")
     logger.info(f"Number of slices per viewpoint: {viewpoint_sizes.to_dict()}")
 
-    MAX_SLICE_NUMBER = 1e6
+    MAX_SLICE_NUMBER = 5e6
 
     if (
         viewpoint_sizes[viewpoint_sizes > MAX_SLICE_NUMBER].shape[0] == 0
@@ -132,6 +132,7 @@ def count(
     for vp_chunk in more_itertools.chunked(viewpoints, 10):
         viewpoints_queue.put(vp_chunk)
 
+    logger.info("Finished loading viewpoints")
     viewpoints_queue.put(None)  # Sentinel value to signal end of viewpoints
     reader.join()
 
@@ -144,12 +145,16 @@ def count(
         counter.join()
 
     # End the counting queue
-    for _ in range(n_cores):
+    for _ in range(n_counting_processes):
         counts_queue.put((None, None))
+
+    logger.info("Finished counting")
 
     # Join the writers
     for writer in writers:
         writer.join()
+
+    logger.info("Finished writing")
 
     # Merge the output files together
     # TODO: Allow other than cooler outputs
