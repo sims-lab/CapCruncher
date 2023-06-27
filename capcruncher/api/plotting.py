@@ -1,19 +1,28 @@
-import math
 import os
-
-import coolbox.api as cb
-import cooler
-import iced
-import matplotlib.colors as colors
+import math
+import pathlib
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import matplotlib as mpl
+
+import pyranges as pr
+import coolbox.api as cb
+from pybedtools import BedTool
+
 from coolbox.api import GenomeRange
+import capcruncher.api as cc
+import cooler.api as cooler
+import matplotlib.colors as colors
+import iced
 from coolbox.core.track import Track
 from coolbox.utilities import get_coverage_stack, get_feature_stack
 from matplotlib import cm, transforms
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Polygon
-from pybedtools import BedTool
+
+from typing import List, Tuple, Union, Optional, Dict, Any, Callable
 
 
 class CCMatrix(cb.Cool):
@@ -25,7 +34,6 @@ class CCMatrix(cb.Cool):
         remove_viewpoint=False,
         **kwargs,
     ):
-
         self.binsize = binsize
         self.viewpoint = viewpoint
         self.remove_viewpoint = remove_viewpoint
@@ -69,7 +77,6 @@ class CCMatrix(cb.Cool):
     def get_matrix_normalised(
         self, coordinates, normalization_method=None, **normalisation_kwargs
     ):
-
         methods_stored = {
             "n_interactions": "count_n_interactions_norm",
             "n_rf_n_interactions": "count_n_rf_n_interactions_norm",
@@ -121,7 +128,6 @@ class CCMatrix(cb.Cool):
     def fetch_data(
         self, gr: cb.GenomeRange, gr2: cb.GenomeRange = None, **kwargs
     ) -> np.ndarray:
-
         norm = self.properties.get("normalization", "raw")
         matrix = self.get_matrix_normalised(
             f"{gr.chrom}:{gr.start}-{gr.end}", normalization_method=norm, **kwargs
@@ -129,7 +135,6 @@ class CCMatrix(cb.Cool):
         return self.fill_zero_nan(matrix)
 
     def plot_matrix(self, gr: GenomeRange, gr2: GenomeRange = None):
-
         # Code taken and adapted from coolbox
         gr = GenomeRange(gr)
 
@@ -236,14 +241,12 @@ class CCMatrix(cb.Cool):
 
 class CCBigWig(cb.BigWig):
     def __init__(self, file, **kwargs):
-
         self.file = file
         self.coverages = []
 
         super(CCBigWig, self).__init__(file, **kwargs)
 
     def fetch_data(self, gr, **kwargs):
-
         if not self.properties["style"] == "fragment":
             data = super(CCBigWig, self).fetch_data(gr, **kwargs)
         else:
@@ -276,7 +279,6 @@ class CCBigWig(cb.BigWig):
         self.plot_label()
 
     def plot(self, ax, gr, **kwargs):
-
         if not self.properties["style"] == "fragment":
             super(CCBigWig, self).plot(ax, gr, **kwargs)
         else:
@@ -284,7 +286,6 @@ class CCBigWig(cb.BigWig):
 
 
 class CCBigWigCollection(Track):
-
     DEFAULT_PROPERTIES = {
         "style": "line",
         "fmt": "-",
@@ -301,7 +302,6 @@ class CCBigWigCollection(Track):
     }
 
     def __init__(self, file: list, exclusions: str = None, **kwargs):
-
         self.file_names = file
         self.exclusions = exclusions
         self.bws = [cb.BigWig(fn) for fn in file]
@@ -324,7 +324,6 @@ class CCBigWigCollection(Track):
             self.coverages.append(coverage)
 
     def fetch_data(self, gr, **kwargs):
-
         datasets = [
             bw.bw.fetch_intervals(gr.chrom, gr.start, gr.end)
             .set_index(["chrom", "start", "end"])
@@ -367,7 +366,6 @@ class CCBigWigCollection(Track):
         return df_intervals
 
     def fetch_exluded_regions(self, gr):
-
         excluded_tabix = BedTool(self.exclusions).tabix(force=True)
         df_excluded = excluded_tabix.tabix_intervals(
             f"{gr.chrom}:{gr.start}-{gr.end}"
@@ -388,7 +386,6 @@ class CCBigWigCollection(Track):
         return df_intervals
 
     def plot(self, ax, gr, **kwargs):
-
         data = self.fetch_data(gr, **kwargs)
 
         line_width = self.properties.get("line_width", 1)
@@ -527,7 +524,6 @@ class ScaleBar(Track):
         pass
 
     def get_appropriate_scale(self, length):
-
         if length <= 1e3:
             scale = 1e2
         elif 1e3 < length < 1e4:
@@ -544,7 +540,6 @@ class ScaleBar(Track):
         return scale
 
     def plot(self, ax, gr, **kwargs):
-
         position = self.properties.get("position", "left")
         y_midpoint = 0.5
 
@@ -586,16 +581,14 @@ class ScaleBar(Track):
         ax.set_ylim(0, 1)
 
 
-class SimpleBed(cb.BED):
+class CCSimpleBed(cb.BED):
     def __init__(self, file: str, **kwargs):
-
         self.file = file
         self.properties = dict()
         self.properties["name"] = "BlockBed"
         self.properties.update(kwargs)
 
     def fetch_data(self, gr):
-
         bt = BedTool(self.file)
         bt_tabix = bt.tabix(force=True)
 
@@ -604,7 +597,6 @@ class SimpleBed(cb.BED):
         ).to_dataframe()
 
     def plot(self, ax, gr, **kwargs):
-
         data = self.fetch_data(gr)
         y_midpoint = 0.5
 
@@ -637,9 +629,9 @@ class SimpleBed(cb.BED):
         ax.set_ylim(0, 1)
 
 
-class XAxisGenomic(cb.XAxis):
+class CCXAxisGenomic(cb.XAxis):
     def __init__(self, **kwargs):
-        super(XAxisGenomic, self).__init__()
+        super(CCXAxisGenomic, self).__init__()
         self.properties.update(kwargs)
 
     def plot(self, ax, gr: GenomeRange, **kwargs):
@@ -658,3 +650,136 @@ class XAxisGenomic(cb.XAxis):
 
         if "where" in self.properties and self.properties["where"] == "top":
             ax.axis["x"].set_axis_direction("top")
+
+
+class CCTrack:
+    def __init__(self, file, **kwargs):
+        self.file = file
+        self.properties = dict()
+        self.properties.update(kwargs)
+
+    def get_track(self):
+        match self.properties.get("type"):  # noqa
+            case "heatmap":
+                assert (
+                    "binsize" in self.properties
+                ), "Binsize must be specified for heatmap track (e.g. binsize=5000)"
+                return CCMatrix(self.file, **self.properties)
+            case "bigwig":
+                if self.property.get("overlay"):
+                    return cb.BigWigCoverage(self.file, **self.properties)
+                else:
+                    return CCBigWig(self.file, **self.properties)
+            case "bigwig_summary":
+                return CCBigWigCollection(self.file, **self.properties)
+            case "scale":
+                return ScaleBar(**self.properties)
+            case "bed":
+                return CCSimpleBed(self.file, **self.properties)
+            case "xaxis":
+                return CCXAxisGenomic(**self.properties)
+            case "genes":
+                if self.properties.get("title"):
+                    del self.properties["title"]
+                return cb.BED(self.file, **self.properties)
+            case "spacer":
+                return cb.Spacer(**self.properties)
+            case _:
+                raise ValueError(
+                    f"Unknown track type {self.properties.get('type')}, select from: heatmap, bigwig, bigwig_summary, scale, bed, xaxis, genes, spacer"
+                )
+
+
+class CCFigure:
+    def __init__(
+        self, tracks: List[CCTrack], auto_spacing: bool = False, **kwargs
+    ) -> None:
+        self.tracks = tracks
+        self.frame = cb.Frame()
+        self.auto_spacing = auto_spacing
+        self.properties = dict()
+        self.properties.update(kwargs)
+
+        self.add_tracks(tracks)
+
+    def add_track(self, track: CCTrack) -> None:
+        self.frame.add_track(track.get_track())
+
+    def add_tracks(self, tracks: List[CCTrack]) -> None:
+        for track in tracks:
+            if self.auto_spacing:
+                spacer = CCTrack(None, type="spacer")
+                self.add_track(spacer.get_track())
+
+            self.add_track(track)
+
+    def plot(
+        self, gr: GenomeRange, gr2: GenomeRange = None, show: bool = True, **kwargs
+    ) -> None:
+        if gr2:
+            fig = self.frame.plot(gr, gr2, **kwargs)
+        else:
+            fig = self.frame.plot(gr, **kwargs)
+        if show:
+            fig.show()
+
+        return fig
+
+    def save(
+        self, gr: GenomeRange, gr2: GenomeRange = None, output: str = None, **kwargs
+    ) -> None:
+        fig = self.plot(gr, gr2, show=False, **kwargs)
+        if output:
+            fig.savefig(output, dpi=300)
+        else:
+            fig.savefig(f"{gr.chrom}_{gr.start}_{gr.end}.png", dpi=300)
+
+    @classmethod
+    def from_toml(cls, toml_file: os.PathLike, **kwargs) -> "CCFigure":
+        import toml
+
+        with open(toml_file) as f:
+            config = toml.load(f)
+
+        tracks = []
+        for track_name, attr in config.items():
+            file = attr.pop("file") if attr.get("file") else None
+            track_name = attr.pop("title") if attr.get("title") else track_name
+            tracks.append(CCTrack(file, title=track_name, **attr))
+        return cls(tracks, **kwargs)
+
+    @classmethod
+    def from_frame(cls, frame: cb.Frame, **kwargs) -> "CCFigure":
+        tracks = []
+        for track in frame.tracks:
+            tracks.append(CCTrack(track.properties["file"], **track.properties))
+
+        return cls(tracks, **kwargs)
+
+    def to_toml(self, output: str = None) -> Union[None, Dict[str, Any]]:
+        import toml
+
+        config = dict()
+        for track in self.tracks:
+            if track.properties.get("type") in ["spacer", "scale", "xaxis"]:
+                track_type = track.properties.get("type")
+                n = config.get(track_type, 0)
+                config[f"{track_type} {n}"] = track.properties
+                config[f"{track_type} {n}"]["file"] = None
+            elif track.properties.get("type") == "genes":
+                track_type = track.properties.get("type")
+                n = config.get(track_type, 0)
+                config[f"{track_type} {n}"] = track.properties
+                config[f"{track_type} {n}"]["file"] = track.file
+            else:
+                config[track.properties["title"]] = track.properties
+                config[track.properties["title"]]["file"] = track.file
+
+        if output:
+            with open(output, "w") as f:
+                toml.dump(config, f)
+        else:
+            with open("config.toml", "w") as f:
+                toml.dump(config, f)
+
+            return config
