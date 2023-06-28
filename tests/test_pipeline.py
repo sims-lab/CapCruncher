@@ -49,7 +49,7 @@ def indicies(data_path, genome):
             import requests
             import tarfile
 
-            url = "https://userweb.molbiol.ox.ac.uk/public/asmith/capcruncher/test_indicies.tar.gz"
+            url = "https://userweb.molbiol.ox.ac.uk/public/project/milne_group/asmith/capcruncher/test_indicies.tar.gz"
             output = data_path.joinpath("test_indicies.tar.gz")
 
             r = requests.get(url, stream=True)
