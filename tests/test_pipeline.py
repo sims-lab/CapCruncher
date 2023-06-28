@@ -197,7 +197,7 @@ def config(
 def test_pipeline(config):
     from sh import capcruncher
 
-    capcruncher.pipeline("-c", "8", "all", "-p")
+    capcruncher.pipeline("-c", "2", "all", "-p")
 
 
 @pytest.mark.order(2)
