@@ -151,6 +151,10 @@ rule all:
         )
         if PERFORM_DIFFERENTIAL_ANALYSIS
         else [],
+        plots=expand(
+            "capcruncher_output/figures/{viewpoint}.pdf",
+            viewpoint=VIEWPOINT_NAMES,
+        ),
 
 
 onerror:

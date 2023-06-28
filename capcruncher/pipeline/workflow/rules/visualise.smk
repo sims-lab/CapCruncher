@@ -60,5 +60,83 @@ rule create_ucsc_hub:
         "../scripts/make_ucsc_hub.py"
 
 
+def get_files_to_plot(wc):
+    files = {
+        "bigwigs": [],
+        "subtractions": [],
+        "bigwigs_collection": [],
+        "heatmaps": [],
+    }
+
+    if ASSAY == "tiled":
+        files["heatmaps"].extend(
+            expand(
+                "capcruncher_output/{sample}/{sample}.hdf5",
+                sample=SAMPLE_NAMES,
+            )
+        )
+        return files
+
+    if COMPARE_SAMPLES and ASSAY != "tiled":
+        bigwigs_comparison = expand(
+            "capcruncher_output/comparisons/bigwigs/{comparison}/{comparison}.mean-subtraction.{{viewpoint}}.bigWig",
+            comparison=[
+                f"{a}-{b}"
+                for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
+            ],
+        )
+
+        files["subtractions"].extend(bigwigs_comparison)
+
+    bigwigs = expand(
+        "capcruncher_output/pileups/bigwigs/{sample}/norm/{sample}_{{viewpoint}}.bigWig",
+        sample=SAMPLE_NAMES,
+    )
+
+    if AGGREGATE_SAMPLES and ASSAY != "tiled":
+        files["bigwigs_collection"].extend(bigwigs)
+    else:
+        files["bigwigs"].extend(bigwigs)
+
+    return files
+
+
+def get_plotting_coordinates(wc):
+    plot_coords = config["plot"].get("coordinates", None)
+
+    if plot_coords and pathlib.Path(plot_coords).exists():
+        df = pd.read_table(
+            plot_coords, names=["chrom", "start", "end", "name"], header=None
+        )
+        df = df.query("name.str.contains('@wc.viewpoint')").iloc[0]
+
+    else:
+        df = pd.read_table(
+            VIEWPOINTS, names=["chrom", "start", "end", "name"], header=None
+        )
+
+        df = df.query("name == @wc.viewpoint").iloc[0]
+
+    return f"{df.chrom}:{df.start}-{df.end}"
+
+
+rule plot:
+    input:
+        unpack(get_files_to_plot),
+        viewpoints=config["analysis"]["viewpoints"],
+    output:
+        template="capcruncher_output/figures/{viewpoint}.toml",
+        fig="capcruncher_output/figures/{viewpoint}.pdf",
+    params:
+        coordinates=lambda wc: get_plotting_coordinates(wc),
+        viewpoint="{viewpoint}",
+        design=DESIGN,
+        genes=config["plot"].get("genes", ""),
+        binsize=config["plot"].get("binsize", [None])[0],
+    threads: 1
+    script:
+        "../scripts/plot.py"
+
+
 localrules:
     create_ucsc_hub,
