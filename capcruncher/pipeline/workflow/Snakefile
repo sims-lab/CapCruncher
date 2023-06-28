@@ -16,6 +16,9 @@ snakemake.utils.min_version('7.19.1')
 configfile: "capcruncher_config.yml"
 
 
+container: "library://asmith151/capcruncher/capcruncher:latest"
+
+
 # Pipeline set-up
 capcruncher.pipeline.utils.format_config_dict(config)
 
@@ -154,7 +157,9 @@ rule all:
         plots=expand(
             "capcruncher_output/figures/{viewpoint}.pdf",
             viewpoint=VIEWPOINT_NAMES,
-        ),
+        )
+        if PERFORM_PLOTTING
+        else [],
 
 
 onerror:
