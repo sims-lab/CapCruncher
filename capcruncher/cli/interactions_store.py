@@ -137,7 +137,7 @@ def bins(
     assert clr_groups, "No cooler groups found in file"
     assert binsizes, "No binsizes provided"
 
-    ray.init(num_cpus=n_cores)
+    ray.init(num_cpus=n_cores, ignore_reinit_error=True)
     clr_tempfiles = []
 
     for binsize in binsizes:
