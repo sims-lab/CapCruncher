@@ -45,6 +45,7 @@ with logger.catch():
                     title=hm_path.stem,
                     binsize=snakemake.params.binsize,
                     viewpoint=snakemake.params.viewpoint,
+                    style="triangular",
                 )
             )
             tracks.append(cp.CCTrack(None, type='spacer'))
