@@ -108,7 +108,7 @@ def get_plotting_coordinates(wc):
         df = pd.read_table(
             plot_coords, names=["chrom", "start", "end", "name"], header=None
         )
-        df = df.query("name.str.contains('@wc.viewpoint')").iloc[0]
+        df = df.query("name.str.contains(@wc.viewpoint)").iloc[0]
 
     else:
         df = pd.read_table(
@@ -133,6 +133,8 @@ rule plot:
         design=DESIGN,
         genes=config["plot"].get("genes", ""),
         binsize=config["plot"].get("binsize", [None])[0],
+    log:
+        "logs/plot/{viewpoint}.log",
     threads: 1
     script:
         "../scripts/plot.py"
