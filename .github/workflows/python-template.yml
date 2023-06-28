@@ -41,8 +41,10 @@ jobs:
         environment-file: environment.yml
         miniforge-version: latest
         miniforge-variant: Mambaforge
+        mamba-version: "*"
         python-version: ${{ matrix.python-version }}
         use-mamba: true
+        activate-environment: test
 
     - name: Install testing dependencies
       shell: bash -l {0}
@@ -57,7 +59,7 @@ jobs:
     - name: Install the package
       shell: bash -l {0}
       run: |
-        pip install .
+        pip install .[stats,plotting,experimental]
 
     - name: Test with pytest and generate report
       shell: bash -l {0}

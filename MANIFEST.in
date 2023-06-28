@@ -1,3 +1,4 @@
 global-include *.smk
 global-include Snakefile
 global-include annotation_defaults.json
+recursive-include capcruncher/pipeline/config *
