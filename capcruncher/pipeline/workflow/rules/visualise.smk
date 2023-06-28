@@ -132,7 +132,7 @@ rule plot:
         viewpoint="{viewpoint}",
         design=DESIGN,
         genes=config["plot"].get("genes", ""),
-        binsize=config["plot"].get("binsize", [None])[0],
+        binsize=config["analysis"].get("bin_sizes", [None])[0],
     log:
         "logs/plot/{viewpoint}.log",
     threads: 1
