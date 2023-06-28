@@ -9,7 +9,6 @@ dependencies:
   - click<=8.1.0
   - cooler
   - dask>2020.12.0,<=2022.8.0
-  - python-duckdb
   - fastqc
   - flash
   - ibis-framework
@@ -24,11 +23,13 @@ dependencies:
   - plotly>5.0.0,<=5.10.0
   - pyarrow>8.0.0,<=9.0.0
   - pybedtools
+  - pyranges
   - pysam>0.15.0,<=0.19.1
+  - python-duckdb
   - python-xxhash
   - python>=3.8,<3.11
-  - ray-core<=2.0.1
-  - samtools<=1.15.1
+  - ray-core
+  - samtools
   - seaborn
   - setuptools>50.1.0,<=65.0.1
   - snakemake>=7.19.1
