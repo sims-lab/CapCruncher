@@ -28,8 +28,9 @@ def plot_deduplication_stats(deduplication_summary_path: os.PathLike):
     df = (
         pd.read_csv(deduplication_summary_path)
         .sort_values("sample")
-        .replace("reads_unique", "Unique Reads")
-        .replace("reads_removed", "Duplicated Reads")
+        .replace("read_pairs_unique", "Unique Reads")
+        .replace("read_pairs_duplicated", "Duplicated Reads")
+        .loc[lambda df: df["stat_type"] != "read_pairs_total"]
     )
 
     fig = px.bar(
