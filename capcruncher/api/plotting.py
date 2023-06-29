@@ -666,7 +666,7 @@ class CCTrack:
                 ), "Binsize must be specified for heatmap track (e.g. binsize=5000)"
                 return CCMatrix(self.file, **self.properties)
             case "bigwig":
-                if self.property.get("overlay"):
+                if self.properties.get("overlay"):
                     return cb.BigWigCoverage(self.file, **self.properties)
                 else:
                     return CCBigWig(self.file, **self.properties)
