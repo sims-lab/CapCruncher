@@ -136,13 +136,20 @@ def can_perform_plotting(config):
 def can_perform_binning(config):
 
     perform_binning = False
-    bin_sizes = config["analysis"].get("bin_sizes", None)
-    if isinstance(bin_sizes, int) and bin_sizes > 0:
-        perform_binning = True
-    elif isinstance(bin_sizes, list) and all([bs > 0 for bs in bin_sizes]):
-        perform_binning = True
 
-    return perform_binning
+    try:
+
+        bin_sizes = config["analysis"].get("bin_sizes", None)
+        if isinstance(bin_sizes, int) and bin_sizes > 0:
+            perform_binning = True
+        elif isinstance(bin_sizes, list) and all([int(bs) > 0 for bs in bin_sizes]):
+            perform_binning = True
+
+        return perform_binning
+
+    except Exception as e:
+        logger.error(e)
+        return perform_binning
 
 
 def group_files_by_regex(files: List, regex: str):

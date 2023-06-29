@@ -97,7 +97,7 @@ rule bin_counts:
         "capcruncher_output/logs/bin_counts/{sample}.log",
     threads: 4
     resources:
-        mem_mb=3000,
+        mem_mb=lambda wc, attempt: 3000 * 2**attempt,
     shell:
         """
         capcruncher \
