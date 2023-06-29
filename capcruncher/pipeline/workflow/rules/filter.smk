@@ -150,8 +150,8 @@ rule combine_flashed_and_pe_post_deduplication:
     shell:
         """
         mkdir -p {output.slices}
-        mv {input.slices[0]}/*.parquet {output.slices}
-        mv {input.slices[1]}/*.parquet {output.slices}
+        mv {input.slices[0]}/*.parquet {output.slices} || mkdir -p {output.slices}
+        mv {input.slices[1]}/*.parquet {output.slices} || mkdir -p {output.slices}
         """
 
 

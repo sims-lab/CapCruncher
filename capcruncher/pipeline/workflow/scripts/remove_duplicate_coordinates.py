@@ -6,6 +6,8 @@ import pandas as pd
 import numpy as np
 import subprocess
 import pyarrow.dataset as ds
+import pathlib
+from loguru import logger
 
 
 # Check if the input dataset is not empty
@@ -33,7 +35,16 @@ try:
             subprocess.run(cmd, check=True, stdout=f, stderr=f)
 
     else:
-        print("The input dataset is empty, skipping deduplication step.")
+        logger.warning("The input dataset is empty, skipping deduplication step.")
+
+        outdir = pathlib.Path(snakemake.output.slices)
+
+        logger.warning(f"Creating empty output directory: {outdir}")
+        outdir.mkdir(parents=True, exist_ok=True)
+
+        logger.warning(f"Creating empty stats file: {snakemake.output.stats_read}")
+        pd.DataFrame().to_csv(snakemake.output.stats_read)
+
 
 except Exception as e:
     print(e)

@@ -87,9 +87,11 @@ use rule bedgraph_to_bigwig as bigwig_compared with:
     input:
         bedgraph="capcruncher_output/comparisons/summaries_and_subtractions/{comparison}.{method}-subtraction.{viewpoint}.bedgraph",
     output:
-        bigwig="capcruncher_output/comparisons/bigwigs/{comparison}/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
+        bigwig="capcruncher_output/comparisons/bigwigs/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
     params:
         chrom_sizes=config["genome"]["chrom_sizes"],
+    wildcard_constraints:
+        comparison=f"[A-Za-z0-9_\.]+-[A-Za-z0-9_\.]+",
     log:
         "capcruncher_output/logs/bedgraph_to_bigwig/{comparison}.{method}-subtraction.{viewpoint}.log",
 
@@ -98,9 +100,11 @@ use rule bedgraph_to_bigwig as bigwig_summarised with:
     input:
         bedgraph="capcruncher_output/comparisons/summaries_and_subtractions/{group}.{method}-summary.{viewpoint}.bedgraph",
     output:
-        bigwig="capcruncher_output/comparisons/bigwigs/{group}/{group}.{method}-summary.{viewpoint}.bigWig",
+        bigwig="capcruncher_output/comparisons/bigwigs/{group}.{method}-summary.{viewpoint}.bigWig",
     params:
         chrom_sizes=config["genome"]["chrom_sizes"],
+    wildcard_constraints:
+        comparison=f"[A-Za-z0-9_\.]+-[A-Za-z0-9_\.]+",
     log:
         "capcruncher_output/logs/bedgraph_to_bigwig/{group}.{method}-summary.{viewpoint}.log",
 

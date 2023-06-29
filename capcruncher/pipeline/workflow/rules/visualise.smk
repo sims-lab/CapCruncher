@@ -1,3 +1,10 @@
+def get_summary_methods():
+    return [
+        m
+        for m in re.split(r"[,;\s+]", config["compare"].get("summary_methods", "mean,"))
+        if m
+    ]
+
 
 rule viewpoints_to_bigbed:
     input:
@@ -24,7 +31,7 @@ rule create_ucsc_hub:
             viewpoint=VIEWPOINT_NAMES,
         ),
         bigwigs_summary=expand(
-            "capcruncher_output/comparisons/bigwigs/{group}/{group}.{method}-summary.{viewpoint}.bigWig",
+            "capcruncher_output/comparisons/bigwigs/{group}.{method}-summary.{viewpoint}.bigWig",
             group=DESIGN["condition"].unique(),
             method=get_summary_methods(),
             viewpoint=VIEWPOINT_NAMES,
@@ -32,7 +39,7 @@ rule create_ucsc_hub:
         if AGGREGATE_SAMPLES
         else [],
         bigwigs_comparison=expand(
-            "capcruncher_output/comparisons/bigwigs/{comparison}/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
+            "capcruncher_output/comparisons/bigwigs/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
             comparison=[
             f"{a}-{b}"
                 for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
@@ -45,6 +52,9 @@ rule create_ucsc_hub:
         report=rules.make_report.output[0],
     output:
         directory(config["hub"]["dir"]),
+    wildcard_constraints:
+        comparison=f"[A-Za-z0-9_\.]+-[A-Za-z0-9_\.]+",
+        group=f"[A-Za-z0-9_\.]+",
     params:
         color_by=config["hub"].get("color_by", "sample"),
         genome=config["genome"]["name"],
@@ -79,11 +89,12 @@ def get_files_to_plot(wc):
 
     if COMPARE_SAMPLES and ASSAY != "tiled":
         bigwigs_comparison = expand(
-            "capcruncher_output/comparisons/bigwigs/{comparison}/{comparison}.mean-subtraction.{{viewpoint}}.bigWig",
+            "capcruncher_output/comparisons/bigwigs/{comparison}.{method}-subtraction.{{viewpoint}}.bigWig",
             comparison=[
                 f"{a}-{b}"
                 for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
             ],
+            method=get_summary_methods(),
         )
 
         files["subtractions"].extend(bigwigs_comparison)
@@ -133,6 +144,9 @@ rule plot:
         design=DESIGN,
         genes=config["plot"].get("genes", ""),
         binsize=config["analysis"].get("bin_sizes", [None])[0],
+    wildcard_constraints:
+        comparison=f"[A-Za-z0-9_\.]+-[A-Za-z0-9_\.]+",
+        group=f"[A-Za-z0-9_\.]+",
     log:
         "logs/plot/{viewpoint}.log",
     threads: 1
@@ -142,3 +156,4 @@ rule plot:
 
 localrules:
     create_ucsc_hub,
+    plot,

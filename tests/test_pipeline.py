@@ -196,8 +196,16 @@ def config(
 @pytest.mark.order(1)
 def test_pipeline(config):
     from sh import capcruncher
+    import sys
+    import subprocess
 
-    capcruncher.pipeline("-c", "2", "all", "-p")
+    try:
+        result = subprocess.run(["capcruncher", "pipeline", "-c", "2", "all", "-p"])
+    except Exception as e:
+        print(e)
+        raise e
+
+    assert result.returncode == 0
 
 
 @pytest.mark.order(2)
