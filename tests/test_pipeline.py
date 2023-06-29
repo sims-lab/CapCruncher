@@ -174,6 +174,7 @@ def config(
             "make_plots": "yes",
             "plotting_coordinates": plot_coords,
             "plotting_normalisation": "n_interactions",
+            "differential_contrast": "condition",
         },
         no_input=True,
     )
@@ -212,7 +213,8 @@ def test_pipeline(config):
 def test_stats_exist(run_dir_capture):
     run_dir_capture = pathlib.Path(run_dir_capture)
     assert (
-        run_dir_capture / "capcruncher_output/statistics/capcruncher_report.html"
+        run_dir_capture
+        / "capcruncher_output/interim/statistics/capcruncher_report.html"
     ).exists()
 
 

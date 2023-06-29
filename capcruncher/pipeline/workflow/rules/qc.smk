@@ -12,10 +12,10 @@ rule fastqc:
     input:
         fq=lambda wc: FASTQ_SAMPLES.translation[f"{wc.sample}_{wc.read}.fastq.gz"],
     output:
-        qc="capcruncher_output/qc/fastqc/{sample}_{read}_fastqc.html",
+        qc="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
     params:
-        outdir="capcruncher_output/qc/fastqc",
-        tmpdir="capcruncher_output/qc/fastqc/{sample}_{read}",
+        outdir=lambda wc, output: str(pathlib.Path(output.qc).parent),
+        tmpdir="capcruncher_output/interim/qc/fastqc/{sample}_{read}",
         basename=lambda wc, output: get_fastq_basename(wc, output),
     threads: 1
     resources:
@@ -34,10 +34,10 @@ rule fastqc:
 
 rule samtools_stats:
     input:
-        bam="capcruncher_output/aligned/{sample}.bam",
-        bai="capcruncher_output/aligned/{sample}.bam.bai",
+        bam="capcruncher_output/results/{sample}/{sample}.bam",
+        bai="capcruncher_output/results/{sample}/{sample}.bam.bai",
     output:
-        stats="capcruncher_output/qc/alignment_raw/{sample}.txt",
+        stats="capcruncher_output/interim/qc/alignment_raw/{sample}.txt",
     threads: 1
     resources:
         mem_mb=1000,
@@ -48,16 +48,22 @@ rule samtools_stats:
 rule multiqc:
     input:
         expand(
-            "capcruncher_output/qc/fastqc/{sample}_{read}_fastqc.html",
+            "capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
             sample=SAMPLE_NAMES,
             read=[1, 2],
         ),
-        expand("capcruncher_output/qc/alignment_raw/{sample}.txt", sample=SAMPLE_NAMES),
+        expand(
+            "capcruncher_output/interim/qc/alignment_raw/{sample}.txt",
+            sample=SAMPLE_NAMES,
+        ),
     output:
-        "capcruncher_output/qc/full_qc_report.html",
+        "capcruncher_output/results/full_qc_report.html",
     log:
         "capcruncher_output/logs/multiqc.log",
+    params:
+        outdir=lambda wc, output: str(pathlib.Path(output[0]).parent),
+        dir_analysis="capcruncher_output/interim/qc",
     resources:
         mem_mb=1000,
     shell:
-        "multiqc -o capcruncher_output/qc capcruncher_output/qc -n full_qc_report.html --force > {log} 2>&1"
+        "multiqc -o {params.outdir} {params.dir_analysis} -n full_qc_report.html --force > {log} 2>&1"

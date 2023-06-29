@@ -1,9 +1,9 @@
 rule align_bowtie2:
     input:
-        fastq="capcruncher_output/fastq/digested/{sample}/{sample}_part{part}_{combined}.fastq.gz",
+        fastq="capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_{combined}.fastq.gz",
     output:
         bam=temp(
-            "capcruncher_output/aligned/{sample}/{sample}_part{part}_{combined,(flashed|pe)}.bam"
+            "capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined,(flashed|pe)}.bam"
         ),
     resources:
         mem_mb=4000,
@@ -27,7 +27,7 @@ rule sort_bam_partitions:
         bam=rules.align_bowtie2.output.bam,
     output:
         bam=temp(
-            "capcruncher_output/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam"
+            "capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam"
         ),
     threads: 4
     log:
@@ -44,14 +44,14 @@ def get_rebalanced_bam(wc):
     parts_pe = get_rebalanced_parts(wc, combined="pe")
 
     bam_combined = expand(
-        "capcruncher_output/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam",
+        "capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam",
         sample=wc.sample,
         part=parts_combined,
         combined=["flashed"],
     )
 
     bam_pe = expand(
-        "capcruncher_output/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam",
+        "capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam",
         sample=wc.sample,
         part=parts_pe,
         combined=["pe"],
@@ -64,7 +64,7 @@ rule merge_bam_partitions:
     input:
         bam=get_rebalanced_bam,
     output:
-        bam="capcruncher_output/aligned/{sample}.bam",
+        bam="capcruncher_output/results/{sample}/{sample}.bam",
     shell:
         """
         samtools merge -o {output.bam} {input.bam}
@@ -73,9 +73,9 @@ rule merge_bam_partitions:
 
 rule index_bam:
     input:
-        bam="capcruncher_output/aligned/{sample}.bam",
+        bam="capcruncher_output/results/{sample}/{sample}.bam",
     output:
-        bam="capcruncher_output/aligned/{sample}.bam.bai",
+        bam="capcruncher_output/results/{sample}/{sample}.bam.bai",
     shell:
         """
         samtools index {input.bam}

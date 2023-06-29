@@ -115,7 +115,7 @@ rule merge_counts:
     input:
         get_count_files,
     output:
-        "capcruncher_output/{sample}/{sample}.hdf5",
+        "capcruncher_output/results/{sample}/{sample}.hdf5",
     log:
         "capcruncher_output/logs/merge_counts/{sample}.log",
     threads: 1
@@ -134,7 +134,7 @@ rule bedgraph_raw:
     input:
         cooler=rules.merge_counts.output,
     output:
-        bedgraph="capcruncher_output/pileups/bedgraphs/{sample}/raw/{sample}_{viewpoint}.bedgraph",
+        bedgraph="capcruncher_output/interim/pileups/bedgraphs/{sample}/raw/{sample}_{viewpoint}.bedgraph",
     log:
         "capcruncher_output/logs/bedgraph_raw/{sample}_{viewpoint}.log",
     params:
@@ -158,7 +158,7 @@ rule bedgraph_normalised:
     input:
         cooler=rules.merge_counts.output,
     output:
-        bedgraph="capcruncher_output/pileups/bedgraphs/{sample}/norm/{sample}_{viewpoint}.bedgraph",
+        bedgraph="capcruncher_output/interim/pileups/bedgraphs/{sample}/norm/{sample}_{viewpoint}.bedgraph",
     log:
         "capcruncher_output/logs/bedgraph_norm/{sample}_{viewpoint}.log",
     params:
@@ -183,9 +183,9 @@ rule bedgraph_normalised:
 
 rule bedgraph_to_bigwig:
     input:
-        bedgraph="capcruncher_output/pileups/bedgraphs/{sample}/{norm}/{sample}_{viewpoint}.bedgraph",
+        bedgraph="capcruncher_output/interim/pileups/bedgraphs/{sample}/{norm}/{sample}_{viewpoint}.bedgraph",
     output:
-        bigwig="capcruncher_output/pileups/bigwigs/{sample}/{norm}/{sample}_{viewpoint}.bigWig",
+        bigwig="capcruncher_output/results/{sample}/bigwigs/{norm}/{sample}_{viewpoint}.bigWig",
     log:
         "capcruncher_output/logs/bedgraph_to_bigwig/{sample}_{norm}_{viewpoint}.log",
     params:

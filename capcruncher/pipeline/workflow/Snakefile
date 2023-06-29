@@ -106,7 +106,7 @@ def get_pileups(
     if method in ["capture", "tri"]:
         bigwigs.extend(
             expand(
-                "capcruncher_output/pileups/bigwigs/{sample}/{norm}/{sample}_{viewpoint}.bigWig",
+                "capcruncher_output/results/{sample}/bigwigs/{norm}/{sample}_{viewpoint}.bigWig",
                 sample=SAMPLE_NAMES,
                 norm=["raw", "norm"],
                 viewpoint=VIEWPOINT_NAMES,
@@ -116,7 +116,7 @@ def get_pileups(
         if samples_aggregate:
             bigwigs.extend(
                 expand(
-                    "capcruncher_output/comparisons/bigwigs/{group}.{method}-summary.{viewpoint}.bigWig",
+                    "capcruncher_output/results/comparisons/bigwigs/{group}.{method}-summary.{viewpoint}.bigWig",
                     group=DESIGN["condition"].unique(),
                     method=get_summary_methods(),
                     viewpoint=VIEWPOINT_NAMES,
@@ -126,7 +126,7 @@ def get_pileups(
         if samples_compare:
             bigwigs.extend(
                 expand(
-                    "capcruncher_output/comparisons/bigwigs/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
+                    "capcruncher_output/results/comparisons/bigwigs/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
                     comparison=[
                         f"{a}-{b}"
                         for a, b in itertools.permutations(
@@ -147,23 +147,23 @@ def get_pileups(
 rule all:
     input:
         qc=rules.multiqc.output[0],
-        report="capcruncher_output/statistics/capcruncher_report.html",
+        report="capcruncher_output/results/capcruncher_report.html",
         pileups=get_pileups(ANALYSIS_METHOD, AGGREGATE_SAMPLES, COMPARE_SAMPLES),
         counts=expand(
-            "capcruncher_output/{sample}/{sample}.hdf5",
+            "capcruncher_output/results/{sample}/{sample}.hdf5",
             sample=SAMPLE_NAMES,
         ),
         hub=rules.create_ucsc_hub.output[0]
         if ANALYSIS_METHOD in ["capture", "tri"]
         else [],
         differential=expand(
-            "capcruncher_output/differential/{viewpoint}",
+            "capcruncher_output/results/differential/{viewpoint}",
             viewpoint=VIEWPOINT_NAMES,
         )
         if PERFORM_DIFFERENTIAL_ANALYSIS
         else [],
         plots=expand(
-            "capcruncher_output/figures/{viewpoint}.pdf",
+            "capcruncher_output/results/figures/{viewpoint}.pdf",
             viewpoint=VIEWPOINT_NAMES,
         )
         if PERFORM_PLOTTING

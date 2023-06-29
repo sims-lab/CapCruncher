@@ -16,10 +16,10 @@ rule filter_alignments:
         annotations=rules.annotate.output.annotated,
     output:
         filtered_slices=temp(
-            "capcruncher_output/alignment_filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet"
+            "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet"
         ),
-        stats_read="capcruncher_output/statistics/filtering/data/{sample}_part{part}_{combined}.read.stats.csv",
-        stats_slice="capcruncher_output/statistics/filtering/data/{sample}_part{part}_{combined}.slice.stats.csv",
+        stats_read="capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.read.stats.csv",
+        stats_slice="capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.slice.stats.csv",
     params:
         analysis_method=config["analysis"]["method"],
         sample_name=lambda wildcards, output: wildcards.sample,
@@ -34,7 +34,7 @@ rule filter_alignments:
     resources:
         mem_mb=5000,
     log:
-        "capcruncher_output/statistics/filtering/logs/{sample}_part{part}_{combined}.log",
+        "capcruncher_output/interim/statistics/filtering/logs/{sample}_part{part}_{combined}.log",
     shell:
         """
         capcruncher \
@@ -56,7 +56,7 @@ rule filter_alignments:
 # rule count_identified_viewpoints:
 #     input:
 #         slices=lambda wildcards: expand(
-#             "capcruncher_output/alignment_filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet",
+#             "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet",
 #             sample=[
 #                 wildcards.sample,
 #             ],
@@ -67,9 +67,9 @@ rule filter_alignments:
 #             ],
 #         ),
 #     output:
-#         stats="capcruncher_output/statistics/identified_viewpoints/data/{sample}.identified_viewpoints.stats.csv",
+#         stats="capcruncher_output/interim/statistics/identified_viewpoints/data/{sample}.identified_viewpoints.stats.csv",
 #     params:
-#         slices_dir=lambda wc: "capcruncher_output/alignment_filtering/initial/{sample}/",
+#         slices_dir=lambda wc: "capcruncher_output/interim/filtering/initial/{sample}/",
 #     resources:
 #         mem_mb=3000,
 #     script:
@@ -79,7 +79,7 @@ rule filter_alignments:
 rule split_flashed_and_pe_datasets:
     input:
         slices_flashed=lambda wildcards: expand(
-            "capcruncher_output/alignment_filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet",
+            "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet",
             sample=[
                 wildcards.sample,
             ],
@@ -89,7 +89,7 @@ rule split_flashed_and_pe_datasets:
             ],
         ),
         slices_pe=lambda wildcards: expand(
-            "capcruncher_output/alignment_filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet",
+            "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet",
             sample=[
                 wildcards.sample,
             ],
@@ -100,10 +100,10 @@ rule split_flashed_and_pe_datasets:
         ),
     output:
         slices_flashed=directory(
-            "capcruncher_output/alignment_filtering/repartitioned/{sample}/flashed/"
+            "capcruncher_output/interim/filtering/repartitioned/{sample}/flashed/"
         ),
         slices_pe=directory(
-            "capcruncher_output/alignment_filtering/repartitioned/{sample}/pe/"
+            "capcruncher_output/interim/filtering/repartitioned/{sample}/pe/"
         ),
     shell:
         """
@@ -116,14 +116,14 @@ rule split_flashed_and_pe_datasets:
 
 rule remove_duplicate_coordinates:
     input:
-        slices_directory="capcruncher_output/alignment_filtering/repartitioned/{sample}/{combined}/",
+        slices_directory="capcruncher_output/interim/filtering/repartitioned/{sample}/{combined}/",
     output:
         slices=directory(
             temp(
-                "capcruncher_output/alignment_filtering/deduplicated/{sample}/{combined}"
+                "capcruncher_output/interim/filtering/deduplicated/{sample}/{combined}"
             )
         ),
-        stats_read="capcruncher_output/statistics/deduplication_by_coordinate/data/{sample}_{combined}.read.stats.csv",
+        stats_read="capcruncher_output/interim/statistics/deduplication_by_coordinate/data/{sample}_{combined}.read.stats.csv",
     params:
         sample_name=lambda wildcards, output: wildcards.sample,
         stats_prefix=lambda wildcards, output: output.stats_read.replace(
@@ -142,11 +142,11 @@ rule remove_duplicate_coordinates:
 rule combine_flashed_and_pe_post_deduplication:
     input:
         slices=expand(
-            "capcruncher_output/alignment_filtering/deduplicated/{{sample}}/{combined}",
+            "capcruncher_output/interim/filtering/deduplicated/{{sample}}/{combined}",
             combined=["flashed", "pe"],
         ),
     output:
-        slices=directory("capcruncher_output/{sample}/{sample}.parquet"),
+        slices=directory("capcruncher_output/results/{sample}/{sample}.parquet"),
     shell:
         """
         mkdir -p {output.slices}
@@ -157,9 +157,9 @@ rule combine_flashed_and_pe_post_deduplication:
 
 rule cis_and_trans_stats:
     input:
-        slices="capcruncher_output/{sample}/{sample}.parquet",
+        slices="capcruncher_output/results/{sample}/{sample}.parquet",
     output:
-        stats="capcruncher_output/statistics/cis_and_trans_reporters/data/{sample}.reporter.stats.csv",
+        stats="capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.reporter.stats.csv",
     params:
         sample_name=lambda wildcards, output: wildcards.sample,
         analysis_method=config["analysis"]["method"],

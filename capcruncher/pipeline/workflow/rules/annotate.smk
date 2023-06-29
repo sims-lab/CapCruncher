@@ -85,7 +85,7 @@ rule exclusions:
     input:
         viewpoints=config["analysis"]["viewpoints"],
     output:
-        exclusions="capcruncher_output/annotate/exclude.bed",
+        exclusions="capcruncher_output/interim/annotate/exclude.bed",
     params:
         genome=config["genome"]["chrom_sizes"],
         exclusion_zone=config["analysis"]["reporter_exclusion_zone"],
@@ -99,11 +99,11 @@ rule exclusions:
 rule annotate:
     input:
         bam=rules.align_bowtie2.output.bam,
-        exclusions="capcruncher_output/annotate/exclude.bed",
+        exclusions="capcruncher_output/interim/annotate/exclude.bed",
         viewpoints=config["analysis"]["viewpoints"],
     output:
         annotated=temp(
-            "capcruncher_output/annotate/{sample}/{sample}_part{part}_{combined}.parquet"
+            "capcruncher_output/interim/annotate/{sample}/{sample}_part{part}_{combined}.parquet"
         ),
     params:
         annotation_files_and_params=format_annotation_parameters(),
@@ -115,7 +115,7 @@ rule annotate:
     resources:
         mem_mb=5000,
     log:
-        "capcruncher_output/logs/capcruncher_output/annotate/{sample}/{sample}_part{part}_{combined}.log",
+        "capcruncher_output/logs/annotate/{sample}/{sample}_part{part}_{combined}.log",
     shell:
         """
         capcruncher \

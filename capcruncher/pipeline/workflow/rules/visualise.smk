@@ -25,13 +25,13 @@ rule create_ucsc_hub:
     input:
         viewpoints=rules.viewpoints_to_bigbed.output[0],
         bigwigs=expand(
-            "capcruncher_output/pileups/bigwigs/{sample}/{norm}/{sample}_{viewpoint}.bigWig",
+            "capcruncher_output/results/{sample}/bigwigs/{norm}/{sample}_{viewpoint}.bigWig",
             sample=SAMPLE_NAMES,
             norm=["raw", "norm"],
             viewpoint=VIEWPOINT_NAMES,
         ),
         bigwigs_summary=expand(
-            "capcruncher_output/comparisons/bigwigs/{group}.{method}-summary.{viewpoint}.bigWig",
+            "capcruncher_output/results/comparisons/bigwigs/{group}.{method}-summary.{viewpoint}.bigWig",
             group=DESIGN["condition"].unique(),
             method=get_summary_methods(),
             viewpoint=VIEWPOINT_NAMES,
@@ -39,7 +39,7 @@ rule create_ucsc_hub:
         if AGGREGATE_SAMPLES
         else [],
         bigwigs_comparison=expand(
-            "capcruncher_output/comparisons/bigwigs/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
+            "capcruncher_output/results/comparisons/bigwigs/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
             comparison=[
             f"{a}-{b}"
                 for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
@@ -81,7 +81,7 @@ def get_files_to_plot(wc):
     if ASSAY == "tiled":
         files["heatmaps"].extend(
             expand(
-                "capcruncher_output/{sample}/{sample}.hdf5",
+                "capcruncher_output/results/{sample}/{sample}.hdf5",
                 sample=SAMPLE_NAMES,
             )
         )
@@ -89,7 +89,7 @@ def get_files_to_plot(wc):
 
     if COMPARE_SAMPLES:
         bigwigs_comparison = expand(
-            "capcruncher_output/comparisons/bigwigs/{comparison}.{method}-subtraction.{{viewpoint}}.bigWig",
+            "capcruncher_output/results/comparisons/bigwigs/{comparison}.{method}-subtraction.{{viewpoint}}.bigWig",
             comparison=[
                 f"{a}-{b}"
                 for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
@@ -100,7 +100,7 @@ def get_files_to_plot(wc):
         files["subtractions"].extend(bigwigs_comparison)
 
     bigwigs = expand(
-        "capcruncher_output/pileups/bigwigs/{sample}/norm/{sample}_{{viewpoint}}.bigWig",
+        "capcruncher_output/results/{sample}/bigwigs/norm/{sample}_{{viewpoint}}.bigWig",
         sample=SAMPLE_NAMES,
     )
 
@@ -138,8 +138,8 @@ rule plot:
         unpack(get_files_to_plot),
         viewpoints=config["analysis"]["viewpoints"],
     output:
-        template="capcruncher_output/figures/{viewpoint}.toml",
-        fig="capcruncher_output/figures/{viewpoint}.pdf",
+        template="capcruncher_output/results/figures/{viewpoint}.toml",
+        fig="capcruncher_output/results/figures/{viewpoint}.pdf",
     params:
         coordinates=lambda wc: get_plotting_coordinates(wc),
         viewpoint="{viewpoint}",

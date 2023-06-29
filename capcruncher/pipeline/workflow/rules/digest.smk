@@ -3,7 +3,7 @@ rule digest_genome:
         fasta=config["genome"]["fasta"],
     output:
         bed="capcruncher_output/resources/restriction_fragments/genome.digest.bed.gz",
-        stats="capcruncher_output/statistics/digest_genome/genome_digestion_statistics.txt",
+        stats="capcruncher_output/interim/statistics/digest_genome/genome_digestion_statistics.txt",
     log:
         "capcruncher_output/resources/restriction_fragments/genome.digest.log",
     params:

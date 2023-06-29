@@ -13,7 +13,7 @@ def get_digestion_statistics(wc):
         for combined in ["flashed", "pe"]:
             for part in get_rebalanced_parts(wc, combined=combined, sample=sample):
                 stat_prefixes.append(
-                    f"capcruncher_output/statistics/digestion/data/{sample}_part{part}_{combined}."
+                    f"capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_{combined}."
                 )
 
     stat_files = defaultdict(list)
@@ -35,7 +35,7 @@ def get_filtering_statistics(wc):
         for combined in ["flashed", "pe"]:
             for part in get_rebalanced_parts(wc, combined=combined, sample=sample):
                 stat_prefixes.append(
-                    f"capcruncher_output/statistics/filtering/data/{sample}_part{part}_{combined}."
+                    f"capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}."
                 )
 
     stat_files = defaultdict(list)
@@ -52,7 +52,7 @@ def get_stat_parts(wc):
     for sample in SAMPLE_NAMES:
         for part in get_parts(wc):
             files.append(
-                f"capcruncher_output/statistics/deduplication/data/{sample}_part{part}.deduplication.csv"
+                f"capcruncher_output/interim/statistics/deduplication/data/{sample}_part{part}.deduplication.csv"
             )
     return files
 
@@ -63,7 +63,7 @@ if not CAPCRUNCHER_TOOLS:
         input:
             fastq_deduplication=get_stat_parts,
         output:
-            "capcruncher_output/statistics/deduplication/fastq_deduplication.csv",
+            "capcruncher_output/interim/statistics/deduplication/fastq_deduplication.csv",
         script:
             "../scripts/combine_deduplication_stats.py"
 
@@ -72,11 +72,11 @@ else:
     rule combine_stats_fastq_deduplication:
         input:
             fastq_deduplication=expand(
-                "capcruncher_output/statistics/deduplication/data/{sample}.deduplication.csv",
+                "capcruncher_output/interim/statistics/deduplication/data/{sample}.deduplication.csv",
                 sample=SAMPLE_NAMES,
             ),
         output:
-            "capcruncher_output/statistics/deduplication/fastq_deduplication.csv",
+            "capcruncher_output/interim/statistics/deduplication/fastq_deduplication.csv",
         script:
             "../scripts/combine_deduplication_stats.py"
 
@@ -85,8 +85,8 @@ rule combine_stats_digestion:
     input:
         unpack(lambda wc: get_digestion_statistics(wc)),
     output:
-        read_data="capcruncher_output/statistics/digestion/fastq_digestion.csv",
-        histogram="capcruncher_output/statistics/digestion/fastq_digestion.histogram.csv",
+        read_data="capcruncher_output/interim/statistics/digestion/fastq_digestion.csv",
+        histogram="capcruncher_output/interim/statistics/digestion/fastq_digestion.histogram.csv",
     script:
         "../scripts/combine_digestion_stats.py"
 
@@ -95,8 +95,8 @@ rule combine_stats_filtering:
     input:
         unpack(get_filtering_statistics),
     output:
-        read_data="capcruncher_output/statistics/filtering/alignment_filtering.csv",
-        slice_data="capcruncher_output/statistics/filtering/alignment_filtering_slice.csv",
+        read_data="capcruncher_output/interim/statistics/filtering/alignment_filtering.csv",
+        slice_data="capcruncher_output/interim/statistics/filtering/alignment_filtering_slice.csv",
     script:
         "../scripts/combine_filtering_stats.py"
 
@@ -104,12 +104,12 @@ rule combine_stats_filtering:
 rule combine_stats_alignment_deduplication:
     input:
         read_level_stats=expand(
-            "capcruncher_output/statistics/deduplication_by_coordinate/data/{sample}_{combined}.read.stats.csv",
+            "capcruncher_output/interim/statistics/deduplication_by_coordinate/data/{sample}_{combined}.read.stats.csv",
             sample=SAMPLE_NAMES,
             combined=["flashed", "pe"],
         ),
     output:
-        read_data="capcruncher_output/statistics/deduplication_by_coordinate/alignment_deduplication.csv",
+        read_data="capcruncher_output/interim/statistics/deduplication_by_coordinate/alignment_deduplication.csv",
     script:
         "../scripts/combine_alignment_deduplication_stats.py"
 
@@ -119,7 +119,7 @@ rule merge_stats_filtering_and_alignment_deduplication:
         filtering=rules.combine_stats_filtering.output.read_data,
         alignment_deduplication=rules.combine_stats_alignment_deduplication.output.read_data,
     output:
-        "capcruncher_output/statistics/filtering_and_alignment_deduplication.csv",
+        "capcruncher_output/interim/statistics/filtering_and_alignment_deduplication.csv",
     log:
         "capcruncher_output/logs/merge_stats_filtering_and_alignment_deduplication.log",
     shell:
@@ -132,11 +132,11 @@ rule merge_stats_filtering_and_alignment_deduplication:
 rule combine_stats_cis_and_trans:
     input:
         cis_and_trans_stats=expand(
-            "capcruncher_output/statistics/cis_and_trans_reporters/data/{sample}.reporter.stats.csv",
+            "capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.reporter.stats.csv",
             sample=SAMPLE_NAMES,
         ),
     output:
-        cis_and_trans_stats="capcruncher_output/statistics/cis_and_trans_reporters/cis_and_trans_reporters.csv",
+        cis_and_trans_stats="capcruncher_output/interim/statistics/cis_and_trans_reporters/cis_and_trans_reporters.csv",
     script:
         "../scripts/combine_cis_and_trans_stats.py"
 
@@ -149,7 +149,7 @@ rule combine_stats_read_level:
             rules.merge_stats_filtering_and_alignment_deduplication.output[0],
         ],
     output:
-        "capcruncher_output/statistics/run_statistics.csv",
+        "capcruncher_output/interim/statistics/run_statistics.csv",
     script:
         "../scripts/combine_stats_read_level.py"
 
@@ -164,7 +164,7 @@ rule make_report:
         cis_and_trans_stats=rules.combine_stats_cis_and_trans.output.cis_and_trans_stats,
         read_level_stats=rules.combine_stats_read_level.output[0],
     output:
-        "capcruncher_output/statistics/capcruncher_report.html",
+        "capcruncher_output/results/capcruncher_report.html",
     params:
         outdir=lambda wildcards, output: pathlib.Path(output[0]).parent,
     log:

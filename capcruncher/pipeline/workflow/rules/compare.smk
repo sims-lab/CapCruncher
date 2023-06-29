@@ -21,11 +21,11 @@ def identify_columns_based_on_condition():
 rule union_bedgraph:
     input:
         expand(
-            "capcruncher_output/pileups/bedgraphs/{sample}/{{norm}}/{sample}_{{viewpoint}}.bedgraph",
+            "capcruncher_output/interim/pileups/bedgraphs/{sample}/{{norm}}/{sample}_{{viewpoint}}.bedgraph",
             sample=SAMPLE_NAMES,
         ),
     output:
-        "capcruncher_output/comparisons/counts_per_viewpoint/{norm}/{viewpoint}.tsv",
+        "capcruncher_output/results/comparisons/counts_per_viewpoint/{norm}/{viewpoint}.tsv",
     params:
         sample_names=" ".join(SAMPLE_NAMES),
     shell:
@@ -41,15 +41,15 @@ rule union_bedgraph:
 
 rule compare_interactions:
     input:
-        "capcruncher_output/comparisons/counts_per_viewpoint/norm/{viewpoint}.tsv",
+        "capcruncher_output/results/comparisons/counts_per_viewpoint/norm/{viewpoint}.tsv",
     output:
         bedgraphs_summary=expand(
-            "capcruncher_output/comparisons/summaries_and_subtractions/{group}.{method}-summary.{{viewpoint}}.bedgraph",
+            "capcruncher_output/interim/comparisons/summaries_and_subtractions/{group}.{method}-summary.{{viewpoint}}.bedgraph",
             group=DESIGN["condition"].unique(),
             method=get_summary_methods(),
         ),
         bedgraphs_compare=expand(
-            "capcruncher_output/comparisons/summaries_and_subtractions/{comparison}.{method}-subtraction.{{viewpoint}}.bedgraph",
+            "capcruncher_output/interim/comparisons/summaries_and_subtractions/{comparison}.{method}-subtraction.{{viewpoint}}.bedgraph",
             comparison=[
             f"{a}-{b}"
                 for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
@@ -57,7 +57,7 @@ rule compare_interactions:
             method=get_summary_methods(),
         ),
     params:
-        output_prefix="capcruncher_output/comparisons/summaries_and_subtractions/",
+        output_prefix=lambda wc, output: str(pathlib.Path(output[0]).parent),
         summary_methods=" ".join([f"-m {m}" for m in get_summary_methods()]),
         names=" ".join([f"-n {group}" for group in DESIGN["condition"].unique()]),
         conditions=identify_columns_based_on_condition(),
@@ -85,9 +85,9 @@ rule compare_interactions:
 
 use rule bedgraph_to_bigwig as bigwig_compared with:
     input:
-        bedgraph="capcruncher_output/comparisons/summaries_and_subtractions/{comparison}.{method}-subtraction.{viewpoint}.bedgraph",
+        bedgraph="capcruncher_output/interim/comparisons/summaries_and_subtractions/{comparison}.{method}-subtraction.{viewpoint}.bedgraph",
     output:
-        bigwig="capcruncher_output/comparisons/bigwigs/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
+        bigwig="capcruncher_output/results/comparisons/bigwigs/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
     params:
         chrom_sizes=config["genome"]["chrom_sizes"],
     wildcard_constraints:
@@ -98,9 +98,9 @@ use rule bedgraph_to_bigwig as bigwig_compared with:
 
 use rule bedgraph_to_bigwig as bigwig_summarised with:
     input:
-        bedgraph="capcruncher_output/comparisons/summaries_and_subtractions/{group}.{method}-summary.{viewpoint}.bedgraph",
+        bedgraph="capcruncher_output/interim/comparisons/summaries_and_subtractions/{group}.{method}-summary.{viewpoint}.bedgraph",
     output:
-        bigwig="capcruncher_output/comparisons/bigwigs/{group}.{method}-summary.{viewpoint}.bigWig",
+        bigwig="capcruncher_output/results/comparisons/bigwigs/{group}.{method}-summary.{viewpoint}.bigWig",
     params:
         chrom_sizes=config["genome"]["chrom_sizes"],
     wildcard_constraints:
@@ -109,16 +109,25 @@ use rule bedgraph_to_bigwig as bigwig_summarised with:
         "capcruncher_output/logs/bedgraph_to_bigwig/{group}.{method}-summary.{viewpoint}.log",
 
 
+rule save_design:
+    output:
+        "capcruncher_output/results/design_matrix.tsv",
+    container:
+        None
+    run:
+        DESIGN.to_csv(output[0], sep="\t", index=False)
+
+
 rule differential_interactions:
     input:
-        counts=expand("capcruncher_output/{sample}/{sample}.hdf5", sample=SAMPLE_NAMES),
-        design_matrix=DESIGN,
-    output:
-        directory(
-            "capcruncher_output/comparisons/differential_interactions/{viewpoint}"
+        counts=expand(
+            "capcruncher_output/results/{sample}/{sample}.hdf5", sample=SAMPLE_NAMES
         ),
+        design_matrix="capcruncher_output/results/design_matrix.tsv",
+    output:
+        directory("capcruncher_output/results/differential/{viewpoint}"),
     params:
-        output_prefix="capcruncher_output/comparisons/differential_interactions/{viewpoint}",
+        output_prefix=lambda wc, output: output[0],
         viewpoint="{viewpoint}",
         contrast=config["differential"]["contrast"],
         viewpoint_distance=config["differential"]["distance"],
