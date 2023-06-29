@@ -1,8 +1,5 @@
 import os
-import itertools
 import pytest
-import xopen
-import gzip
 import subprocess
 from click.testing import CliRunner
 from capcruncher.cli import cli
@@ -19,6 +16,7 @@ def data_path_pipeline():
     dirname = os.path.dirname(fn)
     data_dir = os.path.join(dirname, "data", "data_for_pipeline_run")
     return data_dir
+
 
 @pytest.fixture(scope="module")
 def data_path_utils():
@@ -54,23 +52,35 @@ def indicies(data_path_pipeline, genome):
         ),
     ],
 )
-def test_viewpoint_coordinates(cli_runner, viewpoints, genome, indicies, data_path_pipeline, data_path_utils, flags, tmpdir):
+def test_viewpoint_coordinates(
+    cli_runner,
+    viewpoints,
+    genome,
+    indicies,
+    data_path_pipeline,
+    data_path_utils,
+    flags,
+    tmpdir,
+):
 
     viewpoints = os.path.join(data_path_utils, viewpoints)
     outfile = os.path.join(tmpdir, "viewpoint_coords.bed")
 
     result = cli_runner.invoke(
-        cli, ["utilities", 
-              "viewpoint-coordinates", 
-              "-v", 
-              viewpoints,
-              "-i",
-              indicies,
-              "-g",
-              genome,
-              "-o", 
-              outfile,  
-              *flags]
+        cli,
+        [
+            "utilities",
+            "viewpoint-coordinates",
+            "-v",
+            viewpoints,
+            "-i",
+            indicies,
+            "-g",
+            genome,
+            "-o",
+            outfile,
+            *flags,
+        ],
     )
     assert result.exit_code == 0
     assert os.path.exists(outfile)

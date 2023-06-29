@@ -20,16 +20,15 @@
 
 # @pytest.fixture(scope="module", autouse=True)
 # def cleanup():
-    
+
 #     yield
 
 #     # Remove previous test files
 #     for fn in glob.glob(os.path.join(dir_test, "test", "*.hdf5")):
 #         os.unlink(fn)
-    
+
 #     if os.path.exists(os.path.join(dir_test, "test", 'genome_binner.pkl')):
 #         os.unlink(os.path.join(dir_test, "test", 'genome_binner.pkl'))
-
 
 
 # def test_make_cooler():
@@ -60,7 +59,7 @@
 
 
 # def test_binning():
-  
+
 #     cooler_fn = os.path.join(dir_test, "test", "cooler.Slc25A37.fragments.hdf5")
 #     outfile = os.path.join(dir_test, "test", "cooler.binned")
 #     cb = CoolerBinner(cooler_fn, binsize=2500, n_cores=8)
@@ -82,7 +81,7 @@
 
 #     gb = GenomicBinner(
 #             chromsizes=os.path.join(dir_data, "test", "genome.fa.fai"), fragments=frags, binsize=100000)
-    
+
 #     gb.bin_conversion_table
 
 #     binners_dict = dict()
@@ -91,7 +90,7 @@
 
 #     with open(os.path.join(dir_test, "test", "genome_binner.pkl"), "wb") as w:
 #         pickle.dump(binners_dict, w)
-    
+
 # def test_merging():
 
 #     clr_1 = os.path.join(dir_test, "test", "cooler.binned.Slc25A37.2500.hdf5")
@@ -103,7 +102,6 @@
 #     reporters_store.merge([clr_1, clr_2], outfile)
 
 #     assert os.path.exists(outfile)
-
 
 
 # def test_binning_with_conversion_table():
@@ -122,7 +120,7 @@
 
 
 # def test_binning_cli_conversion_table():
-    
+
 #     infile = os.path.join(dir_test, "test", "cooler.Slc25A37.fragments.hdf5")
 #     output_prefix = os.path.join(dir_test, "test", "cli_cooler_binned.hdf5")
 
@@ -147,5 +145,3 @@
 #     )
 
 #     assert result.exit_code == 0
-
-

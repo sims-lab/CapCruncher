@@ -51,10 +51,3 @@
 
 #     sf.filter_slices()
 #     assert sf.slices.shape[0] == 2
-
-
-
-
-
-
-

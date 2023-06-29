@@ -1,0 +1,178 @@
+import os
+import sys
+import pathlib
+import shutil
+import json
+
+import pandas as pd
+import pyranges as pr
+import snakemake.utils
+import capcruncher.pipeline.utils
+import importlib.util
+
+snakemake.utils.min_version('7.19.1')
+
+
+configfile: "capcruncher_config.yml"
+
+
+container: "library://asmith151/capcruncher/capcruncher:latest"
+
+
+# Pipeline set-up
+capcruncher.pipeline.utils.format_config_dict(config)
+
+## Get fastq files
+FASTQ_SAMPLES = capcruncher.pipeline.utils.FastqSamples.from_files(
+    list(pathlib.Path(".").glob("*.fastq*"))
+)
+
+## Convert FASTQ files to design matrix
+if os.path.exists(config["analysis"].get("design", None)):
+    DESIGN = pd.read_table(
+        config["analysis"]["design"], sep=r"\s+|,|\t", engine="python"
+    )
+else:
+    DESIGN = FASTQ_SAMPLES.design
+
+## Read viewpoints
+VIEWPOINTS = config["analysis"]["viewpoints"]
+VIEWPOINT_NAMES = pd.read_table(
+    VIEWPOINTS, names=["chrom", "start", "end", "name"], header=None
+)["name"].to_list()
+
+
+N_SAMPLES = DESIGN["sample"].nunique()
+ANALYSIS_METHOD = config["analysis"].get("method", "capture")
+BIN_SIZES = capcruncher.pipeline.utils.get_bin_sizes(config)
+HIGH_NUMBER_OF_VIEWPOINTS = capcruncher.pipeline.utils.has_high_viewpoint_number(
+    VIEWPOINTS, config
+)
+
+## Optional
+AGGREGATE_SAMPLES = DESIGN["sample"].nunique() > 1
+COMPARE_SAMPLES = DESIGN["condition"].nunique() > 1
+PERFORM_DIFFERENTIAL_ANALYSIS = (
+    config["differential"]["contrast"] in DESIGN.columns
+) and COMPARE_SAMPLES
+PERFORM_PLOTTING = capcruncher.pipeline.utils.can_perform_plotting(config)
+PERFORM_BINNING = capcruncher.pipeline.utils.can_perform_binning(config)
+
+## Pipeline variables
+ASSAY = config["analysis"]["method"]
+SAMPLE_NAMES = FASTQ_SAMPLES.sample_names_all
+
+# Optional
+
+## Check if capcruncher_tools is installed
+if importlib.util.find_spec("capcruncher_tools"):
+    print("CapCruncherTools is installed. Enabling CapCruncherTools functions.")
+    CAPCRUNCHER_TOOLS = True
+else:
+    CAPCRUNCHER_TOOLS = False
+
+
+include: "rules/digest.smk"
+include: "rules/fastq.smk"
+include: "rules/qc.smk"
+include: "rules/align.smk"
+include: "rules/annotate.smk"
+include: "rules/filter.smk"
+include: "rules/pileup.smk"
+include: "rules/compare.smk"
+include: "rules/statistics.smk"
+include: "rules/visualise.smk"
+
+
+wildcard_constraints:
+    sample="|".join(SAMPLE_NAMES),
+    part=r"\d+",
+
+
+def get_summary_methods():
+    return [
+        m
+        for m in re.split(r"[,;\s+]", config["compare"].get("summary_methods", "mean,"))
+        if m
+    ]
+
+
+def get_pileups(
+    method: Literal["capture", "tri", "tiled"],
+    samples_aggregate: bool,
+    samples_compare: bool,
+) -> list[str]:
+    bigwigs = []
+    if method in ["capture", "tri"]:
+        bigwigs.extend(
+            expand(
+                "capcruncher_output/pileups/bigwigs/{sample}/{norm}/{sample}_{viewpoint}.bigWig",
+                sample=SAMPLE_NAMES,
+                norm=["raw", "norm"],
+                viewpoint=VIEWPOINT_NAMES,
+            ),
+        )
+
+        if samples_aggregate:
+            bigwigs.extend(
+                expand(
+                    "capcruncher_output/comparisons/bigwigs/{group}.{method}-summary.{viewpoint}.bigWig",
+                    group=DESIGN["condition"].unique(),
+                    method=get_summary_methods(),
+                    viewpoint=VIEWPOINT_NAMES,
+                ),
+            )
+
+        if samples_compare:
+            bigwigs.extend(
+                expand(
+                    "capcruncher_output/comparisons/bigwigs/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
+                    comparison=[
+                        f"{a}-{b}"
+                        for a, b in itertools.permutations(
+                            DESIGN["condition"].unique(), 2
+                        )
+                    ],
+                    method=get_summary_methods(),
+                    viewpoint=VIEWPOINT_NAMES,
+                ),
+            )
+
+    elif method == "tiled":
+        pass
+
+    return bigwigs
+
+
+rule all:
+    input:
+        qc=rules.multiqc.output[0],
+        report="capcruncher_output/statistics/capcruncher_report.html",
+        pileups=get_pileups(ANALYSIS_METHOD, AGGREGATE_SAMPLES, COMPARE_SAMPLES),
+        counts=expand(
+            "capcruncher_output/{sample}/{sample}.hdf5",
+            sample=SAMPLE_NAMES,
+        ),
+        hub=rules.create_ucsc_hub.output[0]
+        if ANALYSIS_METHOD in ["capture", "tri"]
+        else [],
+        differential=expand(
+            "capcruncher_output/differential/{viewpoint}",
+            viewpoint=VIEWPOINT_NAMES,
+        )
+        if PERFORM_DIFFERENTIAL_ANALYSIS
+        else [],
+        plots=expand(
+            "capcruncher_output/figures/{viewpoint}.pdf",
+            viewpoint=VIEWPOINT_NAMES,
+        )
+        if PERFORM_PLOTTING
+        else [],
+
+
+onerror:
+    log_out = "capcruncher_error.log"
+    shutil.copyfile(log, log_out)
+    print(
+        f"An error occurred. Please check the log file {log_out} for more information."
+    )

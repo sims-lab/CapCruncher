@@ -1,6 +1,97 @@
 [build-system]
 requires = [
-    "setuptools>=42",
-    "wheel"
+    "setuptools >= 61.0",
+    "wheel",
+    "setuptools_scm[toml]>=6.2",
 ]
 build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "capcruncher"
+authors = [{"name" =  "Alastair Smith", "email" = "alastair.smith@ndcls.ox.ac.uk"}]
+description = "An end-to-end solution for processing Capture-C, Tri-C and Tiled-C data"
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["version", "dependencies"]
+
+
+[tool.setuptools.packages.find]
+include = ["capcruncher", "capcruncher.*"]
+
+
+[tool.setuptools_scm]
+local_scheme = "no-local-version"
+write_to = "capcruncher/_version.py"
+
+[project.optional-dependencies]
+stats = ["pydeseq2"]
+plotting = ["coolbox"]
+experimental = ["capcruncher-tools"]
+
+[project.urls]
+repo = "https://github.com/sims-lab/CapCruncher.git"
+
+
+
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F"]
+ignore = ["E501"]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "*.smk",
+    "snakefile",
+    "old/"
+]
+
+dummy-variable-rgx = "_[a-z0-9]+(\\s+|:|$)"
+
+
+[tool.ruff.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+[tool.ruff.per-file-ignores]
+"capcruncher/__init__.py" = ["F401", "E402"]
+"capcruncher/pipeline/rules/scripts/make_report.py" = ["F821"]
+"capcruncher/pipeline/rules/scripts/make_ucsc_hub.py" = ["F821"]
+"capcruncher/pipeline/rules/scripts/combine_stats_read_level.py" = ["F821"]
+"capcruncher/pipeline/rules/scripts/combine_alignment_deduplication_stats.py" = [
+    "F821",
+]
+"capcruncher/pipeline/rules/scripts/combine_cis_and_trans_stats.py" = ["F821"]
+"capcruncher/pipeline/rules/scripts/combine_filtering_stats.py" = ["F821"]
+"capcruncher/pipeline/rules/scripts/combine_deduplication_stats.py" = ["F821"]
+"capcruncher/pipeline/rules/scripts/combine_digestion_stats.py" = ["F821"]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.snakefmt]
+line_length = 88
+include = '\.smk$|^Snakefile|\.py$'
+
+# snakefmt passes these options on to black
+[tool.black]
+skip_string_normalization = true

@@ -1,66 +1,82 @@
 import os
 from capcruncher.cli import cli
 import click
-from importlib import import_module, metadata
+from importlib import metadata
 import subprocess
 import sys
-import logging
+import pathlib
 
-@cli.command(context_settings=dict(ignore_unknown_options=True))
+
+@cli.command(context_settings=dict(ignore_unknown_options=True), name="pipeline")
 @click.option("-h", "--help", "show_help", is_flag=True)
 @click.option("--version", "show_version", is_flag=True)
-@click.version_option(metadata.version(distribution_name="capcruncher"))
-@click.argument(
-    "mode",
-    type=click.Choice(["make", "run", "plot", "show", "clone", "touch", "report"]),
+@click.option(
+    "--logo/--no-logo",
+    default=True,
+    help="Show the capcruncher logo",
+    show_default=True,
 )
+@click.version_option(metadata.version(distribution_name="capcruncher"))
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
-@click.option("-s", "--pipeline-statistics-path", help="Path to capcruncher_statistics directory", default='capcruncher_statistics')
-@click.option("-o", "--pipeline-report-path", help="Output path for CapCruncher report", default='capcruncher_report.html')
-def pipeline(mode, pipeline_options, show_help=False, show_version=False, **report_options):
+def pipeline(pipeline_options, show_help=False, show_version=False, logo=True):
 
     """Runs the data processing pipeline"""
 
-    fn = os.path.abspath(__file__)
-    dir_cli = os.path.dirname(fn)
-    dir_package = os.path.dirname(dir_cli)
+    fn = pathlib.Path(__file__).resolve()
+    dir_cli = fn.parent
+    dir_package = dir_cli.parent
 
-    if mode in ["make", "run", "plot", "show", "clone", "touch"]:
+    cmd = [
+        "snakemake",
+        "-s",
+        str(dir_package / "pipeline/workflow/Snakefile"),
+    ]
 
-        cmd = [
-            "python",
-            f"{dir_package}/pipeline/pipeline.py",
-        ]
+    if show_help:
+        # Run snakemake with --help
+        # Capture the output and replace usage: snakemake with usage: capcruncher pipeline
+        # Print the output
+        cmd.append("--help")
+        _completed = subprocess.run(cmd, capture_output=True, shell=False)
+        output = _completed.stdout.decode("utf-8")
+        output = output.replace("usage: snakemake", "usage: capcruncher pipeline")
+        click.echo(f"\n{output}")
+        sys.exit(0)
 
-        if show_help:
-            cmd.append("--help")
-            subprocess.run(cmd)
-            sys.exit()
+    if pipeline_options:
+        excluded_options = ["--version", "make", "run", "show"]
 
-        cmd.append(mode.replace("run", "make"))
+        cmd.extend(
+            [option for option in pipeline_options if option not in excluded_options]
+        )
 
-        if pipeline_options:
-            cmd.extend(pipeline_options)
+    # Implicitly deal with a missing --cores option
+    if "--cores" not in pipeline_options and "-c" not in pipeline_options:
+        cmd.append("--cores 1")
 
-        # Implicitly deal with the missing --local option
-        if (
-            not os.path.exists(os.environ.get("DRMAA_LIBRARY_PATH", ""))
-            and not "--local" in pipeline_options
-        ):
-            logging.warning(
-                "DRMAA_LIBRARY_PATH is incorrect. Implicitly using --local with 4 cores"
-            )
-            cmd.append("--local")
-            cmd.append("-p 4")
+    if logo:
+        with open(dir_package / "data" / "logo.txt", "r") as f:
+            click.echo(f.read())
 
-        completed = subprocess.run(cmd)
+    _completed = subprocess.run(cmd)
 
-        if not completed.returncode == 0:
-            raise RuntimeError(
-                "CapCruncher pipeline failed. Check pipeline.log for details"
-            )
 
-    else:
-        from capcruncher.pipeline.make_report import generate_report
-        generate_report(**report_options)
-        
+@cli.command(name="pipeline-config")
+@click.option("-h", "--help", "show_help", is_flag=True)
+@click.option("--version", "show_version", is_flag=True)
+@click.version_option(metadata.version(distribution_name="capcruncher"))
+@click.option(
+    "-i", "--input", "input_files", type=click.Path(exists=True), multiple=True
+)
+@click.option("--generate-design", is_flag=True)
+def pipeline_config(*args, **kwargs):
+    """Configures the data processing pipeline"""
+
+    from cookiecutter.main import cookiecutter
+    import pathlib
+
+    fn = pathlib.Path(__file__).resolve()
+    dir_cli = fn.parent
+    dir_package = dir_cli.parent
+
+    cookiecutter(str(dir_package / "pipeline" / "config"))

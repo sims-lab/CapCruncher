@@ -1,12 +1,12 @@
-from builtins import breakpoint
 import multiprocessing
 import os
 from typing import Tuple
 from multiprocessing import Queue
-from capcruncher.tools.digest import ReadDigestionProcess
-from capcruncher.tools.io import FastqReaderProcess, FastqWriterProcess
-from capcruncher.utils import get_re_site
+from capcruncher.api.digest import ReadDigestionProcess
+from capcruncher.api.io import FastqReaderProcess, FastqWriterProcess
+from capcruncher.api.digest import get_re_site
 import pandas as pd
+
 
 def digest(
     input_fastq: Tuple,
@@ -77,7 +77,7 @@ def digest(
                 allow_undigested=True,
                 stats_pipe=stats_pipe[0],
             )
-        
+
         else:
             raise ValueError("Wrong number of files specified. Flashed == 1, PE == 2")
 
@@ -148,12 +148,11 @@ def digest(
         ["n_slices", "count"]
     )
 
-    #breakpoint()
+    # breakpoint()
 
     # Read summary - reads that pass the filter
     df_stats = (
-        df_hist
-        .query("(n_slices >= 1) or (filtered == False) or (read_type == 'pe')")
+        df_hist.query("(n_slices >= 1) or (filtered == False) or (read_type == 'pe')")
         .query("read_number < 2")
         .groupby(["sample", "read_type", "read_number", "filtered"])["count"]
         .sum()

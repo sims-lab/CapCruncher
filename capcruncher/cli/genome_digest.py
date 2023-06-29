@@ -9,11 +9,10 @@ Script generates a bed file of restriction fragment locations in a given genome.
 """
 import pysam
 import xopen
-from capcruncher.tools.digest import DigestedChrom
-from capcruncher.utils import get_re_site
+from capcruncher.api.digest import DigestedChrom, get_re_site
 from typing import Iterator
 import os
-import logging
+from loguru import logger
 import pandas as pd
 
 
@@ -67,7 +66,7 @@ def digest(
 
         for chrom in parse_chromosomes(input_fasta):
 
-            logging.info(f"Processing chrom {chrom.name}")
+            logger.info(f"Processing chrom {chrom.name}")
 
             digested_chrom = DigestedChrom(
                 chrom,
@@ -78,7 +77,7 @@ def digest(
 
             for n_fragments, fragment in enumerate(digested_chrom.fragments):
                 if n_fragments % 10000 == 0:
-                    logging.info(f"Written {n_fragments} fragments")
+                    logger.info(f"Written {n_fragments} fragments")
 
                 output.write(fragment)
 
@@ -86,7 +85,7 @@ def digest(
             fragment_number += n_fragments + 1
 
     if sort:
-        logging.info("Sorting output")
+        logger.info("Sorting output")
         df = pd.read_csv(output_file, sep="\t", names=["chrom", "start", "end", "name"])
 
         # If changing the order, also need to change the fragment number

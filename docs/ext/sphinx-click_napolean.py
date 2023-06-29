@@ -1,6 +1,4 @@
-
 from sphinxcontrib.napoleon import GoogleDocstring
-from capcruncher.cli import cli
 import traceback
 import warnings
 
@@ -15,11 +13,12 @@ from sphinxcontrib.napoleon import Config
 
 config = Config(napoleon_use_param=True, napoleon_use_rtype=True)
 LOG = logging.getLogger(__name__)
-CLICK_VERSION = tuple(int(x) for x in click.__version__.split('.')[0:2])
+CLICK_VERSION = tuple(int(x) for x in click.__version__.split(".")[0:2])
 
-NESTED_FULL = 'full'
-NESTED_SHORT = 'short'
-NESTED_NONE = 'none'
+NESTED_FULL = "full"
+NESTED_SHORT = "short"
+NESTED_NONE = "none"
+
 
 def _format_description(ctx):
     """Format the description for a given `click.Command`.
@@ -29,35 +28,39 @@ def _format_description(ctx):
     help_string = ctx.command.help or ctx.command.short_help
     if not help_string:
         return
-    
+
     if not help_string:
         return
 
     bar_enabled = False
-    lines = list(statemachine.string2lines(help_string, tab_width=4, convert_whitespace=True))
-    
-    yield '.. rubric:: Parameters'
-    for l in GoogleDocstring(lines, config=config, what="function", name=ctx.command.name).lines():
-        yield l
-    yield ''
+    lines = list(
+        statemachine.string2lines(help_string, tab_width=4, convert_whitespace=True)
+    )
+
+    yield ".. rubric:: Parameters"
+    for line in GoogleDocstring(
+        lines, config=config, what="function", name=ctx.command.name
+    ).lines():
+        yield line
+    yield ""
 
 
 def _indent(text, level=1):
-    prefix = ' ' * (4 * level)
+    prefix = " " * (4 * level)
 
     def prefixed_lines():
         for line in text.splitlines(True):
             yield (prefix + line if line.strip() else line)
 
-    return ''.join(prefixed_lines())
+    return "".join(prefixed_lines())
 
 
 def _get_usage(ctx):
     """Alternative, non-prefixed version of 'get_usage'."""
     formatter = ctx.make_formatter()
     pieces = ctx.command.collect_usage_pieces(ctx)
-    formatter.write_usage(ctx.command_path, ' '.join(pieces), prefix='')
-    return formatter.getvalue().rstrip('\n')
+    formatter.write_usage(ctx.command_path, " ".join(pieces), prefix="")
+    return formatter.getvalue().rstrip("\n")
 
 
 def _get_help_record(opt):
@@ -74,8 +77,8 @@ def _get_help_record(opt):
         if not opt.is_flag and not opt.count:
             name = opt.name
             if opt.metavar:
-                name = opt.metavar.lstrip('<[{($').rstrip('>]})$')
-            rv += ' <{}>'.format(name)
+                name = opt.metavar.lstrip("<[{($").rstrip(">]})$")
+            rv += " <{}>".format(name)
         return rv
 
     rv = [_write_opts(opt.opts)]
@@ -85,12 +88,12 @@ def _get_help_record(opt):
     out = []
     if opt.help:
         if opt.required:
-            out.append('**Required** %s' % opt.help)
+            out.append("**Required** %s" % opt.help)
         else:
             out.append(opt.help)
     else:
         if opt.required:
-            out.append('**Required**')
+            out.append("**Required**")
 
     extras = []
 
@@ -99,44 +102,45 @@ def _get_help_record(opt):
             # Starting from Click 7.0 this can be a string as well. This is
             # mostly useful when the default is not a constant and
             # documentation thus needs a manually written string.
-            extras.append(':default: %s' % opt.show_default)
+            extras.append(":default: %s" % opt.show_default)
         else:
             extras.append(
-                ':default: %s'
+                ":default: %s"
                 % (
-                    ', '.join('%s' % d for d in opt.default)
+                    ", ".join("%s" % d for d in opt.default)
                     if isinstance(opt.default, (list, tuple))
                     else opt.default,
                 )
             )
 
     if isinstance(opt.type, click.Choice):
-        extras.append(':options: %s' % ' | '.join(opt.type.choices))
+        extras.append(":options: %s" % " | ".join(opt.type.choices))
 
     if extras:
         if out:
-            out.append('')
+            out.append("")
 
         out.extend(extras)
 
-    return ', '.join(rv), '\n'.join(out)
+    return ", ".join(rv), "\n".join(out)
+
 
 def _format_usage(ctx):
     """Format the usage for a `click.Command`."""
-    yield '.. code-block:: shell'
-    yield ''
+    yield ".. code-block:: shell"
+    yield ""
     for line in _get_usage(ctx).splitlines():
         yield _indent(line)
-    yield ''
+    yield ""
 
 
 def _format_option(opt):
     """Format the output for a `click.Option`."""
     opt = _get_help_record(opt)
 
-    yield '.. option:: {}'.format(opt[0])
+    yield ".. option:: {}".format(opt[0])
     if opt[1]:
-        yield ''
+        yield ""
         for line in statemachine.string2lines(
             opt[1], tab_width=4, convert_whitespace=True
         ):
@@ -149,22 +153,22 @@ def _format_options(ctx):
     params = [
         param
         for param in ctx.command.params
-        if isinstance(param, click.Option) and not getattr(param, 'hidden', False)
+        if isinstance(param, click.Option) and not getattr(param, "hidden", False)
     ]
 
     for param in params:
         for line in _format_option(param):
             yield line
-        yield ''
+        yield ""
 
 
 def _format_argument(arg):
     """Format the output of a `click.Argument`."""
-    yield '.. option:: {}'.format(arg.human_readable_name)
-    yield ''
+    yield ".. option:: {}".format(arg.human_readable_name)
+    yield ""
     yield _indent(
-        '{} argument{}'.format(
-            'Required' if arg.required else 'Optional', '(s)' if arg.nargs != 1 else ''
+        "{} argument{}".format(
+            "Required" if arg.required else "Optional", "(s)" if arg.nargs != 1 else ""
         )
     )
 
@@ -176,14 +180,14 @@ def _format_arguments(ctx):
     for param in params:
         for line in _format_argument(param):
             yield line
-        yield ''
+        yield ""
 
 
 def _format_envvar(param):
     """Format the envvars of a `click.Option` or `click.Argument`."""
-    yield '.. envvar:: {}'.format(param.envvar)
-    yield '   :noindex:'
-    yield ''
+    yield ".. envvar:: {}".format(param.envvar)
+    yield "   :noindex:"
+    yield ""
     if isinstance(param, click.Argument):
         param_ref = param.human_readable_name
     else:
@@ -191,28 +195,28 @@ def _format_envvar(param):
         # first. For example, if '--foo' or '-f' are possible, use '--foo'.
         param_ref = param.opts[0]
 
-    yield _indent('Provide a default for :option:`{}`'.format(param_ref))
+    yield _indent("Provide a default for :option:`{}`".format(param_ref))
 
 
 def _format_envvars(ctx):
     """Format all envvars for a `click.Command`."""
-    params = [x for x in ctx.command.params if getattr(x, 'envvar')]
+    params = [x for x in ctx.command.params if getattr(x, "envvar")]
 
     for param in params:
-        yield '.. _{command_name}-{param_name}-{envvar}:'.format(
-            command_name=ctx.command_path.replace(' ', '-'),
+        yield ".. _{command_name}-{param_name}-{envvar}:".format(
+            command_name=ctx.command_path.replace(" ", "-"),
             param_name=param.name,
             envvar=param.envvar,
         )
-        yield ''
+        yield ""
         for line in _format_envvar(param):
             yield line
-        yield ''
+        yield ""
 
 
 def _format_subcommand(command):
     """Format a sub-command of a `click.Command` or `click.Group`."""
-    yield '.. object:: {}'.format(command.name)
+    yield ".. object:: {}".format(command.name)
 
     # click 7.0 stopped setting short_help by default
     if CLICK_VERSION < (7, 0):
@@ -221,7 +225,7 @@ def _format_subcommand(command):
         short_help = command.get_short_help_str()
 
     if short_help:
-        yield ''
+        yield ""
         for line in statemachine.string2lines(
             short_help, tab_width=4, convert_whitespace=True
         ):
@@ -241,7 +245,7 @@ def _format_epilog(ctx):
         epilog_string, tab_width=4, convert_whitespace=True
     ):
         yield line
-    yield ''
+    yield ""
 
 
 def _get_lazyload_commands(multicommand):
@@ -254,14 +258,14 @@ def _get_lazyload_commands(multicommand):
 
 def _filter_commands(ctx, commands=None):
     """Return list of used commands."""
-    lookup = getattr(ctx.command, 'commands', {})
+    lookup = getattr(ctx.command, "commands", {})
     if not lookup and isinstance(ctx.command, click.MultiCommand):
         lookup = _get_lazyload_commands(ctx.command)
 
     if commands is None:
         return sorted(lookup.values(), key=lambda item: item.name)
 
-    names = [name.strip() for name in commands.split(',')]
+    names = [name.strip() for name in commands.split(",")]
     return [lookup[name] for name in names if name in lookup]
 
 
@@ -275,7 +279,7 @@ def _format_command(ctx, nested, commands=None):
     for line in _format_description(ctx):
         yield line
 
-    yield '.. program:: {}'.format(ctx.command_path)
+    yield ".. program:: {}".format(ctx.command_path)
 
     # usage
 
@@ -288,8 +292,8 @@ def _format_command(ctx, nested, commands=None):
     if lines:
         # we use rubric to provide some separation without exploding the table
         # of contents
-        yield '.. rubric:: Options'
-        yield ''
+        yield ".. rubric:: Options"
+        yield ""
 
     for line in lines:
         yield line
@@ -298,8 +302,8 @@ def _format_command(ctx, nested, commands=None):
 
     lines = list(_format_arguments(ctx))
     if lines:
-        yield '.. rubric:: Arguments'
-        yield ''
+        yield ".. rubric:: Arguments"
+        yield ""
 
     for line in lines:
         yield line
@@ -308,8 +312,8 @@ def _format_command(ctx, nested, commands=None):
 
     lines = list(_format_envvars(ctx))
     if lines:
-        yield '.. rubric:: Environment variables'
-        yield ''
+        yield ".. rubric:: Environment variables"
+        yield ""
 
     for line in lines:
         yield line
@@ -326,8 +330,8 @@ def _format_command(ctx, nested, commands=None):
     commands = _filter_commands(ctx, commands)
 
     if commands:
-        yield '.. rubric:: Commands'
-        yield ''
+        yield ".. rubric:: Commands"
+        yield ""
 
     for command in commands:
         # Don't show hidden subcommands
@@ -336,7 +340,7 @@ def _format_command(ctx, nested, commands=None):
 
         for line in _format_subcommand(command):
             yield line
-        yield ''
+        yield ""
 
 
 def nested(argument):
@@ -352,15 +356,16 @@ def nested(argument):
 
     return argument
 
+
 class ClickDirective(rst.Directive):
 
     has_content = False
     required_arguments = 1
     option_spec = {
-        'prog': directives.unchanged_required,
-        'nested': nested,
-        'commands': directives.unchanged,
-        'show-nested': directives.flag,
+        "prog": directives.unchanged_required,
+        "nested": nested,
+        "commands": directives.unchanged,
+        "show-nested": directives.flag,
     }
 
     def _load_module(self, module_path):
@@ -370,7 +375,7 @@ class ClickDirective(rst.Directive):
         module_path = str(module_path)
 
         try:
-            module_name, attr_name = module_path.split(':', 1)
+            module_name, attr_name = module_path.split(":", 1)
         except ValueError:  # noqa
             raise self.error(
                 '"{}" is not of format "module:parser"'.format(module_path)
@@ -381,9 +386,9 @@ class ClickDirective(rst.Directive):
         except (Exception, SystemExit) as exc:  # noqa
             err_msg = 'Failed to import "{}" from "{}". '.format(attr_name, module_name)
             if isinstance(exc, SystemExit):
-                err_msg += 'The module appeared to call sys.exit()'
+                err_msg += "The module appeared to call sys.exit()"
             else:
-                err_msg += 'The following exception was raised:\n{}'.format(
+                err_msg += "The following exception was raised:\n{}".format(
                     traceback.format_exc()
                 )
 
@@ -403,8 +408,9 @@ class ClickDirective(rst.Directive):
             )
         return parser
 
-    def _generate_nodes(self, name, command, parent, nested, commands=None,
-                        semantic_group=False):
+    def _generate_nodes(
+        self, name, command, parent, nested, commands=None, semantic_group=False
+    ):
         """Generate the relevant Sphinx nodes.
         Format a `click.Group` or `click.Command`.
         :param name: Name of command, as used on the command line
@@ -425,7 +431,7 @@ class ClickDirective(rst.Directive):
         # Title
 
         section = nodes.section(
-            '',
+            "",
             nodes.title(text=name),
             ids=[nodes.make_id(ctx.command_path)],
             names=[nodes.fully_normalize_name(ctx.command_path)],
@@ -442,7 +448,7 @@ class ClickDirective(rst.Directive):
 
         for line in lines:
             LOG.debug(line)
-            #print(line)
+            # print(line)
             result.append(line, source_name)
 
         sphinx_nodes.nested_parse_with_titles(self.state, result, section)
@@ -452,17 +458,24 @@ class ClickDirective(rst.Directive):
         if nested == NESTED_FULL:
             if isinstance(command, click.CommandCollection):
                 for source in command.sources:
-                    section.extend(self._generate_nodes(
-                        source.name, source, parent=ctx, nested=nested,
-                        semantic_group=True
-                    ))
+                    section.extend(
+                        self._generate_nodes(
+                            source.name,
+                            source,
+                            parent=ctx,
+                            nested=nested,
+                            semantic_group=True,
+                        )
+                    )
             else:
                 commands = _filter_commands(ctx, commands)
                 for command in commands:
                     parent = ctx if not semantic_group else ctx.parent
-                    section.extend(self._generate_nodes(
-                        command.name, command, parent=parent, nested=nested
-                    ))
+                    section.extend(
+                        self._generate_nodes(
+                            command.name, command, parent=parent, nested=nested
+                        )
+                    )
 
         return [section]
 
@@ -471,12 +484,12 @@ class ClickDirective(rst.Directive):
 
         command = self._load_module(self.arguments[0])
 
-        if 'prog' not in self.options:
-            raise self.error(':prog: must be specified')
+        if "prog" not in self.options:
+            raise self.error(":prog: must be specified")
 
-        prog_name = self.options.get('prog')
-        show_nested = 'show-nested' in self.options
-        nested = self.options.get('nested')
+        prog_name = self.options.get("prog")
+        show_nested = "show-nested" in self.options
+        nested = self.options.get("nested")
 
         if show_nested:
             if nested:
@@ -490,9 +503,10 @@ class ClickDirective(rst.Directive):
                 )
                 nested = NESTED_FULL if show_nested else NESTED_SHORT
 
-        commands = self.options.get('commands')
+        commands = self.options.get("commands")
 
         return self._generate_nodes(prog_name, command, None, nested, commands)
 
+
 def setup(app):
-    app.add_directive('click', ClickDirective)
+    app.add_directive("click", ClickDirective)

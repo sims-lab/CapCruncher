@@ -1,25 +1,26 @@
 import itertools
-import logging
+from loguru import logger
+import os
 import sys
 import warnings
 from typing import Tuple, Union
-import ray
 
 import numpy as np
-
-warnings.simplefilter("ignore")
-import os
-
 import pandas as pd
-from capcruncher.tools.annotate import BedFileIntersection
+import pysam
+import ray
+from pybedtools import BedTool, MalformedBedLineError
+
+from capcruncher.api.annotate import BedFileIntersection
 from capcruncher.utils import (
     bed_has_name,
     convert_bed_to_dataframe,
     convert_bed_to_pr,
     is_valid_bed,
 )
-from pybedtools import BedTool, MalformedBedLineError
-import pysam
+
+warnings.simplefilter("ignore")
+
 
 pysam.set_verbosity(0)
 
@@ -103,15 +104,14 @@ def annotate(
     actions: Tuple = None,
     bed_files: Tuple = None,
     names: Tuple = None,
-    dtypes: Tuple[bool] = None,
     overlap_fractions: Tuple = None,
     output: os.PathLike = None,
     duplicates: str = "remove",
     n_cores: int = 1,
-    invalid_bed_action: str = "error",
     blacklist: str = "",
     prioritize_cis_slices: bool = False,
     priority_chroms: str = "",
+    **kwargs,
 ):
     """
     Annotates a bed file with other bed files using bedtools intersect.
@@ -141,7 +141,7 @@ def annotate(
      NotImplementedError: Only supported option for duplicate bed names is remove.
     """
 
-    logging.info("Validating commandline arguments")
+    logger.info("Validating commandline arguments")
     len_bed_files = len(bed_files)
     if not all([len(arg) == len_bed_files for arg in [actions, names]]):
         raise ValueError(
@@ -149,19 +149,19 @@ def annotate(
         )
 
     if slices == "-":
-        logging.info("Reading slices from stdin")
+        logger.info("Reading slices from stdin")
         slices = pd.read_csv(sys.stdin, sep="\t", header=None).pipe(
             BedTool.from_dataframe
         )
 
     elif slices.endswith(".bam"):
-        logging.info("Converting bam to bed")
+        logger.info("Converting bam to bed")
         slices = BedTool(slices).bam_to_bed()
 
     else:
         slices = BedTool(slices)
 
-    logging.info("Validating input bed file before annotation")
+    logger.info("Validating input bed file before annotation")
     if not is_valid_bed(slices):
         raise ValueError(f"bed - {slices} is invalid")
 
@@ -169,15 +169,15 @@ def annotate(
         raise ValueError(f"bed - {slices} does not have a name column")
 
     if blacklist:
-        logging.info("Removing blacklisted regions from the bed file")
+        logger.info("Removing blacklisted regions from the bed file")
         try:
             slices = slices - BedTool(blacklist)
         except (MalformedBedLineError, FileNotFoundError, IndexError) as e:
-            logging.error(
+            logger.error(
                 f"Blacklist {blacklist} bedfile raised {e}. Ensure it is correctly formatted"
             )
 
-    logging.info("Dealing with duplicates in the bed file")
+    logger.info("Dealing with duplicates in the bed file")
     # Deal with multimapping reads.
     if duplicates == "remove":
         slices = remove_duplicates_from_bed(
@@ -192,19 +192,18 @@ def annotate(
             "Only supported option at present is to remove duplicates"
         )
 
-    logging.info("Setting-up intersection(s)")
+    logger.info("Setting-up intersection(s)")
 
     ray.init(num_cpus=n_cores, ignore_reinit_error=True, include_dashboard=False)
     pr_slices = convert_bed_to_pr(slices)
     pr_slices_ref = ray.put(pr_slices)
 
     results = []
-    for bed, name, action, fraction, dtype in zip(
+    for bed, name, action, fraction in zip(
         bed_files,
         names,
         actions,
         cycle_argument(overlap_fractions),
-        cycle_argument(dtypes),
     ):
 
         bfi = BedFileIntersection.remote(
@@ -235,5 +234,5 @@ def annotate(
         .reset_index()
     )
 
-    logging.info("Writing annotations to file.")
+    logger.info("Writing annotations to file.")
     df_annotation.to_parquet(output, compression="snappy")
