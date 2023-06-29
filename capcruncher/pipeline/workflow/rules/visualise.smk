@@ -87,7 +87,7 @@ def get_files_to_plot(wc):
         )
         return files
 
-    if COMPARE_SAMPLES and ASSAY != "tiled":
+    if COMPARE_SAMPLES:
         bigwigs_comparison = expand(
             "capcruncher_output/comparisons/bigwigs/{comparison}.{method}-subtraction.{{viewpoint}}.bigWig",
             comparison=[
@@ -104,10 +104,12 @@ def get_files_to_plot(wc):
         sample=SAMPLE_NAMES,
     )
 
-    if AGGREGATE_SAMPLES and ASSAY != "tiled":
-        files["bigwigs_collection"].extend(bigwigs)
-    else:
-        files["bigwigs"].extend(bigwigs)
+    # if AGGREGATE_SAMPLES:
+    #     files["bigwigs_collection"].extend(bigwigs)
+    # else:
+    #     files["bigwigs"].extend(bigwigs)
+
+    files["bigwigs"].extend(bigwigs)
 
     return files
 
