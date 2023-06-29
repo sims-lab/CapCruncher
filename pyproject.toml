@@ -13,7 +13,7 @@ authors = [{"name" =  "Alastair Smith", "email" = "alastair.smith@ndcls.ox.ac.uk
 description = "An end-to-end solution for processing Capture-C, Tri-C and Tiled-C data"
 license = { file = "LICENSE" }
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dynamic = ["version", "dependencies"]
 
 
@@ -95,5 +95,3 @@ include = '\.smk$|^Snakefile|\.py$'
 # snakefmt passes these options on to black
 [tool.black]
 skip_string_normalization = true
-
-

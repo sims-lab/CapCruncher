@@ -27,12 +27,12 @@ dependencies:
   - pysam>0.15.0,<=0.19.1
   - python-duckdb
   - python-xxhash
-  - python>=3.8,<3.11
+  - python>=3.10,<3.11
   - ray-core
   - samtools
   - seaborn
   - setuptools>50.1.0,<=65.0.1
-  - snakemake>=7.19.1
+  - snakemake>=7.30.1
   - tqdm
   - trackhub
   - trim-galore
