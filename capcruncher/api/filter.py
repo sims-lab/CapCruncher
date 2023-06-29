@@ -906,7 +906,7 @@ class TiledCSliceFilter(SliceFilter):
                     "remove_duplicate_slices",
                     "remove_duplicate_slices_pe",
                 ],
-                "has_reporter": ["remove_orphan_slices"],
+                "has_reporter": ["remove_orphan_slices", "remove_religation"],
             }
 
         super(TiledCSliceFilter, self).__init__(slices, filter_stages, **sample_kwargs)
