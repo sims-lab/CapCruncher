@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import capcruncher.api.plotting as cp
 from loguru import logger
 
+logger.add(snakemake.log[0], format="{time} {level} {message}", level="INFO")
+
 with logger.catch():
     # Set-up tracks
     tracks = []
