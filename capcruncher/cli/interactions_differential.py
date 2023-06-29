@@ -7,8 +7,8 @@ from loguru import logger
 
 
 import ray
-from pydeseq2.DeseqDataSet import DeseqDataSet
-from pydeseq2.DeseqStats import DeseqStats
+from pydeseq2.dds import DeseqDataSet
+from pydeseq2.ds import DeseqStats
 from capcruncher.api.pileup import cooler_to_bedgraph
 
 
@@ -25,7 +25,7 @@ def get_differential_interactions(
     dds = DeseqDataSet(
         counts=counts.T,
         clinical=design,
-        design_factor=contrast,
+        design_factors=contrast,
     )
 
     # Run DESeq2

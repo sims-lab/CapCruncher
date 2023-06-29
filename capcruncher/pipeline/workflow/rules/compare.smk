@@ -57,7 +57,7 @@ rule compare_interactions:
             method=get_summary_methods(),
         ),
     params:
-        output_prefix=lambda wc, output: str(pathlib.Path(output[0]).parent),
+        output_prefix=lambda wc, output: f"{pathlib.Path(output[0]).parent}/",
         summary_methods=" ".join([f"-m {m}" for m in get_summary_methods()]),
         names=" ".join([f"-n {group}" for group in DESIGN["condition"].unique()]),
         conditions=identify_columns_based_on_condition(),
@@ -142,11 +142,15 @@ rule differential_interactions:
         compare \
         differential \
         {input.counts} \
-        --design-matrix
+        --design-matrix \
         {input.design_matrix} \
         -o {params.output_prefix} \
         -v {params.viewpoint} \
         -c {params.contrast} \
         --viewpoint-distance {params.viewpoint_distance} \
-        > {log} 2>&1
+        > {log} 2>&1 ||
+
+        echo "No differential interactions found for {params.viewpoint}"
+        mkdir -p {output}
+
         """
