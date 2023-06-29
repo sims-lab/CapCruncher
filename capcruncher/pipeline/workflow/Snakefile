@@ -53,8 +53,10 @@ HIGH_NUMBER_OF_VIEWPOINTS = capcruncher.pipeline.utils.has_high_viewpoint_number
 AGGREGATE_SAMPLES = DESIGN["sample"].nunique() > 1
 COMPARE_SAMPLES = DESIGN["condition"].nunique() > 1
 PERFORM_DIFFERENTIAL_ANALYSIS = (
-    config["differential"]["contrast"] in DESIGN.columns
-) and COMPARE_SAMPLES
+    (config["differential"]["contrast"] in DESIGN.columns)
+    and COMPARE_SAMPLES
+    and (ANALYSIS_METHOD in ["capture", "tri"])
+)
 PERFORM_PLOTTING = capcruncher.pipeline.utils.can_perform_plotting(config)
 PERFORM_BINNING = capcruncher.pipeline.utils.can_perform_binning(config)
 
