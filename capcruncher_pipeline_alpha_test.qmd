@@ -145,7 +145,7 @@ local-cores: 1
 latency-wait: "5"
 use-conda: "True"
 use-singularity: "False"
-singularity-args: -B /ceph  -B /databank
+singularity-args: -B /ceph  -B /databank -B $TMPDIR --cleanenv
 jobs: "50"
 printshellcmds: "True"
 retries: 3
@@ -172,7 +172,7 @@ retries: 3
 singularity-args: -B /ceph  -B /databank
 ```
 
-Gives the container access to the `/ceph` and `/databank` directories on the cluster. The current working directory is also mounted into the container by default. You can add additional directories by adding more `-B` flags. Obviously this will be different for each cluster so you'll need your own defaults.
+Gives the container access to the `/ceph` and `/databank` directories on the cluster. The current working directory is also mounted into the container by default. You can add additional directories by adding more `-B` flags. Obviously this will be different for each cluster so you'll need your own defaults. The `$TMPDIR` is also mounted as this causes errors if it is not mounted. The `--cleanenv` flag is also required to prevent the container from inheriting the environment from the host.
 
 # Pipeline Configuration
 

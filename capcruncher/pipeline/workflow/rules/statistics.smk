@@ -154,9 +154,22 @@ rule combine_stats_read_level:
         "../scripts/combine_stats_read_level.py"
 
 
-rule make_report:
+rule copy_report_template:
     input:
         template=workflow.source_path("../report/capcruncher_report.qmd"),
+    output:
+        "capcruncher_output/results/capcruncher_report.qmd",
+    container:
+        None
+    shell:
+        """
+        cp {input.template} {output}
+        """
+
+
+rule make_report:
+    input:
+        template=rules.copy_report_template.output[0],
         fastq_deduplication=rules.combine_stats_fastq_deduplication.output[0],
         digestion_read=rules.combine_stats_digestion.output.read_data,
         digestion_histogram=rules.combine_stats_digestion.output.histogram,
@@ -171,7 +184,6 @@ rule make_report:
         "capcruncher_output/logs/make_report.log",
     shell:
         """
-        cp {input.template} {params.outdir};
         export XDG_RUNTIME_DIR=$(mktemp -d);
         quarto \
         render \
