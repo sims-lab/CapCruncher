@@ -39,7 +39,8 @@ analysis:
     # into even genomic windows. Only bin sizes that are present here will be allowed
     # to be used for heatmap generation.
     # (Optional) Leave blank to prevent binning
-    bin_sizes: "{{cookiecutter.genomic_bin_size}}"
+    bin_sizes:
+        - "{{cookiecutter.genomic_bin_size}}"
 
 genome:
 
