@@ -255,6 +255,42 @@ You can also use the container locally by adding the `--use-singularity` flag to
 capcruncher pipeline -c 10 --use-singularity --singularity-args " -B /ceph -B /databank "
 ```
 
+## D. Running the pipeline using the singularity container (without the conda environment)
+
+I've not tested this yet but it should be possible to just run the pipeline using the singularity container without the conda environment.
+
+```bash
+
+singularity pull library://asmith151/capcruncher/capcruncher:latest
+
+singularity exec -B /ceph -B /databank --cleanenv capcruncher.sif capcruncher pipeline -c 10 --use-singularity --singularity-args " -B /ceph -B /databank "
+```
+
+## Possible Issues:
+
+### 1. Singularity container not found
+
+```
+WorkflowError:
+Failed to pull singularity image from library://asmith151/capcruncher/capcruncher:latest
+FATAL: Unable to get library client configuration: remote has no library client (see https://apptainer.org/docs/user/latest/endpoint.html#no-default-remote)
+```
+
+This is caused by the apptainer (the new name for singularity) remote not being set-up for your user. This can be fixed by running the following commands:
+
+```bash
+
+apptainer remote add --no-login SylabsCloud cloud.sylabs.io
+apptainer remote use SylabsCloud
+
+```
+
+### Memory issues
+
+Some of the steps in the pipeline require a lot of memory, and may fail. There is a built-in method to retry these steps with more memory and will double with every failed attempt. Change the number of retries in your profile to use more memory. I will try to add a more elegant solution to this in the future.
+
+
+
 
 # Output
 
