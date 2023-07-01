@@ -3,7 +3,6 @@ from tempfile import NamedTemporaryFile
 from typing import Iterable, List, Literal
 import click
 import pandas as pd
-from cgatcore.iotools import touch_file
 import os
 from loguru import logger
 from capcruncher.utils import get_file_type
