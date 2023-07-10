@@ -73,6 +73,8 @@ if importlib.util.find_spec("capcruncher_tools"):
 else:
     CAPCRUNCHER_TOOLS = False
 
+CLEANUP = "full" if config["analysis"].get("cleanup", False) else "partial"
+
 
 include: "rules/digest.smk"
 include: "rules/fastq.smk"
@@ -146,6 +148,28 @@ def get_pileups(
     return bigwigs
 
 
+def get_parts(wc, sample_name=None):
+    if not sample_name:
+        sample_name = wc.sample
+
+    checkpoint_output = checkpoints.split.get(sample=sample_name).output[0]
+
+    parts = set()
+    pattern = re.compile(r"(.*?)_part(\d+)_[12].fastq.gz")
+    for fn in pathlib.Path(checkpoint_output).glob("*.fastq.gz"):
+        parts.add(pattern.match(fn.name).group(2))
+
+    return list(parts)
+
+
+def get_fastq_parts(wc):
+    return expand(
+        "capcruncher_output/interim/fastq/split/{{sample}}/{{sample}}_part{part}_{read}.fastq.gz",
+        part=get_parts(wc),
+        read=["1", "2"],
+    )
+
+
 rule all:
     input:
         qc=rules.multiqc.output[0],
@@ -178,3 +202,43 @@ onerror:
     print(
         f"An error occurred. Please check the log file {log_out} for more information."
     )
+
+
+onsuccess:
+    log_out = "capcruncher_success.log"
+    shutil.copyfile(log, log_out)
+    print(f"Pipeline completed successfully. See {log_out} for more information.")
+
+    if CLEANUP == "full":
+        shutil.rmtree("capcruncher_output/interim/")
+
+    elif CLEANUP == "partial":
+
+        import subprocess
+
+        files_to_remove = []
+        # Split files
+        for sample_name in SAMPLE_NAMES:
+            split_dir = f"capcruncher_output/interim/fastq/split/{sample_name}"
+            flashed_dir = f"capcruncher_output/interim/fastq/flashed/{sample_name}"
+            rebalanced_dir = (
+                f"capcruncher_output/interim/fastq/rebalanced/{sample_name}"
+            )
+
+            files_to_remove.extend(
+                pathlib.Path(split_dir).glob(f"{sample_name}_part*.fastq.gz")
+            )
+
+            files_to_remove.extend(
+                pathlib.Path(flashed_dir).glob(f"{sample_name}_part*.fastq.gz")
+            )
+
+            for combined in ["flashed", "pe"]:
+                files_to_remove.extend(
+                    (pathlib.Path(rebalanced_dir) / combined).glob(
+                        f"{sample_name}_part*.fastq.gz"
+                    )
+                )
+
+        for f in files_to_remove:
+            f.unlink()

@@ -134,7 +134,9 @@ rule bedgraph_raw:
     input:
         cooler=rules.merge_counts.output,
     output:
-        bedgraph="capcruncher_output/interim/pileups/bedgraphs/{sample}/raw/{sample}_{viewpoint}.bedgraph",
+        bedgraph=temp(
+            "capcruncher_output/interim/pileups/bedgraphs/{sample}/raw/{sample}_{viewpoint}.bedgraph"
+        ),
     log:
         "capcruncher_output/logs/bedgraph_raw/{sample}_{viewpoint}.log",
     params:
@@ -158,7 +160,9 @@ rule bedgraph_normalised:
     input:
         cooler=rules.merge_counts.output,
     output:
-        bedgraph="capcruncher_output/interim/pileups/bedgraphs/{sample}/norm/{sample}_{viewpoint}.bedgraph",
+        bedgraph=temp(
+            "capcruncher_output/interim/pileups/bedgraphs/{sample}/norm/{sample}_{viewpoint}.bedgraph"
+        ),
     log:
         "capcruncher_output/logs/bedgraph_norm/{sample}_{viewpoint}.log",
     params:

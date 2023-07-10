@@ -19,7 +19,6 @@ import pathlib
 @click.version_option(metadata.version(distribution_name="capcruncher"))
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
 def pipeline(pipeline_options, show_help=False, show_version=False, logo=True):
-
     """Runs the data processing pipeline"""
 
     fn = pathlib.Path(__file__).resolve()
@@ -59,6 +58,23 @@ def pipeline(pipeline_options, show_help=False, show_version=False, logo=True):
             click.echo(f.read())
 
     _completed = subprocess.run(cmd)
+
+    if _completed.returncode != 0:
+        sys.exit(_completed.returncode)
+    else:
+        # Touch all files to correct timestamps
+        subprocess.run(
+            [
+                "snakemake",
+                "-s",
+                str(dir_package / "pipeline/workflow/Snakefile"),
+                "--touch",
+                "--cores",
+                "1",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
 
 @cli.command(name="pipeline-config")

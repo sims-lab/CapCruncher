@@ -110,10 +110,26 @@ def get_rebalanced_parts(wc, combined: Literal["flashed", "pe"], sample: str = N
     return set(parts)
 
 
-checkpoint split:
+rule fastq_rename:
     input:
         fq1=lambda wc: FASTQ_SAMPLES.translation[f"{wc.sample}_1.fastq.gz"],
         fq2=lambda wc: FASTQ_SAMPLES.translation[f"{wc.sample}_2.fastq.gz"],
+    output:
+        fq1=temp("capcruncher_output/interim/fastq/{sample}_1.fastq.gz"),
+        fq2=temp("capcruncher_output/interim/fastq/{sample}_2.fastq.gz"),
+    log:
+        "capcruncher_output/logs/fastq_rename/{sample}.log",
+    shell:
+        """
+        ln -s $(realpath {input.fq1}) {output.fq1} &&
+        ln -s $(realpath {input.fq2}) {output.fq2}
+        """
+
+
+checkpoint split:
+    input:
+        fq1=rules.fastq_rename.output.fq1,
+        fq2=rules.fastq_rename.output.fq2,
     output:
         directory("capcruncher_output/interim/fastq/split/{sample}"),
     threads: 4
@@ -207,7 +223,9 @@ if not CAPCRUNCHER_TOOLS:
             fq2=temp(
                 "capcruncher_output/interim/fastq/deduplicated/{sample}/{sample}_part{part}_2.fastq.gz"
             ),
-            stats="capcruncher_output/interim/statistics/deduplication/data/{sample}_part{part}.deduplication.csv",
+            stats=temp(
+                "capcruncher_output/interim/statistics/deduplication/data/{sample}_part{part}.deduplication.csv"
+            ),
         params:
             prefix_fastq="capcruncher_output/interim/fastq/deduplicated/{sample}/{sample}_part{part}",
             prefix_stats="capcruncher_output/interim/statistics/deduplication/data/{sample}_part{part}",
@@ -268,13 +286,17 @@ else:
 
     checkpoint deduplication:
         input:
-            fq1=lambda wc: expand(
-                "capcruncher_output/interim/fastq/split/{{sample}}/{{sample}}_part{part}_1.fastq.gz",
-                part=get_parts(wc),
+            fq1=lambda wc: temp(
+                expand(
+                    "capcruncher_output/interim/fastq/split/{{sample}}/{{sample}}_part{part}_1.fastq.gz",
+                    part=get_parts(wc),
+                )
             ),
-            fq2=lambda wc: expand(
-                "capcruncher_output/interim/fastq/split/{{sample}}/{{sample}}_part{part}_2.fastq.gz",
-                part=get_parts(wc),
+            fq2=lambda wc: temp(
+                expand(
+                    "capcruncher_output/interim/fastq/split/{{sample}}/{{sample}}_part{part}_2.fastq.gz",
+                    part=get_parts(wc),
+                )
             ),
         output:
             fastq_dir=directory(
@@ -342,6 +364,12 @@ rule flash:
         ),
         pe2=temp(
             "capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.notCombined_2.fastq.gz"
+        ),
+        hist=temp(
+            "capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.hist"
+        ),
+        histogram=temp(
+            "capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.histogram"
         ),
     params:
         outdir="capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}",
@@ -439,9 +467,15 @@ rule digest_flashed_combined:
         digested=temp(
             "capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_flashed.fastq.gz"
         ),
-        stats_read="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.read.summary.csv",
-        stats_unfiltered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.unfiltered.histogram.csv",
-        stats_filtered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.filtered.histogram.csv",
+        stats_read=temp(
+            "capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.read.summary.csv"
+        ),
+        stats_unfiltered=temp(
+            "capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.unfiltered.histogram.csv"
+        ),
+        stats_filtered=temp(
+            "capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.filtered.histogram.csv"
+        ),
     params:
         prefix_stats="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed",
         restriction_site=config["analysis"]["restriction_enzyme"],
@@ -481,9 +515,15 @@ rule digest_flashed_pe:
         digested=temp(
             "capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_pe.fastq.gz"
         ),
-        stats_read="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.read.summary.csv",
-        stats_unfiltered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.unfiltered.histogram.csv",
-        stats_filtered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.filtered.histogram.csv",
+        stats_read=temp(
+            "capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.read.summary.csv"
+        ),
+        stats_unfiltered=temp(
+            "capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.unfiltered.histogram.csv"
+        ),
+        stats_filtered=temp(
+            "capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.filtered.histogram.csv"
+        ),
     params:
         prefix_stats="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe",
         restriction_site=config["analysis"]["restriction_enzyme"],

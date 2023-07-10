@@ -18,8 +18,12 @@ rule filter_alignments:
         filtered_slices=temp(
             "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet"
         ),
-        stats_read="capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.read.stats.csv",
-        stats_slice="capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.slice.stats.csv",
+        stats_read=temp(
+            "capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.read.stats.csv"
+        ),
+        stats_slice=temp(
+            "capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.slice.stats.csv"
+        ),
     params:
         analysis_method=config["analysis"]["method"],
         sample_name=lambda wildcards, output: wildcards.sample,
@@ -99,11 +103,15 @@ rule split_flashed_and_pe_datasets:
             ],
         ),
     output:
-        slices_flashed=directory(
-            "capcruncher_output/interim/filtering/repartitioned/{sample}/flashed/"
+        slices_flashed=temp(
+            directory(
+                "capcruncher_output/interim/filtering/repartitioned/{sample}/flashed/"
+            )
         ),
-        slices_pe=directory(
-            "capcruncher_output/interim/filtering/repartitioned/{sample}/pe/"
+        slices_pe=temp(
+            directory(
+                "capcruncher_output/interim/filtering/repartitioned/{sample}/pe/"
+            )
         ),
     shell:
         """
@@ -118,8 +126,8 @@ rule remove_duplicate_coordinates:
     input:
         slices_directory="capcruncher_output/interim/filtering/repartitioned/{sample}/{combined}/",
     output:
-        slices=directory(
-            temp(
+        slices=temp(
+            directory(
                 "capcruncher_output/interim/filtering/deduplicated/{sample}/{combined}"
             )
         ),
@@ -131,7 +139,7 @@ rule remove_duplicate_coordinates:
         ),
         read_type=lambda wildcards, output: wildcards.combined,
     resources:
-        mem_mb=32_000,
+        mem_mb=lambda wc, attempt: 3000 * 2**attempt,
     threads: 12
     log:
         "capcruncher_output/logs/remove_duplicate_coordinates/{sample}_{combined}.log",
@@ -146,7 +154,7 @@ rule combine_flashed_and_pe_post_deduplication:
             combined=["flashed", "pe"],
         ),
     output:
-        slices=directory("capcruncher_output/results/{sample}/{sample}.parquet"),
+        slices=temp(directory("capcruncher_output/results/{sample}/{sample}.parquet")),
     shell:
         """
         mkdir -p {output.slices}
@@ -159,7 +167,9 @@ rule cis_and_trans_stats:
     input:
         slices="capcruncher_output/results/{sample}/{sample}.parquet",
     output:
-        stats="capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.reporter.stats.csv",
+        stats=temp(
+            "capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.reporter.stats.csv"
+        ),
     params:
         sample_name=lambda wildcards, output: wildcards.sample,
         analysis_method=config["analysis"]["method"],
