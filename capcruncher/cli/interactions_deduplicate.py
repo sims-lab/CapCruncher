@@ -33,7 +33,7 @@ def deduplicate(
         logger.info("Identifying unique fragment IDs")
         query = (
             slices_tbl_raw[["chrom", "start", "end", "parent_id"]]
-            .sort_by(["chrom", "start", "end", "parent_id"])
+            .order_by(["chrom", "start", "end", "parent_id"])
             .groupby(by="parent_id", order_by=["chrom", "start", "end"])
             .mutate(
                 slice_f_chrom=_.chrom.first(),
@@ -151,7 +151,7 @@ def deduplicate(
 #     tbl = con.table("fragments_tbl")
 #     t = (tbl
 #           [["chrom", "start", "end", "parent_id"]]
-#           .sort_by(["chrom", "start", "end", "parent_id"])
+#           .order_by(["chrom", "start", "end", "parent_id"])
 #           .groupby(by="parent_id", order_by=["chrom", "start", "end"])
 #           .mutate(slice_f_chrom=_.chrom.first(),
 #                   slice_f_start=_.start.first(),
