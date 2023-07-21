@@ -519,8 +519,8 @@ def test_reporters_store_merge(
 @pytest.mark.parametrize(
     "cooler_fn,output_prefix,outfile,flags",
     [
-        ("SAMPLE-A_REP1.hdf5", "test", "test.Slc25A37.bedgraph", []),
-        ("SAMPLE-A_REP1.hdf5", "test", "test.Slc25A37.bigWig", ["-f", "bigwig"]),
+        ("SAMPLE-A_REP1.hdf5", "test", "test_Slc25A37.bedgraph", []),
+        ("SAMPLE-A_REP1.hdf5", "test", "test_Slc25A37.bigWig", ["-f", "bigwig"]),
     ],
 )
 def test_reporters_pileup(
