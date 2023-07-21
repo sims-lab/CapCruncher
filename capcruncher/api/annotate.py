@@ -73,18 +73,18 @@ class BedFileIntersection:
             elif self.action == "count":
                 _intersection = self._count_intersection(pr_b)
 
+            intersected = True
+
         except (OSError, IndexError, FileNotFoundError, StopIteration, AssertionError):
-            logger.error(
-                f"Bed file {self.b} raised an error. Skipping {self.name} intersection."
-            )
             _intersection = pd.Series(
                 data=pd.NA,
                 index=self.pr_a.df["Name"],
                 name=self.name,
                 dtype=object,
             )
+            intersected = False
 
-        return _intersection
+        return (_intersection, intersected)
 
     def __repr__(self):
         return f"{self.name} intersection"
