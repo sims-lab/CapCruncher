@@ -222,7 +222,7 @@ def annotate(
         done_id, futures = ray.wait(futures)
 
         for ref in done_id:
-            ser_new, intersection_ok = ray.get(ref)
+            ser_new = ray.get(ref)
             df_annotation = df_annotation.join(ser_new, how="left")
             del ser_new
 
