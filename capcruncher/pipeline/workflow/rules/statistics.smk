@@ -1,5 +1,6 @@
 from collections import defaultdict
 import capcruncher.pipeline.utils
+from typing import List
 
 
 def get_digestion_statistics(wc, sample_names: List[str]):
@@ -83,7 +84,7 @@ else:
 
 rule combine_stats_digestion:
     input:
-        unpack(lambda wc: get_digestion_statistics(wc)),
+        unpack(lambda wc: get_digestion_statistics(wc, SAMPLE_NAMES)),
     output:
         read_data="capcruncher_output/interim/statistics/digestion/fastq_digestion.csv",
         histogram="capcruncher_output/interim/statistics/digestion/fastq_digestion.histogram.csv",
@@ -93,7 +94,7 @@ rule combine_stats_digestion:
 
 rule combine_stats_filtering:
     input:
-        unpack(get_filtering_statistics),
+        unpack(lambda wc: get_filtering_statistics(wc, SAMPLE_NAMES)),
     output:
         read_data="capcruncher_output/interim/statistics/filtering/alignment_filtering.csv",
         slice_data="capcruncher_output/interim/statistics/filtering/alignment_filtering_slice.csv",

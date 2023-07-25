@@ -67,13 +67,19 @@ rule create_ucsc_hub:
 
 rule plot:
     input:
-        unpack(capcruncher.pipeline.utils.get_files_to_plot),
+        unpack(
+            lambda wc: capcruncher.pipeline.utils.get_files_to_plot(
+                wc, DESIGN, ASSAY, SAMPLE_NAMES, SUMMARY_METHODS
+            )
+        ),
         viewpoints=config["analysis"]["viewpoints"],
     output:
         template="capcruncher_output/results/figures/{viewpoint}.toml",
         fig="capcruncher_output/results/figures/{viewpoint}.pdf",
     params:
-        coordinates=lambda wc: get_plotting_coordinates(wc),
+        coordinates=lambda wc: capcruncher.pipeline.utils.get_plotting_coordinates(
+            wc, config
+        ),
         viewpoint="{viewpoint}",
         design=DESIGN,
         genes=config["plot"].get("genes", ""),

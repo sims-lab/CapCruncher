@@ -1,19 +1,18 @@
+import os
 import pathlib
 import re
-from typing import Dict, List, Union
-
-import pandas as pd
-import pyranges as pr
-from loguru import logger
-import os
-import snakemake
-from snakemake.io import expand, glob_wildcards
+from typing import Dict, List, Union, Literal
 from collections import defaultdict
 import json
-from typing import Literal
 import itertools
+import pandas as pd
+import pyranges as pr
 
 from capcruncher import utils
+
+from loguru import logger
+import snakemake
+from snakemake.io import expand, glob_wildcards
 
 
 def is_on(param: str) -> bool:
@@ -359,7 +358,7 @@ def get_normalisation_from_config(wc, config: Dict):
     return "--normalisation n_cis"
 
 
-def get_fastq_basename(wildcards, output, fastq_samples: FastqSamples):
+def get_fastq_basename(wildcards, fastq_samples: FastqSamples, **kwargs):
     return pathlib.Path(
         fastq_samples.translation[f"{wildcards.sample}_{wildcards.read}.fastq.gz"]
     ).stem.replace(".fastq", "")
@@ -417,7 +416,7 @@ def get_files_to_plot(
     return files
 
 
-def get_plotting_coordinates(wc, config: Dict, viewpoints: os.PathLike):
+def get_plotting_coordinates(wc, config: Dict):
     plot_coords = config["plot"].get("coordinates", None)
 
     if plot_coords and pathlib.Path(plot_coords).exists():
@@ -428,7 +427,9 @@ def get_plotting_coordinates(wc, config: Dict, viewpoints: os.PathLike):
 
     else:
         df = pd.read_table(
-            viewpoints, names=["chrom", "start", "end", "name"], header=None
+            config["analysis"]["viewpoints"],
+            names=["chrom", "start", "end", "name"],
+            header=None,
         )
 
         df = df.query("name == @wc.viewpoint").iloc[0]
@@ -437,17 +438,16 @@ def get_plotting_coordinates(wc, config: Dict, viewpoints: os.PathLike):
 
 
 def get_pileups(
-    method: Literal["capture", "tri", "tiled"],
+    assay: Literal["capture", "tri", "tiled"],
     design: pd.DataFrame,
     samples_aggregate: bool,
     samples_compare: bool,
     sample_names: List[str],
     summary_methods: List[str],
-    viewpoints: os.PathLike,
+    viewpoints: List[str],
 ) -> list[str]:
-
     bigwigs = []
-    if method in ["capture", "tri"]:
+    if assay in ["capture", "tri"]:
         bigwigs.extend(
             expand(
                 "capcruncher_output/results/{sample}/bigwigs/{norm}/{sample}_{viewpoint}.bigWig",
@@ -462,7 +462,7 @@ def get_pileups(
                 expand(
                     "capcruncher_output/results/comparisons/bigwigs/{group}.{method}-summary.{viewpoint}.bigWig",
                     group=design["condition"].unique(),
-                    method=sample_names,
+                    method=summary_methods,
                     viewpoint=viewpoints,
                 ),
             )
@@ -482,7 +482,7 @@ def get_pileups(
                 ),
             )
 
-    elif method == "tiled":
+    elif assay == "tiled":
         pass
 
     return bigwigs

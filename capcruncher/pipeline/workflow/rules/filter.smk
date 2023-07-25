@@ -5,10 +5,11 @@ def get_filtered_slices(wildcards):
     slices = dict()
     for combined_type in ["flashed", "pe"]:
         parts = get_rebalanced_parts(wildcards, combined=combined_type)
-        slices[combined_type] = expand(
-            "capcruncher_output/interim/filtering/initial/{wildcards.sample}/{wildcards.sample}_part{part}_{combined}.slices.parquet",
-            part=parts,
-        )
+        slices[combined_type] = [
+            f"capcruncher_output/interim/filtering/initial/{wildcards.sample}/{wildcards.sample}_part{part}_{combined_type}.slices.parquet"
+            for part in parts
+        ]
+    return slices
 
 
 rule filter_alignments:
@@ -60,7 +61,7 @@ rule filter_alignments:
 
 rule split_flashed_and_pe_datasets:
     input:
-        capcruncher.pipeline.utils.get_filtered_slices,
+        unpack(get_filtered_slices),
     output:
         slices_flashed=temp(
             directory(

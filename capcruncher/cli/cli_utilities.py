@@ -65,7 +65,8 @@ def cis_and_trans_stats(
         predicates=[
             "parent_id",
         ],
-        suffixes=["_capture", "_reporter"],
+        lname="{name}_capture",
+        rname="{name}_reporter",
         how="left",
     )
 

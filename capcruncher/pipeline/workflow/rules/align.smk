@@ -1,19 +1,40 @@
 import capcruncher.pipeline.utils
+from typing import Literal
 
 
-def get_rebalanced_parts(wildcards, combined: Literal["flashed", "pe"] = None):
-
-    # Confirm that the checkpoint has been run
-    checkpoints.rebalance_partitions_combined.get(**wildcards)
-
+def get_rebalanced_parts(
+    wildcards, combined: Literal["flashed", "pe"] = None, **kwargs
+):
     combined = combined or wildcards.combined
-    with open("capcruncher_output/resources/rebalanced/{wildcards.sample}.json") as f:
-        rebalanced = json.load(f)
+    import pathlib
+    import re
 
-    if wildcards.combined == "flashed":
-        return rebalanced["flashed"]
+    parts = dict()
+    outdirs = dict(
+        flashed=checkpoints.rebalance_partitions_combined.get(
+            **{**wildcards, **kwargs}
+        ).output[0],
+        pe=checkpoints.rebalance_partitions_pe.get(**{**wildcards, **kwargs}).output[0],
+    )
+
+    for combined_type in ["flashed", "pe"]:
+        fq_files = pathlib.Path(outdirs[combined_type]).glob("*.fastq.gz")
+        parts[combined_type] = list(
+            sorted(
+                set(
+                    [
+                        int(re.search(r"part(\d+)", f.name).group(1))
+                        for f in fq_files
+                        if re.search(r"part(\d+)", f.name)
+                    ]
+                )
+            )
+        )
+
+    if combined == "flashed":
+        return parts["flashed"]
     else:
-        return rebalanced["pe"]
+        return parts["pe"]
 
 
 def get_rebalanced_bam(wildcards):
@@ -23,6 +44,8 @@ def get_rebalanced_bam(wildcards):
             bam.append(
                 f"capcruncher_output/interim/aligned/{wildcards.sample}/{wildcards.sample}_part{part}_{combined_type}.sorted.bam"
             )
+
+    return bam
 
 
 rule align_bowtie2:
@@ -67,8 +90,7 @@ rule sort_bam_partitions:
 
 rule merge_bam_partitions:
     input:
-        bam=capcruncher.pipeline.utils.get_rebalanced_bam,
-        n_parts="capcruncher_output/resources/rebalanced/{sample}.json",
+        bam=get_rebalanced_bam,
     output:
         bam="capcruncher_output/results/{sample}/{sample}.bam",
     shell:

@@ -13,6 +13,7 @@ import importlib.util
 from typing import Literal
 import itertools
 
+
 snakemake.utils.min_version('7.19.1')
 
 
@@ -103,6 +104,7 @@ include: "rules/visualise.smk"
 wildcard_constraints:
     sample="|".join(SAMPLE_NAMES),
     part=r"\d+",
+    viewpoint="|".join(VIEWPOINT_NAMES),
 
 
 rule all:
@@ -110,13 +112,13 @@ rule all:
         qc=rules.multiqc.output[0],
         report="capcruncher_output/results/capcruncher_report.html",
         pileups=capcruncher.pipeline.utils.get_pileups(
-            method=ASSAY,
+            assay=ASSAY,
             design=DESIGN,
             samples_aggregate=AGGREGATE_SAMPLES,
             samples_compare=COMPARE_SAMPLES,
             sample_names=SAMPLE_NAMES,
             summary_methods=SUMMARY_METHODS,
-            viewpoints=VIEWPOINTS,
+            viewpoints=VIEWPOINT_NAMES,
         ),
         counts=expand(
             "capcruncher_output/results/{sample}/{sample}.hdf5",
@@ -166,21 +168,17 @@ onsuccess:
             rebalanced_dir = (
                 f"capcruncher_output/interim/fastq/rebalanced/{sample_name}"
             )
-
             files_to_remove.extend(
                 pathlib.Path(split_dir).glob(f"{sample_name}_part*.fastq.gz")
             )
-
             files_to_remove.extend(
                 pathlib.Path(flashed_dir).glob(f"{sample_name}_part*.fastq.gz")
             )
-
             for combined in ["flashed", "pe"]:
                 files_to_remove.extend(
                     (pathlib.Path(rebalanced_dir) / combined).glob(
                         f"{sample_name}_part*.fastq.gz"
                     )
                 )
-
         for f in files_to_remove:
             f.unlink()

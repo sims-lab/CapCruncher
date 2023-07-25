@@ -12,7 +12,7 @@ rule fastqc:
         outdir=lambda wc, output: str(pathlib.Path(output.qc).parent),
         tmpdir="capcruncher_output/interim/qc/fastqc/{sample}_{read}",
         basename=lambda wc, output: capcruncher.pipeline.utils.get_fastq_basename(
-            wc, output
+            wc, FASTQ_SAMPLES
         ),
     threads: 1
     resources:

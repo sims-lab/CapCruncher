@@ -148,7 +148,9 @@ rule bedgraph_normalised:
         output_prefix=lambda wc, output: pathlib.Path(output.bedgraph).parent
         / f"{wc.sample}",
         viewpoint=lambda wc, output: wc.viewpoint,
-        normalisation=capcruncher.pipeline.utils.get_normalisation_from_config,
+        normalisation=lambda wc: capcruncher.pipeline.utils.get_normalisation_from_config(
+            wc, config
+        ),
         scale_factor=config["normalisation"].get("scale_factor", int(1e6)),
     shell:
         """
