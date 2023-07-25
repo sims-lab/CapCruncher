@@ -1,21 +1,5 @@
 import itertools
-
-
-def get_summary_methods():
-    return [
-        m
-        for m in re.split(r"[,;\s+]", config["compare"].get("summary_methods", "mean,"))
-        if m
-    ]
-
-
-def identify_columns_based_on_condition():
-    condition_args = []
-    for group_name, columns in DESIGN.groupby("condition").groups.items():
-        condition_args.append(f"-c {','.join(str(c) for c in columns)}")
-
-    condition_args_str = " ".join(condition_args)
-    return condition_args_str
+import capcruncher.pipeline.utils
 
 
 rule union_bedgraph:
@@ -47,7 +31,7 @@ rule compare_interactions:
             expand(
                 "capcruncher_output/interim/comparisons/summaries_and_subtractions/{group}.{method}-summary.{{viewpoint}}.bedgraph",
                 group=DESIGN["condition"].unique(),
-                method=get_summary_methods(),
+                method=SUMMARY_METHODS,
             )
         ),
         bedgraphs_compare=temp(
@@ -57,14 +41,16 @@ rule compare_interactions:
                 f"{a}-{b}"
                     for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
                 ],
-                method=get_summary_methods(),
+                method=SUMMARY_METHODS,
             )
         ),
     params:
         output_prefix=lambda wc, output: f"{pathlib.Path(output[0]).parent}/",
-        summary_methods=" ".join([f"-m {m}" for m in get_summary_methods()]),
+        summary_methods=" ".join([f"-m {m}" for m in SUMMARY_METHODS]),
         names=" ".join([f"-n {group}" for group in DESIGN["condition"].unique()]),
-        conditions=identify_columns_based_on_condition(),
+        conditions=capcruncher.pipeline.utils.identify_columns_based_on_condition(
+            DESIGN
+        ),
     resources:
         mem_mb=5000,
     log:

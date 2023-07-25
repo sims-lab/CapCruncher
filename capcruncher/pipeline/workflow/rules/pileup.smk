@@ -1,25 +1,4 @@
-def get_count_files(wc):
-    counts = []
-    counts.append(
-        f"capcruncher_output/pileups/counts_by_restriction_fragment/{wc.sample}.hdf5"
-    )
-
-    if PERFORM_BINNING:
-        counts.append(
-            f"capcruncher_output/pileups/counts_by_genomic_bin/{wc.sample}.hdf5"
-        )
-
-    return counts
-
-
-def get_normalisation_from_config(wc):
-    regions = config["normalisation"]["regions"]
-
-    if not regions is None or isinstance(regions, str):
-        if os.path.exists(regions):
-            return f"--normalisation region --normalisation-regions {regions}"
-    return "--normalisation n_cis"
-
+import capcruncher.pipeline.utils
 
 if CAPCRUNCHER_TOOLS:
 
@@ -113,7 +92,7 @@ rule bin_counts:
 
 rule merge_counts:
     input:
-        get_count_files,
+        capcruncher.pipeline.utils.get_count_files,
     output:
         "capcruncher_output/results/{sample}/{sample}.hdf5",
     log:
@@ -169,7 +148,7 @@ rule bedgraph_normalised:
         output_prefix=lambda wc, output: pathlib.Path(output.bedgraph).parent
         / f"{wc.sample}",
         viewpoint=lambda wc, output: wc.viewpoint,
-        normalisation=get_normalisation_from_config,
+        normalisation=capcruncher.pipeline.utils.get_normalisation_from_config,
         scale_factor=config["normalisation"].get("scale_factor", int(1e6)),
     shell:
         """

@@ -1,7 +1,8 @@
 from collections import defaultdict
+import capcruncher.pipeline.utils
 
 
-def get_digestion_statistics(wc):
+def get_digestion_statistics(wc, sample_names: List[str]):
     stat_types = {
         "read_level_stats": "digestion.read.summary.csv",
         "histogram_unfiltered": "digestion.unfiltered.histogram.csv",
@@ -9,7 +10,7 @@ def get_digestion_statistics(wc):
     }
 
     stat_prefixes = []
-    for sample in SAMPLE_NAMES:
+    for sample in sample_names:
         for combined in ["flashed", "pe"]:
             for part in get_rebalanced_parts(wc, combined=combined, sample=sample):
                 stat_prefixes.append(
@@ -24,14 +25,14 @@ def get_digestion_statistics(wc):
     return stat_files
 
 
-def get_filtering_statistics(wc):
+def get_filtering_statistics(wc, sample_names: List[str]):
     stat_types = {
         "read_level_stats": "read.stats.csv",
         "slice_level_stats": "slice.stats.csv",
     }
 
     stat_prefixes = []
-    for sample in SAMPLE_NAMES:
+    for sample in sample_names:
         for combined in ["flashed", "pe"]:
             for part in get_rebalanced_parts(wc, combined=combined, sample=sample):
                 stat_prefixes.append(
@@ -46,11 +47,10 @@ def get_filtering_statistics(wc):
     return stat_files
 
 
-def get_stat_parts(wc):
-
+def get_stat_parts(wc, sample_names: List[str]):
     files = []
-    for sample in SAMPLE_NAMES:
-        for part in get_parts(wc):
+    for sample in sample_names:
+        for part in get_fastq_split_1(wc):
             files.append(
                 f"capcruncher_output/interim/statistics/deduplication/data/{sample}_part{part}.deduplication.csv"
             )

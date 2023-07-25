@@ -3,69 +3,67 @@ import pathlib
 import json
 import re
 from typing import Literal
-
-
-def get_parts(wc, sample_name=None):
-    if not sample_name:
-        sample_name = wc.sample
-
-    checkpoint_output = checkpoints.split.get(sample=sample_name).output[0]
-
-    parts = set()
-    pattern = re.compile(r"(.*?)_part(\d+)_[12].fastq.gz")
-    for fn in pathlib.Path(checkpoint_output).glob("*.fastq.gz"):
-        parts.add(pattern.match(fn.name).group(2))
-
-    return list(parts)
-
-
-def get_fastq_parts(wc):
-    return expand(
-        "capcruncher_output/interim/fastq/split/{{sample}}/{{sample}}_part{part}_{read}.fastq.gz",
-        part=get_parts(wc),
-        read=["1", "2"],
-    )
+import capcruncher.pipeline.utils
 
 
 def get_pickles(wc):
     return expand(
         "capcruncher_output/interim/fastq/deduplicated/{{sample}}/{{sample}}_{part}.pkl",
-        part=get_parts(wc),
+        part=get_split_1_parts(wc),
     )
 
 
-def get_combined_fastq(wc):
-    return expand(
-        "capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.extendedFrags.fastq.gz",
-        sample=wc.sample,
-        part=get_parts(wc),
+def get_split_1_parts(wildcards):
+    checkpoints.split.get(**wildcards)
+    with open(f"capcruncher_output/resources/split/{wildcards.sample}.json", "r") as f:
+        parts = json.load(f)
+    return parts
+
+
+def get_fastq_split_1(wildcards):
+    return {
+        f"fq{read}": expand(
+            "capcruncher_output/interim/fastq/split/{sample}/{sample}_part{part}_{read}.fastq.gz",
+            part=get_split_1_parts(wildcards),
+            read=[read],
+        )
+        for read in ["1", "2"]
+    }
+
+
+def get_deduplicated_fastq_pair(wildcards):
+    import pathlib
+
+    input_dir = checkpoints.deduplication.get(**wildcards).output[0]
+
+    fq = {
+        f"fq{read}": "{input_dir.rstrip('/')}/{wildcards.sample}_part{wildcards.part}_{read}.fastq.gz"
+        for read in ["1", "2"]
+    }
+
+    if pathlib.Path(fq["fq1"]).exists() and pathlib.Path(fq["fq2"]).exists():
+        return fq
+    else:
+        return {"fq1": [], "fq2": []}
+
+
+def get_flashed_fastq(wildcards):
+    import pathlib
+
+    fq = expand(
+        "capcruncher_output/interim/fastq/flashed/{wildcards.sample}/{wildcards.sample}_part{part}.extendedFrags.fastq.gz",
+        part=get_split_1_parts(wildcards),
     )
+    return fq
 
 
-def get_pe_fastq(wc):
-    return expand(
-        "capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.notCombined_{read}.fastq.gz",
-        sample=wc.sample,
-        part=get_parts(wc),
+def get_pe_fastq(wildcards):
+    fq = expand(
+        "capcruncher_output/interim/fastq/flashed/{wildcards.sample}/{wildcards.sample}_part{part}.notCombined_{read}.fastq.gz",
+        part=get_split_1_parts(wildcards),
         read=["1", "2"],
     )
-
-
-def separate_pe_fastq(wc):
-    return {
-        1: expand(
-            "capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.notCombined_{read}.fastq.gz",
-            sample=wc.sample,
-            part=get_parts(wc),
-            read=["1"],
-        ),
-        2: expand(
-            "capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.notCombined_{read}.fastq.gz",
-            sample=wc.sample,
-            part=get_parts(wc),
-            read=["2"],
-        ),
-    }
+    return fq
 
 
 def get_rebalanced_fastq_combined(wc):
@@ -85,7 +83,6 @@ def get_rebalanced_fastq_pe(wc):
 
 
 def get_rebalanced_parts(wc, combined: Literal["flashed", "pe"], sample: str = None):
-
     if not sample:
         sample = wc.sample
 
@@ -108,6 +105,14 @@ def get_rebalanced_parts(wc, combined: Literal["flashed", "pe"], sample: str = N
         raise ValueError(f"Unknown combined type {combined}")
 
     return set(parts)
+
+
+def get_deduplicated_fastq(wc):
+    checkpoint_output = checkpoints.deduplication.get(sample=wc.sample).output[0]
+    return {
+        "fq1": f"capcruncher_output/interim/fastq/deduplicated/{wc.sample}/{wc.sample}_part{wc.part}_1.fastq.gz",
+        "fq2": f"capcruncher_output/interim/fastq/deduplicated/{wc.sample}/{wc.sample}_part{wc.part}_2.fastq.gz",
+    }
 
 
 rule fastq_rename:
@@ -162,12 +167,42 @@ checkpoint split:
         """
 
 
+rule count_parts_split_1:
+    input:
+        lambda wc: checkpoints.split.get(**wc).output[0],
+    output:
+        "capcruncher_output/resources/split/{sample}.json",
+    log:
+        "capcruncher_output/logs/count_parts/{sample}.log",
+    container:
+        None
+    run:
+        import pathlib
+        import json
+        import re
+
+        fq_files = pathlib.Path(input[0]).glob("*.fastq.gz")
+        parts = sorted(
+            set(
+                [
+                    int(re.search(r"part(\d+)", f.name).group(1))
+                    for f in fq_files
+                    if re.search(r"part(\d+)", f.name)
+                ]
+            )
+        )
+
+        with open(output[0], "w") as f:
+            json.dump(list(parts), f)
+
+
 if not CAPCRUNCHER_TOOLS:
 
     rule deduplication_parse:
         input:
             fq1="capcruncher_output/interim/fastq/split/{sample}/{sample}_part{part}_1.fastq.gz",
             fq2="capcruncher_output/interim/fastq/split/{sample}/{sample}_part{part}_2.fastq.gz",
+            n_parts="capcruncher_output/resources/split/{sample}.json",
         output:
             temp(
                 "capcruncher_output/interim/fastq/deduplicated/{sample}/{sample}_{part}.pkl"
@@ -286,18 +321,8 @@ else:
 
     checkpoint deduplication:
         input:
-            fq1=lambda wc: temp(
-                expand(
-                    "capcruncher_output/interim/fastq/split/{{sample}}/{{sample}}_part{part}_1.fastq.gz",
-                    part=get_parts(wc),
-                )
-            ),
-            fq2=lambda wc: temp(
-                expand(
-                    "capcruncher_output/interim/fastq/split/{{sample}}/{{sample}}_part{part}_2.fastq.gz",
-                    part=get_parts(wc),
-                )
-            ),
+            unpack(get_fastq_split_1),
+            n_parts="capcruncher_output/resources/split/{sample}.json",
         output:
             fastq_dir=directory(
                 "capcruncher_output/interim/fastq/deduplicated/{sample}/"
@@ -317,18 +342,9 @@ else:
             capcruncher-tools fastq-deduplicate -1 {input.fq1} -2 {input.fq2} -o {params.prefix_fastq} --statistics {output.stats} --sample-name {wildcards.sample} > {log} 2>&1
             """
 
-    def get_deduplicated_fastq(wc):
-        checkpoint_output = checkpoints.deduplication.get(sample=wc.sample).output[
-            0
-        ]
-        return {
-            "fq1": f"capcruncher_output/interim/fastq/deduplicated/{wc.sample}/{wc.sample}_part{wc.part}_1.fastq.gz",
-            "fq2": f"capcruncher_output/interim/fastq/deduplicated/{wc.sample}/{wc.sample}_part{wc.part}_2.fastq.gz",
-        }
-
     rule trim:
         input:
-            unpack(get_deduplicated_fastq),
+            unpack(get_deduplicated_fastq_pair),
         output:
             trimmed1=temp(
                 "capcruncher_output/interim/fastq/trimmed/{sample}/{sample}_part{part}_1.fastq.gz"
@@ -386,13 +402,13 @@ rule flash:
 
 checkpoint rebalance_partitions_combined:
     input:
-        flashed=get_combined_fastq,
+        flashed=get_flashed_fastq,
     output:
         directory("capcruncher_output/interim/fastq/rebalanced/{sample}/flashed/"),
     params:
         prefix=lambda wildcards, output: pathlib.Path(output[0]) / wildcards.sample,
         suffix=lambda wc: f"_flashed",
-        fq=lambda wc: ",".join(get_combined_fastq(wc)),
+        fq=lambda wc: ",".join(get_flashed_fastq(wc)),
         n_reads=str(config["split"].get("n_reads", 1e6)),
     log:
         "capcruncher_output/logs/rebalance_partitions/{sample}_flashed.log",
@@ -460,9 +476,46 @@ checkpoint rebalance_partitions_pe:
         """
 
 
+rule count_parts_rebalanced:
+    input:
+        flashed=lambda wc: checkpoints.rebalance_partitions_combined.get(**wc).output[0],
+        pe=lambda wc: checkpoints.rebalance_partitions_pe.get(**wc).output[0],
+    output:
+        "capcruncher_output/resources/rebalanced/{sample}.json",
+    log:
+        "capcruncher_output/logs/count_parts/{sample}.log",
+    container:
+        None
+    run:
+        import pathlib
+        import json
+        import re
+
+        parts = dict()
+
+        for combined_type in ["flashed", "pe"]:
+            fq_files = pathlib.Path(input[combined_type]).glob("*.fastq.gz")
+            parts[combined_type] = list(
+                sorted(
+                    set(
+                        [
+                            int(re.search(r"part(\d+)", f.name).group(1))
+                            for f in fq_files
+                            if re.search(r"part(\d+)", f.name)
+                        ]
+                    )
+                )
+            )
+
+        with open(output[0], "w") as f:
+            json.dump(parts, f)
+
+
+
 rule digest_flashed_combined:
     input:
-        flashed=get_rebalanced_fastq_combined,
+        flashed="capcruncher_output/interim/fastq/rebalanced/{sample}/flashed/{sample}_part{part}_1.fastq.gz",
+        n_parts="capcruncher_output/resources/rebalanced/{sample}.json",
     output:
         digested=temp(
             "capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_flashed.fastq.gz"
@@ -510,7 +563,9 @@ rule digest_flashed_combined:
 
 rule digest_flashed_pe:
     input:
-        unpack(get_rebalanced_fastq_pe),
+        pe1="capcruncher_output/interim/fastq/rebalanced/{sample}/pe/{sample}_part{part}_pe_1.fastq.gz",
+        pe2="capcruncher_output/interim/fastq/rebalanced/{sample}/pe/{sample}_part{part}_pe_2.fastq.gz",
+        n_parts="capcruncher_output/resources/rebalanced/{sample}.json",
     output:
         digested=temp(
             "capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_pe.fastq.gz"

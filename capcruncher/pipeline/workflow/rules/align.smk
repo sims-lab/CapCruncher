@@ -1,3 +1,30 @@
+import capcruncher.pipeline.utils
+
+
+def get_rebalanced_parts(wildcards, combined: Literal["flashed", "pe"] = None):
+
+    # Confirm that the checkpoint has been run
+    checkpoints.rebalance_partitions_combined.get(**wildcards)
+
+    combined = combined or wildcards.combined
+    with open("capcruncher_output/resources/rebalanced/{wildcards.sample}.json") as f:
+        rebalanced = json.load(f)
+
+    if wildcards.combined == "flashed":
+        return rebalanced["flashed"]
+    else:
+        return rebalanced["pe"]
+
+
+def get_rebalanced_bam(wildcards):
+    bam = []
+    for combined_type in ["flashed", "pe"]:
+        for part in get_rebalanced_parts(wildcards, combined_type):
+            bam.append(
+                f"capcruncher_output/interim/aligned/{wildcards.sample}/{wildcards.sample}_part{part}_{combined_type}.sorted.bam"
+            )
+
+
 rule align_bowtie2:
     input:
         fastq="capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_{combined}.fastq.gz",
@@ -38,31 +65,10 @@ rule sort_bam_partitions:
         """
 
 
-def get_rebalanced_bam(wc):
-
-    parts_combined = get_rebalanced_parts(wc, combined="flashed")
-    parts_pe = get_rebalanced_parts(wc, combined="pe")
-
-    bam_combined = expand(
-        "capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam",
-        sample=wc.sample,
-        part=parts_combined,
-        combined=["flashed"],
-    )
-
-    bam_pe = expand(
-        "capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam",
-        sample=wc.sample,
-        part=parts_pe,
-        combined=["pe"],
-    )
-
-    return bam_combined + bam_pe
-
-
 rule merge_bam_partitions:
     input:
-        bam=get_rebalanced_bam,
+        bam=capcruncher.pipeline.utils.get_rebalanced_bam,
+        n_parts="capcruncher_output/resources/rebalanced/{sample}.json",
     output:
         bam="capcruncher_output/results/{sample}/{sample}.bam",
     shell:

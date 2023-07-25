@@ -1,9 +1,4 @@
-def get_summary_methods():
-    return [
-        m
-        for m in re.split(r"[,;\s+]", config["compare"].get("summary_methods", "mean,"))
-        if m
-    ]
+import capcruncher.pipeline.utils
 
 
 rule viewpoints_to_bigbed:
@@ -33,7 +28,7 @@ rule create_ucsc_hub:
         bigwigs_summary=expand(
             "capcruncher_output/results/comparisons/bigwigs/{group}.{method}-summary.{viewpoint}.bigWig",
             group=DESIGN["condition"].unique(),
-            method=get_summary_methods(),
+            method=SUMMARY_METHODS,
             viewpoint=VIEWPOINT_NAMES,
         )
         if AGGREGATE_SAMPLES
@@ -44,7 +39,7 @@ rule create_ucsc_hub:
             f"{a}-{b}"
                 for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
             ],
-            method=get_summary_methods(),
+            method=SUMMARY_METHODS,
             viewpoint=VIEWPOINT_NAMES,
         )
         if COMPARE_SAMPLES
@@ -70,72 +65,9 @@ rule create_ucsc_hub:
         "../scripts/make_ucsc_hub.py"
 
 
-def get_files_to_plot(wc):
-    files = {
-        "bigwigs": [],
-        "subtractions": [],
-        "bigwigs_collection": [],
-        "heatmaps": [],
-    }
-
-    if ASSAY == "tiled":
-        files["heatmaps"].extend(
-            expand(
-                "capcruncher_output/results/{sample}/{sample}.hdf5",
-                sample=SAMPLE_NAMES,
-            )
-        )
-        return files
-
-    if COMPARE_SAMPLES:
-        bigwigs_comparison = expand(
-            "capcruncher_output/results/comparisons/bigwigs/{comparison}.{method}-subtraction.{{viewpoint}}.bigWig",
-            comparison=[
-                f"{a}-{b}"
-                for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
-            ],
-            method=get_summary_methods(),
-        )
-
-        files["subtractions"].extend(bigwigs_comparison)
-
-    bigwigs = expand(
-        "capcruncher_output/results/{sample}/bigwigs/norm/{sample}_{{viewpoint}}.bigWig",
-        sample=SAMPLE_NAMES,
-    )
-
-    # if AGGREGATE_SAMPLES:
-    #     files["bigwigs_collection"].extend(bigwigs)
-    # else:
-    #     files["bigwigs"].extend(bigwigs)
-
-    files["bigwigs"].extend(bigwigs)
-
-    return files
-
-
-def get_plotting_coordinates(wc):
-    plot_coords = config["plot"].get("coordinates", None)
-
-    if plot_coords and pathlib.Path(plot_coords).exists():
-        df = pd.read_table(
-            plot_coords, names=["chrom", "start", "end", "name"], header=None
-        )
-        df = df.query("name.str.contains(@wc.viewpoint)").iloc[0]
-
-    else:
-        df = pd.read_table(
-            VIEWPOINTS, names=["chrom", "start", "end", "name"], header=None
-        )
-
-        df = df.query("name == @wc.viewpoint").iloc[0]
-
-    return f"{df.chrom}:{df.start}-{df.end}"
-
-
 rule plot:
     input:
-        unpack(get_files_to_plot),
+        unpack(capcruncher.pipeline.utils.get_files_to_plot),
         viewpoints=config["analysis"]["viewpoints"],
     output:
         template="capcruncher_output/results/figures/{viewpoint}.toml",
