@@ -7,7 +7,7 @@ rule fastqc:
     input:
         fq=lambda wc: FASTQ_SAMPLES.translation[f"{wc.sample}_{wc.read}.fastq.gz"],
     output:
-        qc=temp("capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html"),
+        qc="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
     params:
         outdir=lambda wc, output: str(pathlib.Path(output.qc).parent),
         tmpdir="capcruncher_output/interim/qc/fastqc/{sample}_{read}",
@@ -34,7 +34,7 @@ rule samtools_stats:
         bam="capcruncher_output/results/{sample}/{sample}.bam",
         bai="capcruncher_output/results/{sample}/{sample}.bam.bai",
     output:
-        stats=temp("capcruncher_output/interim/qc/alignment_raw/{sample}.txt"),
+        stats="capcruncher_output/interim/qc/alignment_raw/{sample}.txt",
     threads: 1
     resources:
         mem_mb=1000,

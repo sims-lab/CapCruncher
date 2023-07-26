@@ -24,9 +24,7 @@ rule annotate:
         exclusions="capcruncher_output/interim/annotate/exclude.bed",
         viewpoints=config["analysis"]["viewpoints"],
     output:
-        annotated=temp(
-            "capcruncher_output/interim/annotate/{sample}/{sample}_part{part}_{combined}.parquet"
-        ),
+        annotated="capcruncher_output/interim/annotate/{sample}/{sample}_part{part}_{combined}.parquet",
     params:
         annotation_files_and_params=capcruncher.pipeline.utils.format_annotation_parameters(
             workflow, config

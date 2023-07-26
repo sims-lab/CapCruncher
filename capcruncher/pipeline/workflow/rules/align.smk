@@ -52,9 +52,7 @@ rule align_bowtie2:
     input:
         fastq="capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_{combined}.fastq.gz",
     output:
-        bam=temp(
-            "capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined,(flashed|pe)}.bam"
-        ),
+        bam="capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined,(flashed|pe)}.bam",
     resources:
         mem_mb=4000,
     params:
@@ -76,9 +74,7 @@ rule sort_bam_partitions:
     input:
         bam=rules.align_bowtie2.output.bam,
     output:
-        bam=temp(
-            "capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam"
-        ),
+        bam="capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam",
     threads: 4
     log:
         "capcruncher_output/logs/align/{sample}_{part}_{combined}_sort.log",
