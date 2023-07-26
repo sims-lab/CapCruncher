@@ -33,11 +33,14 @@ def deduplicate(
             slices_tbl_raw[["chrom", "start", "end", "parent_id"]]
             .order_by(["chrom", "start", "end", "parent_id"])
             .group_by(by="parent_id", order_by=["chrom", "start", "end"])
+            .order_by(["chrom", "start", "end", "parent_id"])
+            .group_by(by="parent_id", order_by=["chrom", "start", "end"])
             .mutate(
                 slice_f_chrom=_.chrom.first(),
                 slice_f_start=_.start.first(),
                 slice_l_end=_.end.last(),
             )
+            .group_by(["slice_f_chrom", "slice_f_start", "slice_l_end"])
             .group_by(["slice_f_chrom", "slice_f_start", "slice_l_end"])
             .mutate(pid=_.parent_id.first())[["pid"]]
             .distinct()["pid"]
@@ -49,7 +52,9 @@ def deduplicate(
         query = (
             slices_tbl_raw[["coordinates", "parent_id"]]
             .group_by(by="parent_id", order_by=["coordinates"])
+            .group_by(by="parent_id", order_by=["coordinates"])
             .aggregate(coordinates=lambda t: t.coordinates.group_concat(","))
+            .group_by("coordinates")
             .group_by("coordinates")
             .mutate(parent_id_unique=_.parent_id.first())[["parent_id_unique"]]
             .distinct()["parent_id_unique"]
