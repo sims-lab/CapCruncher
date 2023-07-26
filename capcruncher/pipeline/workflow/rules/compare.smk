@@ -27,18 +27,22 @@ rule compare_interactions:
     input:
         "capcruncher_output/results/comparisons/counts_per_viewpoint/norm/{viewpoint}.tsv",
     output:
-        bedgraphs_summary=expand(
-            "capcruncher_output/interim/comparisons/summaries_and_subtractions/{group}.{method}-summary.{{viewpoint}}.bedgraph",
-            group=DESIGN["condition"].unique(),
-            method=SUMMARY_METHODS,
+        bedgraphs_summary=temp(
+            expand(
+                "capcruncher_output/interim/comparisons/summaries_and_subtractions/{group}.{method}-summary.{{viewpoint}}.bedgraph",
+                group=DESIGN["condition"].unique(),
+                method=SUMMARY_METHODS,
+            )
         ),
-        bedgraphs_compare=expand(
-            "capcruncher_output/interim/comparisons/summaries_and_subtractions/{comparison}.{method}-subtraction.{{viewpoint}}.bedgraph",
-            comparison=[
-            f"{a}-{b}"
-                for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
-            ],
-            method=SUMMARY_METHODS,
+        bedgraphs_compare=temp(
+            expand(
+                "capcruncher_output/interim/comparisons/summaries_and_subtractions/{comparison}.{method}-subtraction.{{viewpoint}}.bedgraph",
+                comparison=[
+                f"{a}-{b}"
+                    for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
+                ],
+                method=SUMMARY_METHODS,
+            )
         ),
     params:
         output_prefix=lambda wc, output: f"{pathlib.Path(output[0]).parent}/",

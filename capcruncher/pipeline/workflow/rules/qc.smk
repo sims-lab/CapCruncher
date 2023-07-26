@@ -34,7 +34,7 @@ rule samtools_stats:
         bam="capcruncher_output/results/{sample}/{sample}.bam",
         bai="capcruncher_output/results/{sample}/{sample}.bam.bai",
     output:
-        stats="capcruncher_output/interim/qc/alignment_raw/{sample}.txt",
+        stats=temp("capcruncher_output/interim/qc/alignment_raw/{sample}.txt"),
     threads: 1
     resources:
         mem_mb=1000,

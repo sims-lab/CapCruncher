@@ -197,7 +197,8 @@ rule make_report:
         -P reporter_read_path:$(realpath {input.reporters}) \
         -P reporter_cis_trans_path:$(realpath {input.cis_and_trans_stats}) \
         -P run_stats_path:$(realpath {input.read_level_stats}) \
-        --log {log}
+        --log {log} \
+        2> {log}.err;
 
         rm {params.outdir}/capcruncher_report.qmd
         """
