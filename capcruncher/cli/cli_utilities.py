@@ -7,6 +7,7 @@ import os
 from loguru import logger
 from capcruncher.utils import get_file_type
 import ibis
+from ibis import _
 
 
 @click.group()
@@ -75,8 +76,12 @@ def cis_and_trans_stats(
     )
 
     df_cis_and_trans = (
-        tbl_merge.group_by(["viewpoint", "is_cis", "pe"]).size()
-    ).execute(limit=None)
+        tbl_merge.group_by(["viewpoint", "is_cis", "pe"])
+        .aggregate(
+            count=_.count(),
+        )
+        .execute(limit=None)
+    )
 
     df_cis_and_trans = (
         df_cis_and_trans.rename(columns={"pe": "read_type", "is_cis": "cis/trans"})
