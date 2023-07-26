@@ -206,7 +206,9 @@ def test_pipeline(config, cores):
         cores = 1
 
     try:
-        result = subprocess.run(["capcruncher", "pipeline", "-c", cores, "all", "-p"])
+        result = subprocess.run(
+            ["capcruncher", "pipeline", "-c", str(cores), "all", "-p"]
+        )
     except Exception as e:
         print(e)
         raise e
