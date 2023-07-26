@@ -150,7 +150,7 @@ onerror:
 
 
 onsuccess:
-    log_out = "capcruncher_success.log"
+    log_out = "capcruncher.log"
     shutil.copyfile(log, log_out)
     print(f"Pipeline completed successfully. See {log_out} for more information.")
 
