@@ -8,7 +8,9 @@ if CAPCRUNCHER_TOOLS:
             restriction_fragment_map=rules.digest_genome.output.bed,
             viewpoints=VIEWPOINTS,
         output:
-            "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5",
+            temp(
+                "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5"
+            ),
         log:
             "capcruncher_output/logs/counts/{sample}.log",
         threads: 8
@@ -37,7 +39,9 @@ else:
             restriction_fragment_map=rules.digest_genome.output.bed,
             viewpoints=VIEWPOINTS,
         output:
-            "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5",
+            temp(
+                "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5"
+            ),
         log:
             "capcruncher_output/logs/counts/{sample}.log",
         threads: 8
@@ -65,7 +69,7 @@ rule bin_counts:
     input:
         "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5",
     output:
-        "capcruncher_output/pileups/counts_by_genomic_bin/{sample}.hdf5",
+        temp("capcruncher_output/pileups/counts_by_genomic_bin/{sample}.hdf5"),
     params:
         bin_size=[f"-b {b}" for b in BIN_SIZES],
     log:
@@ -109,7 +113,9 @@ rule bedgraph_raw:
     input:
         cooler=rules.merge_counts.output,
     output:
-        bedgraph="capcruncher_output/interim/pileups/bedgraphs/{sample}/raw/{sample}_{viewpoint}.bedgraph",
+        bedgraph=temp(
+            "capcruncher_output/interim/pileups/bedgraphs/{sample}/raw/{sample}_{viewpoint}.bedgraph"
+        ),
     log:
         "capcruncher_output/logs/bedgraph_raw/{sample}_{viewpoint}.log",
     params:
@@ -133,7 +139,9 @@ rule bedgraph_normalised:
     input:
         cooler=rules.merge_counts.output,
     output:
-        bedgraph="capcruncher_output/interim/pileups/bedgraphs/{sample}/norm/{sample}_{viewpoint}.bedgraph",
+        bedgraph=temp(
+            "capcruncher_output/interim/pileups/bedgraphs/{sample}/norm/{sample}_{viewpoint}.bedgraph"
+        ),
     log:
         "capcruncher_output/logs/bedgraph_norm/{sample}_{viewpoint}.log",
     params:
