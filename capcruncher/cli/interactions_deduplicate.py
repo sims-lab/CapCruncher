@@ -33,14 +33,14 @@ def deduplicate(
         logger.info("Identifying unique fragment IDs")
         query = (
             slices_tbl_raw[["chrom", "start", "end", "parent_id"]]
-            .sort_by(["chrom", "start", "end", "parent_id"])
-            .groupby(by="parent_id", order_by=["chrom", "start", "end"])
+            .order_by(["chrom", "start", "end", "parent_id"])
+            .group_by(by="parent_id", order_by=["chrom", "start", "end"])
             .mutate(
                 slice_f_chrom=_.chrom.first(),
                 slice_f_start=_.start.first(),
                 slice_l_end=_.end.last(),
             )
-            .groupby(["slice_f_chrom", "slice_f_start", "slice_l_end"])
+            .group_by(["slice_f_chrom", "slice_f_start", "slice_l_end"])
             .mutate(pid=_.parent_id.first())[["pid"]]
             .distinct()["pid"]
         )
@@ -51,9 +51,9 @@ def deduplicate(
 
         query = (
             slices_tbl_raw[["coordinates", "parent_id"]]
-            .groupby(by="parent_id", order_by=["coordinates"])
+            .group_by(by="parent_id", order_by=["coordinates"])
             .aggregate(coordinates=lambda t: t.coordinates.group_concat(","))
-            .groupby("coordinates")
+            .group_by("coordinates")
             .mutate(parent_id_unique=_.parent_id.first())[["parent_id_unique"]]
             .distinct()["parent_id_unique"]
         )
@@ -86,7 +86,7 @@ def deduplicate(
     logger.info("Calculating deduplication stats")
     # Calculate the number of slices in the input
     n_reads_total = (
-        slices_tbl_raw.groupby("parent_id").count()["count"].sum().execute(limit=None)
+        slices_tbl_raw.group_by("parent_id").count()["count"].sum().execute(limit=None)
     )
 
     # Calculate the number of slices in the output
@@ -151,7 +151,7 @@ def deduplicate(
 #     tbl = con.table("fragments_tbl")
 #     t = (tbl
 #           [["chrom", "start", "end", "parent_id"]]
-#           .sort_by(["chrom", "start", "end", "parent_id"])
+#           .order_by(["chrom", "start", "end", "parent_id"])
 #           .groupby(by="parent_id", order_by=["chrom", "start", "end"])
 #           .mutate(slice_f_chrom=_.chrom.first(),
 #                   slice_f_start=_.start.first(),
