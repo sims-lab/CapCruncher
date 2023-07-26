@@ -478,7 +478,9 @@ rule digest_flashed_combined:
         flashed="capcruncher_output/interim/fastq/rebalanced/{sample}/flashed/{sample}_part{part}_flashed_1.fastq.gz",
         sentinel="capcruncher_output/interim/fastq/rebalanced/{sample}/flashed/.complete.sentinel",
     output:
-        digested="capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_flashed.fastq.gz",
+        digested=temp(
+            "capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_flashed.fastq.gz"
+        ),
         stats_read="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.read.summary.csv",
         stats_unfiltered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.unfiltered.histogram.csv",
         stats_filtered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.filtered.histogram.csv",
@@ -520,7 +522,9 @@ rule digest_flashed_pe:
         pe2="capcruncher_output/interim/fastq/rebalanced/{sample}/pe/{sample}_part{part}_pe_2.fastq.gz",
         sentinel="capcruncher_output/interim/fastq/rebalanced/{sample}/pe/.complete.sentinel",
     output:
-        digested="capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_pe.fastq.gz",
+        digested=temp(
+            "capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_pe.fastq.gz"
+        ),
         stats_read="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.read.summary.csv",
         stats_unfiltered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.unfiltered.histogram.csv",
         stats_filtered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.filtered.histogram.csv",
