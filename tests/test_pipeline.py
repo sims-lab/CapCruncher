@@ -195,13 +195,18 @@ def config(
 
 
 @pytest.mark.order(1)
-def test_pipeline(config):
+def test_pipeline(config, cores):
     from sh import capcruncher
     import sys
     import subprocess
 
+    if cores:
+        cores = cores
+    else:
+        cores = 1
+
     try:
-        result = subprocess.run(["capcruncher", "pipeline", "-c", "2", "all", "-p"])
+        result = subprocess.run(["capcruncher", "pipeline", "-c", cores, "all", "-p"])
     except Exception as e:
         print(e)
         raise e
