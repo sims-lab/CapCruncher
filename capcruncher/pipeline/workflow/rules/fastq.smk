@@ -341,8 +341,12 @@ else:
         input:
             unpack(get_deduplicated_fastq_pair),
         output:
-            trimmed1="capcruncher_output/interim/fastq/trimmed/{sample}/{sample}_part{part}_1.fastq.gz",
-            trimmed2="capcruncher_output/interim/fastq/trimmed/{sample}/{sample}_part{part}_2.fastq.gz",
+            trimmed1=temp(
+                "capcruncher_output/interim/fastq/trimmed/{sample}/{sample}_part{part}_1.fastq.gz"
+            ),
+            trimmed2=temp(
+                "capcruncher_output/interim/fastq/trimmed/{sample}/{sample}_part{part}_2.fastq.gz"
+            ),
         params:
             outdir="capcruncher_output/interim/fastq/trimmed/{sample}/",
         threads: 4
@@ -366,8 +370,12 @@ rule flash:
         flashed="capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.extendedFrags.fastq.gz",
         pe1="capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.notCombined_1.fastq.gz",
         pe2="capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.notCombined_2.fastq.gz",
-        hist="capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.hist",
-        histogram="capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.histogram",
+        hist=temp(
+            "capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.hist"
+        ),
+        histogram=temp(
+            "capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.histogram"
+        ),
     params:
         outdir="capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}",
     threads: 4
