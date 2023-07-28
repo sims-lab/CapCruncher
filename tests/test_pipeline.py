@@ -240,8 +240,8 @@ def test_bigwigs_exist(run_dir_capture, n_samples, n_groups, n_viewpoints):
     )
 
     bigwigs = list(
-        pathlib.Path(run_dir_capture / "capcruncher_output/pileups/bigwigs/").glob(
-            "*.bigWig"
+        pathlib.Path(run_dir_capture / "capcruncher_output/results/").glob(
+            "**/*.bigWig"
         )
     )
     assert len(bigwigs) == n_bigwigs_expected
