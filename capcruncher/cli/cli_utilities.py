@@ -39,10 +39,16 @@ def gtf_to_bed12(gtf: str, output: str):
 @click.argument("slices")
 @click.option("-o", "--output", help="Output file name")
 @click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
+@click.option(
+    "--assay",
+    help="Assay used to generate slices",
+    type=click.Choice(["capture", "tri", "tiled"]),
+)
 def cis_and_trans_stats(
     slices: str,
     output: str,
     sample_name: str,
+    assay: Literal["capture", "tri", "tiled"] = "capture",
 ):
     con = ibis.duckdb.connect()
 
@@ -55,33 +61,61 @@ def cis_and_trans_stats(
         ["capture", "parent_id", "chrom", "viewpoint", "pe"]
     )
 
-    tbl_reporter = tbl[(tbl["capture"] == "reporter")].drop(
-        "viewpoint", "pe", "capture"
-    )
-
-    tbl_capture = tbl[~(tbl["capture"] == "reporter")]
-
-    tbl_merge = tbl_capture.join(
-        tbl_reporter,
-        predicates=[
-            "parent_id",
-        ],
-        lname="{name}_capture",
-        rname="{name}_reporter",
-        how="left",
-    )
-
-    tbl_merge = tbl_merge.mutate(
-        is_cis=(tbl_merge["chrom_capture"] == tbl_merge["chrom_reporter"])
-    )
-
-    df_cis_and_trans = (
-        tbl_merge.group_by(["viewpoint", "is_cis", "pe"])
-        .aggregate(
-            count=_.count(),
+    if assay in ["capture", "tri"]:
+        tbl_reporter = tbl[(tbl["capture"] == "reporter")].drop(
+            "viewpoint", "pe", "capture"
         )
-        .execute(limit=None)
-    )
+
+        tbl_capture = tbl[~(tbl["capture"] == "reporter")]
+
+        tbl_merge = tbl_capture.join(
+            tbl_reporter,
+            predicates=[
+                "parent_id",
+            ],
+            lname="{name}_capture",
+            rname="{name}_reporter",
+            how="left",
+        )
+
+        tbl_merge = tbl_merge.mutate(
+            is_cis=(tbl_merge["chrom_capture"] == tbl_merge["chrom_reporter"])
+        )
+
+        df_cis_and_trans = (
+            tbl_merge.group_by(["viewpoint", "is_cis", "pe"])
+            .aggregate(
+                count=_.count(),
+            )
+            .execute(limit=None)
+        )
+
+    else:
+        viewpoint_chroms = (
+            tbl.filter(tbl["capture"] != "reporter")
+            .group_by(["viewpoint", "chrom"])
+            .aggregate(chrom_count=_.count())
+            .order_by(ibis.desc("chrom_count"))
+            .to_pandas()
+            .drop_duplicates("viewpoint")
+            .set_index("viewpoint")
+            .to_dict()["chrom"]
+        )
+
+        chrom_mapping_exp = ibis.case()
+        for k, v in viewpoint_chroms.items():
+            chrom_mapping_exp = chrom_mapping_exp.when(tbl.viewpoint == k, v)
+        chrom_mapping_exp = chrom_mapping_exp.end()
+
+        df_cis_and_trans = (
+            tbl.mutate(cis_chrom=chrom_mapping_exp)
+            .mutate(is_cis=_.chrom == _.cis_chrom)
+            .group_by(["viewpoint", "parent_id", "is_cis", "pe"])
+            .aggregate(count=_.count())
+            .group_by(["viewpoint", "is_cis", "pe"])
+            .aggregate(cis_count=_["count"].sum())
+            .execute(limit=None)
+        )
 
     df_cis_and_trans = (
         df_cis_and_trans.rename(columns={"pe": "read_type", "is_cis": "cis/trans"})
