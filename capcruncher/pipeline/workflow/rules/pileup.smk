@@ -92,7 +92,7 @@ rule bin_counts:
 
 rule merge_counts:
     input:
-        capcruncher.pipeline.utils.get_count_files,
+        lambda wc: capcruncher.pipeline.utils.get_count_files(wc, PERFORM_BINNING),
     output:
         "capcruncher_output/results/{sample}/{sample}.hdf5",
     log:
