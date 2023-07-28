@@ -39,7 +39,7 @@ rule annotate:
         else "",
     threads: 6
     resources:
-        mem_mb=5000,
+        mem_mb=lambda wildcards, attempt: 2000 * 2**attempt,
     log:
         "capcruncher_output/logs/annotate/{sample}/{sample}_part{part}_{combined}.log",
     shell:
