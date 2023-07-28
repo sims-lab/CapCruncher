@@ -125,8 +125,8 @@ rule merge_stats_filtering_and_alignment_deduplication:
         "capcruncher_output/logs/merge_stats_filtering_and_alignment_deduplication.log",
     shell:
         """
-        cat {input.filtering} > {output}
-        cat {input.alignment_deduplication} | sed '1d' >> {output}
+        cat {input.filtering} > {output} 2> {log};
+        cat {input.alignment_deduplication} | sed '1d' >> {output} 2>> {log};
         """
 
 
