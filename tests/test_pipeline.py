@@ -252,7 +252,7 @@ def test_reporters_are_binned(run_dir_tiled, binsizes):
     import cooler
 
     example_cooler = (
-        run_dir_tiled / "capcruncher_output/pileups/counts/SAMPLE-A_REP1.hdf5"
+        run_dir_tiled / "capcruncher_output/results/SAMPLE-A_REP1/SAMPLE-A_REP1.hdf5"
     )
     cooler_groups = cooler.api.list_coolers(str(example_cooler))
     assert len(cooler_groups) == len(binsizes) + 1
