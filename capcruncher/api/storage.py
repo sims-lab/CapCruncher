@@ -44,6 +44,7 @@ def create_cooler_cc(
     viewpoint_name: str,
     viewpoint_path: os.PathLike,
     viewpoint_bins: Union[int, list] = None,
+    assay: Literal["capture", "tri", "tiled"] = "capture",
     suffix=None,
     **cooler_kwargs,
 ) -> os.PathLike:
@@ -97,7 +98,13 @@ def create_cooler_cc(
     # Get the number of cis interactions, required for normalisation.
     bins_cis = bins.loc[
         lambda df: df["chrom"].isin([c["chrom"] for c in viewpoint_coords])
-    ]["name"].loc[lambda ser: ~ser.isin(viewpoint_bins)]
+    ]["name"]
+
+    if assay in [
+        "capture",
+        "tri",
+    ]:  # If capture or tri, remove viewpoint bins from cis bins
+        bins_cis = bins_cis.loc[lambda ser: ~ser.isin(viewpoint_bins)]
 
     pixels_cis = pixels.loc[
         lambda df: (df["bin1_id"].isin(bins_cis)) | (df["bin2_id"].isin(bins_cis))
