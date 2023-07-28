@@ -20,12 +20,8 @@ rule filter_alignments:
         filtered_slices=temp(
             "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet"
         ),
-        stats_read=temp(
-            "capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.read.stats.csv"
-        ),
-        stats_slice=temp(
-            "capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.slice.stats.csv"
-        ),
+        stats_read="capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.read.stats.csv",
+        stats_slice="capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.slice.stats.csv",
     params:
         analysis_method=config["analysis"]["method"],
         sample_name=lambda wildcards, output: wildcards.sample,
