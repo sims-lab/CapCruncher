@@ -441,7 +441,7 @@ checkpoint rebalance_partitions_pe:
     params:
         prefix=lambda wildcards, output: pathlib.Path(output[0]) / wildcards.sample,
         suffix=lambda wc: f"_pe",
-        n_reads=str((config["split"].get("n_reads", 1e6) * 4 // 2)),
+        n_reads=str((config["split"].get("n_reads", 1e6) // 2)),
         fq1=lambda wc: ",".join(separate_pe_fastq(wc)[1]),
         fq2=lambda wc: ",".join(separate_pe_fastq(wc)[2]),
     log:
@@ -559,3 +559,7 @@ rule digest_flashed_pe:
         {wildcards.sample} \
         > {log} 2>&1
         """
+
+
+localrules:
+    fastq_rename,
