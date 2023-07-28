@@ -141,6 +141,7 @@ rule cis_and_trans_stats:
         utilities \
         cis-and-trans-stats \
         {input.slices} \
+        --assay {params.analysis_method} \
         --sample-name {params.sample_name} \
         -o {output.stats} \
         """
