@@ -138,6 +138,8 @@ rule combine_stats_cis_and_trans:
         ),
     output:
         cis_and_trans_stats="capcruncher_output/interim/statistics/cis_and_trans_reporters/cis_and_trans_reporters.csv",
+    log:
+        "capcruncher_output/logs/statistics/combine_stats_cis_and_trans_stats.log",
     script:
         "../scripts/combine_cis_and_trans_stats.py"
 

@@ -113,7 +113,7 @@ def cis_and_trans_stats(
             .group_by(["viewpoint", "parent_id", "is_cis", "pe"])
             .aggregate(count=_.count())
             .group_by(["viewpoint", "is_cis", "pe"])
-            .aggregate(cis_count=_["count"].sum())
+            .aggregate(count=_["count"].sum())
             .execute(limit=None)
         )
 
