@@ -220,8 +220,7 @@ def test_pipeline(config, cores):
 def test_stats_exist(run_dir_capture):
     run_dir_capture = pathlib.Path(run_dir_capture)
     assert (
-        run_dir_capture
-        / "capcruncher_output/interim/statistics/capcruncher_report.html"
+        run_dir_capture / "capcruncher_output/results/capcruncher_report.html"
     ).exists()
 
 
