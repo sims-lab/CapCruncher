@@ -16,7 +16,6 @@ def deduplicate(
     sample_name: str = "",
     stats_prefix: os.PathLike = "",
 ):
-
     logger.info("Connecting to DuckDB")
     con = ibis.duckdb.connect()
 
@@ -28,13 +27,13 @@ def deduplicate(
         )
 
     if read_type == "pe":
-
         logger.info("Read type is PE")
         logger.info("Identifying unique fragment IDs")
         query = (
             slices_tbl_raw[["chrom", "start", "end", "parent_id"]]
             .order_by(["chrom", "start", "end", "parent_id"])
             .group_by(by="parent_id", order_by=["chrom", "start", "end"])
+            .order_by(["chrom", "start", "end", "parent_id"])
             .mutate(
                 slice_f_chrom=_.chrom.first(),
                 slice_f_start=_.start.first(),
@@ -45,7 +44,6 @@ def deduplicate(
             .distinct()["pid"]
         )
     elif read_type == "flashed":
-
         logger.info("Read type is Flashed")
         logger.info("Identifying unique fragment IDs")
 
@@ -85,8 +83,12 @@ def deduplicate(
 
     logger.info("Calculating deduplication stats")
     # Calculate the number of slices in the input
+
     n_reads_total = (
-        slices_tbl_raw.group_by("parent_id").count()["count"].sum().execute(limit=None)
+        slices_tbl_raw.group_by("parent_id")
+        .agg([_.count().name("count")])["count"]
+        .sum()
+        .execute(limit=None)
     )
 
     # Calculate the number of slices in the output

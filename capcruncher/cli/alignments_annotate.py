@@ -193,12 +193,11 @@ def annotate(
         )
 
     logger.info("Setting-up intersection(s)")
-
     ray.init(num_cpus=n_cores, ignore_reinit_error=True, include_dashboard=False)
     pr_slices = convert_bed_to_pr(slices)
     pr_slices_ref = ray.put(pr_slices)
 
-    results = []
+    futures = []
     for bed, name, action, fraction in zip(
         bed_files,
         names,
@@ -206,20 +205,21 @@ def annotate(
         cycle_argument(overlap_fractions),
     ):
 
+        logger.info(f"Setting-up intersection for {bed}")
         bfi = BedFileIntersection.remote(
-            bed_a=pr_slices_ref,
+            bed_a=pr_slices,
             bed_b=bed,
             name=name,
             action=action,
             fraction=fraction,
         )
-        results.append(bfi.intersection.remote())
+        futures.append(bfi.intersection.remote())
 
     # Collate results
     df_annotation = pr_slices.df.set_index("Name")
 
-    while len(results):
-        done_id, results = ray.wait(results)
+    while len(futures):
+        done_id, futures = ray.wait(futures)
 
         for ref in done_id:
             ser_new = ray.get(ref)

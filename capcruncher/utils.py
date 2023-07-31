@@ -1,22 +1,20 @@
-from loguru import logger
 import os
 import pickle
 import re
-import time
-from datetime import timedelta
 from functools import wraps
-from typing import Callable, Generator, Iterable, Tuple, Union
+from typing import Generator, Iterable, Tuple, Union, Callable
 import pandas as pd
 import pybedtools
 import ujson
 import xxhash
 from pybedtools import BedTool
-import ray
 import pyranges as pr
 import pysam
 
 
 def read_dataframes(filenames: Iterable, **kwargs):
+    from loguru import logger
+
     dframes = []
     for fn in filenames:
         try:
@@ -88,6 +86,7 @@ def get_human_readable_number_of_bp(bp: int) -> str:
 
 
 def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
+    from loguru import logger
 
     """Returns true if bed file can be opened and has at least 3 columns"""
     try:
@@ -235,6 +234,9 @@ def get_timing(task_name=None) -> Callable:
     """Decorator:
     Gets the time taken by the wrapped function
     """
+    import time
+    from datetime import timedelta
+    from loguru import logger
 
     def wrapper(f):
         @wraps(f)
@@ -290,7 +292,13 @@ def categorise_tracks(ser: pd.Series) -> list:
 
 
 def convert_bed_to_pr(
-    bed: Union[str, pybedtools.BedTool, pd.DataFrame, pr.PyRanges, ray.ObjectRef],
+    bed: Union[
+        str,
+        pybedtools.BedTool,
+        pd.DataFrame,
+        pr.PyRanges,
+        "ray.ObjectRef",  # noqa: F821
+    ],
     ignore_ray_objrefs=True,
 ) -> pr.PyRanges:
     """Converts a bed file to a PyRanges object.
@@ -300,6 +308,9 @@ def convert_bed_to_pr(
     Returns:
         pr.PyRanges: PyRanges object.
     """
+
+    from loguru import logger
+    import ray
 
     if isinstance(bed, str):
         converted = pr.read_bed(bed)
@@ -344,10 +355,12 @@ def convert_bed_to_pr(
 
 
 def convert_bed_to_dataframe(
-    bed: Union[str, BedTool, pd.DataFrame, ray.ObjectRef, pr.PyRanges],
+    bed: Union[str, BedTool, pd.DataFrame, "ray.ObjectRef", pr.PyRanges],  # noqa: F821
     ignore_ray_objrefs=False,
 ) -> pd.DataFrame:
     """Converts a bed like object (including paths to bed files) to a pd.DataFrame"""
+    from loguru import logger
+    import ray
 
     if isinstance(bed, str):
         bed_conv = BedTool(bed).to_dataframe()
@@ -373,6 +386,7 @@ def convert_bed_to_dataframe(
 
 
 def is_tabix(file: str):
+    from loguru import logger
 
     _is_tabix = False
 
@@ -504,6 +518,7 @@ def get_file_type(fn: os.PathLike) -> str:
     Returns:
         str: File type
     """
+    from loguru import logger
 
     file_types = {
         "hdf5": "hdf5",

@@ -31,6 +31,11 @@ class BedFileIntersection:
 
         self.pr_a = convert_bed_to_pr(self.a, ignore_ray_objrefs=True)
 
+        import logging
+
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+
     def _get_intersection(self, pr_b: pr.PyRanges):
 
         intersection = (
@@ -74,8 +79,9 @@ class BedFileIntersection:
                 _intersection = self._count_intersection(pr_b)
 
         except (OSError, IndexError, FileNotFoundError, StopIteration, AssertionError):
-            logger.error(
-                f"Bed file {self.b} raised an error. Skipping {self.name} intersection."
+
+            self.logger.warning(
+                f"Could not intersect {self.b} using {self.action} method."
             )
             _intersection = pd.Series(
                 data=pd.NA,

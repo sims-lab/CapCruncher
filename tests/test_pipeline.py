@@ -152,18 +152,18 @@ def config(
     cookiecutter(
         f"{package_path}/pipeline/config/",
         extra_context={
-            "method": method,
-            "design": design,
-            "viewpoints": viewpoints,
+            "method": str(method),
+            "design": str(design),
+            "viewpoints": str(viewpoints),
             "genome": "mm9",
             "is_custom_genome": "no",
             "genome_organism": "Mus musculus",
-            "genome_fasta": fasta,
-            "genome_chromosome_sizes": chromsizes,
-            "genome_indicies": indicies,
+            "genome_fasta": str(fasta),
+            "genome_chromosome_sizes": str(chromsizes),
+            "genome_indicies": str(indicies),
             "restriction_enzyme": "dpnii",
             "remove_blacklist": "no",
-            "genomic_bin_size": binsizes,
+            "genomic_bin_size": " ".join([str(b) for b in binsizes]),
             "prioritize_cis_slices": "yes",
             "priority_chromosomes": "viewpoints",
             "make_ucsc_hub": "yes",
@@ -172,7 +172,7 @@ def config(
             "ucsc_hub_email": "Email address (UCSC required)",
             "ucsc_track_color_by": "samplename",
             "make_plots": "yes",
-            "plotting_coordinates": plot_coords,
+            "plotting_coordinates": str(plot_coords),
             "plotting_normalisation": "n_interactions",
             "differential_contrast": "condition",
         },
@@ -195,13 +195,20 @@ def config(
 
 
 @pytest.mark.order(1)
-def test_pipeline(config):
+def test_pipeline(config, cores):
     from sh import capcruncher
     import sys
     import subprocess
 
+    if cores:
+        cores = cores
+    else:
+        cores = 1
+
     try:
-        result = subprocess.run(["capcruncher", "pipeline", "-c", "2", "all", "-p"])
+        result = subprocess.run(
+            ["capcruncher", "pipeline", "-c", str(cores), "all", "-p"]
+        )
     except Exception as e:
         print(e)
         raise e
@@ -213,8 +220,7 @@ def test_pipeline(config):
 def test_stats_exist(run_dir_capture):
     run_dir_capture = pathlib.Path(run_dir_capture)
     assert (
-        run_dir_capture
-        / "capcruncher_output/interim/statistics/capcruncher_report.html"
+        run_dir_capture / "capcruncher_output/results/capcruncher_report.html"
     ).exists()
 
 
@@ -233,8 +239,8 @@ def test_bigwigs_exist(run_dir_capture, n_samples, n_groups, n_viewpoints):
     )
 
     bigwigs = list(
-        pathlib.Path(run_dir_capture / "capcruncher_output/pileups/bigwigs/").glob(
-            "*.bigWig"
+        pathlib.Path(run_dir_capture / "capcruncher_output/results/").glob(
+            "**/*.bigWig"
         )
     )
     assert len(bigwigs) == n_bigwigs_expected
@@ -245,7 +251,7 @@ def test_reporters_are_binned(run_dir_tiled, binsizes):
     import cooler
 
     example_cooler = (
-        run_dir_tiled / "capcruncher_output/pileups/counts/SAMPLE-A_REP1.hdf5"
+        run_dir_tiled / "capcruncher_output/results/SAMPLE-A_REP1/SAMPLE-A_REP1.hdf5"
     )
     cooler_groups = cooler.api.list_coolers(str(example_cooler))
     assert len(cooler_groups) == len(binsizes) + 1

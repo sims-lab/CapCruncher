@@ -1,7 +1,9 @@
 from collections import defaultdict
+import capcruncher.pipeline.utils
+from typing import List
 
 
-def get_digestion_statistics(wc):
+def get_digestion_statistics(wc, sample_names: List[str]):
     stat_types = {
         "read_level_stats": "digestion.read.summary.csv",
         "histogram_unfiltered": "digestion.unfiltered.histogram.csv",
@@ -9,7 +11,7 @@ def get_digestion_statistics(wc):
     }
 
     stat_prefixes = []
-    for sample in SAMPLE_NAMES:
+    for sample in sample_names:
         for combined in ["flashed", "pe"]:
             for part in get_rebalanced_parts(wc, combined=combined, sample=sample):
                 stat_prefixes.append(
@@ -24,14 +26,14 @@ def get_digestion_statistics(wc):
     return stat_files
 
 
-def get_filtering_statistics(wc):
+def get_filtering_statistics(wc, sample_names: List[str]):
     stat_types = {
         "read_level_stats": "read.stats.csv",
         "slice_level_stats": "slice.stats.csv",
     }
 
     stat_prefixes = []
-    for sample in SAMPLE_NAMES:
+    for sample in sample_names:
         for combined in ["flashed", "pe"]:
             for part in get_rebalanced_parts(wc, combined=combined, sample=sample):
                 stat_prefixes.append(
@@ -46,11 +48,10 @@ def get_filtering_statistics(wc):
     return stat_files
 
 
-def get_stat_parts(wc):
-
+def get_stat_parts(wc, sample_names: List[str]):
     files = []
-    for sample in SAMPLE_NAMES:
-        for part in get_parts(wc):
+    for sample in sample_names:
+        for part in get_fastq_split_1(wc):
             files.append(
                 f"capcruncher_output/interim/statistics/deduplication/data/{sample}_part{part}.deduplication.csv"
             )
@@ -83,7 +84,7 @@ else:
 
 rule combine_stats_digestion:
     input:
-        unpack(lambda wc: get_digestion_statistics(wc)),
+        unpack(lambda wc: get_digestion_statistics(wc, SAMPLE_NAMES)),
     output:
         read_data="capcruncher_output/interim/statistics/digestion/fastq_digestion.csv",
         histogram="capcruncher_output/interim/statistics/digestion/fastq_digestion.histogram.csv",
@@ -93,7 +94,7 @@ rule combine_stats_digestion:
 
 rule combine_stats_filtering:
     input:
-        unpack(get_filtering_statistics),
+        unpack(lambda wc: get_filtering_statistics(wc, SAMPLE_NAMES)),
     output:
         read_data="capcruncher_output/interim/statistics/filtering/alignment_filtering.csv",
         slice_data="capcruncher_output/interim/statistics/filtering/alignment_filtering_slice.csv",
@@ -124,8 +125,8 @@ rule merge_stats_filtering_and_alignment_deduplication:
         "capcruncher_output/logs/merge_stats_filtering_and_alignment_deduplication.log",
     shell:
         """
-        cat {input.filtering} > {output}
-        cat {input.alignment_deduplication} | sed '1d' >> {output}
+        cat {input.filtering} > {output} 2> {log};
+        cat {input.alignment_deduplication} | sed '1d' >> {output} 2>> {log};
         """
 
 
@@ -137,6 +138,8 @@ rule combine_stats_cis_and_trans:
         ),
     output:
         cis_and_trans_stats="capcruncher_output/interim/statistics/cis_and_trans_reporters/cis_and_trans_reporters.csv",
+    log:
+        "capcruncher_output/logs/statistics/combine_stats_cis_and_trans_stats.log",
     script:
         "../scripts/combine_cis_and_trans_stats.py"
 
@@ -196,7 +199,8 @@ rule make_report:
         -P reporter_read_path:$(realpath {input.reporters}) \
         -P reporter_cis_trans_path:$(realpath {input.cis_and_trans_stats}) \
         -P run_stats_path:$(realpath {input.read_level_stats}) \
-        --log {log}
+        --log {log} \
+        2> {log}.err;
 
         rm {params.outdir}/capcruncher_report.qmd
         """

@@ -1,3 +1,53 @@
+import capcruncher.pipeline.utils
+from typing import Literal
+
+
+def get_rebalanced_parts(
+    wildcards, combined: Literal["flashed", "pe"] = None, **kwargs
+):
+    combined = combined or wildcards.combined
+    import pathlib
+    import re
+
+    parts = dict()
+    outdirs = dict(
+        flashed=checkpoints.rebalance_partitions_combined.get(
+            **{**wildcards, **kwargs}
+        ).output[0],
+        pe=checkpoints.rebalance_partitions_pe.get(**{**wildcards, **kwargs}).output[0],
+    )
+
+    for combined_type in ["flashed", "pe"]:
+        fq_files = pathlib.Path(outdirs[combined_type]).glob("*.fastq.gz")
+        parts[combined_type] = list(
+            sorted(
+                set(
+                    [
+                        int(re.search(r"part(\d+)", f.name).group(1))
+                        for f in fq_files
+                        if re.search(r"part(\d+)", f.name)
+                    ]
+                )
+            )
+        )
+
+    if combined == "flashed":
+        return parts["flashed"]
+    else:
+        return parts["pe"]
+
+
+def get_rebalanced_bam(wildcards):
+    bam = []
+    for combined_type in ["flashed", "pe"]:
+        for part in get_rebalanced_parts(wildcards, combined_type):
+            bam.append(
+                f"capcruncher_output/interim/aligned/{wildcards.sample}/{wildcards.sample}_part{part}_{combined_type}.sorted.bam"
+            )
+
+    return bam
+
+
 rule align_bowtie2:
     input:
         fastq="capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_{combined}.fastq.gz",
@@ -36,28 +86,6 @@ rule sort_bam_partitions:
         """
         samtools sort -@ {threads} -o {output.bam} {input.bam} 2> {log}
         """
-
-
-def get_rebalanced_bam(wc):
-
-    parts_combined = get_rebalanced_parts(wc, combined="flashed")
-    parts_pe = get_rebalanced_parts(wc, combined="pe")
-
-    bam_combined = expand(
-        "capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam",
-        sample=wc.sample,
-        part=parts_combined,
-        combined=["flashed"],
-    )
-
-    bam_pe = expand(
-        "capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam",
-        sample=wc.sample,
-        part=parts_pe,
-        combined=["pe"],
-    )
-
-    return bam_combined + bam_pe
 
 
 rule merge_bam_partitions:

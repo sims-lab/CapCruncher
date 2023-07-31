@@ -25,7 +25,7 @@ def get_slices(bam, annotations):
     [
         (CCSliceFilter, "test.flashed.bam", "test.annotations.parquet", 135),
         (TriCSliceFilter, "test.flashed.bam", "test.annotations.parquet", 47),
-        (TiledCSliceFilter, "test.flashed.bam", "test.annotations.parquet", 157),
+        (TiledCSliceFilter, "test.flashed.bam", "test.annotations.parquet", 128),
     ],
 )
 def test_filters(data_path, filter_class, bam, annotations, n_slices_expected):

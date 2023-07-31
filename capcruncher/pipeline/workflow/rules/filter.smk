@@ -1,13 +1,15 @@
-def validate_custom_filtering():
-    custom_filter_stages = config["analysis"].get("custom_filtering", "")
-    if not custom_filter_stages:
-        cf = ""
-    elif not os.path.exists(custom_filter_stages):
-        cf = ""
-    else:
-        cf = f"--custom-filtering {custom_filter_stages}"
+import capcruncher.pipeline.utils
 
-    return cf
+
+def get_filtered_slices(wildcards):
+    slices = dict()
+    for combined_type in ["flashed", "pe"]:
+        parts = get_rebalanced_parts(wildcards, combined=combined_type)
+        slices[combined_type] = [
+            f"capcruncher_output/interim/filtering/initial/{wildcards.sample}/{wildcards.sample}_part{part}_{combined_type}.slices.parquet"
+            for part in parts
+        ]
+    return slices
 
 
 rule filter_alignments:
@@ -18,12 +20,8 @@ rule filter_alignments:
         filtered_slices=temp(
             "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet"
         ),
-        stats_read=temp(
-            "capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.read.stats.csv"
-        ),
-        stats_slice=temp(
-            "capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.slice.stats.csv"
-        ),
+        stats_read="capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.read.stats.csv",
+        stats_slice="capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.slice.stats.csv",
     params:
         analysis_method=config["analysis"]["method"],
         sample_name=lambda wildcards, output: wildcards.sample,
@@ -34,7 +32,7 @@ rule filter_alignments:
             ".read.stats.csv", ""
         ),
         read_type=lambda wildcards, output: wildcards.combined,
-        custom_filtering=validate_custom_filtering(),
+        custom_filtering=capcruncher.pipeline.utils.validate_custom_filtering(config),
     resources:
         mem_mb=5000,
     log:
@@ -57,51 +55,9 @@ rule filter_alignments:
         """
 
 
-# rule count_identified_viewpoints:
-#     input:
-#         slices=lambda wildcards: expand(
-#             "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet",
-#             sample=[
-#                 wildcards.sample,
-#             ],
-#             part=get_rebalanced_parts(wildcards, combined=),
-#             combined=[
-#                 "flashed",
-#                 "pe",
-#             ],
-#         ),
-#     output:
-#         stats="capcruncher_output/interim/statistics/identified_viewpoints/data/{sample}.identified_viewpoints.stats.csv",
-#     params:
-#         slices_dir=lambda wc: "capcruncher_output/interim/filtering/initial/{sample}/",
-#     resources:
-#         mem_mb=3000,
-#     script:
-#         "../scripts/count_identified_viewpoints.py"
-
-
 rule split_flashed_and_pe_datasets:
     input:
-        slices_flashed=lambda wildcards: expand(
-            "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet",
-            sample=[
-                wildcards.sample,
-            ],
-            part=get_rebalanced_parts(wildcards, combined="flashed"),
-            combined=[
-                "flashed",
-            ],
-        ),
-        slices_pe=lambda wildcards: expand(
-            "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet",
-            sample=[
-                wildcards.sample,
-            ],
-            part=get_rebalanced_parts(wildcards, combined="pe"),
-            combined=[
-                "pe",
-            ],
-        ),
+        unpack(get_filtered_slices),
     output:
         slices_flashed=temp(
             directory(
@@ -117,8 +73,8 @@ rule split_flashed_and_pe_datasets:
         """
         mkdir -p {output.slices_flashed}
         mkdir -p {output.slices_pe}
-        mv {input.slices_flashed} {output.slices_flashed}
-        mv {input.slices_pe} {output.slices_pe}
+        mv {input.flashed} {output.slices_flashed}
+        mv {input.pe} {output.slices_pe}
         """
 
 
@@ -131,7 +87,9 @@ rule remove_duplicate_coordinates:
                 "capcruncher_output/interim/filtering/deduplicated/{sample}/{combined}"
             )
         ),
-        stats_read="capcruncher_output/interim/statistics/deduplication_by_coordinate/data/{sample}_{combined}.read.stats.csv",
+        stats_read=temp(
+            "capcruncher_output/interim/statistics/deduplication_by_coordinate/data/{sample}_{combined}.read.stats.csv"
+        ),
     params:
         sample_name=lambda wildcards, output: wildcards.sample,
         stats_prefix=lambda wildcards, output: output.stats_read.replace(
@@ -154,7 +112,7 @@ rule combine_flashed_and_pe_post_deduplication:
             combined=["flashed", "pe"],
         ),
     output:
-        slices=temp(directory("capcruncher_output/results/{sample}/{sample}.parquet")),
+        slices=directory("capcruncher_output/results/{sample}/{sample}.parquet"),
     shell:
         """
         mkdir -p {output.slices}
@@ -183,6 +141,7 @@ rule cis_and_trans_stats:
         utilities \
         cis-and-trans-stats \
         {input.slices} \
+        --assay {params.analysis_method} \
         --sample-name {params.sample_name} \
         -o {output.stats} \
         """

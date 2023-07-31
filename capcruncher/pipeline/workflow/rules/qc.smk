@@ -1,22 +1,19 @@
 import os
 import pathlib
-
-
-def get_fastq_basename(wildcards, output):
-    return pathlib.Path(
-        FASTQ_SAMPLES.translation[f"{wildcards.sample}_{wildcards.read}.fastq.gz"]
-    ).stem.replace(".fastq", "")
+import capcruncher.pipeline.utils
 
 
 rule fastqc:
     input:
         fq=lambda wc: FASTQ_SAMPLES.translation[f"{wc.sample}_{wc.read}.fastq.gz"],
     output:
-        qc=temp("capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html"),
+        qc="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
     params:
         outdir=lambda wc, output: str(pathlib.Path(output.qc).parent),
         tmpdir="capcruncher_output/interim/qc/fastqc/{sample}_{read}",
-        basename=lambda wc, output: get_fastq_basename(wc, output),
+        basename=lambda wc, output: capcruncher.pipeline.utils.get_fastq_basename(
+            wc, FASTQ_SAMPLES
+        ),
     threads: 1
     resources:
         mem_mb=1024,
