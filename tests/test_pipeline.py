@@ -163,7 +163,7 @@ def config(
             "genome_indicies": str(indicies),
             "restriction_enzyme": "dpnii",
             "remove_blacklist": "no",
-            "genomic_bin_size": binsizes,
+            "genomic_bin_size": " ".join([str(b) for b in binsizes]),
             "prioritize_cis_slices": "yes",
             "priority_chromosomes": "viewpoints",
             "make_ucsc_hub": "yes",
