@@ -1,4 +1,4 @@
-name: Python package
+name: CapCruncher CI
 
 on: [push]
 
@@ -6,7 +6,7 @@ env:
   CACHE_NUMBER: 1
 
 jobs:
-  build:
+  install-and-test:
 
     runs-on: ubuntu-latest
     strategy:
