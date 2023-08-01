@@ -79,8 +79,8 @@ jobs:
       - name: Test with pytest and generate report
         shell: bash -el {0}
         run: |
-          pip install pytest-cov pytest-lazy-fixture pytest-order
-          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 2
+          pip install pytest-cov pytest-lazy-fixture pytest-order pytest-xdist
+          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml -n auto
 
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v3
