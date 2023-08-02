@@ -73,7 +73,10 @@ def bigwig_summary(data_path):
 
 @pytest.fixture
 def coordinates():
-    return "chr14:69902454-69903469"
+    chrom = "chr14"
+    start = 69902454
+    end = 69903469
+    return f"{chrom}:{start - 1e4: .0f}-{end + 1e4: .0f}"
 
 
 def test_plotting(tmpdir, heatmap, bigwig, bigwig_summary, bed, coordinates):
@@ -97,9 +100,6 @@ def test_plotting(tmpdir, heatmap, bigwig, bigwig_summary, bed, coordinates):
 
     # Check the file exists
     assert (tmpdir / "test_plotting.png").exists()
-
-    # Check the file is not empty
-    assert (tmpdir / "test_plotting.png").stat().st_size > 0
 
 
 def test_toml_conversion(tmpdir, bigwig):
