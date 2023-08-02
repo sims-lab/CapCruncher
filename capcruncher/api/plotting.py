@@ -709,16 +709,20 @@ class CCFigure:
     def __init__(
         self, tracks: List[CCTrack] = None, auto_spacing: bool = False, **kwargs
     ) -> None:
-        self.tracks = tracks
+
         self.frame = cb.Frame()
         self.auto_spacing = auto_spacing
         self.properties = dict()
         self.properties.update(kwargs)
 
         if tracks:
+            self.tracks = set(tracks)
             self.add_tracks(tracks)
+        else:
+            self.tracks = set()
 
     def add_track(self, track: CCTrack) -> None:
+        self.tracks.add(track)
         self.frame.add_track(track.get_track())
 
     def add_tracks(self, tracks: List[CCTrack]) -> None:
