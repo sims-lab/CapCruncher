@@ -304,7 +304,7 @@ class CCBigWigCollection(Track):
     def __init__(self, file: list, exclusions: str = None, **kwargs):
         self.file_names = file
         self.exclusions = exclusions
-        self.bws = [cb.BigWig(fn) for fn in file]
+        self.bws = [cb.BigWig(str(fn)) for fn in file]
         self.properties = {"files": self.file_names}
         self.properties.update(CCBigWigCollection.DEFAULT_PROPERTIES.copy())
         self.properties.update(kwargs)
