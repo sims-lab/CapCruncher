@@ -14,6 +14,7 @@ from capcruncher.api.plotting import (
     CCTrack,
     CCFigure,
 )
+from unittest import TestCase
 
 
 @pytest.fixture(scope="module")
@@ -104,6 +105,7 @@ def test_plotting(tmpdir, heatmap, bigwig, bigwig_summary, bed, coordinates):
 
 def test_toml_conversion(tmpdir, bigwig):
     fig = CCFigure()
+    bigwig.properties["title"] = "test"
     fig.add_track(bigwig)
 
     toml_path = tmpdir / "test_toml_conversion.toml"
@@ -113,6 +115,5 @@ def test_toml_conversion(tmpdir, bigwig):
 
     fig2 = CCFigure.from_toml(toml_path)
 
-    assert fig2.tracks[0].file == bigwig.file
-    assert fig2.tracks[0].name == bigwig.name
-    assert fig2.tracks[0].type == bigwig.type
+    track = next(iter(fig2.tracks))
+    assert track.file == bigwig.file

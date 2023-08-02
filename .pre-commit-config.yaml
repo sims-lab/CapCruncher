@@ -9,13 +9,15 @@ repos:
     -   id: check-symlinks
     -   id: check-json
     -   id: debug-statements
+    -   id: check-yaml
+    -   id: check-added-large-files
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     # Ruff version.
     rev: 'v0.0.206'
     hooks:
       - id: ruff
-        args: ["--force-exclude", "--ignore", "E501", "--ignore", "E402", "--ignore",  "F401"]
+        args: ["--force-exclude", "--ignore", "E501", "--ignore", "E402", "--ignore",  "F401", "--fix"]
 
   - repo: https://github.com/psf/black
     rev: 22.12.0

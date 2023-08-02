@@ -23,6 +23,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Polygon
 
 from typing import List, Tuple, Union, Optional, Dict, Any, Callable, Literal
+from loguru import logger
 
 
 class CCMatrix(cb.Cool):
@@ -671,7 +672,15 @@ class CCTrack:
         self.file = file
         self.properties = dict()
         self.properties.update(kwargs)
-        self.properties["type"] = file_type
+
+        if file_type:
+            self.properties["type"] = file_type
+        elif self.properties.get("type"):
+            pass
+        else:
+            raise ValueError(
+                "Please specify file_type as one of: heatmap, bigwig, bigwig_summary, scale, bed, xaxis, genes, spacer"
+            )
 
     def get_track(self):
         match self.properties.get("type"):  # noqa
