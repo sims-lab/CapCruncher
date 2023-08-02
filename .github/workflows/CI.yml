@@ -59,12 +59,7 @@ jobs:
 
       - name: Update environment
         run: mamba env update -n test -f environment.yml
-        if: steps.cache.outputs.cache-hit != 'true'
-
-      - name: Install testing dependencies
-        shell: bash -el {0}
-        run: |
-          mamba env update -n test -f testing.yml
+        if: steps.cache-conda-env.outputs.cache-hit != 'true'
 
       - name: Check installed packages
         shell: bash -el {0}
