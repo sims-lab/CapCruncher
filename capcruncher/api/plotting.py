@@ -442,20 +442,20 @@ class CCBigWigCollection(Track):
                 self.plot_data_range(ax, ymin, ymax, "text", gr)
 
     def plot_yaxis_range(self, plot_axis, y_ax):
-        """
-        Plot the scale of the y axis with respect to the plot_axis
-        plot something that looks like this:
-        ymax ┐
-             │
-             │
-        ymin ┘
-        Parameters
-        ----------
-        plot_axis : matplotlib.axes.Axes
-            Main plot axis.
-        y_ax : matplotlib.axes.Axes
-            Axis to use to plot the scale
-        """
+        # """
+        # Plot the scale of the y axis with respect to the plot_axis
+        # plot something that looks like this:
+        # ymax ┐
+        #      │
+        #      │
+        # ymin ┘
+        # Parameters
+        # ----------
+        # plot_axis : matplotlib.axes.Axes
+        #     Main plot axis.
+        # y_ax : matplotlib.axes.Axes
+        #     Axis to use to plot the scale
+        # """
 
         if (
             "show_data_range" in self.properties
@@ -654,6 +654,15 @@ class CCXAxisGenomic(cb.XAxis):
 
 
 class CCTrack:
+    """
+    Provides a wrapper around tracks to provide a consistent interface
+
+    Args:
+        file (os.PathLike): Path to file to plot
+        file_type (Literal["heatmap", "bigwig", "bigwig_summary", "scale", "bed", "xaxis", "genes", "spacer"], optional): Type of file to plot. Defaults to None.
+        **kwargs: Additional arguments to pass to the track
+    """
+
     def __init__(
         self,
         file,
@@ -715,6 +724,15 @@ class CCTrack:
 
 
 class CCFigure:
+    """
+    Generates a figure from a list of tracks
+
+    Args:
+        tracks (List[CCTrack], optional): List of tracks to plot. Defaults to None.
+        auto_spacing (bool, optional): Automatically add a spacer track between each track. Defaults to False.
+        **kwargs: Additional arguments to pass to the figure
+    """
+
     def __init__(
         self, tracks: List[CCTrack] = None, auto_spacing: bool = False, **kwargs
     ) -> None:
@@ -731,10 +749,22 @@ class CCFigure:
             self.tracks = set()
 
     def add_track(self, track: CCTrack) -> None:
+        """
+        Add a track to the figure
+
+        Args:
+            track (CCTrack): Track to add
+        """
         self.tracks.add(track)
         self.frame.add_track(track.get_track())
 
     def add_tracks(self, tracks: List[CCTrack]) -> None:
+        """
+        Add a list of tracks to the figure
+
+        Args:
+            tracks (List[CCTrack]): List of tracks to add
+        """
         for track in tracks:
             if self.auto_spacing:
                 spacer = CCTrack(None, file_type="spacer")
@@ -743,8 +773,22 @@ class CCFigure:
             self.add_track(track)
 
     def plot(
-        self, gr: GenomeRange, gr2: GenomeRange = None, show: bool = True, **kwargs
+        self,
+        gr: Union[str, GenomeRange],
+        gr2: Union[str, GenomeRange] = None,
+        show: bool = True,
+        **kwargs,
     ) -> None:
+        """
+        Plot the figure
+
+        Args:
+            gr (Union[str, GenomeRange]): GenomeRange to plot
+            gr2 (Union[str, GenomeRange], optional): Second GenomeRange to plot. Defaults to None.
+            show (bool, optional): Show the figure. Defaults to True.
+            **kwargs: Additional arguments to pass to the plot
+        """
+
         if gr2:
             fig = self.frame.plot(gr, gr2, **kwargs)
         else:
@@ -755,8 +799,22 @@ class CCFigure:
         return fig
 
     def save(
-        self, gr: GenomeRange, gr2: GenomeRange = None, output: str = None, **kwargs
+        self,
+        gr: Union[str, GenomeRange],
+        gr2: Union[str, GenomeRange] = None,
+        output: str = None,
+        **kwargs,
     ) -> None:
+        """
+        Plots the figure and saves it to a file
+
+        Args:
+            gr (Union[str, GenomeRange]): GenomeRange to plot
+            gr2 (Union[str, GenomeRange], optional): Second GenomeRange to plot. Defaults to None.
+            output (str, optional): Path to save the figure to. Defaults to None.
+            **kwargs: Additional arguments to pass to the plot
+        """
+
         fig = self.plot(gr, gr2, show=False, **kwargs)
         if output:
             fig.savefig(output, dpi=300)
@@ -765,6 +823,13 @@ class CCFigure:
 
     @classmethod
     def from_toml(cls, toml_file: os.PathLike, **kwargs) -> "CCFigure":
+        """
+        Instantiate a CCFigure from a toml file
+
+        Args:
+            toml_file (os.PathLike): Path to toml file
+            **kwargs: Additional arguments to pass to the figure
+        """
         import toml
 
         with open(toml_file) as f:
@@ -779,6 +844,13 @@ class CCFigure:
 
     @classmethod
     def from_frame(cls, frame: cb.Frame, **kwargs) -> "CCFigure":
+        """
+        Instantiate a CCFigure from a coolbox Frame
+
+        Args:
+            frame (cb.Frame): coolbox Frame to instantiate from
+            **kwargs: Additional arguments to pass to the figure
+        """
         tracks = []
         for track in frame.tracks:
             tracks.append(CCTrack(track.properties["file"], **track.properties))
@@ -786,6 +858,17 @@ class CCFigure:
         return cls(tracks, **kwargs)
 
     def to_toml(self, output: str = None) -> Union[None, Dict[str, Any]]:
+        """
+        Save the CCFigure to a toml file
+
+        Args:
+            output (str, optional): Path to save the toml file to. Defaults to None.
+
+        Returns:
+            Union[None, Dict[str, Any]]: If output is not specified, returns a dict of the toml file
+
+        """
+
         import toml
 
         config = dict()
