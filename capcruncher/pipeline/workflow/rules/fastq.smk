@@ -401,7 +401,7 @@ checkpoint rebalance_partitions_combined:
         prefix=lambda wildcards, output: pathlib.Path(output[0]) / wildcards.sample,
         suffix=lambda wc: f"_flashed",
         fq=lambda wc: ",".join(get_flashed_fastq(wc)),
-        n_reads=str(config["split"].get("n_reads", 1e6) * 4),
+        n_reads=str(config["split"].get("n_reads", 1e6)),
     log:
         "capcruncher_output/logs/rebalance_partitions/{sample}_flashed.log",
     threads: 4
