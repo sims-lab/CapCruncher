@@ -22,7 +22,7 @@ from matplotlib import cm, transforms
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Polygon
 
-from typing import List, Tuple, Union, Optional, Dict, Any, Callable
+from typing import List, Tuple, Union, Optional, Dict, Any, Callable, Literal
 
 
 class CCMatrix(cb.Cool):
@@ -653,10 +653,25 @@ class CCXAxisGenomic(cb.XAxis):
 
 
 class CCTrack:
-    def __init__(self, file, **kwargs):
+    def __init__(
+        self,
+        file,
+        file_type: Literal[
+            "heatmap",
+            "bigwig",
+            "bigwig_summary",
+            "scale",
+            "bed",
+            "xaxis",
+            "genes",
+            "spacer",
+        ] = None,
+        **kwargs,
+    ):
         self.file = file
         self.properties = dict()
         self.properties.update(kwargs)
+        self.properties["type"] = file_type
 
     def get_track(self):
         match self.properties.get("type"):  # noqa
@@ -692,7 +707,7 @@ class CCTrack:
 
 class CCFigure:
     def __init__(
-        self, tracks: List[CCTrack], auto_spacing: bool = False, **kwargs
+        self, tracks: List[CCTrack] = None, auto_spacing: bool = False, **kwargs
     ) -> None:
         self.tracks = tracks
         self.frame = cb.Frame()
@@ -700,7 +715,8 @@ class CCFigure:
         self.properties = dict()
         self.properties.update(kwargs)
 
-        self.add_tracks(tracks)
+        if tracks:
+            self.add_tracks(tracks)
 
     def add_track(self, track: CCTrack) -> None:
         self.frame.add_track(track.get_track())
@@ -708,7 +724,7 @@ class CCFigure:
     def add_tracks(self, tracks: List[CCTrack]) -> None:
         for track in tracks:
             if self.auto_spacing:
-                spacer = CCTrack(None, type="spacer")
+                spacer = CCTrack(None, file_type="spacer")
                 self.add_track(spacer.get_track())
 
             self.add_track(track)
