@@ -5,4 +5,3 @@ Pipeline
    :members:
    :undoc-members:
    :show-inheritance:
-

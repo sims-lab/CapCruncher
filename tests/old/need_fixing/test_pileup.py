@@ -32,8 +32,3 @@
 #     region = viewpoints.slop(b=2e5, genome="mm9")
 #     region = region.subtract(viewpoints)
 #     ccbdg.normalise_bedgraph(method="region", region=region.fn)
-
-
-
-    
-

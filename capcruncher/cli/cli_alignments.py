@@ -49,7 +49,7 @@ def cli():
     "-o",
     "--output",
     help="Path for the annotated slices to be output.",
-    default="annotated.slices.tsv.gz",
+    default="annotated.slices.parquet",
 )
 @click.option(
     "--duplicates",
@@ -160,12 +160,6 @@ def annotate(*args, **kwargs):
     help="Determines cis/trans statistics are output",
     default=True,
 )
-@click.option(
-    "--output-format",
-    help="Determines file output format",
-    default="parquet",
-    type=click.Choice(["tsv", "hdf5", "parquet"]),
-)
 def filter(*args, **kwargs):
     """
     Removes unwanted aligned slices and identifies reporters.
@@ -179,129 +173,114 @@ def filter(*args, **kwargs):
     filter(*args, **kwargs)
 
 
-@cli.group()
-def deduplicate():
-    """
-    Identifies and removes duplicated aligned fragments.
+# @deduplicate.command()
+# @click.argument("fragments", nargs=-1, required=True)
+# @click.option(
+#     "-v",
+#     "--viewpoint",
+#     help="Viewpoint to process, leave blank for all viewpoints",
+#     default="",
+# )
+# @click.option(
+#     "-t",
+#     "--file-type",
+#     help="File format for input",
+#     default="auto",
+#     type=click.Choice(["auto", "tsv", "hdf5", "parquet"], case_sensitive=False),
+# )
+# @click.option(
+#     "-o",
+#     "--output",
+#     help="Path for outputting fragments with duplicated coordinates in json format.",
+#     default="duplicated_ids.pickle",
+# )
+# @click.option(
+#     "--buffer",
+#     help="Number of fragments to process at one time in order to preserve memory.",
+#     default=1e6,
+#     type=click.INT,
+# )
+# @click.option(
+#     "--read-type",
+#     help="Indicates if the fragments have been combined (flashed) or not (pe).",
+#     default="flashed",
+#     type=click.Choice(["flashed", "pe"], case_sensitive=False),
+# )
+# @click.option(
+#     "-p",
+#     "--n_cores",
+#     help="Number of parallel processes to use for deduplication",
+#     default=1,
+# )
+# @click.option(
+#     "--memory-limit",
+#     help="Maximum amount of memory to use.",
+#     default="1G",
+# )
+# def identify(*args, **kwargs):
+#     from capcruncher.cli.alignments_deduplicate import identify
 
-    PCR duplicates are very commonly present in Capture-C/Tri-C/Tiled-C data and must be removed
-    for accurate analysis. Unlike fastq deduplicate, this command removes fragments with identical
-    genomic coordinates.
-
-    Non-combined (pe) and combined (flashed) reads are treated slightly differently due to the increased
-    confidence that the ligation junction has been captured for the flashed reads.
-
-    """
-
-
-@deduplicate.command()
-@click.argument("fragments", nargs=-1, required=True)
-@click.option(
-    "-v",
-    "--viewpoint",
-    help="Viewpoint to process, leave blank for all viewpoints",
-    default="",
-)
-@click.option(
-    "-t",
-    "--file-type",
-    help="File format for input",
-    default="auto",
-    type=click.Choice(["auto", "tsv", "hdf5", "parquet"], case_sensitive=False),
-)
-@click.option(
-    "-o",
-    "--output",
-    help="Path for outputting fragments with duplicated coordinates in json format.",
-    default="duplicated_ids.pickle",
-)
-@click.option(
-    "--buffer",
-    help="Number of fragments to process at one time in order to preserve memory.",
-    default=1e6,
-    type=click.INT,
-)
-@click.option(
-    "--read-type",
-    help="Indicates if the fragments have been combined (flashed) or not (pe).",
-    default="flashed",
-    type=click.Choice(["flashed", "pe"], case_sensitive=False),
-)
-@click.option(
-    "-p",
-    "--n_cores",
-    help="Number of parallel processes to use for deduplication",
-    default=1,
-)
-@click.option(
-    "--memory-limit",
-    help="Maximum amount of memory to use.",
-    default="1G",
-)
-def identify(*args, **kwargs):
-    from capcruncher.cli.alignments_deduplicate import identify
-
-    identify(*args, **kwargs)
+#     identify(*args, **kwargs)
 
 
-@deduplicate.command()
-@click.argument("slices", nargs=-1, required=True)
-@click.option(
-    "-d",
-    "--duplicated_ids",
-    help="Path to duplicated fragment ids determined by the 'identify' subcommand.",
-)
-@click.option(
-    "-o",
-    "--output",
-    help="Path for outputting deduplicated slices in tsv format.",
-    default="slices_dedup.hdf5",
-)
-@click.option(
-    "-t",
-    "--file-type",
-    help="File format for input",
-    default="auto",
-    type=click.Choice(["auto", "tsv", "hdf5", "parquet"], case_sensitive=False),
-)
-@click.option(
-    "--buffer",
-    help="Number of fragments to process at one time, in order to preserve memory.",
-    default=1e6,
-    type=click.INT,
-)
-@click.option("--stats-prefix", help="Output prefix for deduplication statistics")
-@click.option(
-    "--sample-name",
-    help="Name of sample being analysed e.g. DOX_treated_1. Required for correct statistics.",
-)
-@click.option(
-    "--read-type",
-    help="Indicates if the fragments have been combined (flashed) or not (pe). Required for correct statistics.",
-    default="flashed",
-    type=click.Choice(["flashed", "pe"], case_sensitive=False),
-)
-@click.option(
-    "-p",
-    "--n_cores",
-    help="Number of parallel processes to use for deduplication",
-    default=1,
-)
-@click.option(
-    "--memory-limit",
-    help="Maximum amount of memory to use.",
-    default="1G",
-)
-def remove(*args, **kwargs):
-    """
-    Removes duplicated aligned fragments.
+# @deduplicate.command()
+# @click.argument("slices", nargs=-1, required=True)
+# @click.option(
+#     "-d",
+#     "--duplicated_ids",
+#     help="Path to duplicated fragment ids determined by the 'identify' subcommand.",
+# )
+# @click.option(
+#     "-o",
+#     "--output",
+#     help="Path for outputting deduplicated slices in tsv format.",
+#     default="slices_dedup.hdf5",
+# )
+# @click.option(
+#     "-t",
+#     "--file-type",
+#     help="File format for input",
+#     default="auto",
+#     type=click.Choice(["auto", "tsv", "hdf5", "parquet"], case_sensitive=False),
+# )
+# @click.option(
+#     "--buffer",
+#     help="Number of fragments to process at one time, in order to preserve memory.",
+#     default=1e6,
+#     type=click.INT,
+# )
+# @click.option("--stats-prefix", help="Output prefix for deduplication statistics")
+# @click.option(
+#     "--sample-name",
+#     help="Name of sample being analysed e.g. DOX_treated_1. Required for correct statistics.",
+# )
+# @click.option(
+#     "--read-type",
+#     help="Indicates if the fragments have been combined (flashed) or not (pe). Required for correct statistics.",
+#     default="flashed",
+#     type=click.Choice(["flashed", "pe"], case_sensitive=False),
+# )
+# @click.option(
+#     "-p",
+#     "--n_cores",
+#     help="Number of parallel processes to use for deduplication",
+#     default=1,
+# )
+# @click.option(
+#     "--memory-limit",
+#     help="Maximum amount of memory to use.",
+#     default="1G",
+# )
+# def remove(*args, **kwargs):
+#     """
+#     Removes duplicated aligned fragments.
 
-    Parses a tsv file containing aligned read slices and outputs only slices from unique fragments.
-    Duplicated parental read id determined by the "identify" subcommand are located within the
-    slices tsv file and removed.
+#     Parses a tsv file containing aligned read slices and outputs only slices from unique fragments.
+#     Duplicated parental read id determined by the "identify" subcommand are located within the
+#     slices tsv file and removed.
 
-    Outputs statistics for the number of unique slices and the number of duplicate slices identified.
-    """
-    from capcruncher.cli.alignments_deduplicate import remove
+#     Outputs statistics for the number of unique slices and the number of duplicate slices identified.
+#     """
+#     from capcruncher.cli.alignments_deduplicate import remove
 
-    remove(*args, **kwargs)
+#     remove(*args, **kwargs)

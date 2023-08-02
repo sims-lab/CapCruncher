@@ -1,26 +1,26 @@
-import logging
 import os
 import pickle
 import re
-import time
-from datetime import timedelta
 from functools import wraps
-from typing import Callable, Generator, Iterable, List, Literal, Tuple, Union
-import numpy as np
+from typing import Generator, Iterable, Tuple, Union, Callable
 import pandas as pd
 import pybedtools
 import ujson
 import xxhash
 from pybedtools import BedTool
+import pyranges as pr
+import pysam
 
 
 def read_dataframes(filenames: Iterable, **kwargs):
+    from loguru import logger
+
     dframes = []
     for fn in filenames:
         try:
             df = pd.read_csv(fn, **kwargs)
         except (pd.errors.EmptyDataError):
-            logging.warning(f"{fn} is empty")
+            logger.warning(f"{fn} is empty")
 
         if not df.empty:
             dframes.append(df)
@@ -51,10 +51,7 @@ def is_on(param: str) -> bool:
         - 1
     """
     values = ["true", "t", "on", "yes", "y", "1"]
-    if str(param).lower() in values:
-        return True
-    else:
-        return False
+    return str(param).lower() in values
 
 
 def is_off(param: str):
@@ -89,6 +86,7 @@ def get_human_readable_number_of_bp(bp: int) -> str:
 
 
 def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
+    from loguru import logger
 
     """Returns true if bed file can be opened and has at least 3 columns"""
     try:
@@ -99,15 +97,15 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
     except Exception as e:
 
         if isinstance(e, FileNotFoundError):
-            logging.debug(f"Bed file not found")
+            logger.warning(f"Bed file: {bed} not found")
 
         elif isinstance(e, IndexError):
-            logging.debug(
-                f"Wrong number of fields detected check separator/ number of columns"
+            logger.warning(
+                "Wrong number of fields detected check separator/ number of columns"
             )
 
         else:
-            logging.debug(f"Exception raised {e}")
+            logger.warning(f"Exception raised {e}")
 
 
 def bed_has_name(bed: Union[str, BedTool]) -> bool:
@@ -127,45 +125,6 @@ def bed_has_duplicate_names(bed: Union[str, BedTool]) -> bool:
     df = bed.to_dataframe()
     if not df["name"].duplicated().shape[0] > 1:
         return True
-
-
-def get_re_site(recognition_site: str = None) -> str:
-
-    """
-    Obtains the recogniton sequence for a supplied restriction enzyme or correctly
-    formats a supplied recognition sequence.
-
-    Args:
-     cut_sequence - DNA sequence to use for fasta digestion e.g. "GATC"
-     restriction_enzyme - Name of restriction enzyme e.g. DpnII  (case insensitive)
-
-    Returns:
-     recognition sequence e.g. "GATC"
-
-    Raises:
-     ValueError: Error if restriction_enzyme is not in known enzymes
-
-    """
-
-    known_enzymes = {
-        "dpnii": "GATC",
-        "mboi": "GATC",
-        "hindiii": "AAGCTT",
-        "ecori": "GAATTC",
-        "nlaiii": "CATG",
-    }
-
-    if re.match(r"[GgAaTtCc]+", recognition_site):  # matches a DNA sequence
-        cutsite = recognition_site.upper()  # Just uppercase convert and return
-
-    elif recognition_site.lower() in known_enzymes:
-        cutsite = known_enzymes[recognition_site.lower()]
-
-    else:
-        logging.error("No restriction site or recognised enzyme provided")
-        raise ValueError("No restriction site or recognised enzyme provided")
-
-    return cutsite
 
 
 def hash_column(col: Iterable, hash_type=64) -> list:
@@ -275,6 +234,9 @@ def get_timing(task_name=None) -> Callable:
     """Decorator:
     Gets the time taken by the wrapped function
     """
+    import time
+    from datetime import timedelta
+    from loguru import logger
 
     def wrapper(f):
         @wraps(f)
@@ -284,7 +246,7 @@ def get_timing(task_name=None) -> Callable:
             time_end = time.perf_counter()
 
             time_taken = timedelta(seconds=(time_end - time_start))
-            logging.info(f"Completed {task_name} in {time_taken} (hh:mm:ss.ms)")
+            logger.info(f"Completed {task_name} in {time_taken} (hh:mm:ss.ms)")
             return result
 
         return wrapped
@@ -316,6 +278,7 @@ def categorise_tracks(ser: pd.Series) -> list:
     mapping = {
         "raw": "Replicates",
         "normalised": "Replicates_Scaled",
+        "norm": "Replicates_Scaled",
         "summary": "Samples_Summarised",
         "subtraction": "Samples_Compared",
     }
@@ -328,8 +291,76 @@ def categorise_tracks(ser: pd.Series) -> list:
     return categories
 
 
-def convert_bed_to_dataframe(bed: Union[str, BedTool, pd.DataFrame]) -> pd.DataFrame:
+def convert_bed_to_pr(
+    bed: Union[
+        str,
+        pybedtools.BedTool,
+        pd.DataFrame,
+        pr.PyRanges,
+        "ray.ObjectRef",  # noqa: F821
+    ],
+    ignore_ray_objrefs=True,
+) -> pr.PyRanges:
+    """Converts a bed file to a PyRanges object.
+    Args:
+        bed (Union[str, pybedtools.BedTool, pd.DataFrame, pr.PyRanges, ray.ObjectRef]): Bed file to convert.
+        ignore_ray_objrefs (bool, optional): If False, allows for ray object references to be used instead python objects. Defaults to True.
+    Returns:
+        pr.PyRanges: PyRanges object.
+    """
+
+    from loguru import logger
+    import ray
+
+    if isinstance(bed, str):
+        converted = pr.read_bed(bed)
+
+    elif isinstance(bed, pybedtools.BedTool):
+        converted = (
+            bed.to_dataframe()
+            .rename(
+                columns={
+                    "chrom": "Chromosome",
+                    "start": "Start",
+                    "end": "End",
+                    "name": "Name",
+                }
+            )
+            .pipe(pr.PyRanges)
+        )
+
+    elif isinstance(bed, pr.PyRanges):
+        converted = bed
+
+    elif isinstance(bed, pd.DataFrame):
+        converted = bed.rename(
+            columns={
+                "chrom": "Chromosome",
+                "start": "Start",
+                "end": "End",
+                "name": "Name",
+            }
+        ).pipe(pr.PyRanges)
+
+    elif isinstance(bed, ray.ObjectRef):
+
+        if ignore_ray_objrefs:
+            logger.warning("Assuming ObjectRef is a PyRanges")
+            converted = bed
+        else:
+            bed = ray.get(bed)
+            converted = convert_bed_to_pr(bed)
+
+    return converted
+
+
+def convert_bed_to_dataframe(
+    bed: Union[str, BedTool, pd.DataFrame, "ray.ObjectRef", pr.PyRanges],  # noqa: F821
+    ignore_ray_objrefs=False,
+) -> pd.DataFrame:
     """Converts a bed like object (including paths to bed files) to a pd.DataFrame"""
+    from loguru import logger
+    import ray
 
     if isinstance(bed, str):
         bed_conv = BedTool(bed).to_dataframe()
@@ -340,14 +371,41 @@ def convert_bed_to_dataframe(bed: Union[str, BedTool, pd.DataFrame]) -> pd.DataF
     elif isinstance(bed, pd.DataFrame):
         bed_conv = bed
 
+    elif isinstance(bed, pr.PyRanges):
+        bed_conv = bed.as_df()
+
+    elif isinstance(bed, ray.ObjectRef):
+        if ignore_ray_objrefs:
+            logger.warning("Assuming ObjectRef is a PyRanges")
+            bed_conv = bed
+        else:
+            bed = ray.get(bed)
+            bed_conv = convert_bed_to_dataframe(bed)
+
     return bed_conv
+
+
+def is_tabix(file: str):
+    from loguru import logger
+
+    _is_tabix = False
+
+    try:
+        tbx = pysam.TabixFile(file)
+        _chroms = tbx.contigs
+        _is_tabix = True
+
+    except (OSError) as e:
+        logger.warn(e)
+
+    return _is_tabix
 
 
 def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
     """Converts coordinates supplied in string format or a .bed file to a BedTool.
 
     Args:
-        coordinates (Union[str, os.PathLike]): Coordinates in the form chr:start-end or a path.
+        coordinates (Union[str, os.PathLike]): Coordinates in the form chr:start-end/path.
     Raises:
         ValueError: Inputs must be supplied in the correct format.
 
@@ -386,7 +444,7 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
 
     else:
         raise ValueError(
-            """Coordinates not provided in the correct format. Provide coordinates in the form chr[NUMBER]:[START]-[END] or a .bed file"""
+            """Provide coordinates in the form chr[NUMBER]:[START]-[END]/BED file"""
         )
 
     return bt
@@ -460,6 +518,7 @@ def get_file_type(fn: os.PathLike) -> str:
     Returns:
         str: File type
     """
+    from loguru import logger
 
     file_types = {
         "hdf5": "hdf5",
@@ -477,58 +536,8 @@ def get_file_type(fn: os.PathLike) -> str:
     try:
         return file_types[ext]
     except KeyError as e:
-        logging.debug(f"File extension {ext} is not supported")
+        logger.debug(f"File extension {ext} is not supported")
         raise e
-
-
-def get_categories_from_hdf5_column(
-    path: os.PathLike,
-    key: str,
-    column: str,
-    null_value: Union[Literal["."], int, float] = ".",
-) -> List[str]:
-    """Extracts all categories from pytables table column.
-
-    Args:
-        path (os.PathLike): Path to hdf5 store
-        key (str): Table name
-        column (str): Column name from which to extract categories
-        null_value (Union[Literal[, optional): [description]. Defaults to ".".
-
-    Returns:
-        List[str]: Category names
-    """
-
-    df_test = pd.read_hdf(path, key, start=0, stop=10)
-
-    # If its a category get from the cat codes
-    if isinstance(df_test.dtypes[column], pd.CategoricalDtype):
-        return [
-            cat
-            for cat in df_test[column].cat.categories.values
-            if not cat == null_value
-        ]
-
-    # Try to extract from the metadata
-    try:
-        with pd.HDFStore(path, "r") as store:
-            # s = store.get_storer(key)
-            # values = getattr(s.attrs, column)
-            values = store[f"{key}_category_metadata"][column].unique()
-            return values
-    except AttributeError:
-        # Just determine from sampling all of the data (HIGHLY inefficient)
-        import dask.dataframe as dd
-        import dask.distributed
-
-        with dask.distributed.Client(processes=True) as client:
-            values = [
-                x
-                for x in dd.read_hdf(path, key, columns=column)[column]
-                .unique()
-                .compute()
-            ]
-        return values
 
 
 def get_cooler_uri(store: os.PathLike, viewpoint: str, resolution: Union[str, int]):

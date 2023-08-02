@@ -3,49 +3,49 @@
 ###################################
 
 analysis:
-    
-    # Method to use for data analysis, choose from capture | tri | tiled. 
+
+    # Method to use for data analysis, choose from capture | tri | tiled.
     # (Required)
-    method: ANALYSIS_METHOD 
-    
+    method: ANALYSIS_METHOD
+
     # Path to viewpoints used for analysis.
     # This is a bed file containing the coordinates of the captured restricion fragments.
     # The file must be in four column bed format with the name in the last column.
-    # (Required) 
+    # (Required)
     viewpoints: PATH_TO_VIEWPOINTS
-    
+
     # Restriction enzyme name or recognition site, *not* case sensitive
     # e.g. DpnII | dpnii | GATC
     # (Required)
     restriction_enzyme: dpnii
-    
+
     # Number of basepairs to exclude around each capture probe to remove re-ligations
     # (Required)
     reporter_exclusion_zone: 1000
 
-    # Path to design matrix describing the experimental design. 
+    # Path to design matrix describing the experimental design.
     # This must have two columns: sample    condition
     # e.g. sample   condition
     #      SAMPLE1  DMSO
-    #      SAMPLE2  DMSO 
+    #      SAMPLE2  DMSO
     # If this is not provided, pattern matching will be used to determine the experimental design.
     # In this case ensure that your FASTQ file names follow the pattern: SAMPLE-NAME-WITH-CONDITION_REPLICATE_[12].fastq(.gz).
-    # (Optional) 
+    # (Optional)
     design: PATH_TO_TSV_FORMATTED_DESIGN_MATRIX
 
     # Genomic window size(s) (use spaces to separate bin sizes) to use for binning restriction fragment interaction counts
-    # into even genomic windows. Only bin sizes that are present here will be allowed 
+    # into even genomic windows. Only bin sizes that are present here will be allowed
     # to be used for heatmap generation.
     # (Optional) Leave blank to prevent binning
     bin_sizes: BIN_SIZES
 
 genome:
-    
+
     # Name of genome. UCSC genome names are prefered. Custom names are accepted if chrom_sizes are provided
     # (Required)
     name: mm9
-    
-    # Path to fasta file containing entire genome sequence separated by chromosome. 
+
+    # Path to fasta file containing entire genome sequence separated by chromosome.
     # (Required)
     fasta: PATH_TO_GENOME_FASTA
 
@@ -55,7 +55,7 @@ genome:
     # (Required)
     aligner_index: PATH_TO_ALIGNER_INDICIES
 
-    # Path to chromosome sizes for genome. 
+    # Path to chromosome sizes for genome.
     # If blank will be determined automatically from the genome (must be a UCSC genome)
     # This should be a two column tsv file with columns: chromosome_name    size
     # FAI files can also be used.
@@ -88,7 +88,7 @@ pipeline:
     # Name of queue to use. This will be cluster specific.
     # (Required if using in cluster mode)
     cluster_queue: batch
-    
+
     # Maximum number of cores to use per task. (~ 4 works best)
     # (Required if using in cluster mode)
     n_cores: 4
@@ -102,7 +102,7 @@ pipeline:
     # A value of 0 indicates that compression will not be performed at all stages.
     # It is highly recomended to avoid compression if possible as intermediate files will be removed to reduce space
     # (Required)
-    compression: 0
+    compression: 5
 
 
 ###################################
@@ -110,14 +110,14 @@ pipeline:
 ###################################
 
 align:
-    
+
     # Aligner to use. Both bowtie and bowtie2 are supported but bowtie2 is prefered.
     # (Required)
     aligner: bowtie2
 
     # Flag to specify index for the aligner. Leave blank if this is not present i.e. bowtie
     # (Required)
-    index_flag: -x 
+    index_flag: -x
 
     # Aligner specific options. (Take care as this will ignore the number of cores specified earlier).
     # (Optional)
@@ -132,11 +132,11 @@ analysis_optional:
 
     # Path to a YAML file containing the filter order to be applied to slices.
     # See https://github.com/sims-lab/CapCruncher/blob/master/capcruncher/data/test/ccslicefilter_test.yml
-    # for an example and the filter module of the documentation 
-    # https://capcruncher.readthedocs.io/en/latest/capcruncher_module_documentation/capcruncher.tools.html#capcruncher-tools-filter-module 
+    # for an example and the filter module of the documentation
+    # https://capcruncher.readthedocs.io/en/latest/capcruncher_module_documentation/capcruncher.tools.html#capcruncher-tools-filter-module
     # for further details.
     custom_filtering: PATH_TO_CUSTOM_FILTERING_CONFIG
-    
+
     # Path to blacklisted regions bed file. Must be a four column named bed file.
     # Can supply any regions to be removed.
     # (Optional)
@@ -157,7 +157,7 @@ analysis_optional:
     # Determines if trimmed fastq files are erased after read combining (FLASh).
     # (Debugging)
     keep_trimmed: False
-    
+
     # Determines if digested fastq files are erased after alignment.
     # (Debugging)
     keep_digested: False
@@ -181,60 +181,60 @@ analysis_optional:
     # Options: tsv, hdf5, parquet
     # Highly recomended to leave this as the default as other options may not be as robust
     # (Optional)
-    storage_format: parquet 
-   
+    storage_format: parquet
+
 
 deduplication:
 
     # Turns on initial removal of identical reads from fastq file
     # Dramatically enhances the speed of the pipeline after this step has completed.
     # (Optional)
-    pre-dedup: True 
+    pre-dedup: True
 
 hub:
-    
+
     # Determines if hub is created or not.
     # True|False
-    # (Required) 
+    # (Required)
     create: True
-    
+
     # Url/IP of server to host bigWigs
     # e.g. http://userweb.molbiol.ox.ac.uk/
     # (Required for hub)
     url: URL
-    
+
     # Location of publically accessible location on the server
     # The directory will be created if it does not exist
     # (Required for hub)
-    dir: PATH_TO_HUB_DIRECTORY 
-    
+    dir: PATH_TO_HUB_DIRECTORY
+
     # Name for the hub
     # (Required for hub)
-    name: HUB_NAME 
-    
+    name: HUB_NAME
+
     # Short hub name
     # (Required for hub)
-    short: SHORT_HUB_DESCRIPTION 
-    
+    short: SHORT_HUB_DESCRIPTION
+
     # Long hub name
     # (Required for hub)
-    long: LONGER_HUB_DESCRIPTION 
-    
+    long: LONGER_HUB_DESCRIPTION
+
     # Email address
     # (Required for hub)
     email: EMAIL_ADDRESS
- 
+
 normalisation:
-    
+
     # Scaling factor for normalisation.
-    # Current normalisation formula: 
+    # Current normalisation formula:
     # (REPORTER_COUNT / N_CIS_REPORTERS) * SCALE_FACTOR
-    # (Required) 
+    # (Required)
     scale_factor: 1000000
-    
+
     # Regions to use for normalising viewpoint pileups.
     # To use this method, provide the path to a bed file with the inverval(s)
-    # to be used for normalising *each* viewpoint. All viewpoints must have at least 
+    # to be used for normalising *each* viewpoint. All viewpoints must have at least
     # one region specified.
     regions: REGIONS_FOR_NORM
 
@@ -247,7 +247,7 @@ plot:
     coordinates: PATH_TO_PLOTTING_COORDINATES
 
     # Normalisation method to use for the plot. Leave blank for default based on analysis method.
-    # Choose from: 
+    # Choose from:
     # * raw - No normalisation
     # * n_interactions - Normalised based on the number of cis interactions
     # * n_rf_n_interactions - Normalised based on the number of cis interations and the number of restriction fragments per bin
@@ -264,14 +264,14 @@ trim:
 
     # Options passed to trim_galore
     # (Optional)
-    options: --length 21 
+    options: --length 21
 
 split:
 
     # Fastq files are split for parallel processing. Defines number of reads per fastq file (lower = more files to process)
     # For Tiled-C or highly enriched assays it is advised to reduce this to 1x10^6 readpairs to speed up the analysis.
     # The pipeline will cope with a high number of reads but it will run slower.
-    # (Optional) 
+    # (Optional)
     n_reads: 1000000
 
 compare:

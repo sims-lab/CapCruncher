@@ -4,10 +4,8 @@ import pysam
 import pytest
 import os
 
-from click.testing import CliRunner
-from capcruncher.tools.digest import DigestedRead, DigestedChrom, ReadDigestionProcess
+from capcruncher.api.digest import DigestedRead, DigestedChrom, ReadDigestionProcess
 from capcruncher.utils import MockFastaRecord, MockFastqRecord
-from multiprocessing import SimpleQueue
 
 
 def make_fake_read(sequence):
@@ -184,6 +182,7 @@ def data_path():
     data_dir = os.path.join(dirname, "data", "fastq_digestion")
     return data_dir
 
+
 def count_fragments(fq):
     fragments = set()
     with pysam.FastxFile(fq) as fq_file:
@@ -196,7 +195,7 @@ def count_fragments(fq):
 @pytest.mark.parametrize(
     "fastq_files,enzyme,mode,n_reads_raw,n_reads_filt",
     [
-        #(("test.fq.gz.extendedFrags.fastq.gz",), "dpnii", "flashed", 671471, 478386),
+        # (("test.fq.gz.extendedFrags.fastq.gz",), "dpnii", "flashed", 671471, 478386),
         (("digest_1.fastq.gz",), "dpnii", "flashed", 1512, 876),
         (("digest_1.fastq.gz", "digest_2.fastq.gz"), "dpnii", "pe", 1512, 1512),
         pytest.param(
@@ -238,18 +237,20 @@ def test_digest_fastq(
         n_cores=3,
     )
 
-    test_n_reads_raw = stats.query("(stat_type == 'unfiltered') and (read_number < 2)")["stat"].values[0]
-    test_n_reads_filt = stats.query("(stat_type == 'filtered') and (read_number < 2)")["stat"].values[0]
+    test_n_reads_raw = stats.query("(stat_type == 'unfiltered') and (read_number < 2)")[
+        "stat"
+    ].values[0]
+    test_n_reads_filt = stats.query("(stat_type == 'filtered') and (read_number < 2)")[
+        "stat"
+    ].values[0]
     hist_raw = pd.read_csv(f"{stats_prefix}.digestion.unfiltered.histogram.csv")
     hist_filt = pd.read_csv(f"{stats_prefix}.digestion.filtered.histogram.csv")
 
     assert test_n_reads_raw == n_reads_raw
     assert test_n_reads_filt == n_reads_filt
     assert count_fragments(outfile) == n_reads_filt
-    assert hist_raw.query("read_number < 2")["count"].sum() == n_reads_raw 
-    assert hist_filt.query("read_number < 2")["count"].sum() == n_reads_filt   
-
-
+    assert hist_raw.query("read_number < 2")["count"].sum() == n_reads_raw
+    assert hist_filt.query("read_number < 2")["count"].sum() == n_reads_filt
 
 
 @pytest.mark.parametrize(
@@ -258,9 +259,7 @@ def test_digest_fastq(
         ("chrom_to_digest.fa", "dpnii", 2),
     ],
 )
-def test_digest_genome(
-    data_path, tmpdir, fasta, enzyme, n_records_expected
-):
+def test_digest_genome(data_path, tmpdir, fasta, enzyme, n_records_expected):
 
     from capcruncher.cli.genome_digest import digest
 
@@ -270,5 +269,3 @@ def test_digest_genome(
     digest(input_fasta=infile, recognition_site=enzyme, output_file=outfile)
 
     assert os.path.exists(outfile)
-
-

@@ -1,34 +1,13 @@
-from email.policy import default
 import subprocess
 from tempfile import NamedTemporaryFile
 from typing import Iterable, List, Literal
 import click
-from capcruncher.cli import UnsortedGroup
-import ast
 import pandas as pd
-from cgatcore.iotools import touch_file
 import os
-import logging
-import glob
+from loguru import logger
 from capcruncher.utils import get_file_type
-
-
-def strip_cmdline_args(args):
-
-    formatted_args = dict()
-    for arg in args:
-        key, value = arg.split("=")
-
-        if "\\t" in value:
-            formatted_args[key] = "\t"
-        else:
-
-            try:
-                formatted_args[key] = ast.literal_eval(value)
-            except SyntaxError:
-                formatted_args[key] = value
-
-    return formatted_args
+import ibis
+from ibis import _
 
 
 @click.group()
@@ -57,137 +36,102 @@ def gtf_to_bed12(gtf: str, output: str):
 
 
 @cli.command()
-@click.argument("infiles", nargs=-1, required=True)
-@click.option("-s", "--partition-size", default="2GB")
-@click.option("-o", "--out-glob", required=True)
-@click.option("-r", "--read-args", multiple=True)
-@click.option("-w", "--write-args", multiple=True)
-def repartition_csvs(
-    infiles: Iterable,
-    out_glob: str,
-    partition_size: str,
-    read_args: tuple = None,
-    write_args: tuple = None,
-):
-
-    import dask.dataframe as dd
-
-    read_args = strip_cmdline_args(read_args)
-    write_args = strip_cmdline_args(write_args)
-
-    (
-        dd.read_csv(infiles, **read_args)
-        .repartition(partition_size=partition_size)
-        .to_csv(out_glob, **write_args)
-    )
-
-
-@cli.command()
 @click.argument("slices")
 @click.option("-o", "--output", help="Output file name")
-@click.option("-m", "--method", type=click.Choice(["capture", "tri", "tiled"]))
-@click.option("--file-type", type=click.Choice(["parquet", "hdf5", "tsv"]))
 @click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
 @click.option(
-    "--read-type",
-    help="Type of read",
-    default="flashed",
-    type=click.Choice(["flashed", "pe"], case_sensitive=False),
-)
-@click.option(
-    "-p",
-    "--n_cores",
-    help="Number of parallel processes to use",
-    default=1,
-)
-@click.option(
-    "--memory-limit",
-    help="Maximum amount of memory to use.",
-    default="1G",
+    "--assay",
+    help="Assay used to generate slices",
+    type=click.Choice(["capture", "tri", "tiled"]),
 )
 def cis_and_trans_stats(
     slices: str,
     output: str,
-    method: Literal["capture", "tri", "tiled"],
-    file_type: str = "hdf5",
-    sample_name: str = "",
-    read_type: str = "",
-    n_cores: int = 1,
-    memory_limit: str = "1G",
+    sample_name: str,
+    assay: Literal["capture", "tri", "tiled"] = "capture",
 ):
+    con = ibis.duckdb.connect()
 
-    from capcruncher.tools.filter import (
-        CCSliceFilter,
-        TriCSliceFilter,
-        TiledCSliceFilter,
+    if not os.path.isdir(slices):
+        tbl = con.register(f"parquet://{slices}", table_name="slices_tbl")
+    else:
+        tbl = con.register(f"parquet://{slices}/*.parquet", table_name="slices_tbl")
+
+    tbl = tbl.mutate(capture=tbl["capture"].fillna("reporter")).select(
+        ["capture", "parent_id", "chrom", "viewpoint", "pe"]
     )
 
-    filters = {
-        "capture": CCSliceFilter,
-        "tri": TriCSliceFilter,
-        "tiled": TiledCSliceFilter,
-    }
-    slice_filterer = filters.get(method)
+    if assay in ["capture", "tri"]:
+        tbl_reporter = tbl[(tbl["capture"] == "reporter")].drop(
+            "viewpoint", "pe", "capture"
+        )
 
-    if file_type == "tsv":
-        df_slices = pd.read_csv(slices, sep="\t")
+        tbl_capture = tbl[~(tbl["capture"] == "reporter")]
 
-        try:
-            slice_filterer(
-                df_slices, sample_name=sample_name, read_type=read_type
-            ).cis_or_trans_stats.to_csv(output, index=False)
-        except Exception as e:
-            logging.info(f"Exception: {e} occured with {slices}")
-            touch_file(output)
+        tbl_merge = tbl_capture.join(
+            tbl_reporter,
+            predicates=[
+                "parent_id",
+            ],
+            lname="{name}_capture",
+            rname="{name}_reporter",
+            how="left",
+        )
 
-    elif file_type == "hdf5":
+        tbl_merge = tbl_merge.mutate(
+            is_cis=(tbl_merge["chrom_capture"] == tbl_merge["chrom_reporter"])
+        )
 
-        slices_iterator = pd.read_hdf(slices, "slices", chunksize=1e6, iterator=True)
-        slice_stats = pd.DataFrame()
-
-        for df in slices_iterator:
-            sf = slice_filterer(df, sample_name=sample_name, read_type=read_type)
-            stats = sf.cis_or_trans_stats
-
-            slice_stats = (
-                pd.concat([slice_stats, stats])
-                .groupby(["viewpoint", "cis/trans", "sample", "read_type"])
-                .sum()
-                .reset_index()
+        df_cis_and_trans = (
+            tbl_merge.group_by(["viewpoint", "is_cis", "pe"])
+            .aggregate(
+                count=_.count(),
             )
+            .execute(limit=None)
+        )
 
-        slice_stats.to_csv(output, index=False)
+    else:
+        viewpoint_chroms = (
+            tbl.filter(tbl["capture"] != "reporter")
+            .group_by(["viewpoint", "chrom"])
+            .aggregate(chrom_count=_.count())
+            .order_by(ibis.desc("chrom_count"))
+            .to_pandas()
+            .drop_duplicates("viewpoint")
+            .set_index("viewpoint")
+            .to_dict()["chrom"]
+        )
 
-    elif file_type == "parquet":
+        chrom_mapping_exp = ibis.case()
+        for k, v in viewpoint_chroms.items():
+            chrom_mapping_exp = chrom_mapping_exp.when(tbl.viewpoint == k, v)
+        chrom_mapping_exp = chrom_mapping_exp.end()
 
-        import dask.dataframe as dd
-        import dask.distributed
+        df_cis_and_trans = (
+            tbl.mutate(cis_chrom=chrom_mapping_exp)
+            .mutate(is_cis=_.chrom == _.cis_chrom)
+            .group_by(["viewpoint", "parent_id", "is_cis", "pe"])
+            .aggregate(count=_.count())
+            .group_by(["viewpoint", "is_cis", "pe"])
+            .aggregate(count=_["count"].sum())
+            .execute(limit=None)
+        )
 
-        with dask.distributed.Client(
-            n_workers=n_cores,
-            dashboard_address=None,
-            processes=True,
-            scheduler_port=0,
-            local_directory=os.environ.get("TMPDIR", "/tmp/"),
-            memory_limit=memory_limit,
-        ) as client:
-
-            ddf = dd.read_parquet(slices, engine="pyarrow")
-
-            ddf_cis_trans_stats = ddf.map_partitions(
-                lambda df: slice_filterer(
-                    df, sample_name=sample_name, read_type=read_type
-                ).cis_or_trans_stats
-            )
-
-            ddf_cis_trans_stats_summary = (
-                ddf_cis_trans_stats.groupby(
-                    ["viewpoint", "cis/trans", "sample", "read_type"]
+    df_cis_and_trans = (
+        df_cis_and_trans.rename(columns={"pe": "read_type", "is_cis": "cis/trans"})
+        .assign(
+            sample=sample_name,
+            **{
+                "cis/trans": lambda df: df["cis/trans"].map(
+                    {True: "cis", False: "trans"}
                 )
-                .sum()
-                .reset_index()
-            )
-            ddf_cis_trans_stats_summary.to_csv(output, index=False, single_file=True)
+            },
+        )
+        .loc[lambda df: ~df["viewpoint"].isna()]
+        .sort_values(["viewpoint", "read_type", "cis/trans"])
+    )
+
+    df_cis_and_trans.to_csv(output, index=False)
 
 
 @cli.command()
@@ -215,7 +159,6 @@ def merge_capcruncher_slices(
     category_cols: List[str] = None,
     n_cores: int = 1,
 ):
-
     import dask.dataframe as dd
     import dask.distributed
 
@@ -225,8 +168,7 @@ def merge_capcruncher_slices(
         processes=True,
         scheduler_port=0,
         local_directory=os.environ.get("TMPDIR", "/tmp/"),
-    ) as client:
-
+    ) as _client:
         storage_kwargs = {}
         output_format = get_file_type(outfile)
 
@@ -273,8 +215,6 @@ def merge_capcruncher_slices(
                     )
 
         elif output_format == "parquet":
-
-            import pyarrow as pa
             import pyarrow.dataset as ds
 
             datasets = ds.dataset([ds.dataset(fn) for fn in infiles])
@@ -313,7 +253,6 @@ def viewpoint_coordinates(
     recognition_site: str = "dpnii",
     output: os.PathLike = "viewpoint_coordinates.bed",
 ):
-
     # import dask.distributed
     import concurrent.futures
     from capcruncher.cli import genome_digest
@@ -328,7 +267,6 @@ def viewpoint_coordinates(
     viewpoints_aligned_bam = NamedTemporaryFile("r+")
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
-
         # Digest genome to find restriction fragments
         digestion = executor.submit(
             genome_digest.digest,

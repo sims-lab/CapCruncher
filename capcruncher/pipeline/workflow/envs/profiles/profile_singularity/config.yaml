@@ -1,0 +1,6 @@
+jobname: smk-{jobid}-{rule}-{wildcards}
+use-singularity: true
+singularity-args: -B /ceph  -B /databank -B /datashare
+keep-going: True
+rerun-incomplete: True
+printshellcmds: True

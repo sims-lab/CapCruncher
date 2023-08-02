@@ -6,21 +6,16 @@ Created on Fri Oct  4 13:47:20 2019
 """
 import multiprocessing
 import os
-import sys
-from collections import Counter
-from multiprocessing import SimpleQueue
-from typing import List, Tuple, Union
-
-import click
+from typing import Tuple
 import numpy as np
 import pandas as pd
 import tqdm
-from capcruncher.tools.deduplicate import (ReadDeduplicationParserProcess,
-                                           ReadDuplicateRemovalProcess)
-from capcruncher.tools.io import FastqReaderProcess, FastqWriterProcess
-from capcruncher.tools.statistics import DeduplicationStatistics
+from capcruncher.api.deduplicate import (
+    ReadDeduplicationParserProcess,
+    ReadDuplicateRemovalProcess,
+)
+from capcruncher.api.io import FastqReaderProcess, FastqWriterProcess
 from capcruncher.utils import get_file_type, load_dict, save_dict
-from xopen import xopen
 
 
 def parse(input_files: Tuple, output: os.PathLike = "out.json", read_buffer: int = 1e5):
@@ -88,7 +83,7 @@ def identify(input_files: Tuple, output: os.PathLike = "duplicates.json"):
 
         for name_hash, sequence_hash in fastq_hashed_dict.items():
 
-            if not sequence_hash in sequences_dedup:
+            if sequence_hash not in sequences_dedup:
                 sequences_dedup.add(sequence_hash)
             else:
                 reads_duplicated.add(name_hash)
@@ -183,7 +178,6 @@ def remove(
 
     writer.start()
     reader.join()
-
 
     for _ in range(n_cores):
         readq.put_nowait(None)

@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 import pytest
 import os
 from click.testing import CliRunner
@@ -294,6 +294,7 @@ def test_alignment_annotation(cli_runner, data_annotation, tmpdir, bam, beds, fl
             blacklist,
         ],
     )
+
     assert result.exit_code == 0
     assert os.path.exists(outfile)
 
@@ -351,72 +352,35 @@ def test_alignment_filter(
 
 
 @pytest.mark.parametrize(
-    "fragments,output",
-    [
-        (
-            "fragments.flashed.parquet",
-            "dup.flashed.pkl",
-        ),
-        (
-            "fragments.pe.parquet",
-            "dup.pe.pkl",
-        ),
-    ],
-)
-def test_alignment_deduplicate_fragments(
-    cli_runner, data_deduplication_alignments, tmpdir, fragments, output
-):
-
-    fragments = os.path.join(data_deduplication_alignments, fragments)
-    output = os.path.join(tmpdir, output)
-
-    result = cli_runner.invoke(
-        cli,
-        [
-            "alignments",
-            "deduplicate",
-            "identify",
-            fragments,
-            "-o",
-            output,
-        ],
-    )
-    assert result.exit_code == 0
-    assert os.path.exists(output)
-
-
-@pytest.mark.parametrize(
-    "slices,duplicates,output",
+    "slices,read_type,output",
     [
         (
             "slices.flashed.parquet",
-            "duplicates.flashed.pkl",
+            "flashed",
             "deduplicated.flashed.parquet",
         ),
         (
             "slices.pe.parquet",
-            "duplicates.pe.pkl",
+            "pe",
             "deduplicated.pe.parquet",
         ),
     ],
 )
-def test_alignment_deduplicate_slices(
-    cli_runner, data_deduplication_alignments, tmpdir, slices, duplicates, output
+def test_interactions_deduplicate(
+    cli_runner, data_deduplication_alignments, tmpdir, slices, read_type, output
 ):
 
     slices = os.path.join(data_deduplication_alignments, slices)
-    duplicates = os.path.join(data_deduplication_alignments, duplicates)
     output = os.path.join(tmpdir, output)
 
     result = cli_runner.invoke(
         cli,
         [
-            "alignments",
+            "interactions",
             "deduplicate",
-            "remove",
+            "--read-type",
+            read_type,
             slices,
-            "-d",
-            duplicates,
             "-o",
             output,
         ],
@@ -457,7 +421,7 @@ def test_reporters_count(
     result = cli_runner.invoke(
         cli,
         [
-            "reporters",
+            "interactions",
             "count",
             slices,
             "-o",
@@ -470,8 +434,8 @@ def test_reporters_count(
         ],
     )
 
-    logging.debug(result.stdout)
-    logging.debug(result.exception)
+    logger.debug(result.stdout)
+    logger.debug(result.exception)
     assert result.exit_code == 0
     assert os.path.exists(output)
 
@@ -498,9 +462,8 @@ def test_reporters_store_binned(
     result = cli_runner.invoke(
         cli,
         [
-            "reporters",
-            "store",
-            "bins",
+            "interactions",
+            "fragments-to-bins",
             clr,
             "-o",
             output,
@@ -536,8 +499,7 @@ def test_reporters_store_merge(
     result = cli_runner.invoke(
         cli,
         [
-            "reporters",
-            "store",
+            "interactions",
             "merge",
             *hdf5_files,
             "-o",
@@ -557,8 +519,8 @@ def test_reporters_store_merge(
 @pytest.mark.parametrize(
     "cooler_fn,output_prefix,outfile,flags",
     [
-        ("SAMPLE-A_REP1.hdf5", "test", "test.Slc25A37.bedgraph", []),
-        ("SAMPLE-A_REP1.hdf5", "test", "test.Slc25A37.bigWig", ["-f", "bigwig"]),
+        ("SAMPLE-A_REP1.hdf5", "test", "test_Slc25A37.bedgraph", []),
+        ("SAMPLE-A_REP1.hdf5", "test", "test_Slc25A37.bigWig", ["-f", "bigwig"]),
     ],
 )
 def test_reporters_pileup(
@@ -578,7 +540,7 @@ def test_reporters_pileup(
     result = cli_runner.invoke(
         cli,
         [
-            "reporters",
+            "interactions",
             "pileup",
             clr,
             "-o",

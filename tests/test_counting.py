@@ -24,7 +24,7 @@
 
 # @pytest.mark.parametrize(
 #     "data,reader,viewpoint,mode,n_records",
-#     [   
+#     [
 #         # pytest.param(CCHDF5ReaderProcess, "Slc25A37", 76, id="ok_viewpoint"),
 #         # pytest.param(CCHDF5ReaderProcess, "XXXX", 0, id="bad_viewpoint", marks=pytest.mark.xfail),
 #         pytest.param(pytest.lazy_fixture("data_parquet"), CCParquetReaderProcess, "Slc25A37", "single", 213, id="ok_viewpoint"),
@@ -32,7 +32,7 @@
 #     ],
 # )
 # def test_reader(data, reader, viewpoint,mode, n_records):
-    
+
 #     inq = multiprocessing.Queue()
 #     outq = multiprocessing.Queue()
 #     reader_process = reader(data, inq, outq, selection_mode=mode)
@@ -44,7 +44,3 @@
 #     reader_process.join()
 
 #     assert records.shape[0] == n_records
-
-
-
-

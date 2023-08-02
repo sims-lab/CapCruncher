@@ -2,8 +2,8 @@
 CapCruncher Data Processing Pipeline
 ************************************
 
-The main feature of CapCruncher is the end-to-end data processing pipeline. 
-The pipeline has been written using the `cgat-core workflow management system <https://github.com/cgat-developers/cgat-core>`_ 
+The main feature of CapCruncher is the end-to-end data processing pipeline.
+The pipeline has been written using the `cgat-core workflow management system <https://github.com/cgat-developers/cgat-core>`_
 and the following diagram illustrates the steps performed by the pipeline:
 
 .. image:: images/pipeline_flow.svg
@@ -14,7 +14,7 @@ and the following diagram illustrates the steps performed by the pipeline:
 This section provides further details on how to run the pipeline. In essence
 the pipeline requires a working directory with correctly named FASTQ files
 and a :ref:`config.yml <Step 2 - Edit a copy of config.yml>` file that provides
-the pipeline configuration.  
+the pipeline configuration.
 
 
 Configuration
@@ -34,8 +34,8 @@ in this directory.
 Step 2 - Edit a copy of config.yml
 **********************************
 
-The configuration file `config.yml <https://github.com/sims-lab/capture-c/blob/master/config.yml>`_ enables 
-parameterisation of the pipeline run with user and run specific settings. This file also provides paths 
+The configuration file `config.yml <https://github.com/sims-lab/capture-c/blob/master/config.yml>`_ enables
+parameterisation of the pipeline run with user and run specific settings. This file also provides paths
 to essential files for the pipeline run (e.g. aligner indices).
 
 The paths supplied do not have to be in the same directory as the pipeline.
@@ -45,7 +45,7 @@ The paths supplied do not have to be in the same directory as the pipeline.
     The config file must be named **config.yml** to be recognised by the pipeline.
 
 A copy of config.yml can be downloaded from GitHub using::
-    
+
     wget https://raw.githubusercontent.com/sims-lab/capture-c/master/config.yml
 
 
@@ -106,14 +106,14 @@ in the working directory for the current experiment, the pipeline can be run wit
 
 
 There are several options to visualise which tasks will be performed by the pipeline
-before running. 
+before running.
 
 The tasks to be performed can be examined with:
 
 ::
-    
+
     # Shows the tasks to be performed
-    capcruncher pipeline show 
+    capcruncher pipeline show
 
     # Plots a directed graph using graphviz
     capcruncher pipeline plot
@@ -168,9 +168,9 @@ The pipeline generates several key outputs:
 Statistics for the pipeline run
 *******************************
 
-The *capcruncher_statistics/* folder contains all of the relevant statistics 
-for the pipeline run, an aggregated summary of all run statistics can be found in 
-*capcruncher_statistics/capcruncher_statistics.html*. An example can be found `here <_static/capcruncher_statistics.html>`_.
+The *capcruncher_output/statistics/* folder contains all of the relevant statistics
+for the pipeline run, an aggregated summary of all run statistics can be found in
+*capcruncher_output/statistics/capcruncher_output/statistics.html*. An example can be found `here <_static/capcruncher_output/statistics.html>`_.
 
 
 Reporters for each sample aggregated by viewpoint
@@ -180,17 +180,17 @@ All reporters can be found in the *capcruncher_anlysis/reporters* folder. Report
 
 1) TSV files (gzipped) containing all filtered reporter slices, aggregated by sample and viewpoint.
 2) `Cooler format <https://cooler.readthedocs.io/en/latest/>`_ HDF5 files with all viewpoints per sample aggregated into the same file.
-  
+
 .. note::
-    The Cooler format HDF5 files enable efficient genome wide queries and are compatible with tools using the Cooler ecosystem. 
+    The Cooler format HDF5 files enable efficient genome wide queries and are compatible with tools using the Cooler ecosystem.
 
-    Unlike Hi-C, Capture-C/Tri-C and Tiled-C experiments can contain multiple viewpoints. To facilitate efficient access to a specific viewpoint, the HDF5 files produced by CapCruncher 
-    contain a Cooler group for each viewpoint. 
+    Unlike Hi-C, Capture-C/Tri-C and Tiled-C experiments can contain multiple viewpoints. To facilitate efficient access to a specific viewpoint, the HDF5 files produced by CapCruncher
+    contain a Cooler group for each viewpoint.
 
-    To be compatible with tools in the cooler ecosystem the correct Cooler group must be specified (e.g. SAMPLENAME.hdf5::VIEWPOINT). 
+    To be compatible with tools in the cooler ecosystem the correct Cooler group must be specified (e.g. SAMPLENAME.hdf5::VIEWPOINT).
 
-    The pre-binned matrix for each viewpoint (the bin size is specified by config.yml) 
-    can be found within the resolutions group (e.g. SAMPLENAME.hdf5::VIEWPOINT/resolutions/SPECIFIED_RESOLUTION). 
+    The pre-binned matrix for each viewpoint (the bin size is specified by config.yml)
+    can be found within the resolutions group (e.g. SAMPLENAME.hdf5::VIEWPOINT/resolutions/SPECIFIED_RESOLUTION).
 
     The Cooler package can be used to extract the reporter counts table/matrix for use in other applications::
 
@@ -216,8 +216,8 @@ Summary BigWig files for each viewpoint/sample combination
 **********************************************************
 Summary BigWig files can also be found in *capcruncher_analysis/bigwigs/*. Different replicate aggregations e.g. median, sum can be performed by altering the summary_methods entry within the plot section of config.yml.
 Replicates will be grouped together using:
-   
-Pattern matching 
+
+Pattern matching
 """"""""""""""""
 
 This occurs if a design matrix has not been supplied to config.yml. In this case it is crucial that the correct sample naming scheme has been followed i.e.:
@@ -239,13 +239,13 @@ This occurs if a design matrix has not been supplied to config.yml. In this case
 | RS411-EPZ5676_3_1.fastq.gz
 | RS411-EPZ5676_3_2.fastq.gz
 
-    
+
 
 Design Matrix
 """""""""""""
 
 Replicate aggregation can also be performed using a design matrix (TSV format) supplied to config.yml (analysis_design_matrix). The design matrix should look something like this e.g.:
-  
+
 .. csv-table:: Example design matrix
     :header: "sample", "condition"
     :widths: 20, 20
@@ -266,27 +266,12 @@ UCSC hub
 
 The UCSC hub generated by the CapCruncher pipeline contains:
 
-* BigWigs for each replicate/viewpoint combination 
+* BigWigs for each replicate/viewpoint combination
 * BigWigs for each condition/viewpoint combination
 * Subtraction BigWigs for each condition
 * Viewpoints used
 * Run statistics
-  
+
 The UCSC hub can be found in the directory specified by hub_dir in config.yml. To view the hub on UCSC
-move/upload the hub to a publically accessible location and paste the address into the UCSC Genome Browser 
-track hub “My hubs” tab. 
-
-   
-
-
-
-
-
-
-   
-
-
-
-
-
-
+move/upload the hub to a publically accessible location and paste the address into the UCSC Genome Browser
+track hub “My hubs” tab.

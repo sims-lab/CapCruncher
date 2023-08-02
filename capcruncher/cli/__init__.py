@@ -1,19 +1,7 @@
 import click
-import os
 from functools import cached_property
 from importlib import import_module, metadata
-import subprocess
-import warnings
-import logging
-import sys
-
-
-# create logger
-logger = logging.getLogger("capcruncher")
-logger.setLevel(logging.INFO)
-logging.basicConfig(
-    format="%(levelname)s:%(asctime)s %(module)-20s %(message)s", level=logging.INFO
-)
+from loguru import logger
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
@@ -63,16 +51,6 @@ def cli():
     An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.
     """
 
-from capcruncher.cli.cli_pipeline import pipeline
-
-# @cli.command()
-# def pipeline(**kwargs):
-#     """
-#     CapCruncher automated data processing pipeline methods.
-#     """
-#     from capcruncher.cli.cli_pipeline import pipeline
-#     pipeline(**kwargs)
-
 
 @cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_fastq:cli")
 def fastq():
@@ -93,8 +71,8 @@ def alignments():
     """Alignment annotation, identification and deduplication."""
 
 
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_reporters:cli")
-def reporters():
+@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_interactions:cli")
+def interactions():
     """Reporter counting, storing, comparison and pileups"""
 
 
@@ -108,6 +86,10 @@ def plot():
 @cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_utilities:cli")
 def utilities():
     """Contains miscellaneous functions"""
+
+
+# Finally, import the pipeline command from the pipeline module
+import capcruncher.cli.cli_pipeline
 
 
 __all__ = [
