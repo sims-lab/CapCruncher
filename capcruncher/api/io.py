@@ -317,7 +317,7 @@ CCAlignment = namedtuple(
 )
 
 
-def parse_alignment(aln) -> CCAlignment:
+def parse_alignment(aln: pysam.AlignmentFile) -> CCAlignment:
     """Parses reads from a bam file into a list.
 
     Extracts:
@@ -382,7 +382,7 @@ def parse_alignment(aln) -> CCAlignment:
 
 
 @get_timing(task_name="processing BAM file")
-def parse_bam(bam):
+def parse_bam(bam: Union[str, pathlib.Path]) -> pd.DataFrame:
     """Uses parse_alignment function convert bam file to a dataframe.
 
     Extracts:
@@ -398,7 +398,7 @@ def parse_bam(bam):
      -'coordinates'
 
     Args:
-     bam: File name of bam file to process.
+        bam: Path to bam file.
 
     Returns:
      pd.Dataframe: DataFrame with the columns listed above.

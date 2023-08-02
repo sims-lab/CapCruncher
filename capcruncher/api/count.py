@@ -64,12 +64,12 @@ def count_re_site_combinations(
     Counts the number of unique combinations bewteen groups in a column.
 
     Args:
-     df (pd.core.groupby.GroupBy): Aggregated dataframe for processing.
-     column (str, optional): Column to examine for unique combinations per group. Defaults to "restriction_fragment".
-     counts (defaultdict, optional): defaultdict(int) containing previous counts. Defaults to None.
+        groups (pd.core.groupby.GroupBy): A groupby object
+        column (str, optional): The column to count combinations from. Defaults to "restriction_fragment".
+        counts (defaultdict, optional): A defaultdict to store counts in. Defaults to None.
 
     Returns:
-     defaultdict: defaultdict(int) containing the count of unique interactions.
+        defaultdict: A defaultdict containing counts of combinations.
     """
 
     if not counts:

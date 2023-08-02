@@ -1,0 +1,39 @@
+site_name: CapCruncher Documentation
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Usage: usage.md
+  - Configuration: configuration.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
+  - CLI Reference: cli.md
+  - API Reference: reference/
+theme:
+  name: material
+  palette:
+    primary: deep-purple
+    accent: deep-orange
+  font:
+    text: 'Roboto'
+    code: 'Roboto Mono'
+markdown_extensions:
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.details
+  - pymdownx.tasklist
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      linenums: true
+      guess_lang: true
+  - mkdocs-click
+
+plugins:
+- search
+- mkdocstrings
+- literate-nav:
+    nav_file: SUMMARY.md
+- gen-files:
+    scripts:
+    - docs/gen_ref_pages.py
+- section-index

@@ -99,7 +99,7 @@ def differential(
     # Load design matrix
     logger.info("Loading design matrix.")
     df_design = pd.read_table(
-        design_matrix, index_col=0, sep="\s+|,|\t", engine="python"
+        design_matrix, index_col=0, sep=r"\s+|,|\t", engine="python"
     )
 
     # Set-up tasks for bedgraph generation
