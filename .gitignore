@@ -19,3 +19,5 @@ pkgs/
 _version.py
 *.log
 cliff.toml
+.coverage.*
+coverage.xml
