@@ -1,20 +1,22 @@
-import pytest
 import os
-import coolbox.api as cb
-from coolbox.core.track import Track
-from typing import List, Dict, Any
 import pathlib
+from typing import Any, Dict, List
+from unittest import TestCase
+
+import coolbox.api as cb
+import pytest
+from coolbox.core.track import Track
+
 from capcruncher.api.plotting import (
     CCBigWig,
-    CCMatrix,
     CCBigWigCollection,
-    ScaleBar,
-    CCSimpleBed,
-    CCXAxisGenomic,
-    CCTrack,
     CCFigure,
+    CCMatrix,
+    CCSimpleBed,
+    CCTrack,
+    CCXAxisGenomic,
+    ScaleBar,
 )
-from unittest import TestCase
 
 
 @pytest.fixture(scope="module")

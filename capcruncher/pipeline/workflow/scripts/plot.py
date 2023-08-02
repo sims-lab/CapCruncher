@@ -3,12 +3,13 @@
 import os
 import pathlib
 import sys
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+from loguru import logger
 
 import capcruncher.api.plotting as cp
-from loguru import logger
 
 logger.add(snakemake.log[0], format="{time} {level} {message}", level="INFO")
 
