@@ -2,10 +2,10 @@ site_name: CapCruncher Documentation
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Usage: usage.md
-  - Configuration: configuration.md
-  - Contributing: contributing.md
+  - CLI Usage: usage.md
+  - Pipeline: pipeline.md
   - Changelog: changelog.md
+  - Examples: examples.md
   - CLI Reference: cli.md
   - API Reference: reference/
 theme:
@@ -19,7 +19,7 @@ theme:
 markdown_extensions:
   - toc:
       permalink: true
-      toc_depth: 3
+      toc_depth: 4
   - pymdownx.details
   - pymdownx.tasklist
   - pymdownx.superfences
@@ -27,6 +27,7 @@ markdown_extensions:
       linenums: true
       guess_lang: true
   - mkdocs-click
+  - admonition
 
 plugins:
 - search
