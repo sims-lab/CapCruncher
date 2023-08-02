@@ -80,7 +80,7 @@ jobs:
         shell: bash -el {0}
         run: |
           pip install pytest-cov pytest-lazy-fixture pytest-order pytest-xdist
-          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml -n auto
+          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml -n auto --cores 2
 
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v3
