@@ -8,7 +8,7 @@ This is not essential but it will make running the pipeline much easier by submi
 
 ### For SLURM based clusters:
 
-```bash
+``` bash
 # create config directory that snakemake searches for profiles (or use something else)
 profile_dir="${HOME}/.config/snakemake"
 mkdir -p "$profile_dir"
@@ -22,7 +22,7 @@ cookiecutter --output-dir "$profile_dir" "$template"
 !!! warning
     This has not been tested
 
-```bash
+``` bash
 mkdir -p ~/.config/snakemake
 cd ~/.config/snakemake
 cookiecutter https://github.com/Snakemake-Profiles/sge.git
@@ -96,7 +96,7 @@ retries: 3
 
 **Note**: The singularity-args are required to mount the data directories into the container. e.g.
 
-```bash
+``` bash
 singularity-args: -B /ceph  -B /databank
 ```
 

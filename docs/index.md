@@ -22,14 +22,14 @@ CapCruncher is available on conda and PyPI. To install the latest version, run:
 
 It is highly recommended to install CapCruncher in a conda environment. If you do not have conda installed, please follow the instructions [here](https://github.com/conda-forge/miniforge#mambaforge) to install mambaforge.
 
-```bash
+``` bash
 pip install capcruncher
 ```
 
 or
 
 
-```bash
+``` bash
 mamba install -c bioconda capcruncher
 ```
 
@@ -39,13 +39,13 @@ See the [installation guide](installation.md) for more detailed instructions.
 
 CapCruncher commands are run using the `capcruncher` command. To see a list of available commands, run:
 
-```bash
+``` bash
 capcruncher --help
 ```
 
 To see a list of available options for a command, run:
 
-```bash
+``` bash
 capcruncher <command> --help
 ```
 
@@ -61,7 +61,7 @@ See the [pipeline guide](pipeline.md) for more detailed instructions including h
 
 The pipeline is configured using a YAML file. It is strongly recommended to use the `capcruncher pipeline-config` command to generate a template configuration file. This command will generate a template configuration file with all available options and descriptions of each option.
 
-```bash
+``` bash
 capcruncher pipeline-config --help
 ```
 
@@ -69,6 +69,6 @@ capcruncher pipeline-config --help
 
 The pipeline is run using the `capcruncher pipeline` command. Ensure that you have a configuration file and the fastq files to process are in the current working directory.
 
-```bash
+``` bash
 capcruncher pipeline --cores <NUMBER OF CORES TO USE>
 ```

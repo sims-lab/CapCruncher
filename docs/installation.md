@@ -78,7 +78,7 @@ pip install .[stats,plotting,experimental]
 ```
 
 
-## Detailed Conda Installation
+## Detailed Conda Installation Instructions
 
 Download and install MambaForge from [here](https://github.com/conda-forge/miniforge#mambaforge) for your system (You will typically need the x86_64 version for most Linux systems).
 
