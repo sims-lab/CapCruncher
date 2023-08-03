@@ -1,39 +1,84 @@
 # CapCruncher
 
-[![Documentation Status](https://readthedocs.org/projects/capcruncher/badge/?version=latest)](https://capcruncher.readthedocs.io/en/latest/?badge=latest)
 [![codecov](https://codecov.io/gh/sims-lab/CapCruncher/branch/master/graph/badge.svg?token=RHIGNMGX09)](https://codecov.io/gh/sims-lab/CapCruncher)
-![CI](https://github.com/sims-lab/capture-c/actions/workflows/python-template.yml/badge.svg)
-[![Anaconda-Server Badge](https://anaconda.org/bioconda/capcruncher/badges/installer/conda.svg)](https://conda.anaconda.org/bioconda)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/capcruncher/badges/version.svg)](https://anaconda.org/bioconda/capcruncher)
+[![Anaconda-Server Badge License](https://anaconda.org/bioconda/capcruncher/badges/license.svg)](https://anaconda.org/bioconda/capcruncher)
 [![DOI](https://zenodo.org/badge/224631087.svg)](https://zenodo.org/badge/latestdoi/224631087)
 [![Downloads](https://pepy.tech/badge/capcruncher)](https://pepy.tech/project/capcruncher)
 
-## Analysis software for Capture-C, Tri-C and Tiled-C data.
+![CapCruncher Logo](docs/img/capcruncher_logo.png)
 
-CapCruncher is a tool designed to automate the processing of Capture-C, Tri-C and Tiled-C data from FASTQ files, the package is written in python and  consists of an end-to-end data processing pipline together with a supporting command line interface to enable finer grained control. The pipeline provided is fast, robust and  scales from a laptop to a computational cluster.
+CapCruncher is a package explicitly designed for processing Capture-C, Tri-C and Tiled-C data. Unlike other pipelines that are designed to process Hi-C or Capture-HiC data, the filtering steps in CapCruncher are specifically optimised for these datasets.
 
-For further information see the [documentation](https://capcruncher.readthedocs.io/en/latest/)
+The package consists of a configurable data processing pipeline and a supporting command line interface to enable fine-grained control over the analysis.
 
-## Changelog
+The pipeline is fast, robust and scales from a single workstation to a large HPC cluster. The pipeline is designed to be run on a HPC cluster and can be configured to use a variety of package management systems e.g. conda and singularity.
 
-## [0.2.3] - 2022-08-19
-
-### Bug Fixes
-
-- Fixes Tiled-C filtering error due to typo in index specification for remove_dual_capture_fragments
-- Fixed bug when annotating Tiled-C data ([#166](https://github.com/sims-lab/CapCruncher/pull/166)) with the sorted option that caused no data to be annotated as as a viewpoint or exclusion.
-- Fixed a bug with Tiled-C slice filtering ([#166](https://github.com/sims-lab/CapCruncher/pull/166)) that caused slices to be erronously filtered.
-- Fixed a bug with counting reporters in batches (this occurs when counting >1x106 slices per viewpoint) ([#166](https://github.com/sims-lab/CapCruncher/pull/166))
-- Fixed a bug when merging and storing Tri-C or Tiled-C data ([#166](https://github.com/sims-lab/CapCruncher/pull/166)) using "capcruncher reporters store merge" or "capcruncher reporters store bins". This functionally has been re-written and now appears to work correctly.
-- Fixed a bug with plotting matrices using capcrunchers plotting capabilities ([#166](https://github.com/sims-lab/CapCruncher/pull/166)).
-- Fixes bug where all slices are removed from parquet files (reporter) outputs due to an upgraded dask version (the pyarrow-dataset engine has been removed). This corrects the all dataframes are empty error occurring while generating reporter statistics.
-
-### Features
-
-- Added option to normalised CCMatrix data using ice followed by a scaling factor.
-- Reporter merging (paraquet) has been re-written to use pyarrow directly and is now faster and better able to split datasets into smaller files for more efficient parallel querying.
+{% note %}
+**Note:**
+The current version of CapCruncher is in beta and is not yet ready for production use. Please report any issues you encounter to the [issue tracker](https://github.com/sims-lab/CapCruncher/issues/new/choose)
+{% endnote %}
 
 
-### Miscellaneous Tasks
+## Quick Start
 
-- Updated version to 0.2.3 ([#165](https://github.com/sims-lab/CapCruncher/pull/165))
-- Pin conda dependency versions to speed up environment solver ([#167](https://github.com/sims-lab/CapCruncher/pull/167))
+### Installation
+
+{% warning %}
+**Warning:**
+CapCruncher is currently only availible for linux. MacOS support is planned for the future.
+{% endwarning %}
+
+CapCruncher is available on conda and PyPI. To install the latest version, run:
+
+It is highly recommended to install CapCruncher in a conda environment. If you do not have conda installed, please follow the instructions [here](https://github.com/conda-forge/miniforge#mambaforge) to install mambaforge.
+
+``` bash
+pip install capcruncher
+```
+
+or
+
+``` bash
+mamba install -c bioconda capcruncher
+```
+
+See the [installation guide](installation.md) for more detailed instructions.
+
+### Usage
+
+CapCruncher commands are run using the `capcruncher` command. To see a list of available commands, run:
+
+``` bash
+capcruncher --help
+```
+
+To see a list of available options for a command, run:
+
+``` bash
+capcruncher <command> --help
+```
+
+See the [usage guide](usage.md) for more detailed instructions.
+
+### Pipeline
+
+The CapCruncher pipeline handles the processing of raw data from the sequencer to the generation of a contact matrix, generation of plots and production of a UCSC genome browser track hub.
+
+See the [pipeline guide](pipeline.md) for more detailed instructions including how to configure the pipeline to run on HPC clusters and using various package management systems e.g. conda and singularity.
+
+#### Pipeline Configuration
+
+The pipeline is configured using a YAML file. It is strongly recommended to use the `capcruncher pipeline-config` command to generate a template configuration file. This command will generate a template configuration file with all available options and descriptions of each option.
+
+``` bash
+capcruncher pipeline-config --help
+```
+
+#### Running the pipeline
+
+The pipeline is run using the `capcruncher pipeline` command. Ensure that you have a configuration file and the fastq files to process are in the current working directory.
+
+``` bash
+capcruncher pipeline --cores <NUMBER OF CORES TO USE>
+```

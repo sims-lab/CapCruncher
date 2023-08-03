@@ -14,6 +14,17 @@ warnings.simplefilter("ignore", category=RuntimeWarning)
 
 @ray.remote
 class BedFileIntersection:
+    """
+    Intersect two bed files and return the intersection as a pandas series.
+
+    Args:
+        bed_a (Union[str, pybedtools.BedTool, pr.PyRanges]): First bed file to intersect.
+        bed_b (Union[str, pybedtools.BedTool, pr.PyRanges]): Second bed file to intersect.
+        name (str, optional): Name of the intersection. Defaults to "b".
+        action (str, optional): Method to use for intersection. Defaults to "get".
+        fraction (float, optional): Minimum fraction of overlap to consider a hit. Defaults to 1e-9.
+    """
+
     def __init__(
         self,
         bed_a: Union[str, pybedtools.BedTool, pr.PyRanges],
@@ -68,6 +79,20 @@ class BedFileIntersection:
         return intersection_data
 
     def intersection(self):
+        """
+        Intersect two bed files and return the intersection as a pandas series.
+
+        Returns:
+            pd.Series: A pandas series containing the intersection.
+
+        Raises:
+            OSError: Raised if the bed file cannot be read.
+            IndexError: Raised if the bed file is empty.
+            FileNotFoundError: Raised if the bed file cannot be found.
+            StopIteration: Raised if the bed file is empty.
+            AssertionError: Raised if the bed file is empty.
+
+        """
 
         try:
 

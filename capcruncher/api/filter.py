@@ -313,7 +313,7 @@ class SliceFilter:
         self.slices = self.slices.loc[not_orphan]
 
     def remove_duplicate_re_frags(self):
-        """
+        r"""
         Prevent the same restriction fragment being counted more than once (Uncommon).
 
         Example:

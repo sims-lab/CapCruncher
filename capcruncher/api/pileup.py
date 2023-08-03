@@ -138,7 +138,7 @@ class CoolerBedGraph:
 
     def normalise_bedgraph(
         self, bedgraph, scale_factor=1e6, method: str = "n_cis", region: str = None
-    ):
+    ) -> pd.DataFrame:
         """Normalises the bedgraph (in place).
 
         Uses the number of cis interactions to normalise the bedgraph counts.
