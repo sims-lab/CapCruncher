@@ -16,14 +16,13 @@ def get_re_site(recognition_site: str = None) -> str:
     formats a supplied recognition sequence.
 
     Args:
-     cut_sequence - DNA sequence to use for fasta digestion e.g. "GATC"
-     restriction_enzyme - Name of restriction enzyme e.g. DpnII  (case insensitive)
+        recognition_site (str): Restriction enzyme name or recognition sequence.
 
     Returns:
-     recognition sequence e.g. "GATC"
+        recognition sequence e.g. "GATC"
 
     Raises:
-     ValueError: Error if restriction_enzyme is not in known enzymes
+        ValueError: Error if restriction_enzyme is not in known enzymes
 
     """
 
@@ -119,7 +118,7 @@ class DigestedChrom:
         Extracts the coordinates of restriction fragments from the sequence.
 
         Yields:
-            Iterator[Iterable[str]]: Identified restriction fragments in bed format.
+            str: Bed formatted coordinates.
         """
 
         indexes = self.fragment_indexes
@@ -190,7 +189,7 @@ class DigestedRead:
          read (pysam.FastqProxy): Read to digest.
          cutsite (str): Restriction enzyme recognition sequence.
          min_slice_length (int, optional): Minimum slice length required for output. Defaults to 18.
-         slice_number_offset (int, optional): Increases the reported output slice number. Defaults to 0.
+         slice_number_start (int, optional): Starting slice number. Defaults to 1.
          allow_undigested (bool, optional): If True slices without a restriction site are not filtered out. Defaults to False.
          read_type (str, optional): Combined (flashed) or non-combined (pe). Choose from (flashed|pe). Defaults to "flashed".
         """
@@ -296,8 +295,8 @@ class ReadDigestionProcess(multiprocessing.Process):
         Args:
          inq (multiprocessing.SimpleQueue): Queue to hold list of reads to digest.
          outq (multiprocessing.SimpleQueue): Queue to hold list of digested reads.
-         statq (multiprocessing.Queue, optional): Queue to use for aggregating statistics from digestion processes. Defaults to None.
-         **digestion_kwargs: Kwargs passed to DigestedRead.
+         stats_pipe (multiprocessing.Pipe, optional): Pipe to send statistics to. Defaults to None.
+         **digestion_kwargs Dict[Any, Any]: Kwargs passed to DigestedRead.
 
         Raises:
             KeyError: digestion_kwargs must contain: cutsite

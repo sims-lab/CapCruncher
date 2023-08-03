@@ -33,8 +33,6 @@ class ReadDeduplicationParserProcess(Process):
         """
         Args:
          inq (multiprocessing.SimpleQueue): Input queue for fastq reads.
-         outq (multiprocessing.SimpleQueue): Output queue for processed reads.
-                                             Only used if part of a pipeline
          hash_seed (int, optional): Seed to use for hashing. Defaults to 42.
          output_path (os.PathLike, optional): Path to save hashed reads.
         """
@@ -112,11 +110,12 @@ class ReadDuplicateRemovalProcess(Process):
     ):
         """
         Args:
-         inq (multiprocessing.SimpleQueue): Input queue for reads to be deduplicated.
-         outq (multiprocessing.SimpleQueue): Output queue for deduplicated reads.
-         duplicated_ids (set): Hashed read ids to be removed if encountered.
-         statq (multiprocessing.Queue, optional): Output queue for statistics.
-         hash_seed (int, optional): Seed for xxhash algorithm. Defaults to 42.
+            inq (multiprocessing.SimpleQueue): Input queue for fastq reads.
+            outq (multiprocessing.SimpleQueue): Output queue for deduplicated reads.
+            stats_tx (multiprocessing.Pipe): Pipe for sending statistics.
+            duplicated_ids (set): Set of read ids to remove.
+            hash_seed (int, optional): Seed to use for hashing. Defaults to 42.
+            hash_read_name (bool, optional): Whether to hash read names. Defaults to True.
         """
 
         self.inq = inq
