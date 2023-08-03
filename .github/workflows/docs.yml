@@ -26,6 +26,7 @@ jobs:
         shell: bash -el {0}
         run: |
           sudo apt update
+          sudo apt install -y -V libarrow-dataset-dev # For Apache Arrow Dataset C++
           sudo apt-get install gcc cmake make g++ coreutils ninja-build cmake git-core wget libboost-all-dev unixodbc unixodbc-dev build-essential software-properties-common
       - name: Install the package
         shell: bash -el {0}
