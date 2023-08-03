@@ -58,13 +58,13 @@ To see a list of available options for a command, run:
 capcruncher <command> --help
 ```
 
-See the [usage guide](usage.md) for more detailed instructions.
+See the [CLI Reference](https://sims-lab.github.io/CapCruncher/cli/) for more detailed information regarding the various subcommands.
 
 ### Pipeline
 
 The CapCruncher pipeline handles the processing of raw data from the sequencer to the generation of a contact matrix, generation of plots and production of a UCSC genome browser track hub.
 
-See the [pipeline guide](pipeline.md) for more detailed instructions including how to configure the pipeline to run on HPC clusters and using various package management systems e.g. conda and singularity.
+See the [pipeline guide](https://sims-lab.github.io/CapCruncher/pipeline/) for more detailed instructions including how to configure the pipeline to run on HPC clusters and using various package management systems e.g. conda and singularity.
 
 #### Pipeline Configuration
 
