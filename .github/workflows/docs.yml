@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.10
+          python-version: "3.10"
       - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
       - uses: actions/cache@v3
         with:
@@ -26,8 +26,7 @@ jobs:
         shell: bash -el {0}
         run: |
           sudo apt update
-          sudo apt install -y -V libarrow-dataset-dev # For Apache Arrow Dataset C++
-          sudo apt-get install gcc cmake make g++ coreutils ninja-build cmake git-core wget libboost-all-dev unixodbc unixodbc-dev build-essential software-properties-common
+          sudo apt -y gcc git cmake make libtool g++ pkgconfig perl openssl-dev linux-headers coreutils
       - name: Install the package
         shell: bash -el {0}
         run: |
