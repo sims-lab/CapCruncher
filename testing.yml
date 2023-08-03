@@ -1,9 +1,0 @@
-channels:
-  - conda-forge
-  - bioconda
-  - defaults
-dependencies:
-  - pytest
-  - pytest-cov
-  - pytest-lazy-fixture
-  - pytest-order
