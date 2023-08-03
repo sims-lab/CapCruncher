@@ -26,7 +26,7 @@ jobs:
         shell: bash -el {0}
         run: |
           sudo apt-get update
-          sudo apt-get install gcc git cmake make g++ coreutils
+          sudo apt-get install gcc git cmake make g++ coreutils libarrow-dev
       - name: Install the package
         shell: bash -el {0}
         run: |
