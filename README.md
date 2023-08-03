@@ -1,7 +1,8 @@
 # CapCruncher
 
 [![codecov](https://codecov.io/gh/sims-lab/CapCruncher/branch/master/graph/badge.svg?token=RHIGNMGX09)](https://codecov.io/gh/sims-lab/CapCruncher)
-[![Anaconda-Server Badge](https://anaconda.org/bioconda/capcruncher/badges/installer/conda.svg)](https://conda.anaconda.org/bioconda)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/capcruncher/badges/version.svg)](https://anaconda.org/bioconda/capcruncher)
+[![Anaconda-Server Badge License](https://anaconda.org/bioconda/capcruncher/badges/license.svg)](https://anaconda.org/bioconda/capcruncher)
 [![DOI](https://zenodo.org/badge/224631087.svg)](https://zenodo.org/badge/latestdoi/224631087)
 [![Downloads](https://pepy.tech/badge/capcruncher)](https://pepy.tech/project/capcruncher)
 
