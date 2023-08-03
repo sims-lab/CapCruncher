@@ -26,7 +26,7 @@ jobs:
         shell: bash -el {0}
         run: |
           sudo apt update
-          sudo apt -y gcc git cmake make libtool g++ pkgconfig perl openssl-dev linux-headers coreutils
+          sudo apt install -y gcc git cmake make libtool g++ pkgconfig perl openssl-dev linux-headers coreutils
       - name: Install the package
         shell: bash -el {0}
         run: |
