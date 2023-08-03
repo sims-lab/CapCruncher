@@ -4,7 +4,7 @@ nav:
   - Installation: installation.md
   - Pipeline: pipeline.md
   - Hints and Tips: tips.md
-  - Plotting: notebooks/plotting.ipynb
+  - Plotting: plotting.ipynb
   - CLI Reference: cli.md
   - API Reference: reference/
 theme:
