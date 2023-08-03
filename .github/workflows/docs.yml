@@ -22,6 +22,11 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
+      - name: Install OS dependencies
+        shell: bash -el {0}
+        run: |
+          sudo apt-get update
+          sudo apt-get install gcc git cmake make libtool g++ pkgconfig perl openssl-dev linux-headers coreutils
       - name: Install the package
         shell: bash -el {0}
         run: |
