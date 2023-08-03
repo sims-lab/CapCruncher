@@ -15,20 +15,18 @@ The package consists of a configurable data processing pipeline and a supporting
 
 The pipeline is fast, robust and scales from a single workstation to a large HPC cluster. The pipeline is designed to be run on a HPC cluster and can be configured to use a variety of package management systems e.g. conda and singularity.
 
-{% note %}
+For more information, see the [documentation](https://sims-lab.github.io/CapCruncher/).
+
 **Note:**
-The current version of CapCruncher is in beta and is not yet ready for production use. Please report any issues you encounter to the [issue tracker](https://github.com/sims-lab/CapCruncher/issues/new/choose)
-{% endnote %}
+The current version of CapCruncher is in beta. Please report any issues you encounter to the [issue tracker](https://github.com/sims-lab/CapCruncher/issues/new/choose)
 
 
 ## Quick Start
 
 ### Installation
 
-{% warning %}
 **Warning:**
 CapCruncher is currently only availible for linux. MacOS support is planned for the future.
-{% endwarning %}
 
 CapCruncher is available on conda and PyPI. To install the latest version, run:
 
