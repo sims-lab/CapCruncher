@@ -1,3 +1,10 @@
+# CapCruncher
+
+[![codecov](https://codecov.io/gh/sims-lab/CapCruncher/branch/master/graph/badge.svg?token=RHIGNMGX09)](https://codecov.io/gh/sims-lab/CapCruncher)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/capcruncher/badges/installer/conda.svg)](https://conda.anaconda.org/bioconda)
+[![DOI](https://zenodo.org/badge/224631087.svg)](https://zenodo.org/badge/latestdoi/224631087)
+[![Downloads](https://pepy.tech/badge/capcruncher)](https://pepy.tech/project/capcruncher)
+
 ![CapCruncher Logo](docs/img/capcruncher_logo.png)
 
 CapCruncher is a package explicitly designed for processing Capture-C, Tri-C and Tiled-C data. Unlike other pipelines that are designed to process Hi-C or Capture-HiC data, the filtering steps in CapCruncher are specifically optimised for these datasets.
