@@ -103,6 +103,19 @@ capcruncher pipeline --use-singularity --cores <NUMBER OF CORES TO USE>
 capcruncher pipeline --use-singularity --cores <NUMBER OF CORES TO USE> --profile <NAME OF PROFILE OR PATH TO PROFILE>
 ```
 
+### Avoiding Disconnection from the Cluster
+
+In order to avoid disconnecting from the cluster, it is recommended to run the pipeline in a [tmux](https://linuxize.com/post/getting-started-with-tmux/) session. Alternatively, [nohup](https://linuxize.com/post/linux-nohup-command/) can be used to run the pipeline in the background. For example:
+
+``` bash
+# tmux example
+tmux new -s capcruncher
+capcruncher pipeline --cores 8 --profile slurm --use-singularity
+
+# nohup example
+nohup capcruncher pipeline --cores 8 --profile slurm --use-singularity &
+```
+
 ## Pipeline Steps
 
 ### All Assays
