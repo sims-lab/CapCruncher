@@ -1,13 +1,13 @@
 # CapCruncher
 
-[![Documentation Status](https://readthedocs.org/projects/capcruncher/badge/?version=latest)](https://sims-lab.github.io/CapCruncher/)
-[![codecov](https://codecov.io/gh/sims-lab/CapCruncher/branch/master/graph/badge.svg?token=RHIGNMGX09)](https://codecov.io/gh/sims-lab/CapCruncher)
+[![Documentation](https://github.com/sims-lab/CapCruncher/actions/workflows/docs.yml/badge.svg?branch=master)](https://github.com/sims-lab/CapCruncher/actions/workflows/docs.yml)
+[![Codecov](https://codecov.io/gh/sims-lab/CapCruncher/branch/master/graph/badge.svg?token=RHIGNMGX09)](https://codecov.io/gh/sims-lab/CapCruncher)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/capcruncher/badges/version.svg)](https://anaconda.org/bioconda/capcruncher)
 [![Anaconda-Server Badge License](https://anaconda.org/bioconda/capcruncher/badges/license.svg)](https://anaconda.org/bioconda/capcruncher)
 [![DOI](https://zenodo.org/badge/224631087.svg)](https://zenodo.org/badge/latestdoi/224631087)
 [![Downloads](https://pepy.tech/badge/capcruncher)](https://pepy.tech/project/capcruncher)
 
-![CapCruncher Logo](docs/img/capcruncher_logo.png)
+![CapCruncher Logo](https://github.com/sims-lab/CapCruncher/blob/68a91cea502a8623c71919c5f8d85febd6acef06/docs/img/capcruncher_logo.png)
 
 CapCruncher is a package explicitly designed for processing Capture-C, Tri-C and Tiled-C data. Unlike other pipelines that are designed to process Hi-C or Capture-HiC data, the filtering steps in CapCruncher are specifically optimised for these datasets.
 
