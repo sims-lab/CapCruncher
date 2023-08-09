@@ -298,6 +298,9 @@ def store_fragments(*args, **kwargs):
     help="Name of output file. (Cooler formatted hdf5 file)",
     default="out.hdf5",
 )
+@click.option(
+    "--assay", type=click.Choice(["capture", "tri", "tiled"]), default="capture"
+)
 def store_bins(*args, **kwargs):
     """
     Convert a cooler group containing restriction fragments to constant genomic windows

@@ -49,6 +49,7 @@ else:
             mem_mb=lambda wc, attempt: 3000 * 2**attempt,
         params:
             outdir="capcruncher_output/pileups/counts_by_restriction_fragment",
+            assay=config["analysis"]["method"],
         shell:
             """
             mkdir -p {params.outdir} && \
@@ -61,6 +62,7 @@ else:
             -v {input.viewpoints} \
             --cooler-output \
             -p {threads} \
+            --assay {params.assay}
             > {log} 2>&1
             """
 
@@ -72,6 +74,7 @@ rule bin_counts:
         temp("capcruncher_output/pileups/counts_by_genomic_bin/{sample}.hdf5"),
     params:
         bin_size=[f"-b {b}" for b in BIN_SIZES],
+        assay=config["analysis"]["method"],
     log:
         "capcruncher_output/logs/bin_counts/{sample}.log",
     threads: 4
@@ -86,6 +89,7 @@ rule bin_counts:
         -o {output} \
         {params.bin_size} \
         -p {threads} \
+        --assay {params.assay} \
         > {log} 2>&1
         """
 

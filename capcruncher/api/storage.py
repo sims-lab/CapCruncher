@@ -109,6 +109,7 @@ def create_cooler_cc(
     pixels_cis = pixels.loc[
         lambda df: (df["bin1_id"].isin(bins_cis)) | (df["bin2_id"].isin(bins_cis))
     ]
+
     n_cis_interactions = pixels_cis["count"].sum()
 
     # Metadata for cooler file.
@@ -154,6 +155,7 @@ class CoolerBinner:
         n_cis_interaction_correction: bool = True,
         n_rf_per_bin_correction: bool = True,
         scale_factor: int = 1_000_000,
+        assay: Literal["capture", "tri", "tiled"] = "capture",
     ) -> None:
         self.cooler_group = cooler_group
         self.binsize = binsize
@@ -173,6 +175,7 @@ class CoolerBinner:
         self.n_cis_interaction_correction = n_cis_interaction_correction
         self.n_restriction_fragment_correction = n_rf_per_bin_correction
         self.scale_factor = scale_factor
+        self.assay = assay
 
     @functools.cached_property
     def genomic_bins(self) -> pr.PyRanges:
@@ -376,6 +379,7 @@ class CoolerBinner:
             dtypes=dict(zip(pixels.columns[2:], ["float32"] * len(pixels.columns[2:]))),
             ensure_sorted=True,
             ordered=True,
+            assay=self.assay,
         )
 
         return cooler_fn
