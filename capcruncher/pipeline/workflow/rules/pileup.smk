@@ -18,6 +18,7 @@ if CAPCRUNCHER_TOOLS:
             mem_mb=lambda wc, attempt: 3000 * 2**attempt,
         params:
             outdir="capcruncher_output/pileups/counts_by_restriction_fragment",
+            assay=config["analysis"]["method"],
         shell:
             """
             mkdir -p {params.outdir} && \
@@ -28,6 +29,7 @@ if CAPCRUNCHER_TOOLS:
             -f {input.restriction_fragment_map} \
             -v {input.viewpoints} \
             -p {threads} \
+            --assay {params.assay}
             > {log} 2>&1
             """
 
