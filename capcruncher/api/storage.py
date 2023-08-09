@@ -12,29 +12,106 @@ import ujson
 from typing import Iterable, Tuple, Union, List, Dict, Literal
 import pyranges as pr
 import re
+from dataclasses import dataclass
 
 
-def get_viewpoint_coords(viewpoint_file: str, viewpoint_name: str):
-    df_viewpoints = BedTool(viewpoint_file).to_dataframe()
-    df_viewpoints = df_viewpoints.query(f'name == "{viewpoint_name}"')
+class Viewpoint:
+    def __init__(
+        self, coordinates: pr.PyRanges, assay: Literal["capture", "tri", "tiled"]
+    ) -> None:
+        self.coordinates = coordinates
+        self.assay = assay
 
-    try:
-        viewpoints = [row for index, row in df_viewpoints.iterrows()]
-    except IndexError:
-        logger.error("Oligo name cannot be found within viewpoints")
-        viewpoints = None
+    @classmethod
+    def from_bed(
+        cls, bed: str, viewpoint: str, assay: Literal["capture", "tri", "tiled"]
+    ):
+        """
+        Creates a viewpoint object from a bed file.
 
-    return viewpoints
+        Args:
+            bed (str): Path to bed file containing viewpoint coordinates.
+            viewpoint (str): Name of viewpoint to extract from bed file.
 
+        Raises:
+            IndexError: Oligo name cannot be found within viewpoints.
 
-def get_viewpoint_bins(bins, viewpoint_chrom, viewpoint_start, viewpoint_end):
+        Returns:
+            Viewpoint: Viewpoint object.
+        """
+        gr_viewpoints = pr.read_bed(bed)
+        df_viewpoints = gr_viewpoints.as_df()
 
-    return [
-        int(b)
-        for b in bins.query(
-            f'chrom == "{viewpoint_chrom}" and start >= {viewpoint_start} and end <= {viewpoint_end}'
-        )["name"]
-    ]
+        df_viewpoints = df_viewpoints.loc[
+            lambda df: df["Name"].str.contains(f"{viewpoint}$")
+        ]
+
+        if df_viewpoints.empty:
+            raise IndexError(
+                f"Oligo name cannot be found within viewpoints: {viewpoint}"
+            )
+
+        return Viewpoint(df_viewpoints.pipe(pr.PyRanges), assay=assay)
+
+    def bins(self, bins: pr.PyRanges):
+        """
+        Returns the bins that overlap with the viewpoint.
+
+        Args:
+            bins (pr.PyRanges): PyRanges object containing all bins.
+
+        Returns:
+            pr.PyRanges: PyRanges object containing all bins that overlap with the viewpoint.
+        """
+        return bins.join(self.coordinates)
+
+    def bin_names(self, bins: pr.PyRanges) -> List[int]:
+        return self.bins(bins).df["Name"].astype(int).to_list()
+
+    def bins_cis(self, bins: pr.PyRanges) -> List[int]:
+        """
+        Returns the bins that are on the same chromosome(s) as the viewpoint.
+
+        Args:
+            bins (pr.PyRanges): PyRanges object containing all bins.
+
+        Returns:
+            List[int]: List of bin names.
+        """
+
+        # Get the chromosomes of the viewpoint
+        viewpoint_chromosomes = self.chromosomes
+
+        # Get the bins that are on the same chromosome(s) as the viewpoint
+        df_cis_bins = bins.df.loc[
+            lambda df: df["Chromosome"].isin(viewpoint_chromosomes)
+        ]
+
+        # If capture or tri, remove viewpoint bins from cis bins
+        if self.assay == "capture" or self.assay == "tri":
+            df_cis_bins = df_cis_bins.loc[
+                lambda df: ~df["Name"].isin(self.bin_names(bins))
+            ]
+
+        return df_cis_bins["Name"].to_list()
+
+    @property
+    def chromosomes(self) -> List[str]:
+        return self.coordinates.df["Chromosome"].unique().tolist()
+
+    @property
+    def coords(self) -> List[str]:
+        """
+        Returns the genomic coordinates of the viewpoint.
+
+        Returns:
+            List[str]: List of genomic coordinates.
+        """
+        _coords = []
+        for row in self.coordinates.df.itertuples():
+            _coords.append(f"{row.Chromosome}:{row.Start}-{row.End}")
+
+        return _coords
 
 
 def create_cooler_cc(
@@ -43,7 +120,6 @@ def create_cooler_cc(
     pixels: pd.DataFrame,
     viewpoint_name: str,
     viewpoint_path: os.PathLike,
-    viewpoint_bins: Union[int, list] = None,
     assay: Literal["capture", "tri", "tiled"] = "capture",
     suffix=None,
     **cooler_kwargs,
@@ -57,7 +133,6 @@ def create_cooler_cc(
      pixels (pd.DataFrame): DataFrame with columns: bin1_id, bin2_id, count.
      viewpoint_name (str): Name of viewpoint to store.
      viewpoint_path (os.PathLike): Path to viewpoints used for the analysis.
-     viewpoint_bins (Union[int, list], optional): Bins containing viewpoint. Can be determined from viewpoint_path. Defaults to None.
      suffix (str, optional): Suffix to append before the .hdf5 file extension. Defaults to None.
 
     Raises:
@@ -67,60 +142,36 @@ def create_cooler_cc(
      os.PathLike: Path of cooler hdf5 file.
     """
 
-    # Gets viewpoint coordinates
-    viewpoint_coords = get_viewpoint_coords(viewpoint_path, viewpoint_name)
+    viewpoint = Viewpoint.from_bed(
+        bed=viewpoint_path, viewpoint=viewpoint_name, assay=assay
+    )
 
-    # Make sure viewpoint coordinates are returned correctly, if not, error.
-    if viewpoint_coords is None:
-        raise ValueError(f"Incorrect viewpoint name specified: {viewpoint_name}.")
-
-    # If viewpoint bins not provided get them using the coordinates.
-    if not viewpoint_bins:
-        viewpoint_bins = list(
-            itertools.chain.from_iterable(
-                [
-                    get_viewpoint_bins(bins, c["chrom"], c["start"], c["end"])
-                    for c in viewpoint_coords
-                ]
-            )
+    gr_bins = pr.PyRanges(
+        bins.rename(
+            columns={
+                "chrom": "Chromosome",
+                "start": "Start",
+                "end": "End",
+                "name": "Name",
+            }
         )
+    )
 
-    # Need to store bins as a list so make sure its not just a single int.
-    elif isinstance(viewpoint_bins, int):
-        viewpoint_bins = [
-            int(viewpoint_bins),
-        ]
+    # Get cis bins
+    bins_cis = viewpoint.bins_cis(gr_bins)
 
-    # The cooler.create_cooler function will not accept np.arrays so must convert to python list
-    elif isinstance(viewpoint_bins, (np.array, pd.Series)):
-        viewpoint_bins = [int(x) for x in viewpoint_bins]
-
-    # Get the number of cis interactions, required for normalisation.
-    bins_cis = bins.loc[
-        lambda df: df["chrom"].isin([c["chrom"] for c in viewpoint_coords])
-    ]["name"]
-
-    if assay in [
-        "capture",
-        "tri",
-    ]:  # If capture or tri, remove viewpoint bins from cis bins
-        bins_cis = bins_cis.loc[lambda ser: ~ser.isin(viewpoint_bins)]
-
+    # Get cis pixels
     pixels_cis = pixels.loc[
         lambda df: (df["bin1_id"].isin(bins_cis)) | (df["bin2_id"].isin(bins_cis))
     ]
 
-    n_cis_interactions = pixels_cis["count"].sum()
-
     # Metadata for cooler file.
     metadata = {
-        "viewpoint_bins": viewpoint_bins,
+        "viewpoint_bins": viewpoint.bin_names(gr_bins),
         "viewpoint_name": viewpoint_name,
-        "viewpoint_chrom": [c["chrom"] for c in viewpoint_coords],
-        "viewpoint_coords": [
-            f'{c["chrom"]}:{c["start"]}-{c["end"]}' for c in viewpoint_coords
-        ],
-        "n_cis_interactions": int(n_cis_interactions),
+        "viewpoint_chrom": viewpoint.chromosomes,
+        "viewpoint_coords": viewpoint.coords,
+        "n_cis_interactions": int(pixels_cis["count"].sum()),
         "n_total_interactions": int(pixels["count"].sum()),
     }
 
@@ -401,7 +452,6 @@ def link_common_cooler_tables(clr: os.PathLike):
     logger.info("Making links to common cooler tables to conserve disk space")
 
     with h5py.File(clr, "a") as f:
-
         # Get all viewpoints stored
         viewpoints = sorted(list(f.keys()))
 
@@ -412,7 +462,6 @@ def link_common_cooler_tables(clr: os.PathLike):
             resolutions = None
 
         for viewpoint in viewpoints[1:]:
-
             try:
                 # Delete currenly stored bins group and replace with link to first viewpoint "bins" group
                 del f[viewpoint]["bins"]
@@ -451,7 +500,6 @@ def get_merged_cooler_metadata(coolers: Iterable[os.PathLike]):
             metadata_src = ujson.decode(src[group].attrs["metadata"])
 
             for metadata_key, metadata_value in metadata_src.items():
-
                 if isinstance(metadata_value, str):
                     metadata[metadata_key] = metadata_value
 
@@ -517,7 +565,6 @@ def merge_coolers(coolers: Tuple, output: os.PathLike):
     need_merging = list()
     with h5py.File(output, mode="w") as dest:
         for ii, (viewpoint, cooler_uris) in enumerate(coolers_to_merge.items()):
-
             if len(cooler_uris) < 2:  # Only merge if two or more, else just copy
                 (file_path, group_path) = cooler_uris[0].split("::")
 
