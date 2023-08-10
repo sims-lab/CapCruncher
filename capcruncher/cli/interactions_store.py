@@ -1,7 +1,7 @@
 from loguru import logger
 import os
 import tempfile
-from typing import Tuple
+from typing import Tuple, Literal
 import pandas as pd
 import ray
 from capcruncher.api.storage import (
@@ -111,6 +111,7 @@ def bins(
     overlap_fraction: float = 1e-9,
     conversion_tables: os.PathLike = None,
     n_cores: int = 1,
+    assay: Literal["capture", "tri", "tiled"] = "capture",
     **kwargs,
 ):
     """
@@ -154,6 +155,7 @@ def bins(
                 n_cis_interaction_correction=True,
                 n_rf_per_bin_correction=True,
                 scale_factor=1_000_000,
+                assay=assay,
             )
 
             clr_tempfiles.append(
