@@ -430,7 +430,6 @@ class CoolerBinner:
             dtypes=dict(zip(pixels.columns[2:], ["float32"] * len(pixels.columns[2:]))),
             ensure_sorted=True,
             ordered=True,
-            assay=self.assay,
         )
 
         return cooler_fn
