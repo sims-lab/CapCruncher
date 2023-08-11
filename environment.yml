@@ -16,9 +16,9 @@ dependencies:
   - multiqc
   - numpy<=1.23
   - papermill
-  - pandas<=1.5.2
+  - pandas<=2.0.1
   - pip<=22.2.2
-  - plotly>5.0.0,<=5.10.0
+  - plotly>5.0.0,<=5.15.0
   - pyarrow>8.0.0,<=9.0.0
   - pybedtools
   - pyranges
