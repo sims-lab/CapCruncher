@@ -41,9 +41,12 @@ else:
 
 ## Read viewpoints
 VIEWPOINTS = config["analysis"]["viewpoints"]
-VIEWPOINT_NAMES = pd.read_table(
-    VIEWPOINTS, names=["chrom", "start", "end", "name"], header=None
-)["name"].to_list()
+VIEWPOINT_NAMES = [
+    str(name)
+    for name in pd.read_table(
+        VIEWPOINTS, names=["chrom", "start", "end", "name"], header=None
+    )["name"].to_list()
+]
 
 
 N_SAMPLES = DESIGN["sample"].nunique()
