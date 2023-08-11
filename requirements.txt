@@ -11,7 +11,6 @@ pyarrow>8.0.0,<=9.0.0
 pybedtools
 pyranges
 pysam>0.15.0,<=0.19.1
-pyyaml>=6.0
 quarto
 ray
 seaborn
