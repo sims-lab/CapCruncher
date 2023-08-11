@@ -4,6 +4,7 @@ duckdb
 h5py
 ibis-framework[duckdb]
 loguru
+more-itertools
 numpy
 pandas<=2.0.1
 plotly>5.0.0,<=5.10.0
