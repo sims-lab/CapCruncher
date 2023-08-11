@@ -13,7 +13,6 @@ dependencies:
   - ibis-framework>=6.0.0
   - iced
   - joblib
-  - more-itertools
   - multiqc
   - numpy<=1.23
   - papermill
