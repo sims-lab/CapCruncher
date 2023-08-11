@@ -20,6 +20,8 @@ dynamic = ["version", "dependencies"]
 [tool.setuptools.packages.find]
 include = ["capcruncher", "capcruncher.*"]
 
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
 
 [tool.setuptools_scm]
 local_scheme = "no-local-version"
