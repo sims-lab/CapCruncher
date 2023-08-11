@@ -7,17 +7,20 @@
 [![DOI](https://zenodo.org/badge/224631087.svg)](https://zenodo.org/badge/latestdoi/224631087)
 [![Downloads](https://pepy.tech/badge/capcruncher)](https://pepy.tech/project/capcruncher)
 
-![CapCruncher Logo](https://github.com/sims-lab/CapCruncher/blob/68a91cea502a8623c71919c5f8d85febd6acef06/docs/img/capcruncher_logo.png)
+![CapCruncher Logo](https://raw.githubusercontent.com/sims-lab/CapCruncher/master/docs/img/capcruncher_logo.png)
 
 The CapCruncher package is designed to process Capture-C, Tri-C and Tiled-C data. Unlike other pipelines that are designed to process Hi-C or Capture-HiC data, the filtering steps in CapCruncher are specifically optimized for these datasets. The package consists of a configurable data processing pipeline and a supporting command line interface to enable fine-grained control over the analysis. The pipeline is fast, robust and scales from a single workstation to a large HPC cluster. It is designed to be run on an HPC cluster and can be configured to use a variety of package management systems, such as conda and singularity. For more information, see the [documentation](https://sims-lab.github.io/CapCruncher/).
 
-**Note:** The current version of CapCruncher is in beta. Please report any issues you encounter to the [issue tracker](https://github.com/sims-lab/CapCruncher/issues/new/choose)
+> **Note:**
+> The current version of CapCruncher is in beta. Please report any issues you encounter to the [issue tracker](https://github.com/sims-lab/CapCruncher/issues/new/choose)
 
 ## Quick Start
 
 ### Installation
 
-**Warning:** CapCruncher is currently only availible for linux with MacOS support planned in the future.
+> **Warning:**
+>
+> CapCruncher is currently only availible for linux with MacOS support planned in the future.
 
 CapCruncher is available on conda and PyPI. To install the latest version, run:
 
@@ -77,15 +80,17 @@ capcruncher pipeline --cores <NUMBER OF CORES TO USE>
 capcruncher pipeline --cores 8 --profile slurm --use-singularity
 ```
 
-**Note:** In order to avoid disconnecting from the cluster, it is recommended to run the pipeline in a [tmux](https://linuxize.com/post/getting-started-with-tmux/) session. Alternatively, [nohup](https://linuxize.com/post/linux-nohup-command/) can be used to run the pipeline in the background. For example:
-
-``` bash
-# tmux example
-tmux new -s capcruncher
-capcruncher pipeline --cores 8 --profile slurm --use-singularity
-
-# nohup example
-nohup capcruncher pipeline --cores 8 --profile slurm --use-singularity &
-```
+> **Note:**
+> In order to avoid disconnecting from the cluster, it is recommended to run the pipeline in a [tmux](https://linuxize.com/post/getting-started-with-tmux/)
+> session. Alternatively, [nohup](https://linuxize.com/post/linux-nohup-command/) can be used to run the pipeline in the background. For example:
+>
+> ``` bash
+> # tmux example
+>tmux new -s capcruncher
+> capcruncher pipeline --cores 8 --profile slurm --use-singularity
+>
+># nohup example
+>nohup capcruncher pipeline --cores 8 --profile slurm --use-singularity &
+>```
 
 See the [pipeline guide](https://sims-lab.github.io/CapCruncher/pipeline/) for more detailed instructions.
