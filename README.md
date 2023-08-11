@@ -1,6 +1,6 @@
 # CapCruncher
 
-[![Documentation](https://github.com/sims-lab/CapCruncher/actions/workflows/docs.yml/badge.svg?branch=master)](https://github.com/sims-lab/CapCruncher/actions/workflows/docs.yml)
+[![Documentation](https://github.com/sims-lab/CapCruncher/actions/workflows/docs.yml/badge.svg?branch=master)](https://sims-lab.github.io/CapCruncher/)
 [![Codecov](https://codecov.io/gh/sims-lab/CapCruncher/branch/master/graph/badge.svg?token=RHIGNMGX09)](https://codecov.io/gh/sims-lab/CapCruncher)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/capcruncher/badges/version.svg)](https://anaconda.org/bioconda/capcruncher)
 [![Anaconda-Server Badge License](https://anaconda.org/bioconda/capcruncher/badges/license.svg)](https://anaconda.org/bioconda/capcruncher)
