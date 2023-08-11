@@ -15,7 +15,6 @@ dependencies:
   - joblib
   - more-itertools
   - multiqc
-  - natsort
   - numpy<=1.23
   - papermill
   - pandas<=1.5.2
