@@ -29,8 +29,9 @@ write_to = "capcruncher/_version.py"
 
 [project.optional-dependencies]
 stats = ["pydeseq2"]
-plotting = ["coolbox"]
+visualisation = ["coolbox", "tracknado"]
 experimental = ["capcruncher-tools"]
+full = ["pydeseq2", "coolbox", "tracknado", "capcruncher-tools"]
 
 [project.scripts]
 capcruncher = "capcruncher.cli:cli"
