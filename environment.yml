@@ -13,10 +13,11 @@ dependencies:
   - ibis-framework>=6.0.0
   - iced
   - joblib
+  - loguru
   - multiqc
   - numpy<=1.23
-  - papermill
   - pandas<=2.0.1
+  - papermill
   - pip<=22.2.2
   - plotly>5.0.0,<=5.15.0
   - pyarrow>8.0.0,<=9.0.0
@@ -26,6 +27,7 @@ dependencies:
   - python-duckdb
   - python-xxhash
   - python>=3.10,<3.11
+  - quarto
   - ray-core>=2.6.0
   - samtools
   - seaborn
@@ -38,4 +40,3 @@ dependencies:
   - ucsc-bedtobigbed
   - ucsc-fetchchromsizes
   - ujson
-  - quarto
