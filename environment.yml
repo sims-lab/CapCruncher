@@ -8,6 +8,7 @@ dependencies:
   - bowtie2>=2.4.4
   - click<=8.1.0
   - cooler
+  - cookiecutter
   - fastqc
   - flash
   - ibis-framework>=6.0.0
