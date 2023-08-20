@@ -1,14 +1,16 @@
 import itertools
-from loguru import logger
 import os
 import sys
 import warnings
 from typing import Tuple, Union
 
+import ibis
 import numpy as np
 import pandas as pd
+import pyranges as pr
 import pysam
 import ray
+from loguru import logger
 from pybedtools import BedTool, MalformedBedLineError
 
 from capcruncher.api.annotate import BedFileIntersection
@@ -62,23 +64,28 @@ def increase_cis_slice_priority(df: pd.DataFrame, score_multiplier: float = 2):
 
 
 def remove_duplicates_from_bed(
-    bed: Union[str, BedTool, pd.DataFrame],
+    bed: pr.PyRanges,
     prioritize_cis_slices: bool = False,
     chroms_to_prioritize: Union[list, np.ndarray] = None,
-) -> BedTool:
+) -> pr.PyRanges:
     """
-    Simple removal of duplicated entries from bed file.
-
-    If a "score" field is present a higher scored entry is prioritised.
+    Removes duplicate entries from a PyRanges object.
 
     Args:
-     bed (Union[str, BedTool, pd.DataFrame]): Bed object to deduplicate
+        bed (pr.PyRanges): PyRanges object to be deduplicated.
+        prioritize_cis_slices (bool, optional): Prioritize cis slices by increasing the mapping score. Defaults to False.
+        chroms_to_prioritize (Union[list, np.ndarray], optional): Chromosomes to prioritize. Defaults to None.
 
     Returns:
-     BedTool: BedTool with deduplicated names
+        pr.PyRanges: Deduplicated PyRanges object.
     """
 
-    df = convert_bed_to_dataframe(bed).sample(frac=1)
+    df = bed.df.rename(columns=lambda col: col.lower()).rename(
+        columns={"chromosome": "chrom"}
+    )
+
+    # Shuffle the dataframe to randomize the duplicate removal
+    df = df.sample(frac=1)
 
     if prioritize_cis_slices:
         df = increase_cis_slice_priority(df)
@@ -95,7 +102,9 @@ def remove_duplicates_from_bed(
     return (
         df.drop_duplicates(subset="name", keep="first")
         .sort_values(["chrom", "start"])[["chrom", "start", "end", "name"]]
-        .pipe(BedTool.from_dataframe)
+        .rename(columns=lambda col: col.capitalize())
+        .rename(columns={"Chrom": "Chromosome"})
+        .pipe(pr.PyRanges)
     )
 
 
@@ -141,98 +150,94 @@ def annotate(
      NotImplementedError: Only supported option for duplicate bed names is remove.
     """
 
-    logger.info("Validating commandline arguments")
-    len_bed_files = len(bed_files)
-    if not all([len(arg) == len_bed_files for arg in [actions, names]]):
-        raise ValueError(
-            "The lengths of the supplied bed files actions and names do not match"
-        )
+    with logger.catch():
 
-    if slices == "-":
-        logger.info("Reading slices from stdin")
-        slices = pd.read_csv(sys.stdin, sep="\t", header=None).pipe(
-            BedTool.from_dataframe
-        )
-
-    elif slices.endswith(".bam"):
-        logger.info("Converting bam to bed")
-        slices = BedTool(slices).bam_to_bed()
-
-    else:
-        slices = BedTool(slices)
-
-    logger.info("Validating input bed file before annotation")
-    if not is_valid_bed(slices):
-        raise ValueError(f"bed - {slices} is invalid")
-
-    if not bed_has_name(slices):
-        raise ValueError(f"bed - {slices} does not have a name column")
-
-    if blacklist:
-        logger.info("Removing blacklisted regions from the bed file")
-        try:
-            slices = slices - BedTool(blacklist)
-        except (MalformedBedLineError, FileNotFoundError, IndexError) as e:
-            logger.error(
-                f"Blacklist {blacklist} bedfile raised {e}. Ensure it is correctly formatted"
+        logger.info("Validating commandline arguments")
+        len_bed_files = len(bed_files)
+        if not all([len(arg) == len_bed_files for arg in [actions, names]]):
+            raise ValueError(
+                "The lengths of the supplied bed files actions and names do not match"
             )
 
-    logger.info("Dealing with duplicates in the bed file")
-    # Deal with multimapping reads.
-    if duplicates == "remove":
-        slices = remove_duplicates_from_bed(
-            slices,
-            prioritize_cis_slices=prioritize_cis_slices,
-            chroms_to_prioritize=priority_chroms.split(",")
-            if priority_chroms
-            else None,
+        if slices == "-":
+            logger.info("Reading slices from stdin")
+            slices = pd.read_csv(sys.stdin, sep="\t", header=None).pipe(pr.PyRanges)
+
+        elif slices.endswith(".bam"):
+            logger.info("Converting bam to bed")
+            slices = BedTool(slices).bam_to_bed().to_dataframe().pipe(convert_bed_to_pr)
+
+        else:
+            slices = pr.PyRanges(slices)
+
+        logger.info("Validating input bed file before annotation")
+
+        if blacklist:
+            try:
+                logger.info("Removing blacklisted regions from the bed file")
+                gr_blacklist = pr.PyRanges(blacklist)
+                slices.subtract(gr_blacklist)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to remove blacklisted regions from the bed file. {e}"
+                )
+
+        logger.info("Dealing with duplicates in the bed file")
+
+        if duplicates == "remove":
+            slices = remove_duplicates_from_bed(
+                slices,
+                prioritize_cis_slices=prioritize_cis_slices,
+                chroms_to_prioritize=priority_chroms.split(",")
+                if priority_chroms
+                else None,
+            )
+        else:
+            raise NotImplementedError(
+                "Only supported option at present is to remove duplicates"
+            )
+
+        logger.info("Setting-up intersection(s)")
+        ray.init(num_cpus=n_cores, ignore_reinit_error=True, include_dashboard=False)
+
+        # Create a shared object reference to the slices
+        slices_ref = ray.put(slices)
+
+        futures = []
+        for bed, name, action, fraction in zip(
+            bed_files,
+            names,
+            actions,
+            cycle_argument(overlap_fractions),
+        ):
+            logger.info(f"Setting-up intersection for {bed}")
+            bfi = BedFileIntersection.remote(
+                bed_a=slices_ref,
+                bed_b=bed,
+                name=name,
+                action=action,
+                fraction=fraction,
+            )
+            futures.append(bfi.intersection.remote())
+
+        # Collate results
+        df_annotation = slices.df.set_index("Name")
+
+        while len(futures):
+            done_id, futures = ray.wait(futures)
+
+            for ref in done_id:
+                ser_new = ray.get(ref)
+                df_annotation = df_annotation.join(ser_new, how="left")
+                del ser_new
+
+        # Format dataframe for next stage
+        df_annotation = (
+            df_annotation.reset_index()
+            .rename(columns={"Name": "slice_name"})
+            .set_index("slice_name")
+            .reset_index()
         )
-    else:
-        raise NotImplementedError(
-            "Only supported option at present is to remove duplicates"
-        )
 
-    logger.info("Setting-up intersection(s)")
-    ray.init(num_cpus=n_cores, ignore_reinit_error=True, include_dashboard=False)
-    pr_slices = convert_bed_to_pr(slices)
-    pr_slices_ref = ray.put(pr_slices)
-
-    futures = []
-    for bed, name, action, fraction in zip(
-        bed_files,
-        names,
-        actions,
-        cycle_argument(overlap_fractions),
-    ):
-
-        logger.info(f"Setting-up intersection for {bed}")
-        bfi = BedFileIntersection.remote(
-            bed_a=pr_slices,
-            bed_b=bed,
-            name=name,
-            action=action,
-            fraction=fraction,
-        )
-        futures.append(bfi.intersection.remote())
-
-    # Collate results
-    df_annotation = pr_slices.df.set_index("Name")
-
-    while len(futures):
-        done_id, futures = ray.wait(futures)
-
-        for ref in done_id:
-            ser_new = ray.get(ref)
-            df_annotation = df_annotation.join(ser_new, how="left")
-            del ser_new
-
-    # Format dataframe for next stage
-    df_annotation = (
-        df_annotation.reset_index()
-        .rename(columns={"Name": "slice_name"})
-        .set_index("slice_name")
-        .reset_index()
-    )
-
-    logger.info("Writing annotations to file.")
-    df_annotation.to_parquet(output, compression="snappy")
+        logger.info("Writing annotations to file.")
+        df_annotation.to_parquet(output, compression="snappy")
