@@ -89,7 +89,8 @@ if importlib.util.find_spec("capcruncher_tools"):
 else:
     CAPCRUNCHER_TOOLS = False
 
-CLEANUP = "full" if config["analysis"].get("cleanup", False) else "partial"
+# CLEANUP = "full" if config["analysis"].get("cleanup", False) else "partial"
+CLEANUP = False
 
 
 include: "rules/digest.smk"
