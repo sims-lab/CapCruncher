@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 from loguru import logger
+import ibis
+import tempfile
 
 
 from capcruncher.api.io import parse_bam
@@ -31,15 +33,18 @@ def merge_annotations(slices: pd.DataFrame, annotations: os.PathLike) -> pd.Data
      pd.DataFrame: Merged dataframe
     """
 
-    df_ann = (
-        pd.read_parquet(annotations)
-        .rename(columns={"Chromosome": "chrom", "Start": "start", "End": "end"})
-        .set_index(["slice_name", "chrom", "start"])
-        .drop(columns="end", errors="ignore")
-    )
-    slices = slices.join(df_ann, how="inner").reset_index()
+    con = ibis.duckdb.connect()
+    tbl_annotations = con.register(
+        f"parquet://{annotations}", table_name="annotations"
+    ).relabel({"Chromosome": "chrom", "Start": "start", "End": "end"})
 
-    return slices
+    tbl_slices = con.register(f"parquet://{slices}", table_name="slices")
+
+    tbl = tbl_slices.join(
+        tbl_annotations, how="inner", predicates=["slice_name", "chrom", "start"]
+    ).distinct(on="slice_name")
+
+    return tbl.execute(limit=None)
 
 
 def filter(
@@ -110,14 +115,17 @@ def filter(
     """
 
     with logger.catch():
-        # Read bam file and merege annotations
-        logger.info("Loading bam file")
-        df_alignment = parse_bam(bam)
-        logger.info("Merging bam file with annotations")
-        df_alignment = merge_annotations(df_alignment, annotations)
+        with tempfile.NamedTemporaryFile(suffix=".parquet") as tmp:
+            # Read bam file and merege annotations
 
-        if "blacklist" not in df_alignment.columns:
-            df_alignment["blacklist"] = 0
+            logger.info("Loading bam file")
+            parse_bam(bam).to_parquet(tmp.name)
+
+            logger.info("Merging bam file with annotations")
+            df_alignment = merge_annotations(tmp.name, annotations)
+
+            if "blacklist" not in df_alignment.columns:
+                df_alignment["blacklist"] = 0
 
         # Initialise SliceFilter
         # If no custom filtering, will use the class default.
