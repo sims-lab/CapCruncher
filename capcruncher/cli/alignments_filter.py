@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 from loguru import logger
+import ibis
+import tempfile
 
 
 from capcruncher.api.io import parse_bam
@@ -13,33 +15,33 @@ SLICE_FILTERS = {
 }
 
 
-def merge_annotations(slices: pd.DataFrame, annotations: os.PathLike) -> pd.DataFrame:
-    """Combines annotations with the parsed bam file output.
-
-    Uses pandas outer join on the indexes to merge annotations
-    e.g. number of capture probe overlaps.
-
-    Annotation tsv must have the index as the first column and this index
-    must have intersecting keys with the first dataframe's index.
-
+def merge_annotations(slices: os.PathLike, annotations: os.PathLike) -> pd.DataFrame:
+    """
+    Merges a parquet file containing slice information with a parquet file containing
+    annotation information.
 
     Args:
-     slices (pd.DataFrame): Dataframe to merge with annotations
-     annotations (os.PathLike): Filename of to read and merge with df
+        slices (os.PathLike): Path to parquet file containing slice information
+        annotations (os.PathLike): Path to parquet file containing annotation information
 
     Returns:
-     pd.DataFrame: Merged dataframe
+        pd.DataFrame: Merged dataframe
     """
 
-    df_ann = (
-        pd.read_parquet(annotations)
-        .rename(columns={"Chromosome": "chrom", "Start": "start", "End": "end"})
-        .set_index(["slice_name", "chrom", "start"])
-        .drop(columns="end", errors="ignore")
-    )
-    slices = slices.join(df_ann, how="inner").reset_index()
+    con = ibis.duckdb.connect()
+    tbl_annotations = con.register(f"parquet://{annotations}", table_name="annotations")
+    column_replacements = {"Chromosome": "chrom", "Start": "start", "End": "end"}
+    for old, new in column_replacements.items():
+        if old in tbl_annotations.columns:
+            tbl_annotations = tbl_annotations.relabel({old: new})
 
-    return slices
+    tbl_slices = con.register(f"parquet://{slices}", table_name="slices")
+
+    tbl = tbl_slices.join(
+        tbl_annotations, how="inner", predicates=["slice_name", "chrom", "start"]
+    ).distinct(on="slice_name")
+
+    return tbl.execute(limit=None)
 
 
 def filter(
@@ -110,14 +112,17 @@ def filter(
     """
 
     with logger.catch():
-        # Read bam file and merege annotations
-        logger.info("Loading bam file")
-        df_alignment = parse_bam(bam)
-        logger.info("Merging bam file with annotations")
-        df_alignment = merge_annotations(df_alignment, annotations)
+        with tempfile.NamedTemporaryFile(suffix=".parquet") as tmp:
+            # Read bam file and merege annotations
 
-        if "blacklist" not in df_alignment.columns:
-            df_alignment["blacklist"] = 0
+            logger.info("Loading bam file")
+            parse_bam(bam).to_parquet(tmp.name)
+
+            logger.info("Merging bam file with annotations")
+            df_alignment = merge_annotations(tmp.name, annotations)
+
+            if "blacklist" not in df_alignment.columns:
+                df_alignment["blacklist"] = 0
 
         # Initialise SliceFilter
         # If no custom filtering, will use the class default.
@@ -183,7 +188,13 @@ def filter(
         # Enforce dtype for parent_id
         df_slices_with_viewpoint = df_slices_with_viewpoint.assign(
             parent_id=lambda df: df["parent_id"].astype("int64")
-        )
+        ).drop_duplicates("slice_id")
+
+        # Convert objects to category
+        to_convert = df_slices_with_viewpoint.select_dtypes(include="object").columns
+        df_slices_with_viewpoint[to_convert] = df_slices_with_viewpoint[
+            to_convert
+        ].astype("category")
 
         df_slices_with_viewpoint.to_parquet(
             f"{output_prefix}.slices.parquet",
