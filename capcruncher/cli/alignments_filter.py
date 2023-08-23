@@ -188,7 +188,13 @@ def filter(
         # Enforce dtype for parent_id
         df_slices_with_viewpoint = df_slices_with_viewpoint.assign(
             parent_id=lambda df: df["parent_id"].astype("int64")
-        )
+        ).drop_duplicates("slice_id")
+
+        # Convert objects to category
+        to_convert = df_slices_with_viewpoint.select_dtypes(include="object").columns
+        df_slices_with_viewpoint[to_convert] = df_slices_with_viewpoint[
+            to_convert
+        ].astype("category")
 
         df_slices_with_viewpoint.to_parquet(
             f"{output_prefix}.slices.parquet",
