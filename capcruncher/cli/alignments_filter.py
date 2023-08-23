@@ -34,9 +34,11 @@ def merge_annotations(slices: pd.DataFrame, annotations: os.PathLike) -> pd.Data
     """
 
     con = ibis.duckdb.connect()
-    tbl_annotations = con.register(
-        f"parquet://{annotations}", table_name="annotations"
-    ).relabel({"Chromosome": "chrom", "Start": "start", "End": "end"})
+    tbl_annotations = con.register(f"parquet://{annotations}", table_name="annotations")
+    column_replacements = {"Chromosome": "chrom", "Start": "start", "End": "end"}
+    for old, new in column_replacements.items():
+        if old in tbl_annotations.columns:
+            tbl_annotations = tbl_annotations.relabel({old: new})
 
     tbl_slices = con.register(f"parquet://{slices}", table_name="slices")
 
