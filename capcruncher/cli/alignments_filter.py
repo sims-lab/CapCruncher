@@ -15,22 +15,17 @@ SLICE_FILTERS = {
 }
 
 
-def merge_annotations(slices: pd.DataFrame, annotations: os.PathLike) -> pd.DataFrame:
-    """Combines annotations with the parsed bam file output.
-
-    Uses pandas outer join on the indexes to merge annotations
-    e.g. number of capture probe overlaps.
-
-    Annotation tsv must have the index as the first column and this index
-    must have intersecting keys with the first dataframe's index.
-
+def merge_annotations(slices: os.PathLike, annotations: os.PathLike) -> pd.DataFrame:
+    """
+    Merges a parquet file containing slice information with a parquet file containing
+    annotation information.
 
     Args:
-     slices (pd.DataFrame): Dataframe to merge with annotations
-     annotations (os.PathLike): Filename of to read and merge with df
+        slices (os.PathLike): Path to parquet file containing slice information
+        annotations (os.PathLike): Path to parquet file containing annotation information
 
     Returns:
-     pd.DataFrame: Merged dataframe
+        pd.DataFrame: Merged dataframe
     """
 
     con = ibis.duckdb.connect()
