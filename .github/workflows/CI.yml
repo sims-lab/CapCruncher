@@ -13,10 +13,10 @@ jobs:
         python-version: ["3.10"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -26,7 +26,7 @@ jobs:
           sudo apt-get install libcurl4-openssl-dev
 
       - name: Restore bowtie2 cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/*.bt2
           key: ${{ env.CACHE_NUMBER }}
@@ -46,7 +46,7 @@ jobs:
           use-mamba: true
 
       - name: Cache Conda env
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ env.CONDA }}/envs
           key: conda-${{ runner.os }}--${{ runner.arch }}--${{

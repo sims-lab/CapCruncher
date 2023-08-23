@@ -42,7 +42,6 @@ class FastqReaderProcess(multiprocessing.Process):
         outq: multiprocessing.Queue,
         read_buffer: int = 100000,
     ) -> None:
-
         # Input variables
         self.input_files = input_files
         self._multifile = self._is_multifile(input_files)
@@ -76,8 +75,7 @@ class FastqReaderProcess(multiprocessing.Process):
         try:
             buffer = []
             rc = 0
-            for (read_counter, read) in enumerate(zip(*self._input_files_pysam)):
-
+            for read_counter, read in enumerate(zip(*self._input_files_pysam)):
                 # print(f"read_counter: {read_counter}, read: {read}, read_buffer: {self.read_buffer}")
                 buffer.append(read)
                 if read_counter % self.read_buffer == 0 and not read_counter == 0:
@@ -97,7 +95,6 @@ class FastqReaderProcess(multiprocessing.Process):
             raise
 
         finally:
-
             for fh in self._input_files_pysam:
                 fh.close()
 
@@ -109,7 +106,6 @@ class FastqReadFormatterProcess(multiprocessing.Process):
         outq: multiprocessing.SimpleQueue,
         formatting: list = None,
     ) -> None:
-
         self.inq = inq
         self.outq = outq
         self.formatting = (
@@ -123,14 +119,11 @@ class FastqReadFormatterProcess(multiprocessing.Process):
         super(FastqReadFormatterProcess, self).__init__()
 
     def _format_as_str(self, reads):
-
         # [(r1, r2), (r1, r2)] -> [r1 combined string, r2 combined string]
         return ["\n".join([str(rn) for rn in r]) for r in zip(*reads)]
 
     def run(self):
-
         try:
-
             reads = self.inq.get()
 
             while not reads == "END":
@@ -160,7 +153,6 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
         n_workers_terminated: int = 0,
         n_files_written: int = 0,
     ):
-
         self.inq = inq
         self.output_prefix = output_prefix
         self.paired_output = paired_output
@@ -176,7 +168,6 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
         super(FastqWriterSplitterProcess, self).__init__()
 
     def _get_file_handles(self):
-
         if not self.paired_output:
             fnames = [
                 f'{self.output_prefix}_part{self.n_files_written}.fastq{".gz" if self.gzip else ""}',
@@ -198,14 +189,11 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
         ]
 
     def run(self):
-
         try:
-
             reads = self.inq.get()
             is_string_input = True if isinstance(reads[0], str) else False
 
             while self.n_workers_terminated < self.n_subprocesses:
-
                 if reads == "END":
                     self.n_workers_terminated += 1
                     continue
@@ -239,7 +227,6 @@ class FastqWriterProcess(multiprocessing.Process):
         output: Union[str, list],
         compression_level: int = 5,
     ):
-
         super(FastqWriterProcess, self).__init__()
 
         self.inq = inq
@@ -266,7 +253,6 @@ class FastqWriterProcess(multiprocessing.Process):
             return True
 
     def run(self):
-
         while True:
             try:
                 reads = self.inq.get(block=True, timeout=0.01)
@@ -287,7 +273,6 @@ class FastqWriterProcess(multiprocessing.Process):
                             fh.write((read_set + "\n"))
 
                 else:
-
                     for fh in self.file_handles:
                         fh.close()
 
@@ -340,6 +325,8 @@ def parse_alignment(aln: pysam.AlignmentFile) -> CCAlignment:
 
     """
 
+    import numpy as np
+
     slice_name = aln.query_name
     parent_read, pe, slice_number, uid = slice_name.split("|")
     parent_id = xxhash.xxh3_64_intdigest(parent_read, seed=42)
@@ -347,6 +334,7 @@ def parse_alignment(aln: pysam.AlignmentFile) -> CCAlignment:
     ref_name = aln.reference_name
     ref_start = aln.reference_start
     ref_end = aln.reference_end
+
     # Check if read mapped
     if aln.is_unmapped:
         mapped = 0
@@ -381,7 +369,6 @@ def parse_alignment(aln: pysam.AlignmentFile) -> CCAlignment:
     )
 
 
-@get_timing(task_name="processing BAM file")
 def parse_bam(bam: Union[str, pathlib.Path]) -> pd.DataFrame:
     """Uses parse_alignment function convert bam file to a dataframe.
 
@@ -405,6 +392,8 @@ def parse_bam(bam: Union[str, pathlib.Path]) -> pd.DataFrame:
 
     """
 
+    import numpy as np
+
     # Load reads into dataframe
     logger.info("Parsing BAM file")
     df_bam = pd.DataFrame(
@@ -413,6 +402,7 @@ def parse_bam(bam: Union[str, pathlib.Path]) -> pd.DataFrame:
             for aln in pysam.AlignmentFile(bam, "rb").fetch(until_eof=True)
         ],
     )
+    df_bam["bam"] = os.path.basename(bam)
 
     # Perform dtype conversions
     logger.info("Converting dtypes")
@@ -421,11 +411,32 @@ def parse_bam(bam: Union[str, pathlib.Path]) -> pd.DataFrame:
     df_bam["pe"] = df_bam["pe"].astype(
         pe_category
     )  # Only the one type present so need to include both
-
-    df_bam.set_index(["slice_name", "chrom", "start"], inplace=True)
+    df_bam["coordinates"] = df_bam["coordinates"].astype("category")
+    df_bam["parent_read"] = df_bam["parent_read"].astype("category")
+    df_bam["slice"] = df_bam["slice"].astype(np.int8)
+    df_bam["uid"] = df_bam["uid"].astype(np.int8)
+    df_bam["multimapped"] = df_bam["multimapped"].astype(bool)
+    df_bam["mapped"] = df_bam["mapped"].astype(bool)
+    df_bam["bam"] = df_bam["bam"].astype("category")
 
     logger.info("Finished parsing BAM file")
     return df_bam
+
+
+def bam_to_parquet(
+    bam: Union[str, pathlib.Path], output: Union[str, pathlib.Path]
+) -> Union[str, pathlib.Path]:
+    """Converts bam file to parquet file.
+
+    Args:
+     bam: Path to bam file.
+     output: Path to output parquet file.
+
+    """
+    df_bam = parse_bam(bam)
+    df_bam.to_parquet(output)
+
+    return output
 
 
 class CCHDF5ReaderProcess(multiprocessing.Process):
@@ -436,7 +447,6 @@ class CCHDF5ReaderProcess(multiprocessing.Process):
         inq: multiprocessing.Queue,
         outq: multiprocessing.Queue,
     ):
-
         # Reading vars
         self.path = path
         self.key = key
@@ -449,7 +459,6 @@ class CCHDF5ReaderProcess(multiprocessing.Process):
         super(CCHDF5ReaderProcess, self).__init__()
 
     def _select_by_viewpoint(self, store, viewpoint):
-
         viewpoint = viewpoint
         df = store.select(
             self.key,
@@ -465,7 +474,6 @@ class CCHDF5ReaderProcess(multiprocessing.Process):
         return df
 
     def run(self):
-
         with pd.HDFStore(self.path, "r") as store:
             while True:
                 try:
@@ -492,7 +500,6 @@ class CCParquetReaderProcess(multiprocessing.Process):
         outq: multiprocessing.Queue,
         selection_mode: Literal["single", "batch", "partition"],
     ):
-
         # Reading vars
         self.path = path
         self.partitions = glob.glob(f"{path}/*.parquet") or [
@@ -508,7 +515,6 @@ class CCParquetReaderProcess(multiprocessing.Process):
         super(CCParquetReaderProcess, self).__init__()
 
     def _select_by_viewpoint(self, viewpoint):
-
         df = pd.read_parquet(
             self.path,
             columns=[
@@ -524,7 +530,6 @@ class CCParquetReaderProcess(multiprocessing.Process):
         return df
 
     def _select_by_viewpoint_batch(self, viewpoints):
-
         df = pd.read_parquet(
             self.path,
             columns=[
@@ -540,7 +545,6 @@ class CCParquetReaderProcess(multiprocessing.Process):
         return df
 
     def _select_by_viewpoint_batch_by_partition(self, viewpoints):
-
         for part in self.partitions:
             df = pd.read_parquet(
                 part,
@@ -557,7 +561,6 @@ class CCParquetReaderProcess(multiprocessing.Process):
             yield df
 
     def run(self):
-
         while True:
             try:
                 viewpoints_to_find = self.inq.get(block=True, timeout=self.block_period)
@@ -585,7 +588,6 @@ class CCParquetReaderProcess(multiprocessing.Process):
                 elif (
                     self.selection_mode == "partition"
                 ):  # Low memory counting. Good for data rich viewpoints
-
                     vp_partitions = defaultdict(int)
 
                     for df in self._select_by_viewpoint_batch_by_partition(
@@ -610,7 +612,6 @@ class FragmentCountingProcess(multiprocessing.Process):
         outq: multiprocessing.Queue,
         **preprocessing_kwargs,
     ):
-
         # Multiprocessing vars
         self.inq = inq
         self.outq = outq
@@ -620,7 +621,6 @@ class FragmentCountingProcess(multiprocessing.Process):
         super(FragmentCountingProcess, self).__init__()
 
     def run(self):
-
         while True:
             try:
                 vp, df = self.inq.get(block=True, timeout=self.block_period)
@@ -666,7 +666,6 @@ class CCHDF5WriterProcess(multiprocessing.Process):
         viewpoint_path: os.PathLike = None,
         n_viewpoints: int = 0,
     ):
-
         # Writing vars
         self.path = output_path
         self.key = output_key
@@ -691,9 +690,7 @@ class CCHDF5WriterProcess(multiprocessing.Process):
         super(CCHDF5WriterProcess, self).__init__()
 
     def run(self):
-
         with tqdm.tqdm(total=self.n_viewpoints) as pbar:
-
             while True:
                 try:
                     vp, df = self.inq.get(block=True, timeout=self.block_period)
@@ -708,9 +705,7 @@ class CCHDF5WriterProcess(multiprocessing.Process):
                         df.to_hdf(self.path, self.key, format="table", mode="a")
 
                     elif self.output_format == "cooler":
-
                         if self.restriction_fragment_map and self.viewpoint_path:
-
                             from capcruncher.api.storage import create_cooler_cc
 
                             logger.info(f"Making temporary cooler for {vp}")
@@ -744,7 +739,6 @@ class CCCountsWriterProcess(multiprocessing.Process):
         viewpoint_path: os.PathLike = None,
         tmpdir: os.PathLike = ".",
     ):
-
         # Writing vars
         self.output_format = output_format
         self.restriction_fragment_map = restriction_fragment_map
@@ -766,7 +760,6 @@ class CCCountsWriterProcess(multiprocessing.Process):
         super(CCCountsWriterProcess, self).__init__()
 
     def run(self):
-
         while True:
             try:
                 vp, df = self.inq.get(block=True, timeout=self.block_period)
@@ -788,9 +781,7 @@ class CCCountsWriterProcess(multiprocessing.Process):
                         df.to_hdf(path, vp, format="table", mode="a")
 
                     elif self.output_format == "cooler":
-
                         if self.restriction_fragment_map and self.viewpoint_path:
-
                             from capcruncher.api.storage import create_cooler_cc
 
                             logger.info(f"Making temporary cooler for {vp}")
