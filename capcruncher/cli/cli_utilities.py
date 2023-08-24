@@ -253,14 +253,30 @@ def viewpoint_coordinates(
     recognition_site: str = "dpnii",
     output: os.PathLike = "viewpoint_coordinates.bed",
 ):
-    # import dask.distributed
+
+    """
+    Aligns viewpoints to a genome and returns the coordinates of the viewpoint
+    in the genome.
+
+    Viewpoints can be supplied as a FASTA file or a TSV file with the first column
+    containing the name of the viewpoint and the second column containing the
+    sequence of the viewpoint.
+
+    Args:
+        viewpoints (os.PathLike): Path to viewpoints
+        genome (os.PathLike): Path to genome fasta file
+        genome_indicies (os.PathLike, optional): Path to genome bowtie2 indices. Defaults to None.
+        recognition_site (str, optional): Restriction site used. Defaults to "dpnii".
+        output (os.PathLike, optional): Output file name. Defaults to "viewpoint_coordinates.bed".
+
+    Raises:
+        ValueError: If viewpoints are not supplied in the correct format
+        ValueError: If no bowtie2 indices are supplied
+    """
+
     import concurrent.futures
     from capcruncher.cli import genome_digest
     from pybedtools import BedTool
-
-    # client = dask.distributed.Client(
-    #     n_workers=4, dashboard_address=None, processes=True
-    # )
 
     digested_genome = NamedTemporaryFile("r+")
     viewpoints_fasta = NamedTemporaryFile("r+")
@@ -328,3 +344,69 @@ def viewpoint_coordinates(
 
         for tmp in [digested_genome, viewpoints_fasta, viewpoints_aligned_bam]:
             tmp.close()
+
+
+def dump_cooler(path: str, viewpoint: str, resolution: int = None) -> pd.DataFrame:
+
+    import cooler.api as cooler
+
+    if resolution:
+        path = cooler.Cooler(f"{path}::{viewpoint}/resolutions/{resolution}")
+    else:
+        path = cooler.Cooler(f"{path}::{viewpoint}")
+
+    pixels = path.pixels()[:]
+    return pixels
+
+
+def dump_capcruncher_parquet(path: str, viewpoint: str = None) -> pd.DataFrame:
+    import ibis
+
+    con = ibis.duckdb.connect()
+
+    if viewpoint:
+        tbl = con.register(f"parquet://{path}/*.parquet", table_name="slices_tbl")
+        tbl = tbl.filter(tbl.viewpoint == viewpoint)
+    else:
+        tbl = con.register(f"parquet://{path}", table_name="slices_tbl")
+
+    return tbl.execute(limit=None)
+
+
+@cli.command()
+@click.argument("path")
+@click.option("-v", "--viewpoint", help="Viewpoint to extract")
+@click.option(
+    "-r",
+    "--resolution",
+    help="Resolution to extract. Only used for cooler (hdf5) files",
+)
+@click.option("-o", "--output", help="Output file name", default="capcruncher_dump.tsv")
+def dump(
+    path: str,
+    viewpoint: str = None,
+    resolution: int = None,
+    output: str = "capcruncher_dump.tsv",
+):
+    """
+    Dumps the contents of a cooler or capcruncher parquet file to a TSV file
+
+    Args:
+        path (str): Path to cooler or capcruncher parquet file
+        viewpoint (str, optional): Viewpoint to extract. Defaults to None.
+        resolution (int, optional): Resolution to extract. Only used for cooler (hdf5) files. Defaults to None.
+        output (str, optional): Output file name. Defaults to "capcruncher_dump.tsv".
+    """
+
+    import pandas as pd
+
+    assert os.path.exists(path), "File does not exist"
+
+    if ".hdf5" in path:
+        df = dump_cooler(path, viewpoint, resolution)
+    elif ".parquet" in path:
+        df = dump_capcruncher_parquet(path, viewpoint)
+    else:
+        raise ValueError("File type not supported")
+
+    df.to_csv(output, sep="\t", index=False)
