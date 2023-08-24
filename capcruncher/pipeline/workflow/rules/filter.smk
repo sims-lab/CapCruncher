@@ -116,8 +116,14 @@ rule combine_flashed_and_pe_post_deduplication:
     shell:
         """
         mkdir -p {output.slices}
-        mv {input.slices[0]}/*.parquet {output.slices} || mkdir -p {output.slices}
-        mv {input.slices[1]}/*.parquet {output.slices} || mkdir -p {output.slices}
+
+        for fn in {input.slices[0]}/*.parquet; do
+            mv "$fn" "{output.slices}/flashed-$(basename "$fn")"
+        done
+
+        for fn in {input.slices[1]}/*.parquet; do
+            mv "$fn" "{output.slices}/pe-$(basename "$fn")"
+        done || mkdir -p {output.slices}
         """
 
 
@@ -145,3 +151,8 @@ rule cis_and_trans_stats:
         --sample-name {params.sample_name} \
         -o {output.stats} \
         """
+
+
+localrules:
+    split_flashed_and_pe_datasets,
+    combine_flashed_and_pe_post_deduplication,

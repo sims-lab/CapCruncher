@@ -73,6 +73,7 @@ def deduplicate(
         format="parquet",
         partitioning_flavor="hive",
         min_rows_per_group=0,
+        max_rows_per_file=int(2e6),
     )
 
     # If the output directory is empty, create a dummy file to prevent downstream errors
