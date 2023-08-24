@@ -28,7 +28,7 @@ write_to = "capcruncher/_version.py"
 [project.optional-dependencies]
 stats = ["pydeseq2"]
 plotting = ["coolbox"]
-experimental = ["capcruncher-tools"]
+experimental = ["capcruncher-tools >= 0.1.8"]
 
 [project.urls]
 repo = "https://github.com/sims-lab/CapCruncher.git"
