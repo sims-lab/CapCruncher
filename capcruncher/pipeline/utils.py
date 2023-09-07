@@ -338,12 +338,12 @@ def validate_custom_filtering(config: Dict):
 def get_count_files(wc, perform_binning: bool = False):
     counts = []
     counts.append(
-        f"capcruncher_output/pileups/counts_by_restriction_fragment/{wc.sample}.hdf5"
+        f"capcruncher_output/interim/pileups/counts_by_restriction_fragment/{wc.sample}.hdf5"
     )
 
     if perform_binning:
         counts.append(
-            f"capcruncher_output/pileups/counts_by_genomic_bin/{wc.sample}.hdf5"
+            f"capcruncher_output/interim/pileups/counts_by_genomic_bin/{wc.sample}.hdf5"
         )
 
     return counts
