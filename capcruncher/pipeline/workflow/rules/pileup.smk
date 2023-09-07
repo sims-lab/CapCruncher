@@ -1,5 +1,10 @@
 import capcruncher.pipeline.utils
 
+
+def get_mem_mb(wildcards, threads, attempt=0):
+    return threads * 3000 * 2 ** (attempt - 1)
+
+
 if CAPCRUNCHER_TOOLS:
 
     rule count:
@@ -9,15 +14,15 @@ if CAPCRUNCHER_TOOLS:
             viewpoints=VIEWPOINTS,
         output:
             temp(
-                "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5"
+                "capcruncher_output/interim/pileups/counts_by_restriction_fragment/{sample}.hdf5"
             ),
         log:
             "capcruncher_output/logs/counts/{sample}.log",
         threads: 8
         resources:
-            mem_mb=lambda wc, attempt: 3000 * 2**attempt,
+            mem_mb=get_mem_mb,
         params:
-            outdir="capcruncher_output/pileups/counts_by_restriction_fragment",
+            outdir=lambda wc, output: str(pathlib.Path(output).parent),
             assay=config["analysis"]["method"],
         shell:
             """
@@ -42,7 +47,7 @@ else:
             viewpoints=VIEWPOINTS,
         output:
             temp(
-                "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5"
+                "capcruncher_output/interim/pileups/counts_by_restriction_fragment/{sample}.hdf5"
             ),
         log:
             "capcruncher_output/logs/counts/{sample}.log",
@@ -50,7 +55,7 @@ else:
         resources:
             mem_mb=lambda wc, attempt: 3000 * 2**attempt,
         params:
-            outdir="capcruncher_output/pileups/counts_by_restriction_fragment",
+            outdir=lambda wc, output: str(pathlib.Path(output).parent),
             assay=config["analysis"]["method"],
         shell:
             """
@@ -71,9 +76,9 @@ else:
 
 rule bin_counts:
     input:
-        "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5",
+        "capcruncher_output/interim/pileups/counts_by_restriction_fragment/{sample}.hdf5",
     output:
-        temp("capcruncher_output/pileups/counts_by_genomic_bin/{sample}.hdf5"),
+        temp("capcruncher_output/interim/pileups/counts_by_genomic_bin/{sample}.hdf5"),
     params:
         bin_size=[f"-b {b}" for b in BIN_SIZES],
         assay=config["analysis"]["method"],
