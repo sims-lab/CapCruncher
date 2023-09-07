@@ -35,7 +35,7 @@ def is_on(param: str) -> bool:
 
 def is_off(param: str):
     """Returns True if parameter in "off" values"""
-    values = ["", "None", "none", "F", "f"]
+    values = ["", "None", "none", "F", "f", "no"]
     if str(param).lower() in values:
         return True
     else:
