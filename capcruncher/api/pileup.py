@@ -139,14 +139,23 @@ class CoolerBedGraph:
                     columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
                 )
             )
-            gr_bdg = (
+
+            df_bdg = (
                 gr_bdg.cluster()
                 .df.groupby("Cluster")
-                .agg({"count": "sum", "Start": "min", "End": "max"})
+                .agg(
+                    {
+                        "count": "sum",
+                        "Start": "min",
+                        "End": "max",
+                        "Chromosome": "first",
+                    }
+                )
+                .reset_index()
+                .rename(
+                    columns={"Start": "start", "End": "end", "Chromosome": "chrom"}
+                )[["chrom", "start", "end", "count"]]
             )
-            df_bdg = gr_bdg.reset_index().rename(
-                columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
-            )[["chrom", "start", "end", "count"]]
 
         if not normalisation == "raw":
             logger.info("Normalising bedgraph")
