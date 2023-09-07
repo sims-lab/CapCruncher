@@ -5,6 +5,10 @@ def get_mem_mb(wildcards, threads, attempt=0):
     return threads * 3000 * 2 ** (attempt - 1)
 
 
+def get_outdir(wildcards, output):
+    return str(pathlib.Path(output[0]).parent)
+
+
 if CAPCRUNCHER_TOOLS:
 
     rule count:
@@ -22,7 +26,7 @@ if CAPCRUNCHER_TOOLS:
         resources:
             mem_mb=get_mem_mb,
         params:
-            outdir=lambda wc, output: str(pathlib.Path(output).parent),
+            outdir=get_outdir,
             assay=config["analysis"]["method"],
         shell:
             """
@@ -55,7 +59,7 @@ else:
         resources:
             mem_mb=lambda wc, attempt: 3000 * 2**attempt,
         params:
-            outdir=lambda wc, output: str(pathlib.Path(output).parent),
+            outdir=get_outdir,
             assay=config["analysis"]["method"],
         shell:
             """
