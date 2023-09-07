@@ -131,6 +131,7 @@ rule bedgraph_raw:
         bedgraph=temp(
             "capcruncher_output/interim/pileups/bedgraphs/{sample}/raw/{sample}_{viewpoint}.bedgraph"
         ),
+    retries: 0
     log:
         "capcruncher_output/logs/bedgraph_raw/{sample}_{viewpoint}.log",
     params:
@@ -159,6 +160,7 @@ rule bedgraph_normalised:
         ),
     log:
         "capcruncher_output/logs/bedgraph_norm/{sample}_{viewpoint}.log",
+    retries: 0
     params:
         output_prefix=lambda wc, output: pathlib.Path(output.bedgraph).parent
         / f"{wc.sample}",
@@ -186,6 +188,7 @@ rule bedgraph_to_bigwig:
         bedgraph="capcruncher_output/interim/pileups/bedgraphs/{sample}/{norm}/{sample}_{viewpoint}.bedgraph",
     output:
         bigwig="capcruncher_output/results/{sample}/bigwigs/{norm}/{sample}_{viewpoint}.bigWig",
+    retries: 0
     log:
         "capcruncher_output/logs/bedgraph_to_bigwig/{sample}_{norm}_{viewpoint}.log",
     params:
@@ -193,6 +196,6 @@ rule bedgraph_to_bigwig:
     shell:
         """
         sort -k1,1 -k2,2n {input.bedgraph} > {input.bedgraph}.sorted
-        bedGraphToBigWig {input.bedgraph}.sorted {params.chrom_sizes} {output.bigwig}
+        bedGraphToBigWig {input.bedgraph}.sorted {params.chrom_sizes} {output.bigwig} 2> {log}
         rm {input.bedgraph}.sorted
         """
