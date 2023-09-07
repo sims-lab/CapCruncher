@@ -119,7 +119,7 @@ def get_blacklist(config):
 
 def has_high_viewpoint_number(viewpoints: str, config: Dict):
     n_viewpoints = pr.read_bed(viewpoints).df.shape[0]
-    if n_viewpoints > 100:
+    if n_viewpoints > 500:
         if not config["analysis_optional"].get("force_bigwig_generation", False):
             return True
 
