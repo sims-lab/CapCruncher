@@ -41,21 +41,39 @@ class CoolerBedGraph:
         self._cooler = cooler.Cooler(uri)
         self.viewpoint_name = self._cooler.info["metadata"]["viewpoint_name"]
         self._viewpoint_bins = self._cooler.info["metadata"]["viewpoint_bins"]
-        self.viewpoint_chrom = self._cooler.info["metadata"]["viewpoint_chrom"][0]
+
+        if len(self._viewpoint_bins):
+            self.multiple_viewpoint_bins = True
+            logger.warning(
+                f"Viewpoint {self.viewpoint_name} has multiple bins! {self._viewpoint_bins}. Proceed with caution!"
+            )
+        else:
+            self.multiple_viewpoint_bins = False
+
+        self.viewpoint_chroms = self._cooler.info["metadata"]["viewpoint_chrom"]
         self.n_cis_interactions = self._cooler.info["metadata"]["n_cis_interactions"]
         logger.info(f"Processing {self.viewpoint_name}")
 
         if only_cis:
-            self._bins = self._cooler.bins().fetch(self.viewpoint_chrom)
-            viewpoint_chrom_bins = self._bins["name"]
-            self._pixels = (
-                self._cooler.pixels()
-                .fetch(self.viewpoint_chrom)
-                .query(
-                    "(bin1_id in @viewpoint_chrom_bins) and (bin2_id in @viewpoint_chrom_bins)"
+            pixels = []
+            bins = []
+            for chrom in self.viewpoint_chroms:
+                _bins = self._cooler.bins().fetch(chrom)
+                viewpoint_chrom_bins = self._bins["name"]
+                _pixels = (
+                    self._cooler.pixels()
+                    .fetch(self.viewpoint_chroms)
+                    .query(
+                        "(bin1_id in @viewpoint_chrom_bins) and (bin2_id in @viewpoint_chrom_bins)"
+                    )
                 )
-            )
-            self._bins = self._cooler.bins().fetch(self.viewpoint_chrom)
+                _bins = self._cooler.bins().fetch(chrom)
+
+                pixels.append(_pixels)
+                bins.append(_bins)
+
+            self._pixels = pd.concat(pixels)
+            self._bins = pd.concat(bins)
 
         elif region_to_limit:
             self._pixels = self._cooler.pixels().fetch(region_to_limit)
@@ -75,7 +93,6 @@ class CoolerBedGraph:
         self._reporters = None
 
     def _get_reporters(self):
-
         logger.info("Extracting reporters")
         concat_ids = pd.concat([self._pixels["bin1_id"], self._pixels["bin2_id"]])
         concat_ids_filt = concat_ids.loc[lambda ser: ser.isin(self._viewpoint_bins)]
@@ -103,7 +120,6 @@ class CoolerBedGraph:
     def extract_bedgraph(
         self, normalisation: Literal["raw", "n_cis", "region"] = "raw", **norm_kwargs
     ) -> pd.DataFrame:
-
         logger.info("Generating bedgraph")
         df_bdg = (
             self._bins.merge(
@@ -115,6 +131,22 @@ class CoolerBedGraph:
             .assign(count=lambda df: df["count"].fillna(0))
             .sort_values(["chrom", "start"])
         )
+
+        # TODO: This is a hack to deal with multiple bins for a viewpoint
+        if self.multiple_viewpoint_bins:
+            gr_bdg = pr.PyRanges(
+                df_bdg.rename(
+                    columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
+                )
+            )
+            gr_bdg = (
+                gr_bdg.cluster()
+                .df.groupby("Cluster")
+                .agg({"count": "sum", "Start": "min", "End": "max"})
+            )
+            df_bdg = gr_bdg.reset_index().rename(
+                columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
+            )[["chrom", "start", "end", "count"]]
 
         if not normalisation == "raw":
             logger.info("Normalising bedgraph")
@@ -161,7 +193,6 @@ class CoolerBedGraph:
         bedgraph["count"] = (bedgraph["count"] / self.n_cis_interactions) * scale_factor
 
     def _normalise_by_regions(self, bedgraph, scale_factor: float, regions: str):
-
         if not is_valid_bed(regions):
             raise ValueError(
                 "A valid bed file is required for region based normalisation"
@@ -196,7 +227,6 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
         binner: CoolerBinner = None,
         sparse=True,
     ):
-
         super(CoolerBedGraphWindowed, self).__init__(cooler_fn, sparse=sparse)
 
         self.cooler = cooler.Cooler(cooler_fn)
@@ -207,7 +237,6 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
         self.capture_bins_genomic = self.binner.viewpoint_bins
 
     def _get_bedgraph(self):
-
         bct = self.binner.bin_conversion_table
         reporters = self.reporters
 
@@ -232,7 +261,6 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
         return bedgraph_bins
 
     def normalise_bedgraph(self, bedgraph, scale_factor=1e6):
-
         bct = self.binner.bin_conversion_table
         reporters = self.reporters
 
@@ -269,7 +297,6 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
 
     @property
     def reporters_binned(self):
-
         reporters = self.reporters
         reporters_binned = (
             reporters.merge(
@@ -300,7 +327,6 @@ class CCBedgraph(object):
         capture_start="",
         capture_end="",
     ):
-
         self.fn = path
         self.df = df
 
@@ -381,7 +407,6 @@ class CCBedgraph(object):
 def cooler_to_bedgraph(
     clr: str, regions_of_interest: str = None, viewpoint_distance: int = None, **kwargs
 ) -> pd.DataFrame:
-
     if viewpoint_distance:
         viewpoint_coords = cooler.Cooler(clr).info["metadata"]["viewpoint_coords"][0]
         viewpoint_coords = re.split("[:-]", viewpoint_coords)
