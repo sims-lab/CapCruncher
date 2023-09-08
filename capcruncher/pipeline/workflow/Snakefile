@@ -104,7 +104,6 @@ include: "rules/pileup.smk"
 include: "rules/compare.smk"
 include: "rules/statistics.smk"
 include: "rules/visualise.smk"
-include: "rules/validate.smk"
 
 
 wildcard_constraints:
