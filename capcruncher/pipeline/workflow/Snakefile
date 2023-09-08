@@ -110,6 +110,7 @@ wildcard_constraints:
     sample="|".join(SAMPLE_NAMES),
     part=r"\d+",
     viewpoint="|".join(VIEWPOINT_NAMES),
+    combined="|".join(["flashed", "pe"]),
 
 
 rule all:
