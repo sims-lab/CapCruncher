@@ -136,17 +136,29 @@ rule combine_flashed_and_pe_post_deduplication:
         ),
     output:
         slices=directory("capcruncher_output/results/{sample}/{sample}.parquet"),
+    params:
+        source_dir="capcruncher_output/interim/filtering/deduplicated/{sample}",
+        dest_dir="capcruncher_output/results/{sample}/{sample}.parquet",
     shell:
         """
-        mkdir -p {output.slices}
+        mkdir -p {params.dest_dir}
 
-        for fn in {input.slices[0]}/*.parquet; do
-            mv "$fn" "{output.slices}/flashed-$(basename "$fn")"
+        source_dir="{params.source_dir}"
+        dest_dir="{params.dest_dir}"
+
+        # Move flashed files
+        for fn in "$source_dir/flashed"/*.parquet; do
+            if [ -e "$fn" ]; then
+                mv "$fn" "$dest_dir/flashed-$(basename "$fn")"
+            fi
         done
 
-        for fn in {input.slices[1]}/*.parquet; do
-            mv "$fn" "{output.slices}/pe-$(basename "$fn")"
-        done || mkdir -p {output.slices}
+        # Move pe files
+        for fn in "$source_dir/pe"/*.parquet; do
+            if [ -e "$fn" ]; then
+                mv "$fn" "$dest_dir/pe-$(basename "$fn")"
+            fi
+        done
         """
 
 
