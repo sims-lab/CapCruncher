@@ -7,6 +7,7 @@ import numpy as np
 import pyranges as pr
 import polars as pl
 import tabulate
+import pathlib
 
 bins = snakemake.input.bins
 viewpoints = snakemake.input.viewpoints
@@ -48,3 +49,6 @@ if has_multiple_bins.any() and not snakemake.params.ignore_multiple_bins_per_vie
     raise ValueError(
         f"""The following viewpoints overlap multiple restriction fragments:\n{df_rf_counts}\n"""
     )
+
+else:
+    pathlib.Path(snakemake.output.sentinel).touch()

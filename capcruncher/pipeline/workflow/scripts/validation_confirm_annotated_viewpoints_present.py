@@ -7,6 +7,7 @@ import numpy as np
 import pyranges as pr
 import polars as pl
 import tabulate
+import pathlib
 
 slices = snakemake.input.slices
 viewpoints = snakemake.input.viewpoints
@@ -36,3 +37,6 @@ if not gr_viewpoints.df.Name.isin(df_counts.capture).all():
     # check which viewpoints are missing
     missing = gr_viewpoints.df.Name[~viewpoints.df.Name.isin(df_counts.capture)]
     raise ValueError(f"Not all viewpoints are present in the annotation: {missing}")
+
+else:
+    pathlib.Path(snakemake.output.sentinel).touch()
