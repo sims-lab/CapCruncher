@@ -27,8 +27,10 @@ rule check_n_bins_per_viewpoint:
         n_bins_per_viewpoint="capcruncher_output/resources/validation/n_bins_per_viewpoint.tsv",
     params:
         ignore_multiple_bins_per_viewpoint=IGNORE_MULTIPLE_FRAGMENTS_PER_VIEWPOINT,
+    log:
+        "capcruncher_output/logs/validation/check_n_bins_per_viewpoint.log",
     script:
-        "scripts/validation_check_n_bins_per_viewpoint.py"
+        "../scripts/validation_check_n_bins_per_viewpoint.py"
 
 
 rule annotate:

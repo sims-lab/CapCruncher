@@ -11,10 +11,6 @@ import pathlib
 
 slices = snakemake.input.slices
 viewpoints = snakemake.input.viewpoints
-
-ignore_missing_viewpoints = snakemake.params.ignore_missing_viewpoints
-
-
 gr_viewpoints = pr.read_bed(viewpoints)
 
 with pl.StringCache():
