@@ -26,7 +26,9 @@ rule check_n_bins_per_viewpoint:
         sentinel="capcruncher_output/resources/validation/check_n_bins_per_viewpoint.sentinel",
         n_bins_per_viewpoint="capcruncher_output/resources/validation/n_bins_per_viewpoint.tsv",
     params:
-        ignore_multiple_bins_per_viewpoint=IGNORE_MULTIPLE_FRAGMENTS_PER_VIEWPOINT,
+        ignore_multiple_bins_per_viewpoint=IGNORE_MULTIPLE_FRAGMENTS_PER_VIEWPOINT
+        if ASSAY in ["capture", "tri"]
+        else True,
     log:
         "capcruncher_output/logs/validation/check_n_bins_per_viewpoint.log",
     script:
