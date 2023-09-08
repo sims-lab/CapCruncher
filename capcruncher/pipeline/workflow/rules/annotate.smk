@@ -36,7 +36,7 @@ rule annotate:
         bam=rules.align_bowtie2.output.bam,
         exclusions="capcruncher_output/interim/annotate/exclude.bed",
         viewpoints=config["analysis"]["viewpoints"],
-        single_bin_per_viewpoint=rules.check_n_bins_per_viewpoint.sentinel,
+        single_bin_per_viewpoint=rules.check_n_bins_per_viewpoint.output.sentinel,
     output:
         annotated=temp(
             "capcruncher_output/interim/annotate/{sample}/{sample}_part{part}_{combined}.parquet"
