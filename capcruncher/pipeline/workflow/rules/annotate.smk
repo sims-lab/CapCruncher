@@ -18,11 +18,25 @@ rule exclusions:
         """
 
 
+rule check_n_bins_per_viewpoint:
+    input:
+        bins=rules.digest_genome.output.bed,
+        viewpoints=config["analysis"]["viewpoints"],
+    output:
+        sentinel="capcruncher_output/resources/validation/check_n_bins_per_viewpoint.sentinel",
+        n_bins_per_viewpoint="capcruncher_output/resources/validation/n_bins_per_viewpoint.tsv",
+    params:
+        ignore_multiple_bins_per_viewpoint=IGNORE_MULTIPLE_FRAGMENTS_PER_VIEWPOINT,
+    script:
+        "scripts/validation_check_n_bins_per_viewpoint.py"
+
+
 rule annotate:
     input:
         bam=rules.align_bowtie2.output.bam,
         exclusions="capcruncher_output/interim/annotate/exclude.bed",
         viewpoints=config["analysis"]["viewpoints"],
+        single_bin_per_viewpoint=rules.check_n_bins_per_viewpoint.sentinel,
     output:
         annotated=temp(
             "capcruncher_output/interim/annotate/{sample}/{sample}_part{part}_{combined}.parquet"

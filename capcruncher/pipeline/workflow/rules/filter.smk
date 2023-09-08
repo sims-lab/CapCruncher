@@ -12,10 +12,33 @@ def get_filtered_slices(wildcards):
     return slices
 
 
+def get_annotated_slices(wildcards):
+    slices = dict()
+    for combined_type in ["flashed", "pe"]:
+        parts = get_rebalanced_parts(wildcards, combined=combined_type)
+        slices[combined_type] = [
+            f"capcruncher_output/interim/annotate/{wildcards.sample}/{wildcards.sample}_part{part}_{combined_type}.slices.parquet"
+            for part in parts
+        ]
+    return [*slices["flashed"], *slices["pe"]]
+
+
+rule check_viewpoints_annotated:
+    input:
+        slices=get_annotated_slices,
+        viewpoints=config["analysis"]["viewpoints"],
+    output:
+        sentinel="capcruncher_output/resources/validation/check_viewpoints.sentinel",
+        viewpoints_present="capcruncher_output/resources/validation/annotated_viewpoints_present.tsv",
+    script:
+        "scripts/validation_confirm_annotated_viewpoints_present.py"
+
+
 rule filter_alignments:
     input:
         bam=rules.align_bowtie2.output.bam,
         annotations=rules.annotate.output.annotated,
+        all_viewpoints_present=rules.check_viewpoints_annotated.output.sentinel,
     output:
         filtered_slices=temp(
             "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet"
