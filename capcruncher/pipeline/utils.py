@@ -35,7 +35,7 @@ def is_on(param: str) -> bool:
 
 def is_off(param: str):
     """Returns True if parameter in "off" values"""
-    values = ["", "None", "none", "F", "f"]
+    values = ["", "None", "none", "F", "f", "no"]
     if str(param).lower() in values:
         return True
     else:
@@ -119,7 +119,7 @@ def get_blacklist(config):
 
 def has_high_viewpoint_number(viewpoints: str, config: Dict):
     n_viewpoints = pr.read_bed(viewpoints).df.shape[0]
-    if n_viewpoints > 100:
+    if n_viewpoints > 500:
         if not config["analysis_optional"].get("force_bigwig_generation", False):
             return True
 
@@ -338,12 +338,12 @@ def validate_custom_filtering(config: Dict):
 def get_count_files(wc, perform_binning: bool = False):
     counts = []
     counts.append(
-        f"capcruncher_output/pileups/counts_by_restriction_fragment/{wc.sample}.hdf5"
+        f"capcruncher_output/interim/pileups/counts_by_restriction_fragment/{wc.sample}.hdf5"
     )
 
     if perform_binning:
         counts.append(
-            f"capcruncher_output/pileups/counts_by_genomic_bin/{wc.sample}.hdf5"
+            f"capcruncher_output/interim/pileups/counts_by_genomic_bin/{wc.sample}.hdf5"
         )
 
     return counts
