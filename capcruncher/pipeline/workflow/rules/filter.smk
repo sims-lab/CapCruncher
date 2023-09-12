@@ -12,10 +12,33 @@ def get_filtered_slices(wildcards):
     return slices
 
 
+def get_annotated_slices(wildcards):
+    slices = dict()
+    for combined_type in ["flashed", "pe"]:
+        parts = get_rebalanced_parts(wildcards, combined=combined_type)
+        slices[combined_type] = [
+            f"capcruncher_output/interim/annotate/{wildcards.sample}/{wildcards.sample}_part{part}_{combined_type}.parquet"
+            for part in parts
+        ]
+    return [*slices["flashed"], *slices["pe"]]
+
+
+rule check_viewpoints_annotated:
+    input:
+        slices=get_annotated_slices,
+        viewpoints=config["analysis"]["viewpoints"],
+    output:
+        sentinel="capcruncher_output/resources/validation/{sample}.check_viewpoints.sentinel",
+        viewpoints_present="capcruncher_output/resources/validation/{sample}.annotated_viewpoints_present.tsv",
+    script:
+        "../scripts/validation_confirm_annotated_viewpoints_present.py"
+
+
 rule filter_alignments:
     input:
         bam=rules.align_bowtie2.output.bam,
         annotations=rules.annotate.output.annotated,
+        all_viewpoints_present=rules.check_viewpoints_annotated.output.sentinel,
     output:
         filtered_slices=temp(
             "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet"
@@ -113,17 +136,29 @@ rule combine_flashed_and_pe_post_deduplication:
         ),
     output:
         slices=directory("capcruncher_output/results/{sample}/{sample}.parquet"),
+    params:
+        source_dir="capcruncher_output/interim/filtering/deduplicated/{sample}",
+        dest_dir="capcruncher_output/results/{sample}/{sample}.parquet",
     shell:
         """
-        mkdir -p {output.slices}
+        mkdir -p {params.dest_dir}
 
-        for fn in {input.slices[0]}/*.parquet; do
-            mv "$fn" "{output.slices}/flashed-$(basename "$fn")"
+        source_dir="{params.source_dir}"
+        dest_dir="{params.dest_dir}"
+
+        # Move flashed files
+        for fn in "$source_dir/flashed"/*.parquet; do
+            if [ -e "$fn" ]; then
+                mv "$fn" "$dest_dir/flashed-$(basename "$fn")"
+            fi
         done
 
-        for fn in {input.slices[1]}/*.parquet; do
-            mv "$fn" "{output.slices}/pe-$(basename "$fn")"
-        done || mkdir -p {output.slices}
+        # Move pe files
+        for fn in "$source_dir/pe"/*.parquet; do
+            if [ -e "$fn" ]; then
+                mv "$fn" "$dest_dir/pe-$(basename "$fn")"
+            fi
+        done
         """
 
 
