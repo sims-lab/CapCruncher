@@ -55,7 +55,9 @@ BIN_SIZES = capcruncher.pipeline.utils.get_bin_sizes(config)
 HIGH_NUMBER_OF_VIEWPOINTS = capcruncher.pipeline.utils.has_high_viewpoint_number(
     VIEWPOINTS, config
 )
-
+IGNORE_MULTIPLE_FRAGMENTS_PER_VIEWPOINT = config["analysis"].get(
+    "ignore_multiple_fragments_per_viewpoint", False
+)
 
 # Details
 SUMMARY_METHODS = [
@@ -80,7 +82,6 @@ PERFORM_BINNING = capcruncher.pipeline.utils.can_perform_binning(config)
 ASSAY = config["analysis"]["method"]
 SAMPLE_NAMES = FASTQ_SAMPLES.sample_names_all
 
-# Optional
 
 ## Check if capcruncher_tools is installed
 if importlib.util.find_spec("capcruncher_tools"):
@@ -109,6 +110,7 @@ wildcard_constraints:
     sample="|".join(SAMPLE_NAMES),
     part=r"\d+",
     viewpoint="|".join(VIEWPOINT_NAMES),
+    combined="|".join(["flashed", "pe"]),
 
 
 rule all:
