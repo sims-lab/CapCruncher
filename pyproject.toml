@@ -84,6 +84,12 @@ max-complexity = 10
 "capcruncher/pipeline/rules/scripts/combine_filtering_stats.py" = ["F821"]
 "capcruncher/pipeline/rules/scripts/combine_deduplication_stats.py" = ["F821"]
 "capcruncher/pipeline/rules/scripts/combine_digestion_stats.py" = ["F821"]
+"capcruncher/pipeline/workflow/scripts/validation_check_n_bins_per_viewpoint.py" = [
+    "F821",
+]
+"capcruncher/pipeline/workflow/scripts/validation_confirm_annotated_viewpoints_present.py" = [
+    "F821",
+]
 
 [tool.ruff.pydocstyle]
 convention = "google"
