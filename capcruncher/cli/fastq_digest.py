@@ -61,6 +61,6 @@ def digest(
         df = df.replace({r"^One$": 1, r"^Two$": 2}, regex=True)
         df.to_csv(f"{stats_prefix}.digestion.{hist_type}.histogram.csv", index=False)
 
-    df_stats_read_fmt.to_csv(f"{stats_prefix}.digestion.read.summary.csv ", index=False)
+    df_stats_read_fmt.to_csv(f"{stats_prefix}.digestion.read.summary.csv", index=False)
 
     return stats
