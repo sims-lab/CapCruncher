@@ -134,7 +134,17 @@ def test_deduplicate_fastq(
 
     result = cli_runner.invoke(
         cli,
-        ["fastq", "deduplicate", "-1", infiles[0], "-2", infiles[1]],
+        [
+            "fastq",
+            "deduplicate",
+            "-1",
+            infiles[0],
+            "-2",
+            infiles[1],
+            "-o",
+            outfile,
+            *flags,
+        ],
     )
 
     assert result.exit_code == 0
