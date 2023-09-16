@@ -42,20 +42,6 @@ def deduplicate(
         shuffle=shuffle,
     )
 
-    # logging.info("Saving deduplication statistics")
-    # # df_stats = (
-    # #     pd.Series(deduplication_results)
-    # #     .to_frame("stat")
-    # #     .reset_index()
-    # #     .rename(columns={"index": "stat_type"})
-    # #     .assign(
-    # #         read_number=0,
-    # #         read_type="pe",
-    # #         stage="deduplication",
-    # #         sample=sample_name,
-    # #     )
-    # )
-
     logging.info(f"Saving stats to {stats_path}")
     df_stats.to_csv(stats_path, index=False)
 
