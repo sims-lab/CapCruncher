@@ -1,4 +1,4 @@
-capcruncher-tools>0.1.8
+capcruncher-tools>=0.1.8
 click<=8.2.0
 cookiecutter
 cooler
