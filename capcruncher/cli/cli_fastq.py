@@ -102,7 +102,7 @@ def digest(*args, **kwargs):
     digest(*args, **kwargs)
 
 
-@cli.group(cls=UnsortedGroup)
+@cli.command()
 def deduplicate():
     """
     Identifies PCR duplicate fragments from Fastq files.
