@@ -118,73 +118,23 @@ def test_genome_digest(cli_runner, data_pipeline, tmpdir, infile, flags):
     [
         (
             ("duplicated_1.fastq.gz", "duplicated_2.fastq.gz"),
-            "parsed.json",
-            ["--read_buffer", "100000"],
-        ),
-        (
-            ("duplicated_1.fastq.gz", "duplicated_2.fastq.gz"),
-            "parsed.pkl",
-            ["--read_buffer", "100000"],
-        ),
-    ],
-)
-def test_deduplicate_parse(
-    cli_runner, data_deduplication, tmpdir, infiles, outfile, flags
-):
-
-    infiles = [os.path.join(data_deduplication, fn) for fn in infiles]
-    outfile = os.path.join(tmpdir, outfile)
-    result = cli_runner.invoke(
-        cli, ["fastq", "deduplicate", "parse", *infiles, "-o", outfile, *flags]
-    )
-
-    assert result.exit_code == 0
-    assert os.path.exists(outfile)
-
-
-@pytest.mark.parametrize(
-    "infiles,outfile,flags",
-    [
-        (("parsed.json",), "deduplicated.json", []),
-        (("parsed.pickle",), "deduplicated.pickle", []),
-        (("parsed.json", "parsed.pickle"), "deduplicated.pickle", []),
-    ],
-)
-def test_deduplicate_identify(
-    cli_runner, data_deduplication, tmpdir, infiles, outfile, flags
-):
-
-    infiles = [os.path.join(data_deduplication, fn) for fn in infiles]
-    outfile = os.path.join(tmpdir, outfile)
-    result = cli_runner.invoke(
-        cli, ["fastq", "deduplicate", "identify", *infiles, "-o", outfile, *flags]
-    )
-
-    assert result.exit_code == 0
-    assert os.path.exists(outfile)
-
-
-@pytest.mark.parametrize(
-    "infiles,ids,outfile,flags",
-    [
-        (
-            ("duplicated_1.fastq.gz", "duplicated_2.fastq.gz"),
-            "identified.pkl",
             "out",
             [],
         )
     ],
 )
-def test_deduplicate_remove(
-    cli_runner, data_deduplication, tmpdir, infiles, ids, outfile, flags
+def test_deduplicate_fastq(
+    cli_runner, data_deduplication, tmpdir, infiles, outfile, flags
 ):
 
     infiles = [os.path.join(data_deduplication, fn) for fn in infiles]
-    ids = os.path.join(data_deduplication, ids)
     outfile = os.path.join(tmpdir, outfile)
+
+    print(infiles)
+
     result = cli_runner.invoke(
         cli,
-        ["fastq", "deduplicate", "remove", *infiles, "-d", ids, "-o", outfile, *flags],
+        ["fastq", "deduplicate", "-1", infiles[0], "-2", infiles[1]],
     )
 
     assert result.exit_code == 0

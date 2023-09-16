@@ -174,20 +174,7 @@ def deduplicate(*args, **kwargs):
     fq1 = [pathlib.Path(f) for f in ast.literal_eval(kwargs["fastq1"])]
     fq2 = [pathlib.Path(f) for f in ast.literal_eval(kwargs["fastq2"])]
 
-    fq_input = list(zip(fq1, fq2))
-    output_prefix = pathlib.Path(kwargs["output_prefix"])
+    kwargs["fastq_1"] = fq1
+    kwargs["fastq_2"] = fq2
 
-    fq_output = [
-        (output_prefix / f"{f1.stem}.fastq.gz", output_prefix / f"{f2.stem}.fastq.gz")
-        for f1, f2 in fq_input
-    ]
-
-    deduplicate(
-        fq_input,
-        fq_output,
-        **{
-            k: v
-            for k, v in kwargs.items()
-            if k not in ["fastq1", "fastq2", "output_prefix"]
-        },
-    )
+    deduplicate(*args, **kwargs)
