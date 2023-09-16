@@ -129,17 +129,6 @@ def pileup(*args, **kwargs):
     type=float,
 )
 @click.option(
-    "--low-memory",
-    is_flag=True,
-    default=False,
-    help="Will perform counting in batches specifed by the chunksize to save memory (less accurate)",
-)
-@click.option(
-    "--chunksize",
-    default=int(2e6),
-    help="Number of records to process at once",
-)
-@click.option(
     "-f",
     "--fragment-map",
     help="Path to digested genome bed file",
@@ -150,12 +139,6 @@ def pileup(*args, **kwargs):
     help="Path to viewpoints file",
 )
 @click.option(
-    "--cooler-output",
-    "output_as_cooler",
-    help="Output counts in cooler format",
-    is_flag=True,
-)
-@click.option(
     "-p",
     "--n-cores",
     default=1,
@@ -163,11 +146,7 @@ def pileup(*args, **kwargs):
     type=int,
 )
 @click.option(
-    "-t",
-    "--file-type",
-    help="File format for input",
-    default="auto",
-    type=click.Choice(["auto", "tsv", "hdf5", "parquet"], case_sensitive=False),
+    "--assay", type=click.Choice(["capture", "tri", "tiled"]), default="capture"
 )
 def count(*args, **kwargs):
     """
@@ -180,30 +159,9 @@ def count(*args, **kwargs):
     In addition the number of reporter fragments can be subsampled if required.
     """
 
-    if kwargs.get("output_as_cooler"):
-        if not kwargs.get("fragment_map"):
-            raise ValueError(
-                "Restriction fragment map must be provided for cooler output"
-            )
-        elif not kwargs.get("viewpoint_path"):
-            raise ValueError("Viewpoint path must be provided for cooler output")
-
     from capcruncher.cli.interactions_count import count
 
     count(*args, **kwargs)
-
-
-# @cli.group()
-# def store():
-#     """
-#     Store reporter counts.
-
-#     These commands store and manipulate reporter restriction fragment interaction
-#     counts as cooler formated groups in HDF5 files.
-
-#     See subcommands for details.
-
-#     """
 
 
 @cli.command(name="counts-to-cooler")
