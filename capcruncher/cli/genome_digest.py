@@ -9,7 +9,6 @@ Script generates a bed file of restriction fragment locations in a given genome.
 """
 import pysam
 import xopen
-from capcruncher.api.digest import DigestedChrom, get_re_site
 from typing import Iterator
 import os
 from loguru import logger
@@ -37,6 +36,7 @@ def digest(
     output_file: os.PathLike = "genome_digest.bed",
     remove_cutsite: bool = True,
     sort=False,
+    **kwargs,
 ):
     """
     Performs in silico digestion of a genome in fasta format.
@@ -56,49 +56,32 @@ def digest(
      remove_cutsite (bool, optional): Determines if restriction site is removed. Defaults to True.
     """
 
-    # TODO: Include option to keep or remove the cutsite. For now will just remove to keep inline with the fastq digestion script
+    from capcruncher_tools.api import digest_genome
+    import polars as pl
 
-    fragment_stats = dict()
-    fragment_number = 0
-    cut_sequence = get_re_site(recognition_site=recognition_site)
+    logger.info("Digesting genome")
+    digest_genome(
+        fasta=input_fasta,
+        output=output_file,
+        restriction_enzyme=recognition_site,
+        remove_recognition_site=True,
+        minimum_slice_length=18,
+        n_threads=1,
+    )
 
-    with xopen.xopen(output_file, "w") as output:
-
-        for chrom in parse_chromosomes(input_fasta):
-
-            logger.info(f"Processing chrom {chrom.name}")
-
-            digested_chrom = DigestedChrom(
-                chrom,
-                cut_sequence,
-                fragment_number_offset=fragment_number,
-                fragment_min_len=1,
-            )
-
-            for n_fragments, fragment in enumerate(digested_chrom.fragments):
-                if n_fragments % 10000 == 0:
-                    logger.info(f"Written {n_fragments} fragments")
-
-                output.write(fragment)
-
-            fragment_stats[chrom.name] = n_fragments
-            fragment_number += n_fragments + 1
+    logger.info("Digestion complete")
 
     if sort:
         logger.info("Sorting output")
-        df = pd.read_csv(output_file, sep="\t", names=["chrom", "start", "end", "name"])
+        df = pl.read_csv(
+            output_file, separator="\t", new_columns=["chrom", "start", "end", "name"]
+        )
 
         # If changing the order, also need to change the fragment number
         df = (
-            df.sort_values(["chrom", "start"])
+            df.sort(["chrom", "start"])
             .drop(columns="name")
-            .reset_index(drop=True)
-            .reset_index()
-            .rename(columns={"index": "name"})[["chrom", "start", "end", "name"]]
+            .with_row_count("name")[["chrom", "start", "end", "name"]]
         )
 
-        df.to_csv(output_file, sep="\t", index=False, header=False)
-
-    with xopen.xopen(logfile, "w") as output:
-        for chrom, n_fragments in fragment_stats.items():
-            output.write(f"{chrom}\t{n_fragments}\n")
+        df.write_csv(output_file, separator="\t", has_header=False)

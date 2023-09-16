@@ -66,6 +66,12 @@ def data_reporters_store(testdata_dirname):
 
 
 @pytest.fixture(scope="module")
+def data_pipeline(testdata_dirname):
+    data_dir = os.path.join(testdata_dirname, "data", "data_for_pipeline_run")
+    return data_dir
+
+
+@pytest.fixture(scope="module")
 def cli_runner():
     return CliRunner()
 
@@ -81,11 +87,11 @@ def test_cli_runs(cli_runner):
     "infile,flags",
     [
         (
-            "chrom_to_digest.fa",
+            "chr14.fa.gz",
             ["-r", "dpnii", "--sort"],
         ),
         pytest.param(
-            "chrom_to_digest.fa",
+            "chr14.fa.gz",
             [
                 "-r",
                 "dpn",
@@ -94,9 +100,9 @@ def test_cli_runs(cli_runner):
         ),
     ],
 )
-def test_genome_digest(cli_runner, data_digestion, tmpdir, infile, flags):
+def test_genome_digest(cli_runner, data_pipeline, tmpdir, infile, flags):
 
-    infile = os.path.join(data_digestion, infile)
+    infile = os.path.join(data_pipeline, infile)
     outfile = os.path.join(tmpdir, "digested.bed")
     tmp_log = os.path.join(tmpdir, "gd.log")
 
