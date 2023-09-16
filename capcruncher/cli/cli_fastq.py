@@ -1,6 +1,7 @@
 import click
 import pathlib
 import ast
+import re
 
 
 class OptionEatAll(click.Option):
@@ -100,7 +101,7 @@ def split(*args, **kwargs):
 
 
 @cli.command()
-@click.argument("input_fastq", nargs=-1, required=True)
+@click.argument("fastqs", nargs=-1, required=True)
 @click.option(
     "-r",
     "--restriction_enzyme",
@@ -115,21 +116,7 @@ def split(*args, **kwargs):
     required=True,
 )
 @click.option("-o", "--output_file", default="out.fastq.gz")
-@click.option("-p", "--n_cores", default=1, type=click.INT)
 @click.option("--minimum_slice_length", default=18, type=click.INT)
-@click.option("--keep_cutsite", default=False)
-@click.option(
-    "--compression_level",
-    help="Level of compression for output files (1=low, 9=high)",
-    default=5,
-    type=click.INT,
-)
-@click.option(
-    "--read_buffer",
-    help="Number of reads to process before writing to file to conserve memory.",
-    default=1e5,
-    type=click.INT,
-)
 @click.option("--stats-prefix", help="Output prefix for stats file", default="stats")
 @click.option(
     "--sample-name",
@@ -141,6 +128,9 @@ def digest(*args, **kwargs):
     Performs in silico digestion of one or a pair of fastq files.
     """
     from capcruncher.cli.fastq_digest import digest
+    from capcruncher.utils import get_restriction_site
+
+    kwargs["restriction_site"] = get_restriction_site(kwargs["restriction_enzyme"])
 
     digest(*args, **kwargs)
 

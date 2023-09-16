@@ -33,11 +33,6 @@ def read_dataframes(filenames: Iterable, **kwargs):
         )
 
 
-def invert_dict(d: dict) -> Generator[Tuple[str, str], None, None]:
-    """Inverts key: value pairs into value: key pairs"""
-    yield from ((v, k) for k, v in d.items())
-
-
 def is_on(param: str) -> bool:
     """
     Returns True if parameter in "on" values
@@ -101,7 +96,7 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
 
         elif isinstance(e, IndexError):
             logger.warning(
-                "Wrong number of fields detected check separator/ number of columns"
+                "Wrong number of fields detected check separator or number of columns"
             )
 
         else:
@@ -567,25 +562,33 @@ def get_cooler_uri(store: os.PathLike, viewpoint: str, resolution: Union[str, in
     return uri
 
 
-class MockFastqRecord:
-    """Testing class used to supply a pysam FastqProxy like object"""
+def get_restriction_site(restriction_enzyme: str):
+    """
+    Gets the restriction site for a given restriction enzyme.
 
-    def __init__(self, name, sequence, quality):
-        self.name = name
-        self.sequence = sequence
-        self.quality = quality
-        self.comment = ""
+    Can be either the name of the restriction enzyme or the restriction site itself.
+    The restriction site will just be returned if it is a valid DNA sequence.
 
-    def __repr__(self) -> str:
-        return "|".join([self.name, self.sequence, "+", self.quality])
+    Args:
+        restriction_enzyme: Name of restriction enzyme or restriction site.
 
+    Returns:
+        Restriction site.
 
-class MockFastaRecord:
-    """Testing class used to supply a pysam FastqProxy like object"""
+    Raises:
+        ValueError: If restriction enzyme is not found.
 
-    def __init__(self, name, sequence):
-        self.name = name
-        self.sequence = sequence
+    """
 
-    def __repr__(self) -> str:
-        return f">{self.name}\n{self.sequence}\n"
+    if re.match(r"^[ACGTacgt]+$", restriction_enzyme):
+        return restriction_enzyme
+
+    import Bio.Restriction
+
+    all_enzymes = {e.lower(): e for e in Bio.Restriction.AllEnzymes.as_string()}
+    if restriction_enzyme.lower() not in all_enzymes:
+        raise ValueError(f"Restriction enzyme {restriction_enzyme} not found.")
+    else:
+        return Bio.Restriction.AllEnzymes.get(
+            all_enzymes[restriction_enzyme.lower()]
+        ).site
