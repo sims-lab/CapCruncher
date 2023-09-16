@@ -358,13 +358,7 @@ def test_interactions_deduplicate(
 @pytest.mark.parametrize(
     "slices,bins,viewpoints,output,flags",
     [
-        (
-            "slices.flashed.parquet",
-            "bins.bed.gz",
-            "viewpoints.bed",
-            "counts.hdf5",
-            ["--cooler-output"],
-        ),
+        ("slices.flashed.parquet", "bins.bed.gz", "viewpoints.bed", "counts.hdf5", []),
     ],
 )
 def test_reporters_count(

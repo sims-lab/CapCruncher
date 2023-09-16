@@ -152,11 +152,14 @@ def count(*args, **kwargs):
     """
     Determines the number of captured restriction fragment interactions genome wide.
 
-    Parses a reporter slices tsv and counts the number of unique restriction fragment
-    interaction combinations that occur within each fragment.
+    Counts the number of interactions between each restriction fragment and all other
+    restriction fragments in the fragment.
 
-    Options to ignore unwanted counts e.g. excluded regions or capture fragments are provided.
-    In addition the number of reporter fragments can be subsampled if required.
+    The output is a cooler formatted HDF5 file containing a single group containing
+    the interactions between restriction fragments.
+
+    See `https://cooler.readthedocs.io/en/latest/` for further details.
+
     """
 
     from capcruncher.cli.interactions_count import count

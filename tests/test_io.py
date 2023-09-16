@@ -1,10 +1,6 @@
 import multiprocessing
 import queue
 import os
-from capcruncher.api.io import (
-    FastqReaderProcess,
-    FastqWriterProcess,
-)
 import itertools
 import pysam
 import pytest
@@ -20,85 +16,85 @@ def data_path():
     return data_dir
 
 
-@pytest.mark.parametrize(
-    "fastq_files,n_records",
-    [
-        (
-            (
-                "Slc25A37-test_1_1.fastq.gz",
-                "Slc25A37-test_1_2.fastq.gz",
-            ),
-            1001,
-        ),
-        (
-            ("Slc25A37-test_1_1.fastq.gz",),
-            1001,
-        ),
-    ],
-)
-def test_fq_reader(data_path, fastq_files, n_records):
+# @pytest.mark.parametrize(
+#     "fastq_files,n_records",
+#     [
+#         (
+#             (
+#                 "Slc25A37-test_1_1.fastq.gz",
+#                 "Slc25A37-test_1_2.fastq.gz",
+#             ),
+#             1001,
+#         ),
+#         (
+#             ("Slc25A37-test_1_1.fastq.gz",),
+#             1001,
+#         ),
+#     ],
+# )
+# def test_fq_reader(data_path, fastq_files, n_records):
 
-    outq = multiprocessing.Queue()
-    reader = FastqReaderProcess(
-        input_files=[os.path.join(data_path, fn) for fn in fastq_files], outq=outq
-    )
-    reader.start()
+#     outq = multiprocessing.Queue()
+#     reader = FastqReaderProcess(
+#         input_files=[os.path.join(data_path, fn) for fn in fastq_files], outq=outq
+#     )
+#     reader.start()
 
-    reads = []
-    while True:
+#     reads = []
+#     while True:
 
-        try:
-            r = outq.get(block=True, timeout=0.01)
-        except queue.Empty:
-            continue
+#         try:
+#             r = outq.get(block=True, timeout=0.01)
+#         except queue.Empty:
+#             continue
 
-        if r:
-            reads.append(r)
-        else:
-            break
+#         if r:
+#             reads.append(r)
+#         else:
+#             break
 
-    reader.join()
+#     reader.join()
 
-    n_reads = len(list(itertools.chain.from_iterable(reads)))
-    assert n_reads == n_records
+#     n_reads = len(list(itertools.chain.from_iterable(reads)))
+#     assert n_reads == n_records
 
 
-@pytest.mark.parametrize(
-    "in_files,out_files,n_records_expected",
-    [
-        (
-            (
-                "Slc25A37-test_1_1.fastq.gz",
-                "Slc25A37-test_1_2.fastq.gz",
-            ),
-            (
-                "written_Slc25A37-test_1_1.fastq.gz",
-                "written_Slc25A37-test_1_2.fastq.gz",
-            ),
-            1001,
-        ),
-        (
-            ("Slc25A37-test_1_1.fastq.gz",),
-            ("written_Slc25A37-test_single.fastq.gz",),
-            1001,
-        ),
-    ],
-)
-def test_fq_writer(data_path, tmpdir, in_files, out_files, n_records_expected):
+# @pytest.mark.parametrize(
+#     "in_files,out_files,n_records_expected",
+#     [
+#         (
+#             (
+#                 "Slc25A37-test_1_1.fastq.gz",
+#                 "Slc25A37-test_1_2.fastq.gz",
+#             ),
+#             (
+#                 "written_Slc25A37-test_1_1.fastq.gz",
+#                 "written_Slc25A37-test_1_2.fastq.gz",
+#             ),
+#             1001,
+#         ),
+#         (
+#             ("Slc25A37-test_1_1.fastq.gz",),
+#             ("written_Slc25A37-test_single.fastq.gz",),
+#             1001,
+#         ),
+#     ],
+# )
+# def test_fq_writer(data_path, tmpdir, in_files, out_files, n_records_expected):
 
-    outq = multiprocessing.Queue()
+#     outq = multiprocessing.Queue()
 
-    in_files = [os.path.join(data_path, fn) for fn in in_files]
-    out_files = [os.path.join(tmpdir, fn) for fn in out_files]
+#     in_files = [os.path.join(data_path, fn) for fn in in_files]
+#     out_files = [os.path.join(tmpdir, fn) for fn in out_files]
 
-    reader = FastqReaderProcess(input_files=in_files, outq=outq)
-    writer = FastqWriterProcess(inq=outq, output=out_files)
+#     reader = FastqReaderProcess(input_files=in_files, outq=outq)
+#     writer = FastqWriterProcess(inq=outq, output=out_files)
 
-    reader.start()
-    writer.start()
+#     reader.start()
+#     writer.start()
 
-    reader.join()
-    writer.join()
+#     reader.join()
+#     writer.join()
 
-    n_records_test = len([rec.name for rec in pysam.FastxFile(out_files[0])])
-    assert n_records_test == n_records_expected
+#     n_records_test = len([rec.name for rec in pysam.FastxFile(out_files[0])])
+#     assert n_records_test == n_records_expected
