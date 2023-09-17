@@ -6,8 +6,8 @@ from typing import List
 def get_digestion_statistics(wc, sample_names: List[str]):
     stat_types = {
         "read_level_stats": "digestion.read.summary.csv",
-        "histogram_unfiltered": "digestion.unfiltered.histogram.csv",
-        "histogram_filtered": "digestion.filtered.histogram.csv",
+        "histogram_unfiltered": "digestion.unfilt.histogram.csv",
+        "histogram_filtered": "digestion.filt.histogram.csv",
     }
 
     stat_prefixes = []

@@ -197,169 +197,48 @@ checkpoint split:
         """
 
 
-if not CAPCRUNCHER_TOOLS:
+checkpoint deduplication:
+    input:
+        unpack(get_fastq_split_1),
+    output:
+        fastq_dir=directory("capcruncher_output/interim/fastq/deduplicated/{sample}/"),
+        stats="capcruncher_output/interim/statistics/deduplication/data/{sample}.deduplication.csv",
+    params:
+        prefix_fastq="capcruncher_output/interim/fastq/deduplicated/{sample}/",
+    log:
+        "capcruncher_output/logs/deduplication_fastq/{sample}.log",
+    threads: workflow.cores * 0.5
+    resources:
+        mem_mb=lambda wildcards, attempt: 2000 * 2**attempt,
+    shell:
+        """
+        capcruncher fastq deduplicate -1 {input.fq1} -2 {input.fq2} -o {params.prefix_fastq} --statistics {output.stats} --sample-name {wildcards.sample} > {log} 2>&1
+        """
 
-    rule deduplication_parse:
-        input:
-            fq1="capcruncher_output/interim/fastq/split/{sample}/{sample}_part{part}_1.fastq.gz",
-            fq2="capcruncher_output/interim/fastq/split/{sample}/{sample}_part{part}_2.fastq.gz",
-        output:
-            temp(
-                "capcruncher_output/interim/fastq/deduplicated/{sample}/{sample}_{part}.pkl"
-            ),
-        resources:
-            mem_mb=2000,
-        log:
-            "capcruncher_output/logs/deduplication_fastq/parse/{sample}_part{part}.log",
-        shell:
-            """
-            capcruncher \
-            fastq \
-            deduplicate \
-            parse \
-            {input.fq1} \
-            {input.fq2} \
-            -o \
-            {output} \
-            > {log} 2>&1
-            """
 
-    rule deduplication_identify:
-        input:
-            hashed_reads=get_pickles,
-        output:
-            temp("capcruncher_output/interim/fastq/deduplicated/{sample}/{sample}.pkl"),
-        log:
-            "capcruncher_output/logs/deduplication_fastq/identify/{sample}.log",
-        resources:
-            mem_mb=5000,
-        threads: 3
-        shell:
-            """
-            capcruncher \
-            fastq \
-            deduplicate \
-            identify \
-            {input.hashed_reads} \
-            -o \
-            {output}
-            > {log} 2>&1
-            """
-
-    rule deduplication_remove:
-        input:
-            fq1="capcruncher_output/interim/fastq/split/{sample}/{sample}_part{part}_1.fastq.gz",
-            fq2="capcruncher_output/interim/fastq/split/{sample}/{sample}_part{part}_2.fastq.gz",
-            ids_duplicated="capcruncher_output/interim/fastq/deduplicated/{sample}/{sample}.pkl",
-        output:
-            fq1=temp(
-                "capcruncher_output/interim/fastq/deduplicated/{sample}/{sample}_part{part}_1.fastq.gz"
-            ),
-            fq2=temp(
-                "capcruncher_output/interim/fastq/deduplicated/{sample}/{sample}_part{part}_2.fastq.gz"
-            ),
-            stats=temp(
-                "capcruncher_output/interim/statistics/deduplication/data/{sample}_part{part}.deduplication.csv"
-            ),
-        params:
-            prefix_fastq="capcruncher_output/interim/fastq/deduplicated/{sample}/{sample}_part{part}",
-            prefix_stats="capcruncher_output/interim/statistics/deduplication/data/{sample}_part{part}",
-        resources:
-            mem_mb=2000,
-        log:
-            "capcruncher_output/logs/deduplication_fastq/remove/{sample}_part{part}.log",
-        threads: 4
-        shell:
-            """
-            capcruncher \
-            fastq \
-            deduplicate \
-            remove \
-            {input.fq1} \
-            {input.fq2} \
-            -d \
-            {input.ids_duplicated} \
-            --sample-name \
-            {wildcards.sample} \
-            --stats-prefix \
-            {params.prefix_stats} \
-            -o \
-            {params.prefix_fastq} \
-            -p \
-            {threads} \
-            --hash-read-name \
-            --gzip \
-            > {log} 2>&1
-            """
-
-    rule trim:
-        input:
-            fq1="capcruncher_output/interim/fastq/deduplicated/{sample}/{sample}_part{part}_1.fastq.gz",
-            fq2="capcruncher_output/interim/fastq/deduplicated/{sample}/{sample}_part{part}_2.fastq.gz",
-        output:
-            trimmed1="capcruncher_output/interim/fastq/trimmed/{sample}/{sample}_part{part}_1.fastq.gz",
-            trimmed2="capcruncher_output/interim/fastq/trimmed/{sample}/{sample}_part{part}_2.fastq.gz",
-        params:
-            outdir="capcruncher_output/interim/fastq/trimmed/{sample}/",
-        threads: 4
-        resources:
-            mem_mb=2000,
-        log:
-            "capcruncher_output/logs/trimming/{sample}_{part}.log",
-        shell:
-            """
-            trim_galore --cores {threads} --trim-n --paired --output_dir {params.outdir} {input.fq1} {input.fq2} >> {log} 2>&1 &&
-            mv {params.outdir}/{wildcards.sample}_part{wildcards.part}_1_val_1.fq.gz {output.trimmed1} &&
-            mv {params.outdir}/{wildcards.sample}_part{wildcards.part}_2_val_2.fq.gz {output.trimmed2}
-            """
-
-else:
-
-    checkpoint deduplication:
-        input:
-            unpack(get_fastq_split_1),
-        output:
-            fastq_dir=directory(
-                "capcruncher_output/interim/fastq/deduplicated/{sample}/"
-            ),
-            stats="capcruncher_output/interim/statistics/deduplication/data/{sample}.deduplication.csv",
-        params:
-            prefix_fastq="capcruncher_output/interim/fastq/deduplicated/{sample}/",
-            prefix_stats="capcruncher_output/interim/statistics/deduplication/data/{sample}/",
-        log:
-            "capcruncher_output/logs/deduplication_fastq/{sample}.log",
-        threads: workflow.cores * 0.5
-        resources:
-            mem_mb=lambda wildcards, attempt: 2000 * 2**attempt,
-        shell:
-            """
-            mkdir -p {params.prefix_stats} &&
-            capcruncher-tools fastq-deduplicate -1 {input.fq1} -2 {input.fq2} -o {params.prefix_fastq} --statistics {output.stats} --sample-name {wildcards.sample} > {log} 2>&1
-            """
-
-    rule trim:
-        input:
-            unpack(get_deduplicated_fastq_pair),
-        output:
-            trimmed1=temp(
-                "capcruncher_output/interim/fastq/trimmed/{sample}/{sample}_part{part}_1.fastq.gz"
-            ),
-            trimmed2=temp(
-                "capcruncher_output/interim/fastq/trimmed/{sample}/{sample}_part{part}_2.fastq.gz"
-            ),
-        params:
-            outdir="capcruncher_output/interim/fastq/trimmed/{sample}/",
-        threads: 4
-        resources:
-            mem_mb=2000,
-        log:
-            "capcruncher_output/logs/trimming/{sample}_{part}.log",
-        shell:
-            """
-            trim_galore --cores {threads} --trim-n --paired --output_dir {params.outdir} {input.fq1} {input.fq2} >> {log} 2>&1 &&
-            mv {params.outdir}/{wildcards.sample}_part{wildcards.part}_1_val_1.fq.gz {output.trimmed1} &&
-            mv {params.outdir}/{wildcards.sample}_part{wildcards.part}_2_val_2.fq.gz {output.trimmed2}
-            """
+rule trim:
+    input:
+        unpack(get_deduplicated_fastq_pair),
+    output:
+        trimmed1=temp(
+            "capcruncher_output/interim/fastq/trimmed/{sample}/{sample}_part{part}_1.fastq.gz"
+        ),
+        trimmed2=temp(
+            "capcruncher_output/interim/fastq/trimmed/{sample}/{sample}_part{part}_2.fastq.gz"
+        ),
+    params:
+        outdir="capcruncher_output/interim/fastq/trimmed/{sample}/",
+    threads: 4
+    resources:
+        mem_mb=2000,
+    log:
+        "capcruncher_output/logs/trimming/{sample}_{part}.log",
+    shell:
+        """
+        trim_galore --cores {threads} --trim-n --paired --output_dir {params.outdir} {input.fq1} {input.fq2} >> {log} 2>&1 &&
+        mv {params.outdir}/{wildcards.sample}_part{wildcards.part}_1_val_1.fq.gz {output.trimmed1} &&
+        mv {params.outdir}/{wildcards.sample}_part{wildcards.part}_2_val_2.fq.gz {output.trimmed2}
+        """
 
 
 rule flash:
@@ -476,14 +355,13 @@ checkpoint rebalance_partitions_pe:
 rule digest_flashed_combined:
     input:
         flashed="capcruncher_output/interim/fastq/rebalanced/{sample}/flashed/{sample}_part{part}_flashed_1.fastq.gz",
-        sentinel="capcruncher_output/interim/fastq/rebalanced/{sample}/flashed/.complete.sentinel",
     output:
         digested=temp(
             "capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_flashed.fastq.gz"
         ),
         stats_read="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.read.summary.csv",
-        stats_unfiltered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.unfiltered.histogram.csv",
-        stats_filtered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.filtered.histogram.csv",
+        stats_unfiltered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.unfilt.histogram.csv",
+        stats_filtered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.filt.histogram.csv",
     params:
         prefix_stats="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed",
         restriction_site=config["analysis"]["restriction_enzyme"],
@@ -500,8 +378,6 @@ rule digest_flashed_combined:
         {input.flashed} \
         -o \
         {output.digested} \
-        -p \
-        {threads} \
         -m \
         flashed \
         -r \
@@ -520,14 +396,13 @@ rule digest_flashed_pe:
     input:
         pe1="capcruncher_output/interim/fastq/rebalanced/{sample}/pe/{sample}_part{part}_pe_1.fastq.gz",
         pe2="capcruncher_output/interim/fastq/rebalanced/{sample}/pe/{sample}_part{part}_pe_2.fastq.gz",
-        sentinel="capcruncher_output/interim/fastq/rebalanced/{sample}/pe/.complete.sentinel",
     output:
         digested=temp(
             "capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_pe.fastq.gz"
         ),
         stats_read="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.read.summary.csv",
-        stats_unfiltered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.unfiltered.histogram.csv",
-        stats_filtered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.filtered.histogram.csv",
+        stats_unfiltered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.unfilt.histogram.csv",
+        stats_filtered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.filt.histogram.csv",
     params:
         prefix_stats="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe",
         restriction_site=config["analysis"]["restriction_enzyme"],
@@ -545,8 +420,6 @@ rule digest_flashed_pe:
         {input.pe2} \
         -o \
         {output.digested} \
-        -p \
-        {threads} \
         -m \
         pe \
         -r \

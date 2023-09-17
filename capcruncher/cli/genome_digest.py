@@ -60,7 +60,7 @@ def digest(
     import polars as pl
 
     logger.info("Digesting genome")
-    digest_genome(
+    df_stats = digest_genome(
         fasta=input_fasta,
         output=output_file,
         restriction_enzyme=recognition_site,
