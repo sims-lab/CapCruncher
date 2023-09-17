@@ -7,9 +7,10 @@ env:
 
 jobs:
   install-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, macos-latest]
         python-version: ["3.10"]
 
     steps:
