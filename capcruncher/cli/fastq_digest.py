@@ -53,12 +53,15 @@ def digest(
                 df_stats_read["number_of_read_pairs_filtered"].sum(),
             ],
         }
-    ).assign(stage="digestion", sample=sample_name, read_type=mode)
+    ).assign(stage="digestion", sample=sample_name, read_type=mode, read_number=1)
 
     for hist_type in ["unfilt", "filt"]:
         df = stats[f"stats_hist_{hist_type}"].to_pandas()
         df = df.rename(columns={"slice_number": "n_slices"})
         df = df.replace({r"^One$": 1, r"^Two$": 2}, regex=True)
+        df = df.assign(
+            filtered=hist_type == "filt",
+        )
         df.to_csv(f"{stats_prefix}.digestion.{hist_type}.histogram.csv", index=False)
 
     df_stats_read_fmt.to_csv(f"{stats_prefix}.digestion.read.summary.csv", index=False)
