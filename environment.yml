@@ -29,7 +29,6 @@ dependencies:
   - python-xxhash
   - python>=3.10,<3.11
   - quarto
-  - ray-core>=2.6.0
   - samtools
   - seaborn
   - setuptools>50.1.0,<=65.0.1
