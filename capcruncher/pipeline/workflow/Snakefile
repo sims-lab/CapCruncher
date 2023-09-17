@@ -82,14 +82,6 @@ PERFORM_BINNING = capcruncher.pipeline.utils.can_perform_binning(config)
 ASSAY = config["analysis"]["method"]
 SAMPLE_NAMES = FASTQ_SAMPLES.sample_names_all
 
-
-## Check if capcruncher_tools is installed
-if importlib.util.find_spec("capcruncher_tools"):
-    print("CapCruncherTools is installed. Enabling CapCruncherTools functions.")
-    CAPCRUNCHER_TOOLS = True
-else:
-    CAPCRUNCHER_TOOLS = False
-
 # CLEANUP = "full" if config["analysis"].get("cleanup", False) else "partial"
 CLEANUP = False
 
