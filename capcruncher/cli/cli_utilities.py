@@ -253,7 +253,6 @@ def viewpoint_coordinates(
     recognition_site: str = "dpnii",
     output: os.PathLike = "viewpoint_coordinates.bed",
 ):
-
     """
     Aligns viewpoints to a genome and returns the coordinates of the viewpoint
     in the genome.
@@ -274,7 +273,6 @@ def viewpoint_coordinates(
         ValueError: If no bowtie2 indices are supplied
     """
 
-    import concurrent.futures
     from capcruncher.cli import genome_digest
     from pybedtools import BedTool
 
@@ -282,72 +280,63 @@ def viewpoint_coordinates(
     viewpoints_fasta = NamedTemporaryFile("r+")
     viewpoints_aligned_bam = NamedTemporaryFile("r+")
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
-        # Digest genome to find restriction fragments
-        digestion = executor.submit(
-            genome_digest.digest,
-            **dict(
-                input_fasta=genome,
-                recognition_site=recognition_site,
-                output_file=digested_genome.name,
-                sort=True,
-            ),
+    genome_digest.digest(
+        input_fasta=genome,
+        recognition_site=recognition_site,
+        output_file=digested_genome.name,
+        sort=True,
+    )
+
+    # Generate a fasta file of viewpoints
+    if ".fa" in viewpoints:
+        fasta = viewpoints
+    elif viewpoints.endswith(".tsv") or viewpoints.endswith(".csv"):
+        df = pd.read_table(viewpoints)
+        cols = df.columns
+        fasta = dict_to_fasta(
+            df.set_index(cols[0])[cols[1]].to_dict(), viewpoints_fasta.name
         )
+    else:
+        raise ValueError("Oligos not provided in the correct format (FASTA/TSV)")
 
-        # Generate a fasta file of viewpoints
-        if ".fa" in viewpoints:
-            fasta = viewpoints
-        elif viewpoints.endswith(".tsv") or viewpoints.endswith(".csv"):
-            df = pd.read_table(viewpoints)
-            cols = df.columns
-            fasta = dict_to_fasta(
-                df.set_index(cols[0])[cols[1]].to_dict(), viewpoints_fasta.name
-            )
-        else:
-            raise ValueError("Oligos not provided in the correct format (FASTA/TSV)")
+    # Align viewpoints to the genome
+    # if not genome_indicies or not os.path.exists(os.path.join(genome_indicies, ".1.bt2")):
+    #     raise ValueError("No indices supplied for alignment")
 
-        # Align viewpoints to the genome
-        # if not genome_indicies or not os.path.exists(os.path.join(genome_indicies, ".1.bt2")):
-        #     raise ValueError("No indices supplied for alignment")
+    p_alignment = subprocess.Popen(
+        ["bowtie2", "-x", genome_indicies, "-f", "-U", fasta],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    p_bam = subprocess.Popen(
+        ["samtools", "view", "-b", "-"],
+        stdout=viewpoints_aligned_bam,
+        stdin=p_alignment.stdout,
+    )
+    p_alignment.stdout.close()
+    aligned_res = p_bam.communicate()
 
-        p_alignment = subprocess.Popen(
-            ["bowtie2", "-x", genome_indicies, "-f", "-U", fasta],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-        )
-        p_bam = subprocess.Popen(
-            ["samtools", "view", "-b", "-"],
-            stdout=viewpoints_aligned_bam,
-            stdin=p_alignment.stdout,
-        )
-        p_alignment.stdout.close()
-        aligned_res = p_bam.communicate()
+    # Intersect digested genome with viewpoints
+    bt_genome = BedTool(digested_genome.name)
+    bt_viewpoints = BedTool(viewpoints_aligned_bam.name)
 
-        # Ensure genome has been digested in this time
-        digestion.result()
+    intersections = bt_genome.intersect(bt_viewpoints, wa=True, wb=True)
 
-        # Intersect digested genome with viewpoints
-        bt_genome = BedTool(digested_genome.name)
-        bt_viewpoints = BedTool(viewpoints_aligned_bam.name)
+    # Write results to file
+    (
+        intersections.to_dataframe()
+        .drop_duplicates("name")
+        .assign(oligo_name=lambda df: df["thickEnd"].str.split("_L").str[0])[
+            ["chrom", "start", "end", "oligo_name"]
+        ]
+        .to_csv(output, index=False, header=False, sep="\t")
+    )
 
-        intersections = bt_genome.intersect(bt_viewpoints, wa=True, wb=True)
-
-        # Write results to file
-        (
-            intersections.to_dataframe()
-            .drop_duplicates("name")
-            .assign(oligo_name=lambda df: df["thickEnd"].str.split("_L").str[0])[
-                ["chrom", "start", "end", "oligo_name"]
-            ]
-            .to_csv(output, index=False, header=False, sep="\t")
-        )
-
-        for tmp in [digested_genome, viewpoints_fasta, viewpoints_aligned_bam]:
-            tmp.close()
+    for tmp in [digested_genome, viewpoints_fasta, viewpoints_aligned_bam]:
+        tmp.close()
 
 
 def dump_cooler(path: str, viewpoint: str, resolution: int = None) -> pd.DataFrame:
-
     import cooler.api as cooler
 
     if resolution:
