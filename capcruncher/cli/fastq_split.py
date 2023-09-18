@@ -17,6 +17,9 @@ import os
 import re
 from joblib import Parallel, delayed
 from typing import Literal
+import sys
+
+PLATFORM = sys.platform
 
 
 def run_unix_split(
@@ -41,6 +44,10 @@ def run_unix_split(
 
     if ".gz" not in fn:
         cmd = cmd.replace("zcat", "cat")
+
+    if PLATFORM == "darwin":
+        cmd = cmd.replace("split", "gsplit")
+        cmd = cmd.replace("zcat", "gzcat")
 
     if gzip:
         cmd = cmd.replace("FILTER", f"--filter='pigz -p {n_cores} > $FILE.gz'")
