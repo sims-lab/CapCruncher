@@ -130,8 +130,6 @@ def test_deduplicate_fastq(
     infiles = [os.path.join(data_deduplication, fn) for fn in infiles]
     outfile = os.path.join(tmpdir, outfile)
 
-    print(infiles)
-
     result = cli_runner.invoke(
         cli,
         [
@@ -148,7 +146,9 @@ def test_deduplicate_fastq(
     )
 
     assert result.exit_code == 0
-    assert len(glob.glob(f"{tmpdir}/*.fastq*")) == 2
+
+    fastq_deduped = glob.glob(f"{tmpdir}/*.fastq*")
+    assert len(fastq_deduped) == len(infiles)
 
 
 @pytest.mark.parametrize(
@@ -365,6 +365,7 @@ def test_reporters_count(
     cli_runner,
     data_deduplication_alignments,
     data_reporters_count,
+    data_pipeline,
     tmpdir,
     slices,
     bins,
@@ -375,7 +376,7 @@ def test_reporters_count(
 
     slices = os.path.join(data_deduplication_alignments, slices)
     bins = os.path.join(data_reporters_count, bins)
-    viewpoints = os.path.join(data_reporters_count, viewpoints)
+    viewpoints = os.path.join(data_pipeline, "mm9_capture_viewpoints_Slc25A37.bed")
     output = os.path.join(tmpdir, output)
 
     result = cli_runner.invoke(
