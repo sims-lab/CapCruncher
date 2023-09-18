@@ -212,6 +212,7 @@ checkpoint deduplication:
         mem_mb=lambda wildcards, attempt: 2000 * 2**attempt,
     shell:
         """
+        mkdir -p {params.prefix_fastq} &&
         capcruncher fastq deduplicate -1 {input.fq1} -2 {input.fq2} -o {params.prefix_fastq} --statistics {output.stats} --sample-name {wildcards.sample} > {log} 2>&1
         """
 
