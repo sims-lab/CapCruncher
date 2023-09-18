@@ -30,7 +30,7 @@ jobs:
       - name: Install Mac dependencies
         if: matrix.os == 'macos-latest'
         run: |
-          brew install curl-openssl
+          brew install curl-openssl coreutils
 
       - name: Restore bowtie2 cache
         uses: actions/cache@v3
