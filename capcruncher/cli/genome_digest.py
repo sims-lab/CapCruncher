@@ -32,9 +32,7 @@ def parse_chromosomes(fasta: pysam.FastxFile) -> Iterator[pysam.FastqProxy]:
 def digest(
     input_fasta: os.PathLike,
     recognition_site: str,
-    logfile: os.PathLike = "genome_digest.log",
     output_file: os.PathLike = "genome_digest.bed",
-    remove_cutsite: bool = True,
     sort=False,
     **kwargs,
 ):
@@ -51,19 +49,18 @@ def digest(
     Args:
      input_fasta (os.PathLike): Path to fasta file containing whole genome sequence, split by chromosome
      recognition_site (str): Restriction enzyme name/ Sequence of recognition site.
-     logfile (os.PathLike, optional): Output path of the digestion logfile. Defaults to genome_digest.log.
      output_file (os.PathLike, optional): Output path for digested chromosome bed file. Defaults to genome_digest.bed.
-     remove_cutsite (bool, optional): Determines if restriction site is removed. Defaults to True.
     """
 
     from capcruncher_tools.api import digest_genome
+    from capcruncher.utils import get_restriction_site
     import polars as pl
 
     logger.info("Digesting genome")
     df_stats = digest_genome(
         fasta=input_fasta,
         output=output_file,
-        restriction_enzyme=recognition_site,
+        restriction_enzyme=get_restriction_site(recognition_site),
         remove_recognition_site=True,
         minimum_slice_length=18,
         n_threads=1,
