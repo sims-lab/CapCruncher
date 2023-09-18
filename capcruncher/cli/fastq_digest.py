@@ -1,8 +1,9 @@
 import os
-from typing import Literal, Tuple
+from typing import Literal, Tuple, Dict
 
 import pandas as pd
 from loguru import logger as logging
+import polars as pl
 
 
 def digest(
@@ -14,7 +15,7 @@ def digest(
     stats_prefix: os.PathLike = "",
     sample_name: str = "sampleX",
     **kwargs,
-):
+) -> Dict[str, pl.DataFrame]:
     """
     Digest FASTQ files.
 
@@ -28,15 +29,19 @@ def digest(
         sample_name: Name of sample e.g. DOX_treated_1. Required for correct statistics.
 
     Returns:
-        A dictionary of stats.
+        A dictionary of stats: stats_read_level, stats_hist_unfilt, stats_hist_filt
     """
     from capcruncher_tools.api import digest_fastq
+    from capcruncher.utils import get_restriction_site
 
     logging.info("Digesting FASTQ files")
 
+    if len(fastqs) > 1 and mode == "flashed":
+        raise ValueError("Flashed mode can only be used with a single FASTQ file")
+
     stats = digest_fastq(
         fastqs=fastqs,
-        restriction_enzyme=restriction_site,
+        restriction_enzyme=get_restriction_site(restriction_site),
         output=output_file,
         read_type=mode.title(),
         sample_name=sample_name,

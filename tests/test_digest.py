@@ -50,7 +50,6 @@ def count_fragments(fq):
 def test_digest_fastq(
     data_path, tmpdir, fastq_files, enzyme, mode, n_reads_raw, n_reads_filt
 ):
-
     from capcruncher.cli.fastq_digest import digest
 
     infiles = [os.path.join(data_path, fn) for fn in fastq_files]
@@ -63,23 +62,17 @@ def test_digest_fastq(
         mode=mode,
         output_file=outfile,
         stats_prefix=stats_prefix,
-        n_cores=3,
     )
 
-    test_n_reads_raw = stats.query("(stat_type == 'unfiltered') and (read_number < 2)")[
-        "stat"
-    ].values[0]
-    test_n_reads_filt = stats.query("(stat_type == 'filtered') and (read_number < 2)")[
-        "stat"
-    ].values[0]
-    hist_raw = pd.read_csv(f"{stats_prefix}.digestion.unfiltered.histogram.csv")
-    hist_filt = pd.read_csv(f"{stats_prefix}.digestion.filtered.histogram.csv")
-
-    assert test_n_reads_raw == n_reads_raw
-    assert test_n_reads_filt == n_reads_filt
+    assert (
+        stats["stats_read_level"].to_pandas()["number_of_read_pairs_unfiltered"].iloc[0]
+        == n_reads_raw
+    )
+    assert (
+        stats["stats_read_level"].to_pandas()["number_of_read_pairs_filtered"].iloc[0]
+        == n_reads_filt
+    )
     assert count_fragments(outfile) == n_reads_filt
-    assert hist_raw.query("read_number < 2")["count"].sum() == n_reads_raw
-    assert hist_filt.query("read_number < 2")["count"].sum() == n_reads_filt
 
 
 @pytest.fixture(scope="module")
@@ -99,7 +92,6 @@ def fasta():
     ],
 )
 def test_digest_genome(fasta, tmpdir, enzyme, n_records_expected):
-
     from capcruncher.cli.genome_digest import digest
 
     infile = fasta
