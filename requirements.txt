@@ -17,7 +17,7 @@ pysam>0.15.0,<=0.19.1
 quarto
 ray
 seaborn
-snakemake<=7.30.2
+snakemake<=7.32.4
 tqdm
 trackhub
 tracknado
