@@ -37,9 +37,13 @@ conda activate cc
 
 # Install CapCruncher using pip
 pip install capcruncher
-
+s
 # Optional - highly recommended to install the optional dependencies
-pip install capcruncher[stats,plotting,experimental]
+# Installs dependencies for:
+# * plotting,
+# * differential interaction analysis
+# * speeding up the pipeline using experimental features (capcruncher-tools)
+pip install capcruncher[full]
 ```
 
 ### Install CapCruncher in a minimal conda environment and use singularity to run the pipeline

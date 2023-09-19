@@ -7,9 +7,10 @@ env:
 
 jobs:
   install-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest]
         python-version: ["3.10"]
 
     steps:
@@ -20,10 +21,16 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install OS dependencies
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install libcurl4-openssl-dev
+
+      # - name: Install Mac dependencies
+      #   if: matrix.os == 'macos-latest'
+      #   run: |
+      #     brew install curl-openssl coreutils
 
       - name: Restore bowtie2 cache
         uses: actions/cache@v3
@@ -69,7 +76,7 @@ jobs:
       - name: Install the package
         shell: bash -el {0}
         run: |
-          pip install .[stats,plotting,experimental]
+          pip install .[full]
 
       - name: Test with pytest and generate report
         shell: bash -el {0}

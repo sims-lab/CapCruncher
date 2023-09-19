@@ -41,5 +41,8 @@ def digest(*args, **kwargs):
     generated.
     """
     from capcruncher.cli.genome_digest import digest
+    from capcruncher.utils import get_restriction_site
+
+    kwargs["recognition_site"] = get_restriction_site(kwargs["recognition_site"])
 
     digest(*args, **kwargs)

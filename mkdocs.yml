@@ -3,6 +3,7 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Pipeline: pipeline.md
+  - Cluster Setup: cluster_config.md
   - Hints and Tips: tips.md
   - Plotting: plotting.ipynb
   - CLI Reference: cli.md

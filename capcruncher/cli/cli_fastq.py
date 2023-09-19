@@ -1,5 +1,49 @@
 import click
-from capcruncher.cli import UnsortedGroup
+import pathlib
+import ast
+import re
+
+
+class OptionEatAll(click.Option):
+    def __init__(self, *args, **kwargs):
+        self.save_other_options = kwargs.pop("save_other_options", True)
+        nargs = kwargs.pop("nargs", -1)
+        assert nargs == -1, "nargs, if set, must be -1 not {}".format(nargs)
+        super(OptionEatAll, self).__init__(*args, **kwargs)
+        self._previous_parser_process = None
+        self._eat_all_parser = None
+
+    def add_to_parser(self, parser, ctx):
+        def parser_process(value, state):
+            # method to hook to the parser.process
+            done = False
+            value = [value]
+            if self.save_other_options:
+                # grab everything up to the next option
+                while state.rargs and not done:
+                    for prefix in self._eat_all_parser.prefixes:
+                        if state.rargs[0].startswith(prefix):
+                            done = True
+                    if not done:
+                        value.append(state.rargs.pop(0))
+            else:
+                # grab everything remaining
+                value += state.rargs
+                state.rargs[:] = []
+            value = tuple(value)
+
+            # call the actual process
+            self._previous_parser_process(value, state)
+
+        retval = super(OptionEatAll, self).add_to_parser(parser, ctx)
+        for name in self.opts:
+            our_parser = parser._long_opt.get(name) or parser._short_opt.get(name)
+            if our_parser:
+                self._eat_all_parser = our_parser
+                self._previous_parser_process = our_parser.process
+                our_parser.process = parser_process
+                break
+        return retval
 
 
 @click.group()
@@ -57,7 +101,7 @@ def split(*args, **kwargs):
 
 
 @cli.command()
-@click.argument("input_fastq", nargs=-1, required=True)
+@click.argument("fastqs", nargs=-1, required=True)
 @click.option(
     "-r",
     "--restriction_enzyme",
@@ -72,21 +116,7 @@ def split(*args, **kwargs):
     required=True,
 )
 @click.option("-o", "--output_file", default="out.fastq.gz")
-@click.option("-p", "--n_cores", default=1, type=click.INT)
 @click.option("--minimum_slice_length", default=18, type=click.INT)
-@click.option("--keep_cutsite", default=False)
-@click.option(
-    "--compression_level",
-    help="Level of compression for output files (1=low, 9=high)",
-    default=5,
-    type=click.INT,
-)
-@click.option(
-    "--read_buffer",
-    help="Number of reads to process before writing to file to conserve memory.",
-    default=1e5,
-    type=click.INT,
-)
 @click.option("--stats-prefix", help="Output prefix for stats file", default="stats")
 @click.option(
     "--sample-name",
@@ -98,12 +128,39 @@ def digest(*args, **kwargs):
     Performs in silico digestion of one or a pair of fastq files.
     """
     from capcruncher.cli.fastq_digest import digest
+    from capcruncher.utils import get_restriction_site
+
+    kwargs["restriction_site"] = get_restriction_site(kwargs["restriction_enzyme"])
 
     digest(*args, **kwargs)
 
 
-@cli.group(cls=UnsortedGroup)
-def deduplicate():
+@cli.command()
+@click.option(
+    "-1", "--fastq1", help="Read 1 FASTQ files", required=True, cls=OptionEatAll
+)
+@click.option(
+    "-2", "--fastq2", help="Read 2 FASTQ files", required=True, cls=OptionEatAll
+)
+@click.option(
+    "-o",
+    "--output-prefix",
+    help="Output prefix for deduplicated FASTQ files",
+    default="deduped",
+)
+@click.option(
+    "--sample-name", help="Name of sample e.g. DOX_treated_1", default="sampleX"
+)
+@click.option(
+    "-s", "--statistics", help="Statistics output file name", default="stats.csv"
+)
+@click.option(
+    "--shuffle",
+    help="Shuffle reads before deduplication",
+    is_flag=True,
+    default=False,
+)
+def deduplicate(*args, **kwargs):
     """
     Identifies PCR duplicate fragments from Fastq files.
 
@@ -112,111 +169,12 @@ def deduplicate():
     from fastq file(s) to speed up downstream analysis.
 
     """
+    from capcruncher.cli.fastq_deduplicate import deduplicate
 
+    fq1 = [pathlib.Path(f) for f in ast.literal_eval(kwargs["fastq1"])]
+    fq2 = [pathlib.Path(f) for f in ast.literal_eval(kwargs["fastq2"])]
 
-@deduplicate.command(name="parse")
-@click.argument("input_files", nargs=-1, required=True)
-@click.option(
-    "-o",
-    "--output",
-    help="File to store hashed sequence identifiers",
-    default="out.json",
-)
-@click.option(
-    "--read_buffer",
-    help="Number of reads to process before writing to file",
-    default=1e5,
-    type=click.INT,
-)
-def deduplicate_parse(*args, **kwargs):
+    kwargs["fastq_1"] = fq1
+    kwargs["fastq_2"] = fq2
 
-    """
-    Parses fastq file(s) into easy to deduplicate format.
-
-    This command parses one or more fastq files and generates a dictionary containing
-    hashed read identifiers together with hashed concatenated sequences. The hash dictionary
-    is output in json format and the identify subcommand can be used to determine which read identifiers
-    have duplicate sequences.
-    """
-
-    from capcruncher.cli.fastq_deduplicate import parse
-
-    parse(*args, **kwargs)
-
-
-@deduplicate.command(name="identify")
-@click.argument(
-    "input_files",
-    nargs=-1,
-)
-@click.option(
-    "-o", "--output", help="Output file", default="duplicates.json", required=True
-)
-def deduplicate_identify(*args, **kwargs):
-
-    """
-    Identifies fragments with duplicated sequences.
-
-    Merges the hashed dictionaries (in json format) generated by the "parse" subcommand and
-    identifies read with exactly the same sequence (share an identical hash). Duplicated read
-    identifiers (hashed) are output in json format. The "remove" subcommand uses this dictionary
-    to remove duplicates from fastq files.
-
-    """
-
-    from capcruncher.cli.fastq_deduplicate import identify
-
-    identify(*args, **kwargs)
-
-
-@deduplicate.command(name="remove")
-@click.argument("input_files", nargs=-1)
-@click.option(
-    "-o",
-    "--output_prefix",
-    help="Output prefix for deduplicated fastq file(s)",
-    default="",
-)
-@click.option(
-    "-d",
-    "--duplicated_ids",
-    help="Path to duplicate ids, identified by the identify subcommand",
-)
-@click.option(
-    "--read_buffer",
-    help="Number of reads to process before writing to file",
-    default=1e5,
-    type=click.INT,
-)
-@click.option(
-    "--gzip/--no-gzip", help="Determines if files are gziped or not", default=False
-)
-@click.option(
-    "--compression_level",
-    help="Level of compression for output files",
-    default=5,
-    type=click.INT,
-)
-@click.option(
-    "--sample-name", help="Name of sample e.g. DOX_treated_1", default="sampleX"
-)
-@click.option("--stats-prefix", help="Output prefix for stats file", default="stats")
-@click.option(
-    "--hash-read-name/--no-hash-read-name",
-    help="Hashes the read id to save memory",
-    default=False,
-)
-@click.option("-p", "--n_cores", default=1, type=click.INT)
-def deduplicate_remove(*args, **kwargs):
-    """
-    Removes fragments with duplicated sequences from fastq files.
-
-    Parses input fastq files and removes any duplicates from the fastq file(s) that are
-    present in the json file supplied. This json dictionary should be produced by the
-    "identify" subcommand.
-
-    Statistics for the number of duplicated and unique reads are also provided.
-    """
-    from capcruncher.cli.fastq_deduplicate import remove
-
-    remove(*args, **kwargs)
+    deduplicate(*args, **kwargs)

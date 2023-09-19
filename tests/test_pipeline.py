@@ -196,8 +196,6 @@ def config(
 
 @pytest.mark.order(1)
 def test_pipeline(config, cores):
-    from sh import capcruncher
-    import sys
     import subprocess
 
     if cores:

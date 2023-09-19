@@ -24,4 +24,4 @@ ignore:
   - "capcruncher/utils.py"
   - "setup.py"
   - "capcruncher/cli/__init__.py"
-  - "capcruncher/tools/statistics.py"
+  - "conftest.py"

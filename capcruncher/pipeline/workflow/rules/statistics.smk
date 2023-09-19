@@ -6,8 +6,8 @@ from typing import List
 def get_digestion_statistics(wc, sample_names: List[str]):
     stat_types = {
         "read_level_stats": "digestion.read.summary.csv",
-        "histogram_unfiltered": "digestion.unfiltered.histogram.csv",
-        "histogram_filtered": "digestion.filtered.histogram.csv",
+        "histogram_unfiltered": "digestion.unfilt.histogram.csv",
+        "histogram_filtered": "digestion.filt.histogram.csv",
     }
 
     stat_prefixes = []
@@ -58,28 +58,16 @@ def get_stat_parts(wc, sample_names: List[str]):
     return files
 
 
-if not CAPCRUNCHER_TOOLS:
-
-    rule combine_stats_fastq_deduplication:
-        input:
-            fastq_deduplication=get_stat_parts,
-        output:
-            "capcruncher_output/interim/statistics/deduplication/fastq_deduplication.csv",
-        script:
-            "../scripts/combine_deduplication_stats.py"
-
-else:
-
-    rule combine_stats_fastq_deduplication:
-        input:
-            fastq_deduplication=expand(
-                "capcruncher_output/interim/statistics/deduplication/data/{sample}.deduplication.csv",
-                sample=SAMPLE_NAMES,
-            ),
-        output:
-            "capcruncher_output/interim/statistics/deduplication/fastq_deduplication.csv",
-        script:
-            "../scripts/combine_deduplication_stats.py"
+rule combine_stats_fastq_deduplication:
+    input:
+        fastq_deduplication=expand(
+            "capcruncher_output/interim/statistics/deduplication/data/{sample}.deduplication.csv",
+            sample=SAMPLE_NAMES,
+        ),
+    output:
+        "capcruncher_output/interim/statistics/deduplication/fastq_deduplication.csv",
+    script:
+        "../scripts/combine_deduplication_stats.py"
 
 
 rule combine_stats_digestion:
