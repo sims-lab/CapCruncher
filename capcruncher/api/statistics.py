@@ -1,114 +1,128 @@
+from pydantic import BaseModel, computed_field
+from typing import List, Optional, Union
+import pathlib
 import pandas as pd
-import re
-from collections import namedtuple
-from capcruncher.utils import read_dataframes
+from enum import Enum, IntEnum
 
-
-class DeduplicationStatistics:
-    def __init__(
-        self,
-        sample: str,
-        read_type: str = "pe",
-        reads_total: int = 0,
-        reads_unique: int = 0,
-    ):
-
-        self.sample = sample
-        self.read_type = read_type
-        self.reads_total = reads_total
-        self.reads_unique = reads_unique
-        self.reads_removed = reads_total - reads_unique
-
+class FastqDeduplicationStatistics(BaseModel):
+    """Statistics for Fastq deduplication"""
+    id: str = "unknown_sample"
+    total: int
+    duplicates: int
+    
+    @computed_field
     @property
-    def df(self):
-        df = pd.DataFrame()
-        df["stat"] = [self.reads_total, self.reads_unique, self.reads_removed]
-        df["stat_type"] = ["reads_total", "reads_unique", "reads_removed"]
-        df["read_type"] = self.read_type
-        df["read_number"] = 0
-        df["stage"] = "deduplication"
-        df["sample"] = self.sample
-        return df
+    def percentage(self):
+        return self.duplicates / self.total * 100
+    
+    @computed_field
+    @property
+    def unique(self):
+        return self.total - self.duplicates
+
+class FastqTrimmingStatistics(BaseModel):
+    """Statistics for Fastq trimming"""
+    id: str = "unknown_sample"
+    reads_input: int
+    reads_output: int
+    reads_with_adapter_identified: int
+    
+    @computed_field
+    @property
+    def percentage_trimmed(self):
+        return self.reads_with_adapter_identified / self.reads_input * 100
+
+    @computed_field
+    @property
+    def percentage_passing_quality_filter(self):
+        return self.reads_output / self.reads_input * 100
+    
+    @classmethod
+    def from_multiqc_entry(cls, entry: pd.Series):
+        cls(
+            id=entry["Sample"],
+            reads_input=entry["r_processed"],
+            reads_output=entry["r_written"],
+            reads_with_adapter_identified=entry["r_with_adapters"]
+        )
+    
+    def __add__(self, other: "FastqTrimmingStatistics"):
+        return FastqTrimmingStatistics(
+            id=self.id,
+            reads_input=self.reads_input + other.reads_input,
+            reads_output=self.reads_output + other.reads_output,
+            reads_with_adapter_identified=self.reads_with_adapter_identified + other.reads_with_adapter_identified
+        )
+    
+
+class ReadNumber(IntEnum):
+    """Enum for read number"""
+    read1 = 1
+    read2 = 2
+    unpaired = 0
+    
+
+    
+class HistogramLength(BaseModel):
+    length: int
+    count: int
+    read_in_pair: ReadNumber
+    
+class HistogramNumber(BaseModel):
+    statistic_name: str
+    number: int
+    count: int
+    read_in_pair: ReadNumber
+    
+class FastqDigestionStatistics(BaseModel):
+    """Statistics for Fastq digestion"""
+    id: str = "unknown_sample"
+    read_pairs_input: int
+    read_pairs_output: int
+    slice_lengths: List[HistogramLength]
+    slices_unfiltered: List[HistogramNumber]
+    slices_filtered: List[HistogramNumber]
+    
+    @computed_field
+    @property
+    def percentage(self):
+        return self.read_pairs_output / self.read_pairs_input * 100
+    
+    @computed_field
+    @property
+    def read_pairs_filtered(self):
+        return self.read_pairs_input - self.read_pairs_output
+    
+    @computed_field
+    @property
+    def histogram_length(self):
+        return pd.DataFrame([x.model_dump() for x in self.slice_lengths])
+
+    @computed_field
+    @property
+    def histogram_unfiltered(self):
+        return pd.DataFrame([x.model_dump() for x in self.slices_unfiltered])
+    
+    @computed_field
+    @property
+    def histogram_filtered(self):
+        return pd.DataFrame([x.model_dump() for x in self.slices_filtered])
+    
+    
+    
+    
+    
 
 
-DigestionStats = namedtuple(
-    "DigestionStats", ["read_type", "read_number", "unfiltered", "filtered"]
-)
+        
+        
+        
+    
+    
+    
+    
+    
+    
 
-
-def collate_histogram_data(fnames):
-    return (
-        pd.concat(read_dataframes(fnames))
-        .groupby(["sample", "read_type", "read_number", "filtered", "n_slices"])
-        .sum()
-        .reset_index()
-        .sort_values(["sample", "read_type", "n_slices"])
-    )
-
-
-def collate_read_data(fnames):
-
-    df = (
-        pd.concat(read_dataframes(fnames))
-        .query("(read_number == 0) or (read_number == 1)")
-        .groupby(["sample", "stage", "read_type", "read_number", "stat_type"])["stat"]
-        .sum()
-        .reset_index()
-    )
-
-    return df.sort_values(["sample", "stat"], ascending=[True, False])
-
-
-def collate_slice_data(fnames):
-
-    df = pd.concat(read_dataframes(fnames))
-    aggregations = {
-        col: "sum" if "unique" not in col else "max"
-        for col in df.columns
-        if col not in ["sample", "stage", "read_type"]
-    }
-
-    return (
-        df.groupby(["sample", "stage", "read_type"])
-        .agg(aggregations)
-        .reset_index()
-        .sort_values(["sample", "unique_slices"], ascending=[True, False])
-    )
-
-
-def collate_cis_trans_data(fnames):
-    return (
-        pd.concat(read_dataframes(fnames))
-        .groupby(["sample", "viewpoint", "read_type", "cis/trans"])
-        .sum()
-        .reset_index()
-        .sort_values(["sample", "read_type", "count"], ascending=[True, True, False])
-    )
-
-
-def extract_trimming_stats(fn):
-    stat_regexes = {
-        "reads_total": re.compile(r"^Total reads processed:\s+([0-9,]+)$"),
-        "adapters_removed": re.compile(r"Reads with adapters:\s+([0-9,]+).*"),
-        "reads_after_filtering": re.compile(
-            r"Reads written \(passing filters\):\s+([0-9,]+).*"
-        ),
-    }
-
-    sample_re_match = re.match(r".*/(.*)_part\d+_(1|2).*", fn)
-
-    stats = {}
-    stats["sample"] = sample_re_match.group(1)
-    stats["read_number"] = sample_re_match.group(2)
-    stats["read_type"] = "pe"
-
-    with open(fn) as r:
-        for line in r:
-            for stat_name, pattern in stat_regexes.items():
-                regex_match = pattern.match(line)
-                if regex_match:
-                    stats[stat_name] = int(regex_match.group(1).replace(",", ""))
-
-    stats["reads_filtered"] = stats["reads_total"] - stats["reads_after_filtering"]
-
-    return stats
+    
+    
