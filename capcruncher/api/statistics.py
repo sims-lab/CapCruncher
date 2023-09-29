@@ -64,24 +64,33 @@ class ReadNumber(IntEnum):
 
     
 class HistogramLength(BaseModel):
-    length: int
-    count: int
+    length: List[int]
+    count: List[int]
     read_in_pair: ReadNumber
     
 class HistogramNumber(BaseModel):
     statistic_name: str
-    number: int
-    count: int
+    number: List[int]
+    count: List[int]
     read_in_pair: ReadNumber
+    
+    @classmethod
+    def from_dataframe(cls, df: pd.DataFrame, statistic_name: str, read_in_pair: ReadNumber):
+        return cls(
+            statistic_name=statistic_name,
+            number=df[statistic_name].tolist(),
+            count=df["count"].tolist(),
+            read_in_pair=read_in_pair
+        )
     
 class FastqDigestionStatistics(BaseModel):
     """Statistics for Fastq digestion"""
     id: str = "unknown_sample"
     read_pairs_input: int
     read_pairs_output: int
-    slice_lengths: List[HistogramLength]
-    slices_unfiltered: List[HistogramNumber]
-    slices_filtered: List[HistogramNumber]
+    slice_lengths: HistogramLength
+    slices_unfiltered: HistogramNumber
+    slices_filtered: HistogramNumber
     
     @computed_field
     @property

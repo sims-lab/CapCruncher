@@ -102,6 +102,7 @@ def annotate(*args, **kwargs):
 
     from capcruncher.cli.alignments_annotate import annotate
 
+    
     annotate(*args, **kwargs)
 
 

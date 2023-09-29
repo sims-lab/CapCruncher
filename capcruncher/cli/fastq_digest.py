@@ -4,6 +4,7 @@ from typing import Literal, Tuple, Dict
 import pandas as pd
 from loguru import logger as logging
 import polars as pl
+from capcruncher.api.statistics import FastqDigestionStatistics, HistogramLength, HistogramNumber
 
 
 def digest(
@@ -49,26 +50,31 @@ def digest(
     )
 
     logging.info("Digestion complete")
-    df_stats_read = stats["stats_read_level"].to_pandas()
-    df_stats_read_fmt = pd.DataFrame(
-        {
-            "stat_type": ["unfiltered", "filtered"],
-            "stat": [
-                df_stats_read["number_of_read_pairs_unfiltered"].sum(),
-                df_stats_read["number_of_read_pairs_filtered"].sum(),
-            ],
-        }
-    ).assign(stage="digestion", sample=sample_name, read_type=mode, read_number=1)
+    
+    
+    
+    
+    
+    
+    # histograms = dict()
+    # for hist_type in ["unfilt", "filt"]:
+    #     df = stats[f"stats_hist_{hist_type}"].to_pandas()
+    #     df = df.rename(columns={"slice_number": "n_slices"})
+    #     df = df.replace({r"^One$": 1, r"^Two$": 2}, regex=True)
+    #     df = df.assign(
+    #         filtered=hist_type == "filt",
+    #     )
+    #     histograms[hist_type] = HistogramNumber.from_dataframe(
+    #         df=df,
+    #         statistic_name="n_slices",
+    #         read_in_pair="unpaired",
+    #     )
+    
+    # digestion_stats = FastqDigestionStatistics(
+    #     id=sample_name,
+    #     read_pairs_input=
+    # )
 
-    for hist_type in ["unfilt", "filt"]:
-        df = stats[f"stats_hist_{hist_type}"].to_pandas()
-        df = df.rename(columns={"slice_number": "n_slices"})
-        df = df.replace({r"^One$": 1, r"^Two$": 2}, regex=True)
-        df = df.assign(
-            filtered=hist_type == "filt",
-        )
-        df.to_csv(f"{stats_prefix}.digestion.{hist_type}.histogram.csv", index=False)
-
-    df_stats_read_fmt.to_csv(f"{stats_prefix}.digestion.read.summary.csv", index=False)
+    # df_stats_read_fmt.to_csv(f"{stats_prefix}.digestion.read.summary.csv", index=False)
 
     return stats

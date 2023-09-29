@@ -27,6 +27,9 @@ warnings.simplefilter("ignore")
 pysam.set_verbosity(0)
 
 
+
+
+
 def cycle_argument(arg):
     """Allows for the same argument to be stated once but repeated for all files"""
 
@@ -198,8 +201,8 @@ def annotate(
             )
 
         logger.info("Setting-up intersection(s)")
-        ray.init(num_cpus=n_cores, ignore_reinit_error=True, include_dashboard=False)
-
+        ray.init(num_cpus=n_cores, ignore_reinit_error=True)
+        
         # Create a shared object reference to the slices
         slices_ref = ray.put(slices)
 

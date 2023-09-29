@@ -8,20 +8,23 @@ from typing import List, Tuple, Union
 from loguru import logger as logging
 import tabulate
 import pathlib
+from capcruncher.api.statistics import FastqDeduplicationStatistics
+from capcruncher_tools.api import deduplicate_fastq
+import pandas as pd
+import pathlib
+
 
 
 def deduplicate(
     fastq_1: List[str],
     fastq_2: List[str],
     output_prefix: Union[str, pathlib.Path] = "deduplicated_",
-    statistics: str = "deduplication_statistics.csv",
+    statistics: str = "deduplication_statistics.json",
     sample_name: str = "sampleX",
     shuffle: bool = False,
     **kwargs,
 ):
-    from capcruncher_tools.api import deduplicate_fastq
-    import pandas as pd
-    import pathlib
+
 
     df_stats = deduplicate_fastq(
         fastq1=fastq_1,
@@ -30,9 +33,16 @@ def deduplicate(
         sample_name=sample_name,
         shuffle=shuffle,
     )
+    
+    dedup_stats = FastqDeduplicationStatistics(
+        id=sample_name,
+        total=df_stats.query("stat_type == 'read_pairs_total'")["stat"].values[0],
+        duplicates=df_stats.query("stat_type == 'read_pairs_duplicated'")["stat"].values[0],
+    )
+    with open(statistics, "w") as f:
+        f.write(dedup_stats.model_dump_json())
 
-    logging.info(f"Saving stats to {statistics}")
-    df_stats.to_csv(statistics, index=False)
+    
 
     logging.info("Printing deduplication statistics to stdout")
     # Print stats to stdout
