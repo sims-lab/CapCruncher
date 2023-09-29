@@ -11,7 +11,6 @@ rule fastqc:
     params:
         outdir=lambda wc, output: str(pathlib.Path(output.qc).parent),
         tmpdir="capcruncher_output/interim/qc/fastqc/{sample}_{read}",
-        basename="{sample}_{read}.fastq.gz"
     threads: 1
     resources:
         mem_mb=1024,
@@ -21,8 +20,8 @@ rule fastqc:
         """
         mkdir -p {params.tmpdir} &&
         fastqc -o {params.tmpdir} {input.fq} -t {threads} > {log} 2>&1 &&
-        mv {params.tmpdir}/{params.basename}_fastqc.html {output.qc} &&
-        mv {params.tmpdir}/{params.basename}_fastqc.zip {params.outdir}/{wildcards.sample}_{wildcards.read}_fastqc.zip &&
+        mv {params.tmpdir}/{wildcards.sample}_{wildcards.read}_fastqc.html {output.qc} &&
+        mv {params.tmpdir}/{wildcards.sample}_{wildcards.read}_fastqc.zip {params.outdir}/{wildcards.sample}_{wildcards.read}_fastqc.zip &&
         rm -r {params.tmpdir}
         """
 
