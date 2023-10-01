@@ -161,3 +161,5 @@ class DigestionStats(BaseModel):
             read_stats=self.read_stats + other.read_stats,
             slice_stats=self.slice_stats + other.slice_stats,
         )
+
+
