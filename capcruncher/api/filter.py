@@ -3,6 +3,29 @@ import pandas as pd
 import os
 import numpy as np
 import itertools
+import pandera
+
+
+
+class SlicesDataFrameSchema(pandera.DataFrameSchema):
+    parent_id: pandera.Column[int]
+    slice_name: pandera.Column[str]
+    parent_read: pandera.Column[int]
+    pe: pandera.Column[str]
+    mapped: pandera.Column[int]
+    multimapped: pandera.Column[int]
+    slice: pandera.Column[str]
+    chrom: pandera.Column[str]
+    start: pandera.Column[int]
+    end: pandera.Column[int]
+    capture: pandera.Column[str]
+    capture_count: pandera.Column[int]
+    exclusion: pandera.Column[str]
+    blacklist: pandera.Column[int]
+    coordinates: pandera.Column[str]
+    
+
+
 
 
 class SliceFilter:
@@ -78,7 +101,8 @@ class SliceFilter:
          AttributeError: All filters must be defined in the SliceFilter.
         """
 
-        self._has_required_columns = self._required_columns_present(slices)
+        # Validate the slices dataframe
+        SlicesDataFrameSchema().validate(slices)
 
         # Tweak format slices dataframe to be consistent
         self.slices = slices.sort_values(["parent_read", "slice"]).assign(
@@ -100,30 +124,6 @@ class SliceFilter:
         self.read_type = read_type
         self.current_filter = ""
 
-    def _required_columns_present(self, df) -> bool:
-        columns_required = [
-            "parent_id",
-            "slice_name",
-            "parent_read",
-            "pe",
-            "mapped",
-            "multimapped",
-            "slice",
-            "chrom",
-            "start",
-            "end",
-            "capture",
-            "capture_count",
-            "exclusion",
-            "blacklist",
-            "coordinates",
-        ]
-
-        for col in columns_required:
-            if col not in df.columns:
-                raise KeyError(f'Required column "{col}" not in slices dataframe')
-
-        return True
 
     def _extract_filter_stages(self, filter_stages) -> dict:
         """
