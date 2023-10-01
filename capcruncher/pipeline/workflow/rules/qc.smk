@@ -5,15 +5,12 @@ import capcruncher.pipeline.utils
 
 rule fastqc:
     input:
-        fq=lambda wc: FASTQ_SAMPLES.translation[f"{wc.sample}_{wc.read}.fastq.gz"],
+        fq="capcruncher_output/interim/fastq/{sample}_{read}.fastq.gz",
     output:
         qc="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
     params:
         outdir=lambda wc, output: str(pathlib.Path(output.qc).parent),
         tmpdir="capcruncher_output/interim/qc/fastqc/{sample}_{read}",
-        basename=lambda wc, output: capcruncher.pipeline.utils.get_fastq_basename(
-            wc, FASTQ_SAMPLES
-        ),
     threads: 1
     resources:
         mem_mb=1024,
@@ -23,8 +20,8 @@ rule fastqc:
         """
         mkdir -p {params.tmpdir} &&
         fastqc -o {params.tmpdir} {input.fq} -t {threads} > {log} 2>&1 &&
-        mv {params.tmpdir}/{params.basename}_fastqc.html {output.qc} &&
-        mv {params.tmpdir}/{params.basename}_fastqc.zip {params.outdir}/{wildcards.sample}_{wildcards.read}_fastqc.zip &&
+        mv {params.tmpdir}/{wildcards.sample}_{wildcards.read}_fastqc.html {output.qc} &&
+        mv {params.tmpdir}/{wildcards.sample}_{wildcards.read}_fastqc.zip {params.outdir}/{wildcards.sample}_{wildcards.read}_fastqc.zip &&
         rm -r {params.tmpdir}
         """
 
