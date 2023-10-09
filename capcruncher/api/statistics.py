@@ -163,3 +163,39 @@ class DigestionStats(BaseModel):
         )
 
 
+
+class FlashStats(BaseModel):
+    sample: str
+    n_combined: int
+    n_uncombined: int
+    
+    @computed_field
+    @property
+    def n_total(self):
+        return self.n_combined + self.n_uncombined
+    
+    @computed_field
+    @property
+    def percentage_combined(self):
+        return self.n_combined / self.n_total * 100
+    
+    
+class FlashOverallStats(BaseModel):
+    samples: List[FlashStats]
+    
+    @classmethod
+    def from_multiqc(cls, multiqc_data: Union[str, pd.DataFrame]):
+        
+        if isinstance(multiqc_data, str):
+            multiqc_data = pd.read_csv(multiqc_data, sep="\t")
+        
+        multiqc_data["sample_name"] = multiqc_data["Sample"].str.split("_part").str[0]
+        multiqc_data = multiqc_data[["sample_name", "combopairs", "uncombopairs"]].groupby("sample_name").sum().reset_index()
+        
+        samples = [
+            FlashStats(sample=row["sample_name"], n_combined=row["combopairs"], n_uncombined=row["uncombopairs"])
+            for _, row in multiqc_data.iterrows()
+        ]
+
+        return cls(samples=samples)
+
