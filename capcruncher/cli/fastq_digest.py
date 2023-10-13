@@ -13,7 +13,7 @@ def digest(
     mode: Literal["flashed", "pe"] = "pe",
     output_file: os.PathLike = "out.fastq.gz",
     minimum_slice_length: int = 18,
-    stats_prefix: os.PathLike = "",
+    statstics: os.PathLike = "",
     sample_name: str = "sampleX",
     **kwargs,
 ) -> Dict[str, pl.DataFrame]:
@@ -26,7 +26,7 @@ def digest(
         mode: Digestion mode. Combined (Flashed) or non-combined (PE) read pairs.
         output_file: Output file path.
         minimum_slice_length: Minimum slice length.
-        stats_prefix: Output prefix for stats file.
+        statstics: Output prefix for stats file.
         sample_name: Name of sample e.g. DOX_treated_1. Required for correct statistics.
 
     Returns:
@@ -49,32 +49,8 @@ def digest(
         minimum_slice_length=minimum_slice_length,
     )
 
-    logging.info("Digestion complete")
-    
-    
-    
-    
-    
-    
-    # histograms = dict()
-    # for hist_type in ["unfilt", "filt"]:
-    #     df = stats[f"stats_hist_{hist_type}"].to_pandas()
-    #     df = df.rename(columns={"slice_number": "n_slices"})
-    #     df = df.replace({r"^One$": 1, r"^Two$": 2}, regex=True)
-    #     df = df.assign(
-    #         filtered=hist_type == "filt",
-    #     )
-    #     histograms[hist_type] = HistogramNumber.from_dataframe(
-    #         df=df,
-    #         statistic_name="n_slices",
-    #         read_in_pair="unpaired",
-    #     )
-    
-    # digestion_stats = FastqDigestionStatistics(
-    #     id=sample_name,
-    #     read_pairs_input=
-    # )
-
-    # df_stats_read_fmt.to_csv(f"{stats_prefix}.digestion.read.summary.csv", index=False)
+    logging.info("Digestion complete. Generating statistics")
+    with open(statstics, "w") as f:
+        f.write(stats.model_dump_json())
 
     return stats
