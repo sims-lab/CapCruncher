@@ -202,7 +202,7 @@ checkpoint deduplication:
         unpack(get_fastq_split_1),
     output:
         fastq_dir=directory("capcruncher_output/interim/fastq/deduplicated/{sample}/"),
-        stats="capcruncher_output/interim/statistics/deduplication/data/{sample}.deduplication.csv",
+        stats="capcruncher_output/interim/statistics/deduplication/data/{sample}.deduplication.json",
     params:
         prefix_fastq="capcruncher_output/interim/fastq/deduplicated/{sample}/",
     log:
