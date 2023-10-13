@@ -35,7 +35,7 @@ def deduplicate(
     )
     
     dedup_stats = FastqDeduplicationStatistics(
-        id=sample_name,
+        sample=sample_name,
         total=df_stats.query("stat_type == 'read_pairs_total'")["stat"].values[0],
         duplicates=df_stats.query("stat_type == 'read_pairs_duplicated'")["stat"].values[0],
     )
