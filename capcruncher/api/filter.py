@@ -4,28 +4,30 @@ import os
 import numpy as np
 import itertools
 import pandera
+from capcruncher.api.statistics import SliceFilterStats
+from pandera.typing import DataFrame, Series
 
 
+class SlicesDataFrameSchema(pandera.DataFrameModel):
+    parent_id: Series[int]
+    slice_name: Series[str]
+    parent_read: Series[int]
+    pe: Series[str]
+    mapped: Series[int]
+    multimapped: Series[int]
+    slice: Series[str]
+    chrom: Series[str]
+    start: Series[int]
+    end: Series[int]
+    capture: Series[str]
+    capture_count: Series[int]
+    exclusion: Series[str]
+    blacklist: Series[int]
+    coordinates: Series[str]
 
-class SlicesDataFrameSchema(pandera.DataFrameSchema):
-    parent_id: pandera.Column[int]
-    slice_name: pandera.Column[str]
-    parent_read: pandera.Column[int]
-    pe: pandera.Column[str]
-    mapped: pandera.Column[int]
-    multimapped: pandera.Column[int]
-    slice: pandera.Column[str]
-    chrom: pandera.Column[str]
-    start: pandera.Column[int]
-    end: pandera.Column[int]
-    capture: pandera.Column[str]
-    capture_count: pandera.Column[int]
-    exclusion: pandera.Column[str]
-    blacklist: pandera.Column[int]
-    coordinates: pandera.Column[str]
-    
-
-
+    class Config:
+        # specify the backend explicitly
+        backend = "pandas"
 
 
 class SliceFilter:
@@ -102,7 +104,7 @@ class SliceFilter:
         """
 
         # Validate the slices dataframe
-        SlicesDataFrameSchema().validate(slices)
+        slices = DataFrame[SlicesDataFrameSchema](slices)
 
         # Tweak format slices dataframe to be consistent
         self.slices = slices.sort_values(["parent_read", "slice"]).assign(
@@ -119,11 +121,11 @@ class SliceFilter:
         else:
             raise ValueError("Filter stages not provided")
 
-        self._filter_stats = pd.DataFrame()
+        self.filtering_stats = []
         self.sample_name = sample_name
         self.read_type = read_type
         self.current_filter = ""
-
+        self.current_stage = ""
 
     def _extract_filter_stages(self, filter_stages) -> dict:
         """
@@ -265,6 +267,8 @@ class SliceFilter:
         """
 
         for stage, filters in self.filter_stages.items():
+            self.current_stage = stage
+
             for filt in filters:
                 try:
                     self.current_filter = filt
@@ -286,7 +290,7 @@ class SliceFilter:
             if output_slices == "stage":
                 self.slices.to_csv(os.path.join(output_location, f"{stage}.tsv.gz"))
 
-            self._filter_stats[stage] = self.slice_stats
+            self.filtering_stats.append(self.slice_stats)
 
     def get_unfiltered_slices(self):
         """
@@ -541,7 +545,7 @@ class CCSliceFilter(SliceFilter):
         return df
 
     @property
-    def slice_stats(self):
+    def slice_stats(self) -> SliceFilterStats:
         slices = self.slices.copy()
         if slices.empty:  # Deal with empty dataframe i.e. no valid slices
             for col in slices:
@@ -553,7 +557,6 @@ class CCSliceFilter(SliceFilter):
                 "parent_read": "nunique",
                 "mapped": "sum",
                 "multimapped": "sum",
-                "capture": "nunique",
                 "capture_count": lambda col: (col > 0).sum(),
                 "exclusion_count": lambda col: (col > 0).sum(),
                 "blacklist": "sum",
@@ -565,14 +568,18 @@ class CCSliceFilter(SliceFilter):
                 "slice_name": "unique_slices",
                 "parent_read": "unique_fragments",
                 "multimapped": "multimapping_slices",
-                "capture": "unique_capture_sites",
                 "capture_count": "number_of_capture_slices",
                 "exclusion_count": "number_of_slices_in_exclusion_region",
                 "blacklist": "number_of_slices_in_blacklisted_region",
             }
         )
 
-        return stats_df
+        return SliceFilterStats.from_slice_stats_dataframe(
+            stats_df,
+            stage=self.current_stage,
+            sample=self.sample_name,
+            read_type=self.read_type,
+        )
 
     @property
     def frag_stats(self) -> pd.DataFrame:
@@ -972,7 +979,13 @@ class TiledCSliceFilter(SliceFilter):
                 "blacklist": "number_of_slices_in_blacklisted_region",
             }
         )
-        return stats_df
+
+        return SliceFilterStats.from_slice_stats_dataframe(
+            stats_df,
+            stage=self.current_stage,
+            sample=self.sample_name,
+            read_type=self.read_type,
+        )
 
     @property
     def cis_or_trans_stats(self) -> pd.DataFrame:
