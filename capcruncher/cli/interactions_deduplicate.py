@@ -6,6 +6,8 @@ import pyarrow.dataset as ds
 import shutil
 from loguru import logger
 
+from capcruncher.api.statistics import AlignmentDeduplicationStats
+
 ibis.options.interactive = False
 
 
@@ -14,7 +16,7 @@ def deduplicate(
     output: os.PathLike,
     read_type: str = "flashed",
     sample_name: str = "",
-    stats_prefix: os.PathLike = "",
+    statistics: os.PathLike = "",
 ):
     logger.info("Connecting to DuckDB")
     con = ibis.duckdb.connect()
@@ -95,20 +97,13 @@ def deduplicate(
     # Calculate the number of slices in the output
     n_reads_unique = parent_ids_unique.shape[0]
 
-    # Prepare stats
-    df_stats = pd.DataFrame()
-    df_stats["stat_type"] = ["not-deduplicated", "deduplicated"]
-    df_stats["stat"] = [n_reads_total, n_reads_unique]
-    df_stats["sample"] = sample_name
-    df_stats["read_type"] = read_type
-    df_stats["read_number"] = 0
-    df_stats["stage"] = "deduplicate_slices"
-    df_stats["stat"] = df_stats["stat"].fillna(0)
-
-    logger.info("Deduplication stats:")
-    logger.info(f"\n{df_stats.to_string()}")
-
-    logger.info("Writing deduplication stats to disk")
-    df_stats.to_csv(f"{stats_prefix}.read.stats.csv", index=False)
-
-    return df_stats
+    stats = AlignmentDeduplicationStats(
+        sample=sample_name,
+        read_type=read_type,
+        n_total=n_reads_total,
+        n_unique=n_reads_unique,
+    )
+    
+    with open(statistics, "w") as f:
+        f.write(stats.model_dump_json())
+    

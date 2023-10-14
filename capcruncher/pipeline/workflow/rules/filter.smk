@@ -105,14 +105,9 @@ rule remove_duplicate_coordinates:
                 "capcruncher_output/interim/filtering/deduplicated/{sample}/{combined}"
             )
         ),
-        stats_read=temp(
-            "capcruncher_output/interim/statistics/deduplication_by_coordinate/data/{sample}_{combined}.read.stats.csv"
-        ),
+        statistics="capcruncher_output/interim/statistics/deduplication_final/data/{sample}_{combined}.json",
     params:
         sample_name=lambda wildcards, output: wildcards.sample,
-        stats_prefix=lambda wildcards, output: output.stats_read.replace(
-            ".read.stats.csv", ""
-        ),
         read_type=lambda wildcards, output: wildcards.combined,
     resources:
         mem_mb=lambda wc, attempt: 3000 * 2**attempt,
@@ -162,7 +157,7 @@ rule cis_and_trans_stats:
         slices="capcruncher_output/results/{sample}/{sample}.parquet",
     output:
         stats=temp(
-            "capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.reporter.stats.csv"
+            "capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.json"
         ),
     params:
         sample_name=lambda wildcards, output: wildcards.sample,

@@ -27,8 +27,8 @@ try:
             snakemake.params.read_type,
             "--sample-name",
             snakemake.params.sample_name,
-            "--stats-prefix",
-            snakemake.params.stats_prefix,
+            "--statistics",
+            snakemake.output.statistics,
         ]
 
         with open(snakemake.log[0], "w") as f:
@@ -43,7 +43,7 @@ try:
         outdir.mkdir(parents=True, exist_ok=True)
 
         logger.warning(f"Creating empty stats file: {snakemake.output.stats_read}")
-        pd.DataFrame().to_csv(snakemake.output.stats_read)
+        pd.DataFrame().to_csv(snakemake.output.stats)
 
 
 except Exception as e:

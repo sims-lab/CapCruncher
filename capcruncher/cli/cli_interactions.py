@@ -15,7 +15,7 @@ def cli():
     default="deduplicated_slices/",
 )
 @click.option(
-    "--stats-prefix",
+    "--statistics",
     help="Output prefix for stats file(s)",
     default="",
 )
