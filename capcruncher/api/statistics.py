@@ -33,6 +33,7 @@ class FastqTrimmingStatistics(BaseModel):
     """Statistics for Fastq trimming"""
 
     sample: str = "unknown_sample"
+    read_number: Union[int, float]
     reads_input: int
     reads_output: int
     reads_with_adapter_identified: int
@@ -48,9 +49,10 @@ class FastqTrimmingStatistics(BaseModel):
         return self.reads_output / self.reads_input * 100
 
     @classmethod
-    def from_multiqc_entry(cls, entry: pd.Series):
-        cls(
-            id=entry["Sample"],
+    def from_multiqc_entry(cls, entry: pd.Series) -> "FastqTrimmingStatistics":
+        return cls(
+            sample=entry["sample"],
+            read_number=entry["read_number"],
             reads_input=entry["r_processed"],
             reads_output=entry["r_written"],
             reads_with_adapter_identified=entry["r_with_adapters"],
