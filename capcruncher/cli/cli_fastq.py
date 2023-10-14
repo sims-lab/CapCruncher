@@ -117,7 +117,7 @@ def split(*args, **kwargs):
 )
 @click.option("-o", "--output_file", default="out.fastq.gz")
 @click.option("--minimum_slice_length", default=18, type=click.INT)
-@click.option("--stats-prefix", help="Output prefix for stats file", default="stats")
+@click.option("--statistics", help="Output path for stats file", default="stats")
 @click.option(
     "--sample-name",
     help="Name of sample e.g. DOX_treated_1. Required for correct statistics.",

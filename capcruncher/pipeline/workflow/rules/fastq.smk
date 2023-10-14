@@ -360,11 +360,8 @@ rule digest_flashed_combined:
         digested=temp(
             "capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_flashed.fastq.gz"
         ),
-        stats_read="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.read.summary.csv",
-        stats_unfiltered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.unfilt.histogram.csv",
-        stats_filtered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.digestion.filt.histogram.csv",
+        statistics="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed.json",
     params:
-        prefix_stats="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_flashed",
         restriction_site=config["analysis"]["restriction_enzyme"],
     threads: 4
     resources:
@@ -385,8 +382,8 @@ rule digest_flashed_combined:
         {params.restriction_site} \
         --minimum_slice_length \
         18 \
-        --stats-prefix \
-        {params.prefix_stats} \
+        --statistics \
+        {output.statistics} \
         --sample-name \
         {wildcards.sample} \
         > {log} 2>&1
@@ -401,11 +398,8 @@ rule digest_flashed_pe:
         digested=temp(
             "capcruncher_output/interim/fastq/digested/{sample}/{sample}_part{part}_pe.fastq.gz"
         ),
-        stats_read="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.read.summary.csv",
-        stats_unfiltered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.unfilt.histogram.csv",
-        stats_filtered="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.digestion.filt.histogram.csv",
+        statistics="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe.json",
     params:
-        prefix_stats="capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_pe",
         restriction_site=config["analysis"]["restriction_enzyme"],
     threads: 4
     resources:
@@ -427,8 +421,8 @@ rule digest_flashed_pe:
         {params.restriction_site} \
         --minimum_slice_length \
         18 \
-        --stats-prefix \
-        {params.prefix_stats} \
+        --statistics \
+        {output.statistics} \
         --sample-name \
         {wildcards.sample} \
         > {log} 2>&1

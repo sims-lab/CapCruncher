@@ -4,8 +4,6 @@ from typing import Literal, Tuple, Dict
 import pandas as pd
 from loguru import logger as logging
 import polars as pl
-from capcruncher.api.statistics import FastqDigestionStatistics, HistogramLength, HistogramNumber
-
 
 def digest(
     fastqs: Tuple,
@@ -13,7 +11,7 @@ def digest(
     mode: Literal["flashed", "pe"] = "pe",
     output_file: os.PathLike = "out.fastq.gz",
     minimum_slice_length: int = 18,
-    statstics: os.PathLike = "",
+    statistics: os.PathLike = "",
     sample_name: str = "sampleX",
     **kwargs,
 ) -> Dict[str, pl.DataFrame]:
@@ -42,7 +40,7 @@ def digest(
 
     stats = digest_fastq(
         fastqs=fastqs,
-        restriction_enzyme=get_restriction_site(restriction_site),
+        restriction_site=get_restriction_site(restriction_site),
         output=output_file,
         read_type=mode.title(),
         sample_name=sample_name,
@@ -50,7 +48,7 @@ def digest(
     )
 
     logging.info("Digestion complete. Generating statistics")
-    with open(statstics, "w") as f:
+    with open(statistics, "w") as f:
         f.write(stats.model_dump_json())
 
     return stats
