@@ -42,7 +42,7 @@ rule samtools_stats:
         """samtools stats {input.bam} > {output.stats}"""
 
 
-rule multiqc:
+rule multiqc_report:
     input:
         expand(
             "capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
@@ -64,3 +64,17 @@ rule multiqc:
         mem_mb=1000,
     shell:
         "multiqc -o {params.outdir} {params.dir_analysis} -n full_qc_report.html --force > {log} 2>&1"
+
+
+rule multiqc_full:
+    input:
+        report="capcruncher_output/results/full_qc_report.html",
+    output:
+        report="capcruncher_output/interim/statistics/multiqc_full_data/multiqc_report.html",
+        trimming_data="capcruncher_output/interim/statistics/multiqc_full_data/multiqc_data/multiqc_cutadapt.txt",
+        flash_data="capcruncher_output/interim/statistics/multiqc_full_data/multiqc_data/multiqc_flash_combo_stats.txt",
+        bowtie2_data="capcruncher_output/interim/statistics/multiqc_full_data/multiqc_data/multiqc_bowtie2.txt",
+    log:
+        "capcruncher_output/logs/multiqc_full.log",
+    shell:
+        "multiqc capcruncher_output/ --outdir capcruncher_output/interim/statistics/multiqc_full_data --force > {log} 2>&1"
