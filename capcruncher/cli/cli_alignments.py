@@ -127,9 +127,9 @@ def annotate(*args, **kwargs):
     default="",
 )
 @click.option(
-    "--stats-prefix",
-    help="Output prefix for stats file(s)",
-    default="",
+    "--statistics",
+    help="Output path for stats file",
+    default="filtering_stats.json",
 )
 @click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
 @click.option(
@@ -138,27 +138,9 @@ def annotate(*args, **kwargs):
     default="flashed",
     type=click.Choice(["flashed", "pe"], case_sensitive=False),
 )
-# @click.option(
-#     "--gzip/--no-gzip", help="Determines if files are gziped or not", default=False
-# )
 @click.option(
     "--fragments/--no-fragments",
     help="Determines if read fragment aggregations are produced",
-    default=True,
-)
-@click.option(
-    "--read-stats/--no-read-stats",
-    help="Determines if read level statistics are output",
-    default=True,
-)
-@click.option(
-    "--slice-stats/--no-slice-stats",
-    help="Determines if slice level statistics are output",
-    default=True,
-)
-@click.option(
-    "--cis-and-trans-stats/--no-cis-and-trans-stats",
-    help="Determines cis/trans statistics are output",
     default=True,
 )
 def filter(*args, **kwargs):
