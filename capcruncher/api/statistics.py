@@ -248,6 +248,24 @@ class SliceFilterStatsList(BaseModel):
     @classmethod
     def from_list(cls, stats: List[SliceFilterStats]):
         return cls(stats=stats)
+    
+    
+class AlignmentDeduplicationStats(BaseModel):
+    sample: str
+    read_type: str
+    n_total: int
+    n_unique: int
+    
+    @computed_field
+    @property
+    def percentage_unique(self) -> float:
+        return self.n_unique / self.n_total * 100
+    
+    @computed_field
+    @property
+    def n_duplicates(self) -> int:
+        return self.n_total - self.n_unique
+    
 
 
 class CisOrTransStat(BaseModel):
