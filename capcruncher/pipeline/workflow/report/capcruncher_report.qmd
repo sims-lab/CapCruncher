@@ -12,7 +12,7 @@ execute:
 ---
 
 
-```{python}
+<!-- ```{python}
 
 import os
 import pandas as pd
@@ -436,17 +436,44 @@ def plot_overall_summary(run_stats_path: os.PathLike):
         pass
 
     return fig
-```
+``` -->
 
 ```{python}
 #| tags: [parameters]
 fastq_deduplication_path = ""
-fastq_digestion_hist_path = ""
-fastq_digestion_read_path = ""
-reporter_read_path = ""
+fastq_trimming_path = ""
+fastq_digestion_path = ""
+reporter_filtering_path = ""
 reporter_cis_trans_path = ""
 run_stats_path = ""
 ```
+
+```{python}
+import os
+import sys
+import pandas as pd
+import pathlib
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+import plotly.graph_objs as go
+import json
+import panel as pn
+
+from capcruncher.api.statistics import FastqDeduplicationStatistics, FastqTrimmingStatistics
+
+
+pn.extension('tabulator')
+pn.extension('plotly')
+```
+
+```{python}
+def load_json(p):
+    with open(p) as f:
+        return json.load(f)
+```
+
 
 # FASTQ PCR Duplicate Removal:
 
@@ -458,24 +485,133 @@ This is only the first pass of PCR duplicate removal as single base changes will
 Approximately 5-20% of fragments are typically removed by this step.
 
 ```{python}
-plot_deduplication_stats(fastq_deduplication_path)
+
+dd_jsons = [p for p in pathlib.Path(fastq_deduplication_path).glob("*.json")]
+stats = [FastqDeduplicationStatistics(**load_json(p)) for p in dd_jsons]
+dedup_stats = pd.DataFrame([s.model_dump() for s in stats])
+
+tabulator_formatters = {
+    'Percentage Duplicated': {'type': 'progress', 'max': 100, "legend": True},
+}
+
+tabulator_filters = {
+    'Sample Name': {'type': 'input', 'func': 'like', 'placeholder': 'Enter Sample'},
+}
+
+
+table = pn.widgets.Tabulator(
+    dedup_stats[["sample", "total", "unique", "duplicates", "percentage"]]
+    .assign(percentage=lambda df: df["percentage"].astype(float).round(2))
+    .rename(
+        columns={
+            "sample": "Sample Name",
+            "total": "Total Reads",
+            "unique": "Unique Reads",
+            "duplicates": "Duplicate Reads",
+            "percentage": "Percentage Duplicated",
+        }
+    ),
+    formatters=tabulator_formatters,
+    header_filters=tabulator_filters,
+    theme='midnight',
+)
+
+df = dedup_stats[["sample", "duplicates", "unique"]].melt(
+    id_vars="sample", var_name="read_type", value_name="count"
+)
+fig = px.bar(
+    df,
+    x="count",
+    y="sample",
+    color="read_type",
+    template="plotly_white",
+    category_orders={
+        "sample": sorted(df["sample"].unique()),
+        "read_type": ["unique", "duplicates"],
+    },
+    color_discrete_sequence=["#F9A65A", "grey"],
+)
+
+fig.update_layout(legend_title_text="")
+fig.update_yaxes(title="")
+fig.update_xaxes(title="Number of Reads")
+fig.update_traces(marker_line_width=0)
+
+table = table
+bar_chart = pn.pane.Plotly(fig)
+
+
+pn.Tabs(("Table", table), ("Bar Chart", bar_chart)).servable()
+
 ```
 
-<!-- # Trimming:
+# Trimming:
 
 Following initial PCR duplicate removal fastq files are trimmed to remove sequencing adapters.
 
-These plots provide a brief summary of the number of adapters identified and removed.
+```{python}
 
-```{python} -->
+trimming_stats = [
+    FastqTrimmingStatistics(**json.loads(entry)) for entry in load_json(fastq_trimming_path)
+]
 
+df_trim = pd.DataFrame([s.model_dump() for s in trimming_stats])
+
+tabulator_formatters = {
+    'Percentage Trimmed': {'type': 'progress', 'max': 100, "legend": True},
+    "Percentage Passing Quality Filter": {
+        'type': 'progress',
+        'max': 100,
+        "legend": True,
+    },
+}
+
+tabulator_filters = {
+    'Sample': {'type': 'input', 'func': 'like', 'placeholder': 'Enter Sample'},
+    "Read Number": {'type': 'number', 'placeholder': 'Enter Read Number'},
+}
+
+
+table = pn.widgets.Tabulator(
+    df_trim.rename(columns=lambda col: col.replace("_", " ").title()).round(2),
+    formatters=tabulator_formatters,
+    theme='midnight',
+    header_filters=tabulator_filters,
+)
+
+table
+
+```
 
 # Read pair combination statistics (FLASh):
 
 After the removal of adapters read pairs are combined (if any overlap exists) using `FLASh` to generate combined fragments (refered to as `flashed`). Non-combined read pairs that do not have a sufficient overlap  (refered to as `paired-end` or `pe`) are maintained as read pairs in separate fastq files.
 
 ```{python}
-plot_flash_summary(run_stats_path)
+
+flash_stats = [
+    FlashStats(**json.loads(entry)) for entry in load_json(fastq_flash_path)
+]
+df_flash_stats = pd.DataFrame([s.model_dump() for s in flash_stats])
+df_flash_stats
+tabulator_formatters = {
+    'Percentage Combined': {'type': 'progress', 'max': 100, "legend": True},
+    }
+
+tabulator_filters = {
+    'Sample': {'type': 'input', 'func': 'like', 'placeholder': 'Enter Sample'},
+}
+
+
+table = pn.widgets.Tabulator(
+    df_flash_stats.rename(columns=lambda col: col.replace("_", " ").title()).round(2),
+    formatters=tabulator_formatters,
+    theme='midnight',
+    header_filters=tabulator_filters,
+)
+
+table
+
 ```
 
 # Fastq *in silico* digestion statistics (read pair level):
@@ -491,16 +627,146 @@ The number of valid and invalid fragments are displayed. `slices` are considered
 * No restriction sites identified if the read pair is combined (`flashed`)
 * The fragment is shorter than the minimum length specified (default 18 bp)
 
-```{python}
-plot_digestion_read_summary(fastq_digestion_read_path)
-```
-
-## Histogram of the number of `slices` per fragment.
-
-This histogram displays the number of `slices` identified per fragment, split by flashed/pe status and pre/post filtering.
+The histogram displays the number of `slices` identified per fragment, split by flashed/pe status and pre/post filtering.
 
 ```{python}
-plot_digestion_histogram(fastq_digestion_hist_path)
+
+
+digestion_stats = [
+    DigestionStats(**load_json(f)) for f in pathlib.Path(fastq_digestion_path).glob("*.json")
+]
+df_digestion = pd.DataFrame([s.model_dump() for s in digestion_stats])
+df_digestion
+unfiltered = (
+    pd.DataFrame([s['unfiltered'] for s in df_digestion['read_stats']])
+    .fillna(0)
+    .add_suffix("_unfiltered")
+)
+filtered = (
+    pd.DataFrame([s['filtered'] for s in df_digestion['read_stats']])
+    .fillna(0)
+    .add_suffix("_filtered")
+)
+df_digestion_read = (
+    pd.concat([df_digestion[["sample", "read_type"]], unfiltered, filtered], axis=1)
+    .melt(id_vars=["sample", "read_type"], var_name="read_stat", value_name="count")
+    .assign(
+        filtered=lambda df: df['read_stat'].str.split("_").str[1],
+        read_number=lambda df: df['read_stat'].str.split("_").str[0],
+    )
+    .drop(columns=["read_stat"])
+    .replace("filtered", "post-digestion")
+    .replace("unfiltered", "pre-digestion")
+)
+
+
+df_digestion_read_tbl = (
+    df_digestion_read.pivot(
+        columns='filtered', index=["sample", "read_type", "read_number"], values="count"
+    )[["pre-digestion", "post-digestion"]]
+    .assign(
+        percentage_digested=lambda df: (
+            df["post-digestion"] / df["pre-digestion"] * 100
+        ).round(2)
+    )
+    .fillna(0)
+    .reset_index()
+    .query("read_type == 'Pe' or (read_type == 'Flashed' and read_number == 'read1')")
+)
+
+tabulator_formatters = {
+    'Percentage Digested': {'type': 'progress', 'max': 100, "legend": True},
+}
+
+tabulator_filters = {
+    'Sample': {'type': 'input', 'func': 'like', 'placeholder': 'Enter Sample'},
+    'Read Type': {'type': 'input', 'func': 'like', 'placeholder': 'Enter Read Type'},
+    'Read Number': {
+        'type': 'input',
+        'func': 'like',
+        'placeholder': 'Enter Read Number',
+    },
+}
+
+
+table = pn.widgets.Tabulator(
+    df_digestion_read_tbl.rename(
+        columns=lambda col: col.title().replace("_", " ")
+    ).round(2),
+    formatters=tabulator_formatters,
+    theme='midnight',
+    header_filters=tabulator_filters,
+)
+
+
+fig = px.line(
+    df_digestion_read,
+    x="filtered",
+    y="count",
+    color="read_number",
+    line_dash="read_type",
+    animation_frame="sample",
+    markers=True,
+    range_y=(0, df_digestion_read["count"].max() + df_digestion_read["count"].max() * 0.1),
+    template="plotly_white",
+    )
+
+fig.update_xaxes(title="Quality Filter Status")
+fig.update_yaxes(title="Number of Reads")
+fig.update_layout(legend_title_text="")
+
+
+try:
+    fig["layout"]["updatemenus"] = None
+    fig["layout"]["sliders"][0]["pad"] = {"r": 0, "b": 5, "t": 10}
+    fig["layout"]["sliders"][0]["x"] = 0
+    fig["layout"]["sliders"][0]["len"] = 1
+except (KeyError, IndexError):
+    pass
+
+fig_line = pn.pane.Plotly(fig)
+
+
+h = list()
+
+for s in digestion_stats:
+    hist = s.histograms.lengths.to_dataframe()
+    hist['sample'] = s.sample
+    hist['read_type'] = s.read_type
+    h.append(hist)
+    
+    
+df_hist_filtered = pd.concat(h)
+df_hist_filtered
+fig = px.histogram(
+    df_hist_filtered.sort_values(["sample"]),
+    x='slice_length',
+    pattern_shape="read_number",
+    facet_col="read_type",
+    color='read_type',
+    animation_frame='sample',
+    range_x=(0, df_hist_filtered['slice_length'].max() + 1),
+    barmode="group",
+    template="plotly_white",
+    color_discrete_sequence=["#599AD3", "#9E66AB"]
+    
+)
+fig.update_xaxes(title="Length of <i>in silico</i> digested fragments")
+fig.update_layout(legend_title_text="")
+fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+
+try:
+    fig["layout"]["updatemenus"] = None
+    # fig["layout"]["updatemenus"][0].update(dict(y=1, pad={"b": 10, "t": 0}, x=0))
+    fig["layout"]["sliders"][0]["pad"] = {"r": 10, "b": 5, "t": 10}
+    fig["layout"]["sliders"][0]["x"] = 0
+    fig["layout"]["sliders"][0]["len"] = 1
+except (KeyError, IndexError):
+    pass
+
+fig_hist = pn.pane.Plotly(fig)
+
+pn.Tabs(("Table", table), ("Digestion Filtering Plot", fig_line), ("Slice Length Histogram", fig_hist)).servable()
 ```
 
 # Alignment filtering statistics:
