@@ -107,8 +107,6 @@ rule all:
     input:
         qc=rules.multiqc_report.output[0],
         report="capcruncher_output/results/capcruncher_report.html",
-        trim="capcruncher_output/interim/statistics/trimming/trimming.json",
-        flash="capcruncher_output/interim/statistics/flash/flash.json",
         pileups=capcruncher.pipeline.utils.get_pileups(
             assay=ASSAY,
             design=DESIGN,
