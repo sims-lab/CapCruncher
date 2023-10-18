@@ -144,58 +144,17 @@
 # #     script:
 # #         "../scripts/combine_stats_read_level.py"
 
-# rule copy_report_template:
-#     input:
-#         template=workflow.source_path("../report/capcruncher_report.qmd"),
-#     output:
-#         "capcruncher_output/results/capcruncher_report.qmd",
-#     container:
-#         None
-#     shell:
-#         """
-#         cp {input.template} {output}
-#         """
-
-
-# rule make_report:
-#     input:
-#         template=rules.copy_report_template.output[0],
-#         fastq_deduplication=expand(
-#             "capcruncher_output/interim/statistics/deduplication/data/{sample}.deduplication.json",
-#             sample=SAMPLE_NAMES,
-#         ),
-#         digestion_read=rules.combine_stats_digestion.output.read_data,
-#         digestion_histogram=rules.combine_stats_digestion.output.histogram,
-#         reporters=rules.merge_stats_filtering_and_alignment_deduplication.output[0],
-#         cis_and_trans_stats=rules.combine_stats_cis_and_trans.output.cis_and_trans_stats,
-#         read_level_stats=rules.combine_stats_read_level.output[0],
-#     output:
-#         "capcruncher_output/results/capcruncher_report.html",
-#     params:
-#         outdir=lambda wildcards, output: pathlib.Path(output[0]).parent,
-#     log:
-#         "capcruncher_output/logs/make_report.log",
-#     shell:
-#         """
-#         export XDG_RUNTIME_DIR=$(mktemp -d);
-#         quarto \
-#         render \
-#         {params.outdir}/capcruncher_report.qmd \
-#         --to html \
-#         --execute \
-#         -P fastq_deduplication_path:$(realpath {input.fastq_deduplication}) \
-#         -P fastq_digestion_read_path:$(realpath {input.digestion_read}) \
-#         -P fastq_digestion_hist_path:$(realpath {input.digestion_histogram}) \
-#         -P reporter_read_path:$(realpath {input.reporters}) \
-#         -P reporter_cis_trans_path:$(realpath {input.cis_and_trans_stats}) \
-#         -P run_stats_path:$(realpath {input.read_level_stats}) \
-#         --log {log} \
-#         2> {log}.err;
-
-#         rm {params.outdir}/capcruncher_report.qmd
-#         """
-
-
+rule copy_report_template:
+    input:
+        template=workflow.source_path("../report/capcruncher_report.qmd"),
+    output:
+        "capcruncher_output/results/capcruncher_report.qmd",
+    container:
+        None
+    shell:
+        """
+        cp {input.template} {output}
+        """
 
 rule extract_trimming_data:
     input:
@@ -212,4 +171,45 @@ rule extract_flash_data:
         "capcruncher_output/interim/statistics/flash/flash.json",
     script:
         "../scripts/extract_flash_data.py"
+
+
+rule make_report:
+    input:
+        template=rules.copy_report_template.output[0],
+        fastq_deduplication=expand(
+            "capcruncher_output/interim/statistics/deduplication/data/{sample}.deduplication.json",
+            sample=SAMPLE_NAMES,
+        ),
+        fastq_trimming=rules.extract_trimming_data.output[0],
+        fastq_flash=rules.extract_flash_data.output[0],
+        digestion_read=rules.combine_stats_digestion.output.read_data,
+        digestion_histogram=rules.combine_stats_digestion.output.histogram,
+        reporters=rules.merge_stats_filtering_and_alignment_deduplication.output[0],
+        cis_and_trans_stats=rules.combine_stats_cis_and_trans.output.cis_and_trans_stats,
+        read_level_stats=rules.combine_stats_read_level.output[0],
+    output:
+        "capcruncher_output/results/capcruncher_report.html",
+    params:
+        outdir=lambda wildcards, output: pathlib.Path(output[0]).parent,
+    log:
+        "capcruncher_output/logs/make_report.log",
+    shell:
+        """
+        export XDG_RUNTIME_DIR=$(mktemp -d);
+        quarto \
+        render \
+        {params.outdir}/capcruncher_report.qmd \
+        --to html \
+        --execute \
+        -P fastq_deduplication_path:$(realpath {input.fastq_deduplication}) \
+        -P fastq_digestion_read_path:$(realpath {input.digestion_read}) \
+        -P fastq_digestion_hist_path:$(realpath {input.digestion_histogram}) \
+        -P reporter_read_path:$(realpath {input.reporters}) \
+        -P reporter_cis_trans_path:$(realpath {input.cis_and_trans_stats}) \
+        -P run_stats_path:$(realpath {input.read_level_stats}) \
+        --log {log} \
+        2> {log}.err;
+
+        rm {params.outdir}/capcruncher_report.qmd
+        """
     
