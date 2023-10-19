@@ -44,7 +44,7 @@ rule create_ucsc_hub:
         )
         if COMPARE_SAMPLES
         else [],
-        # report=rules.make_report.output[0],
+        report=rules.make_report.output[0],
     output:
         directory(config["hub"]["dir"]),
     wildcard_constraints:
