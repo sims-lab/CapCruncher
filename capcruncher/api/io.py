@@ -291,7 +291,7 @@ def parse_alignment(aln: pysam.AlignmentFile) -> CCAlignment:
         slice_name=slice_name,
         parent_id=parent_id,
         parent_read=parent_read,
-        pe=pe,
+        pe=pe.lower(),
         slice=int(slice_number),
         uid=int(uid),
         mapped=mapped,
