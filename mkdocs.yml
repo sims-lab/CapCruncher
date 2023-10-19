@@ -1,0 +1,50 @@
+site_name: CapCruncher Documentation
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Pipeline: pipeline.md
+  - Cluster Setup: cluster_config.md
+  - Hints and Tips: tips.md
+  - Plotting: plotting.ipynb
+  - CLI Reference: cli.md
+  - API Reference: reference/
+theme:
+  name: material
+  palette:
+    scheme: default
+  font:
+    text: "Roboto"
+    code: "Roboto Mono"
+  features:
+    - content.code.copy
+    - header.autohide
+  icon:
+    repo: fontawesome/brands/git-alt
+markdown_extensions:
+  - toc:
+      permalink: true
+      toc_depth: 4
+  - pymdownx.highlight:
+      use_pygments: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - mkdocs-click
+  - admonition
+  - codehilite:
+      guess_lang: false
+
+plugins:
+  - search
+  - mkdocstrings
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - gen-files:
+      scripts:
+        - docs/gen_ref_pages.py
+  - section-index
+  - mkdocs-jupyter
+
+repo_url: https://github.com/sims-lab/CapCruncher

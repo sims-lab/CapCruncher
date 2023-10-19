@@ -1,5 +1,7 @@
 import pytest
 import os
+import pathlib
+from typing import Union
 
 from capcruncher.api.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
 from capcruncher.cli.alignments_filter import merge_annotations
@@ -8,15 +10,22 @@ from capcruncher.api.io import parse_bam
 
 @pytest.fixture(scope="module")
 def data_path():
-    fn = os.path.realpath(__file__)
-    dirname = os.path.dirname(fn)
-    data_dir = os.path.join(dirname, "data", "alignment_filtering")
-    return data_dir
+    cwd = pathlib.Path.cwd()
+    fn = pathlib.Path(__file__).relative_to(cwd)
+    dirname = fn.parent
+    data_dir = dirname / "data" / "alignment_filtering"
+    return str(data_dir)
 
 
-def get_slices(bam, annotations):
+@pytest.fixture(scope="function")
+def parquet_file(tmpdir):
+    return pathlib.Path(tmpdir) / "test.parquet"
+
+
+def get_slices(bam: str, annotations: str, parquet_file: Union[str, pathlib.Path]):
     df_alignment = parse_bam(bam)
-    df_alignment = merge_annotations(df_alignment, annotations)
+    df_alignment.to_parquet(parquet_file)
+    df_alignment = merge_annotations(parquet_file, annotations)
     return df_alignment
 
 
@@ -28,12 +37,13 @@ def get_slices(bam, annotations):
         (TiledCSliceFilter, "test.flashed.bam", "test.annotations.parquet", 128),
     ],
 )
-def test_filters(data_path, filter_class, bam, annotations, n_slices_expected):
-
+def test_filters(
+    data_path, filter_class, bam, annotations, n_slices_expected, parquet_file
+):
     bam = os.path.join(data_path, bam)
     annotations = os.path.join(data_path, annotations)
 
-    df_slices = get_slices(bam, annotations)
+    df_slices = get_slices(bam, annotations, parquet_file)
     sf = filter_class(df_slices)
 
     sf.filter_slices()

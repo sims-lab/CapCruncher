@@ -129,17 +129,6 @@ def pileup(*args, **kwargs):
     type=float,
 )
 @click.option(
-    "--low-memory",
-    is_flag=True,
-    default=False,
-    help="Will perform counting in batches specifed by the chunksize to save memory (less accurate)",
-)
-@click.option(
-    "--chunksize",
-    default=int(2e6),
-    help="Number of records to process at once",
-)
-@click.option(
     "-f",
     "--fragment-map",
     help="Path to digested genome bed file",
@@ -150,12 +139,6 @@ def pileup(*args, **kwargs):
     help="Path to viewpoints file",
 )
 @click.option(
-    "--cooler-output",
-    "output_as_cooler",
-    help="Output counts in cooler format",
-    is_flag=True,
-)
-@click.option(
     "-p",
     "--n-cores",
     default=1,
@@ -163,47 +146,25 @@ def pileup(*args, **kwargs):
     type=int,
 )
 @click.option(
-    "-t",
-    "--file-type",
-    help="File format for input",
-    default="auto",
-    type=click.Choice(["auto", "tsv", "hdf5", "parquet"], case_sensitive=False),
+    "--assay", type=click.Choice(["capture", "tri", "tiled"]), default="capture"
 )
 def count(*args, **kwargs):
     """
     Determines the number of captured restriction fragment interactions genome wide.
 
-    Parses a reporter slices tsv and counts the number of unique restriction fragment
-    interaction combinations that occur within each fragment.
+    Counts the number of interactions between each restriction fragment and all other
+    restriction fragments in the fragment.
 
-    Options to ignore unwanted counts e.g. excluded regions or capture fragments are provided.
-    In addition the number of reporter fragments can be subsampled if required.
+    The output is a cooler formatted HDF5 file containing a single group containing
+    the interactions between restriction fragments.
+
+    See `https://cooler.readthedocs.io/en/latest/` for further details.
+
     """
-
-    if kwargs.get("output_as_cooler"):
-        if not kwargs.get("fragment_map"):
-            raise ValueError(
-                "Restriction fragment map must be provided for cooler output"
-            )
-        elif not kwargs.get("viewpoint_path"):
-            raise ValueError("Viewpoint path must be provided for cooler output")
 
     from capcruncher.cli.interactions_count import count
 
     count(*args, **kwargs)
-
-
-# @cli.group()
-# def store():
-#     """
-#     Store reporter counts.
-
-#     These commands store and manipulate reporter restriction fragment interaction
-#     counts as cooler formated groups in HDF5 files.
-
-#     See subcommands for details.
-
-#     """
 
 
 @cli.command(name="counts-to-cooler")
@@ -297,6 +258,9 @@ def store_fragments(*args, **kwargs):
     "--output",
     help="Name of output file. (Cooler formatted hdf5 file)",
     default="out.hdf5",
+)
+@click.option(
+    "--assay", type=click.Choice(["capture", "tri", "tiled"]), default="capture"
 )
 def store_bins(*args, **kwargs):
     """

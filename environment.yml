@@ -8,31 +8,31 @@ dependencies:
   - bowtie2>=2.4.4
   - click<=8.1.0
   - cooler
+  - cookiecutter
   - fastqc
   - flash
   - ibis-framework>=6.0.0
   - iced
   - joblib
-  - more-itertools
+  - loguru
   - multiqc
-  - natsort
   - numpy<=1.23
+  - pandas<=2.0.1
   - papermill
-  - pandas<=1.5.2
   - pip<=22.2.2
-  - plotly>5.0.0,<=5.10.0
-  - pyarrow>8.0.0,<=9.0.0
+  - plotly>5.0.0,<=5.15.0
+  - pyarrow>8.0.0,<12.0.0
   - pybedtools
   - pyranges
   - pysam>0.15.0,<=0.19.1
   - python-duckdb
   - python-xxhash
   - python>=3.10,<3.11
-  - ray-core>=2.6.0
+  - quarto
   - samtools
   - seaborn
   - setuptools>50.1.0,<=65.0.1
-  - snakemake>=7.30.2
+  - snakemake<=7.30.2
   - tqdm
   - trackhub
   - trim-galore
@@ -40,4 +40,3 @@ dependencies:
   - ucsc-bedtobigbed
   - ucsc-fetchchromsizes
   - ujson
-  - quarto

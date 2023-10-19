@@ -66,6 +66,12 @@ def data_reporters_store(testdata_dirname):
 
 
 @pytest.fixture(scope="module")
+def data_pipeline(testdata_dirname):
+    data_dir = os.path.join(testdata_dirname, "data", "data_for_pipeline_run")
+    return data_dir
+
+
+@pytest.fixture(scope="module")
 def cli_runner():
     return CliRunner()
 
@@ -81,11 +87,11 @@ def test_cli_runs(cli_runner):
     "infile,flags",
     [
         (
-            "chrom_to_digest.fa",
+            "chr14.fa.gz",
             ["-r", "dpnii", "--sort"],
         ),
         pytest.param(
-            "chrom_to_digest.fa",
+            "chr14.fa.gz",
             [
                 "-r",
                 "dpn",
@@ -94,9 +100,9 @@ def test_cli_runs(cli_runner):
         ),
     ],
 )
-def test_genome_digest(cli_runner, data_digestion, tmpdir, infile, flags):
+def test_genome_digest(cli_runner, data_pipeline, tmpdir, infile, flags):
 
-    infile = os.path.join(data_digestion, infile)
+    infile = os.path.join(data_pipeline, infile)
     outfile = os.path.join(tmpdir, "digested.bed")
     tmp_log = os.path.join(tmpdir, "gd.log")
 
@@ -112,77 +118,37 @@ def test_genome_digest(cli_runner, data_digestion, tmpdir, infile, flags):
     [
         (
             ("duplicated_1.fastq.gz", "duplicated_2.fastq.gz"),
-            "parsed.json",
-            ["--read_buffer", "100000"],
-        ),
-        (
-            ("duplicated_1.fastq.gz", "duplicated_2.fastq.gz"),
-            "parsed.pkl",
-            ["--read_buffer", "100000"],
-        ),
-    ],
-)
-def test_deduplicate_parse(
-    cli_runner, data_deduplication, tmpdir, infiles, outfile, flags
-):
-
-    infiles = [os.path.join(data_deduplication, fn) for fn in infiles]
-    outfile = os.path.join(tmpdir, outfile)
-    result = cli_runner.invoke(
-        cli, ["fastq", "deduplicate", "parse", *infiles, "-o", outfile, *flags]
-    )
-
-    assert result.exit_code == 0
-    assert os.path.exists(outfile)
-
-
-@pytest.mark.parametrize(
-    "infiles,outfile,flags",
-    [
-        (("parsed.json",), "deduplicated.json", []),
-        (("parsed.pickle",), "deduplicated.pickle", []),
-        (("parsed.json", "parsed.pickle"), "deduplicated.pickle", []),
-    ],
-)
-def test_deduplicate_identify(
-    cli_runner, data_deduplication, tmpdir, infiles, outfile, flags
-):
-
-    infiles = [os.path.join(data_deduplication, fn) for fn in infiles]
-    outfile = os.path.join(tmpdir, outfile)
-    result = cli_runner.invoke(
-        cli, ["fastq", "deduplicate", "identify", *infiles, "-o", outfile, *flags]
-    )
-
-    assert result.exit_code == 0
-    assert os.path.exists(outfile)
-
-
-@pytest.mark.parametrize(
-    "infiles,ids,outfile,flags",
-    [
-        (
-            ("duplicated_1.fastq.gz", "duplicated_2.fastq.gz"),
-            "identified.pkl",
             "out",
             [],
         )
     ],
 )
-def test_deduplicate_remove(
-    cli_runner, data_deduplication, tmpdir, infiles, ids, outfile, flags
+def test_deduplicate_fastq(
+    cli_runner, data_deduplication, tmpdir, infiles, outfile, flags
 ):
 
     infiles = [os.path.join(data_deduplication, fn) for fn in infiles]
-    ids = os.path.join(data_deduplication, ids)
     outfile = os.path.join(tmpdir, outfile)
+
     result = cli_runner.invoke(
         cli,
-        ["fastq", "deduplicate", "remove", *infiles, "-d", ids, "-o", outfile, *flags],
+        [
+            "fastq",
+            "deduplicate",
+            "-1",
+            infiles[0],
+            "-2",
+            infiles[1],
+            "-o",
+            outfile,
+            *flags,
+        ],
     )
 
     assert result.exit_code == 0
-    assert len(glob.glob(f"{tmpdir}/*.fastq*")) == 2
+
+    fastq_deduped = glob.glob(f"{tmpdir}/*.fastq*")
+    assert len(fastq_deduped) == len(infiles)
 
 
 @pytest.mark.parametrize(
@@ -392,19 +358,14 @@ def test_interactions_deduplicate(
 @pytest.mark.parametrize(
     "slices,bins,viewpoints,output,flags",
     [
-        (
-            "slices.flashed.parquet",
-            "bins.bed.gz",
-            "viewpoints.bed",
-            "counts.hdf5",
-            ["--cooler-output"],
-        ),
+        ("slices.flashed.parquet", "bins.bed.gz", "viewpoints.bed", "counts.hdf5", []),
     ],
 )
 def test_reporters_count(
     cli_runner,
     data_deduplication_alignments,
     data_reporters_count,
+    data_pipeline,
     tmpdir,
     slices,
     bins,
@@ -415,7 +376,7 @@ def test_reporters_count(
 
     slices = os.path.join(data_deduplication_alignments, slices)
     bins = os.path.join(data_reporters_count, bins)
-    viewpoints = os.path.join(data_reporters_count, viewpoints)
+    viewpoints = os.path.join(data_pipeline, "mm9_capture_viewpoints_Slc25A37.bed")
     output = os.path.join(tmpdir, output)
 
     result = cli_runner.invoke(

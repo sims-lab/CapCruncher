@@ -1,77 +1,55 @@
 import capcruncher.pipeline.utils
 
-if CAPCRUNCHER_TOOLS:
 
-    rule count:
-        input:
-            slices=rules.combine_flashed_and_pe_post_deduplication.output.slices,
-            restriction_fragment_map=rules.digest_genome.output.bed,
-            viewpoints=VIEWPOINTS,
-        output:
-            temp(
-                "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5"
-            ),
-        log:
-            "capcruncher_output/logs/counts/{sample}.log",
-        threads: 8
-        resources:
-            mem_mb=lambda wc, attempt: 3000 * 2**attempt,
-        params:
-            outdir="capcruncher_output/pileups/counts_by_restriction_fragment",
-        shell:
-            """
-            mkdir -p {params.outdir} && \
-            capcruncher-tools \
-            count \
-            {input.slices} \
-            -o {output} \
-            -f {input.restriction_fragment_map} \
-            -v {input.viewpoints} \
-            -p {threads} \
-            > {log} 2>&1
-            """
+def get_mem_mb(wildcards, threads, attempt=0):
+    return threads * 3000 * 2 ** (attempt - 1)
 
-else:
 
-    rule count:
-        input:
-            slices=rules.combine_flashed_and_pe_post_deduplication.output.slices,
-            restriction_fragment_map=rules.digest_genome.output.bed,
-            viewpoints=VIEWPOINTS,
-        output:
-            temp(
-                "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5"
-            ),
-        log:
-            "capcruncher_output/logs/counts/{sample}.log",
-        threads: 8
-        resources:
-            mem_mb=lambda wc, attempt: 3000 * 2**attempt,
-        params:
-            outdir="capcruncher_output/pileups/counts_by_restriction_fragment",
-        shell:
-            """
-            mkdir -p {params.outdir} && \
-            capcruncher \
-            interactions \
-            count \
-            {input.slices} \
-            -o {output} \
-            -f {input.restriction_fragment_map} \
-            -v {input.viewpoints} \
-            --cooler-output \
-            -p {threads} \
-            > {log} 2>&1
-            """
+def get_outdir(wildcards, output):
+    return str(pathlib.Path(output[0]).parent)
+
+
+rule count:
+    input:
+        slices=rules.combine_flashed_and_pe_post_deduplication.output.slices,
+        restriction_fragment_map=rules.digest_genome.output.bed,
+        viewpoints=VIEWPOINTS,
+    output:
+        temp(
+            "capcruncher_output/interim/pileups/counts_by_restriction_fragment/{sample}.hdf5"
+        ),
+    log:
+        "capcruncher_output/logs/counts/{sample}.log",
+    threads: 8
+    resources:
+        mem_mb=get_mem_mb,
+    params:
+        outdir=get_outdir,
+        assay=config["analysis"]["method"],
+    shell:
+        """
+        mkdir -p {params.outdir} && \
+        capcruncher \
+        interactions \
+        count \
+        {input.slices} \
+        -o {output} \
+        -f {input.restriction_fragment_map} \
+        -v {input.viewpoints} \
+        -p {threads} \
+        --assay {params.assay}
+        > {log} 2>&1
+        """
 
 
 rule bin_counts:
     input:
-        "capcruncher_output/pileups/counts_by_restriction_fragment/{sample}.hdf5",
+        "capcruncher_output/interim/pileups/counts_by_restriction_fragment/{sample}.hdf5",
     output:
-        temp("capcruncher_output/pileups/counts_by_genomic_bin/{sample}.hdf5"),
+        temp("capcruncher_output/interim/pileups/counts_by_genomic_bin/{sample}.hdf5"),
     params:
         bin_size=[f"-b {b}" for b in BIN_SIZES],
+        assay=config["analysis"]["method"],
     log:
         "capcruncher_output/logs/bin_counts/{sample}.log",
     threads: 4
@@ -86,6 +64,7 @@ rule bin_counts:
         -o {output} \
         {params.bin_size} \
         -p {threads} \
+        --assay {params.assay} \
         > {log} 2>&1
         """
 
@@ -116,6 +95,7 @@ rule bedgraph_raw:
         bedgraph=temp(
             "capcruncher_output/interim/pileups/bedgraphs/{sample}/raw/{sample}_{viewpoint}.bedgraph"
         ),
+    retries: 0
     log:
         "capcruncher_output/logs/bedgraph_raw/{sample}_{viewpoint}.log",
     params:
@@ -144,6 +124,7 @@ rule bedgraph_normalised:
         ),
     log:
         "capcruncher_output/logs/bedgraph_norm/{sample}_{viewpoint}.log",
+    retries: 0
     params:
         output_prefix=lambda wc, output: pathlib.Path(output.bedgraph).parent
         / f"{wc.sample}",
@@ -171,6 +152,7 @@ rule bedgraph_to_bigwig:
         bedgraph="capcruncher_output/interim/pileups/bedgraphs/{sample}/{norm}/{sample}_{viewpoint}.bedgraph",
     output:
         bigwig="capcruncher_output/results/{sample}/bigwigs/{norm}/{sample}_{viewpoint}.bigWig",
+    retries: 0
     log:
         "capcruncher_output/logs/bedgraph_to_bigwig/{sample}_{norm}_{viewpoint}.log",
     params:
@@ -178,6 +160,6 @@ rule bedgraph_to_bigwig:
     shell:
         """
         sort -k1,1 -k2,2n {input.bedgraph} > {input.bedgraph}.sorted
-        bedGraphToBigWig {input.bedgraph}.sorted {params.chrom_sizes} {output.bigwig}
+        bedGraphToBigWig {input.bedgraph}.sorted {params.chrom_sizes} {output.bigwig} 2> {log}
         rm {input.bedgraph}.sorted
         """

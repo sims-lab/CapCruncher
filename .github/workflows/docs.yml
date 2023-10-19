@@ -1,0 +1,35 @@
+name: Build Docs
+on:
+  push:
+    branches:
+      - master
+      - main
+      - docs
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
+      - uses: actions/cache@v3
+        with:
+          key: mkdocs-material-${{ env.cache_id }}
+          path: .cache
+          restore-keys: |
+            mkdocs-material-
+      - name: Install OS dependencies
+        shell: bash -el {0}
+        run: |
+          sudo apt update
+          sudo apt install -y gcc git cmake make libtool g++ perl coreutils libcurl4-openssl-dev
+      - name: Install the package
+        shell: bash -el {0}
+        run: |
+          pip install .[stats,plotting,experimental]
+      - run: pip install mkdocs-material mkdocstrings-python mkdocs-click pygments mkdocs-gen-files mkdocs-jupyter mkdocs-autorefs mkdocs-literate-nav mkdocs-section-index
+      - run: mkdocs gh-deploy --force
