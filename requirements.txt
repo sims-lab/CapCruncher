@@ -11,6 +11,8 @@ numpy
 pandas<=2.0.1
 plotly>5.0.0,<=5.17.0
 pyarrow>8.0.0,<12.0.0
+pandera<=0.17.2
+pydantic<=2.3.0
 pybedtools
 pyranges
 pysam>0.15.0,<=0.19.1
