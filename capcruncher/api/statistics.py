@@ -294,3 +294,4 @@ class CisOrTransStats(BaseModel):
                     count=row.count,
                 )
             )
+        return cls(stats=stats)
