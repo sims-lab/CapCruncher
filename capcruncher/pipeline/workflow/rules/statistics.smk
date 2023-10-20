@@ -67,7 +67,11 @@ rule make_report:
         fastq_trimming=rules.extract_trimming_data.output[0],
         fastq_flash=rules.extract_flash_data.output[0],
         fastq_digestion=lambda wc: get_digestion_statistics(wc, SAMPLE_NAMES),
-        reporters=lambda wc: get_filtering_statistics(wc, SAMPLE_NAMES),
+        reporters_filtering=lambda wc: get_filtering_statistics(wc, SAMPLE_NAMES),
+        reporters_deduplication=expand(
+            "capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.json",
+            sample=SAMPLE_NAMES,
+        ),
         cis_and_trans_stats=expand(
             "capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.json",
             sample=SAMPLE_NAMES,
@@ -79,6 +83,7 @@ rule make_report:
         fastq_deduplication_path="capcruncher_output/interim/statistics/deduplication/data/",
         fastq_digestion_path="capcruncher_output/interim/statistics/digestion/data/",
         reporter_filtering_path="capcruncher_output/interim/statistics/filtering/data/",
+        reporter_deduplication_path="capcruncher_output/interim/statistics/deduplication_final/data/",
         reporter_cis_trans_path="capcruncher_output/interim/statistics/cis_and_trans_reporters/data/",
     log:
         "capcruncher_output/logs/make_report.log",
@@ -95,6 +100,7 @@ rule make_report:
         -P fastq_flash_path:$(realpath {input.fastq_flash}) \
         -P fastq_digestion_path:$(realpath {params.fastq_digestion_path}) \
         -P reporter_filtering_path:$(realpath {params.reporter_filtering_path}) \
+        -P reporter_deduplication_path:$(realpath {params.reporter_deduplication_path}) \
         -P reporter_cis_trans_path:$(realpath {params.reporter_cis_trans_path}) \
         --log {log} \
         2> {log}.err;
@@ -102,3 +108,5 @@ rule make_report:
         rm {params.outdir}/capcruncher_report.qmd
         """
     
+localrules:
+    copy_report_template

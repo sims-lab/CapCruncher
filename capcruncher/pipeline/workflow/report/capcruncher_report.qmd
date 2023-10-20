@@ -20,6 +20,7 @@ fastq_trimming_path = ""
 fastq_flash_path = ""
 fastq_digestion_path = ""
 reporter_filtering_path = ""
+reporter_deduplication_path = ""
 reporter_cis_trans_path = ""
 run_stats_path = ""
 
@@ -49,6 +50,7 @@ from capcruncher.api.statistics import (
     FlashStats,
     DigestionStats,
     SliceFilterStatsList,
+    AlignmentDeduplicationStats,
     CisOrTransStats,
 )
 
@@ -385,13 +387,17 @@ This chart shows the number of read pairs removed at each stage of the filtering
 
 ```{python}
 
-
 filter_stats = [
     SliceFilterStatsList(**load_json(p))
     for p in pathlib.Path(reporter_filtering_path).glob("*.json")
 ]
 df_filter_stats = pd.concat(
-    [pd.Series(s.model_dump()) for sample in filter_stats for s in sample.stats], axis=1
+    [
+        pd.Series(s.model_dump())
+        for sample in filter_stats
+        for s in sample.stats
+    ],
+    axis=1,
 ).T
 stage_order_mapping = {
     v: k
@@ -408,16 +414,45 @@ df_filter_stats = (
     .assign(stage_order=lambda df: df["stage"].map(stage_order_mapping))
     .sort_values(["sample", "stage_order"])
 )
+
+# Need to append the final deduplication stats
+aln_dedup_stats = [
+    AlignmentDeduplicationStats(**load_json(p))
+    for p in pathlib.Path(reporter_deduplication_path).glob("*.json")
+]
+df_align_dedup = pd.DataFrame(
+    [s.model_dump() for s in aln_dedup_stats]
+)
+df_filter_stats = pd.concat(
+    [
+        df_filter_stats,
+        df_align_dedup[
+            ["sample", "read_type", "n_unique_reads", "n_unique_slices"]
+        ]
+        .rename(
+            columns={
+                "n_unique_reads": "n_fragments",
+                "n_unique_slices": "n_slices",
+            }
+        )
+        .assign(
+            stage="final_duplicate_removal",
+            stage_order=df_filter_stats["stage_order"].max() + 1,
+        ),
+    ],
+    axis=0,
+).sort_values(["sample", "stage_order"])
+
 fig = px.line(
     df_filter_stats.assign(
-        stage=lambda df: df['stage'].str.replace("_", " ").str.title()
+        stage=lambda df: df["stage"].str.replace("_", " ").str.title()
     ),
     x="stage",
     y="n_fragments",
     color="read_type",
     animation_frame="sample",
     markers=True,
-    range_y=(0, df_filter_stats['n_fragments'].max() + 1),
+    range_y=(0, df_filter_stats["n_fragments"].max() + 1),
     template="plotly_white",
 )
 fig.update_xaxes(title="Filtering Stage")
@@ -435,18 +470,16 @@ except (KeyError, IndexError):
 
 fig_fragments = pn.pane.Plotly(fig)
 
-
-
 fig = px.line(
     df_filter_stats.assign(
-        stage=lambda df: df['stage'].str.replace("_", " ").str.title()
+        stage=lambda df: df["stage"].str.replace("_", " ").str.title()
     ),
     x="stage",
     y="n_slices",
     color="read_type",
     animation_frame="sample",
     markers=True,
-    range_y=(0, df_filter_stats['n_slices'].max() + 1),
+    range_y=(0, df_filter_stats["n_slices"].max() + 1),
     template="plotly_white",
 )
 fig.update_xaxes(title="Filtering Stage")
@@ -464,11 +497,7 @@ except (KeyError, IndexError):
 
 fig_slices = pn.pane.Plotly(fig)
 
-
-pn.Tabs(
-    ("Fragments", fig_fragments),
-    ("Slices", fig_slices),
-).servable()
+pn.Tabs(("Fragments", fig_fragments), ("Slices", fig_slices)).servable()
 
 
 
@@ -514,4 +543,27 @@ pn.pane.Plotly(fig)
 This chart displays the combined statistics from the entire pipeline run summarised at the read pair level.
 
 ```{python}
+raw = dedup_stats[['sample', 'total']].rename(columns={'total': 'n_reads'}).assign(stage="raw", stage_order=0)
+fastq_dedup = dedup_stats[['sample', 'unique']].rename(columns={'unique': 'n_reads'}).assign(stage="fastq_deduplication", stage_order=1)
+fastq_trim = df_trim[['sample', 'reads_output']].drop_duplicates().rename(columns={'reads_output': 'n_reads'}).assign(stage="fastq_trimming", stage_order=2)
+fastq_digest = df_digestion_read.query("filtered == 'post-digestion' and read_number == 'read1'").groupby("sample")['count'].sum().reset_index().rename(columns={'count': 'n_reads'}).assign(stage="fastq_digestion", stage_order=3)
+aln_filter = df_filter_stats.groupby(['sample', 'stage', 'stage_order'])['n_fragments'].sum().reset_index().rename(columns={'n_fragments': 'n_reads'}).assign(stage_order=lambda df: df['stage_order'] + 3)
+df_stats = pd.concat([raw, fastq_dedup, fastq_trim, fastq_digest, aln_filter], axis=0).assign(stage=lambda df: df['stage'].str.replace('_', ' ').str.title()).sort_values(['sample', 'stage_order'])
+fig = px.line(df_stats, x="stage", y="n_reads", animation_frame="sample", template="plotly_white", range_y=(0, df_stats['n_reads'].max() + 0.1 * df_stats['n_reads'].max()), markers=True)
+
+fig.update_xaxes(title="")
+fig.update_layout(legend_title_text="")
+fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+
+try:
+    fig["layout"]["updatemenus"] = None
+    # fig["layout"]["updatemenus"][0].update(dict(y=1, pad={"b": 10, "t": 0}, x=0))
+    fig["layout"]["sliders"][0]["pad"] = {"r": 10, "b": 5, "t": 10}
+    fig["layout"]["sliders"][0]["x"] = 0
+    fig["layout"]["sliders"][0]["len"] = 1
+except (KeyError, IndexError):
+    pass
+
+pn.pane.Plotly(fig)
+
 ```

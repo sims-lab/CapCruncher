@@ -156,9 +156,7 @@ rule cis_and_trans_stats:
     input:
         slices="capcruncher_output/results/{sample}/{sample}.parquet",
     output:
-        stats=temp(
-            "capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.json"
-        ),
+        stats="capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.json",
     params:
         sample_name=lambda wildcards, output: wildcards.sample,
         analysis_method=config["analysis"]["method"],
