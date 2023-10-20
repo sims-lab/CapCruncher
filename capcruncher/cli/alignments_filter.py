@@ -7,6 +7,7 @@ import tempfile
 
 from capcruncher.api.io import parse_bam
 from capcruncher.api.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
+from capcruncher.api.statistics import SliceFilterStatsList
 
 SLICE_FILTERS = {
     "capture": CCSliceFilter,
@@ -49,14 +50,11 @@ def filter(
     annotations: os.PathLike,
     custom_filtering: os.PathLike = None,
     output_prefix: os.PathLike = "reporters",
-    stats_prefix: os.PathLike = "",
+    statistics: os.PathLike = "",
     method: str = "capture",
     sample_name: str = "",
     read_type: str = "",
     fragments: bool = True,
-    read_stats: bool = True,
-    slice_stats: bool = True,
-    cis_and_trans_stats: bool = True,
 ):
     """
     Removes unwanted aligned slices and identifies reporters.
@@ -137,26 +135,15 @@ def filter(
         # Filter slices using the slice_filter
         logger.info(f"Filtering slices with method: {method}")
         slice_filter.filter_slices()
-
-        if slice_stats:
-            slice_stats_path = f"{stats_prefix}.slice.stats.csv"
-            logger.info(f"Writing slice statistics to {slice_stats_path}")
-            slice_filter.filter_stats.to_csv(slice_stats_path, index=False)
-
-        if read_stats:
-            read_stats_path = f"{stats_prefix}.read.stats.csv"
-            logger.info(f"Writing read statistics to {read_stats_path}")
-            slice_filter.read_stats.to_csv(read_stats_path, index=False)
-
-        # Save reporter stats
-        if cis_and_trans_stats:
-            logger.info("Writing reporter statistics")
-            slice_filter.cis_or_trans_stats.to_csv(
-                f"{stats_prefix}.reporter.stats.csv", index=False
-            )
-
-        # Output slices filtered by viewpoint
-
+        
+        # Extract statistics
+        logger.info("Extracting statistics")
+        stats_list = SliceFilterStatsList.from_list(slice_filter.filtering_stats)
+        with open(statistics, "w") as f:
+            f.write(stats_list.model_dump_json())
+        
+              
+        # Write output
         df_slices = slice_filter.slices
         df_slices_with_viewpoint = slice_filter.slices_with_viewpoint
         df_capture = slice_filter.captures
