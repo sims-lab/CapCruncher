@@ -27,6 +27,9 @@ def deduplicate(
         slices_tbl_raw = con.register(
             f"parquet://{slices}/*.parquet", table_name="slices_tbl"
         )
+    
+    n_slices_raw = slices_tbl_raw[['slice_id']].distinct().count().execute(limit=None)    
+    n_reads_raw = slices_tbl_raw[["parent_id"]].distinct().count().execute(limit=None)
 
     if read_type == "pe":
         logger.info("Read type is PE")
@@ -85,23 +88,22 @@ def deduplicate(
         df_dummy.to_parquet(f"{output}/dummy.parquet")
 
     logger.info("Calculating deduplication stats")
-    # Calculate the number of slices in the input
 
-    n_reads_total = (
-        slices_tbl_raw.group_by("parent_id")
-        .agg([_.count().name("count")])["count"]
-        .sum()
-        .execute(limit=None)
-    )
-
-    # Calculate the number of slices in the output
+    # Calculate the number of reads in the output
     n_reads_unique = parent_ids_unique.shape[0]
+    
+    # Calculate the number of slices in the output
+    tbl_dedup = con.register(f"parquet://{output}/*.parquet", table_name="dedup_tbl")
+    n_slices_unique = tbl_dedup[['slice_id']].distinct().count().execute(limit=None)
+    
 
     stats = AlignmentDeduplicationStats(
         sample=sample_name,
         read_type=read_type,
-        n_total=n_reads_total,
-        n_unique=n_reads_unique,
+        n_total_reads=n_reads_raw,
+        n_unique_reads=n_reads_unique,
+        n_total_slices=n_slices_raw,
+        n_unique_slices=n_slices_unique,
     )
     
     with open(statistics, "w") as f:

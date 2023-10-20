@@ -255,18 +255,30 @@ class SliceFilterStatsList(BaseModel):
 class AlignmentDeduplicationStats(BaseModel):
     sample: str
     read_type: str
-    n_total: int
-    n_unique: int
+    n_total_reads: int
+    n_unique_reads: int
+    n_total_slices: int
+    n_unique_slices: int
     
     @computed_field
     @property
-    def percentage_unique(self) -> float:
-        return self.n_unique / self.n_total * 100
+    def percentage_unique_reads(self) -> float:
+        return self.n_unique_reads / self.n_total_reads * 100
     
     @computed_field
     @property
-    def n_duplicates(self) -> int:
-        return self.n_total - self.n_unique
+    def n_duplicate_reads(self) -> int:
+        return self.n_total_reads - self.n_unique_reads
+    
+    @computed_field
+    @property
+    def percentage_duplicate_slices(self) -> float:
+        return self.n_duplicate_slices / self.n_total_slices * 100
+    
+    @computed_field
+    @property
+    def n_duplicate_slices(self) -> int:
+        return self.n_total_slices - self.n_unique_slices
     
 
 
