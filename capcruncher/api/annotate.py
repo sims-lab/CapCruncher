@@ -1,15 +1,159 @@
 import warnings
-from typing import Union
+from typing import Union, List, Literal
 
 import pandas as pd
 import pybedtools
 import pyranges as pr
 import ray
 from loguru import logger
+import numpy as np
 
 from capcruncher.utils import convert_bed_to_pr
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
+
+
+
+
+def increase_cis_slice_priority(df: pd.DataFrame, score_multiplier: float = 2):
+    """
+    Prioritizes cis slices by increasing the mapping score.
+    """
+
+    df["parent_name"] = df["name"].str.split("|").str[0]
+
+    df_chrom_counts = (
+        df[["parent_name", "chrom"]].value_counts().to_frame("slices_per_chrom")
+    )
+    modal_chrom = (
+        df_chrom_counts.groupby("parent_name")["slices_per_chrom"]
+        .transform("max")
+        .reset_index()
+        .set_index("parent_name")["chrom"]
+        .to_dict()
+    )
+    df["fragment_chrom"] = df["parent_name"].map(modal_chrom)
+    df["score"] = np.where(
+        df["chrom"] == df["fragment_chrom"],
+        df["score"] * score_multiplier,
+        df["score"] / score_multiplier,
+    )
+
+    return df.drop(columns="parent_name")
+
+
+def remove_duplicates_from_bed(
+    bed: pr.PyRanges,
+    prioritize_cis_slices: bool = False,
+    chroms_to_prioritize: Union[list, np.ndarray] = None,
+) -> pr.PyRanges:
+    """
+    Removes duplicate entries from a PyRanges object.
+
+    Args:
+        bed (pr.PyRanges): PyRanges object to be deduplicated.
+        prioritize_cis_slices (bool, optional): Prioritize cis slices by increasing the mapping score. Defaults to False.
+        chroms_to_prioritize (Union[list, np.ndarray], optional): Chromosomes to prioritize. Defaults to None.
+
+    Returns:
+        pr.PyRanges: Deduplicated PyRanges object.
+    """
+
+    df = bed.df.rename(columns=lambda col: col.lower()).rename(
+        columns={"chromosome": "chrom"}
+    )
+
+    # Shuffle the dataframe to randomize the duplicate removal
+    df = df.sample(frac=1)
+
+    if prioritize_cis_slices:
+        df = increase_cis_slice_priority(df)
+
+    if "score" in df.columns:
+        df = df.sort_values(["score"], ascending=False)
+
+    if chroms_to_prioritize:
+        df["is_chrom_priority"] = df["chrom"].isin(chroms_to_prioritize).astype(int)
+        df = df.sort_values(["score", "is_chrom_priority"], ascending=False).drop(
+            columns="is_chrom_priority"
+        )
+
+    return (
+        df.drop_duplicates(subset="name", keep="first")
+        .sort_values(["chrom", "start"])[["chrom", "start", "end", "name"]]
+        .rename(columns=lambda col: col.capitalize())
+        .rename(columns={"Chrom": "Chromosome"})
+        .pipe(pr.PyRanges)
+    )
+
+
+class Intersection:
+    def __init__(self, bed_a: pr.PyRanges, bed_b: pr.PyRanges, name: str, fraction: float = 0):
+        self.a = bed_a
+        self.b = bed_b
+        self.name = name
+        self.fraction = fraction
+    
+    @property
+    def intersection(self) -> pr.PyRanges:
+        raise NotImplementedError("Must be implemented in subclass")
+
+
+class IntersectionGet(Intersection):
+    @property
+    def intersection(self) -> pr.PyRanges:
+        return (
+            self.a.join(
+                self.b,
+                report_overlap=True,
+                how="left", 
+                suffix=f"_{self.name}"
+            )
+            .drop([f"Start_{self.name}", f"End_{self.name}"])
+            .assign("frac", lambda df: df.eval("Overlap / (End - Start)"))
+            .subset(lambda df: df["frac"] >= self.fraction)
+            .drop("frac")
+        )
+
+class IntersectionCount(Intersection):
+    @property
+    def intersection(self) -> pr.PyRanges:
+        return (
+            self.a.coverage(self.b)
+            .df
+            .query(f"NumberOverlaps > 0 and FractionOverlaps >= {self.fraction}")
+            .assign(**{self.name: lambda df: df["NumberOverlaps"].astype(pd.Int8Dtype)})
+            .drop(columns=["NumberOverlaps", "FractionOverlaps"])
+            .pipe(pr.PyRanges)
+        )
+
+class IntersectionFailed(Intersection):
+    @property
+    def intersection(self):
+        return (
+            self.a.df
+            .assign(**{self.name:pd.NA})
+            .assign(**{self.name: lambda df: df[self.name].astype(pd.StringDtype)})
+            .pipe(pr.PyRanges)
+        )
+
+class BedItersector:
+    def __init__(self, bed_a: Union[str, pr.PyRanges], bed_b: Union[str, pr.PyRanges], name: str, fraction: float = 0):
+        self.a = convert_bed_to_pr(bed_a)
+        self.b = convert_bed_to_pr(bed_b)
+        self.name = name
+        self.fraction = fraction
+
+    def get_intersection(self, method: Literal["get", "count"] = "get") -> Intersection:
+        if method == "get":
+            return IntersectionGet(self.a, self.b, self.name, self.fraction)
+        elif method == "count":
+            return IntersectionCount(self.a, self.b, self.name, self.fraction)
+        else:
+            return IntersectionFailed(self.a, self.b, self.name, self.fraction)
+        
+
+
 
 
 @ray.remote

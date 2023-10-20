@@ -10,6 +10,17 @@ import xxhash
 from pybedtools import BedTool
 import pyranges as pr
 import pysam
+import itertools
+
+
+
+def cycle_argument(arg):
+    """Allows for the same argument to be stated once but repeated for all files"""
+
+    if len(arg) == 1:
+        return itertools.cycle((arg[0],))
+    else:
+        return arg
 
 
 def read_dataframes(filenames: Iterable, **kwargs):
@@ -292,13 +303,11 @@ def convert_bed_to_pr(
         pybedtools.BedTool,
         pd.DataFrame,
         pr.PyRanges,
-        "ray.ObjectRef",  # noqa: F821
     ],
-    ignore_ray_objrefs=True,
 ) -> pr.PyRanges:
     """Converts a bed file to a PyRanges object.
     Args:
-        bed (Union[str, pybedtools.BedTool, pd.DataFrame, pr.PyRanges, ray.ObjectRef]): Bed file to convert.
+        bed (Union[str, pybedtools.BedTool, pd.DataFrame, pr.PyRanges]): Bed file to convert.
         ignore_ray_objrefs (bool, optional): If False, allows for ray object references to be used instead python objects. Defaults to True.
     Returns:
         pr.PyRanges: PyRanges object.
@@ -306,9 +315,15 @@ def convert_bed_to_pr(
 
     from loguru import logger
     import ray
+    import polars as pl
 
     if isinstance(bed, str):
-        converted = pr.read_bed(bed)
+        converted = (pl.read_csv(
+            bed, separator="\t", new_columns=["Chromosome", "Start", "End", "Name"]
+        )
+        .to_pandas()
+        .pipe(pr.PyRanges)
+    )
 
     elif isinstance(bed, pybedtools.BedTool):
         converted = (
@@ -337,14 +352,6 @@ def convert_bed_to_pr(
             }
         ).pipe(pr.PyRanges)
 
-    elif isinstance(bed, ray.ObjectRef):
-
-        if ignore_ray_objrefs:
-            logger.warning("Assuming ObjectRef is a PyRanges")
-            converted = bed
-        else:
-            bed = ray.get(bed)
-            converted = convert_bed_to_pr(bed)
 
     return converted
 

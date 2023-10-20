@@ -13,99 +13,20 @@ import ray
 from loguru import logger
 from pybedtools import BedTool, MalformedBedLineError
 
-from capcruncher.api.annotate import BedFileIntersection
+from capcruncher.api.annotate import increase_cis_slice_priority, remove_duplicates_from_bed, BedItersector
 from capcruncher.utils import (
     bed_has_name,
     convert_bed_to_dataframe,
     convert_bed_to_pr,
     is_valid_bed,
+    cycle_argument
 )
 
 warnings.simplefilter("ignore")
 
 
-pysam.set_verbosity(0)
 
 
-def cycle_argument(arg):
-    """Allows for the same argument to be stated once but repeated for all files"""
-
-    if len(arg) == 1:
-        return itertools.cycle((arg[0],))
-    else:
-        return arg
-
-
-def increase_cis_slice_priority(df: pd.DataFrame, score_multiplier: float = 2):
-    """
-    Prioritizes cis slices by increasing the mapping score.
-    """
-
-    df["parent_name"] = df["name"].str.split("|").str[0]
-
-    df_chrom_counts = (
-        df[["parent_name", "chrom"]].value_counts().to_frame("slices_per_chrom")
-    )
-    modal_chrom = (
-        df_chrom_counts.groupby("parent_name")["slices_per_chrom"]
-        .transform("max")
-        .reset_index()
-        .set_index("parent_name")["chrom"]
-        .to_dict()
-    )
-    df["fragment_chrom"] = df["parent_name"].map(modal_chrom)
-    df["score"] = np.where(
-        df["chrom"] == df["fragment_chrom"],
-        df["score"] * score_multiplier,
-        df["score"] / score_multiplier,
-    )
-
-    return df.drop(columns="parent_name")
-
-
-def remove_duplicates_from_bed(
-    bed: pr.PyRanges,
-    prioritize_cis_slices: bool = False,
-    chroms_to_prioritize: Union[list, np.ndarray] = None,
-) -> pr.PyRanges:
-    """
-    Removes duplicate entries from a PyRanges object.
-
-    Args:
-        bed (pr.PyRanges): PyRanges object to be deduplicated.
-        prioritize_cis_slices (bool, optional): Prioritize cis slices by increasing the mapping score. Defaults to False.
-        chroms_to_prioritize (Union[list, np.ndarray], optional): Chromosomes to prioritize. Defaults to None.
-
-    Returns:
-        pr.PyRanges: Deduplicated PyRanges object.
-    """
-
-    df = bed.df.rename(columns=lambda col: col.lower()).rename(
-        columns={"chromosome": "chrom"}
-    )
-
-    # Shuffle the dataframe to randomize the duplicate removal
-    df = df.sample(frac=1)
-
-    if prioritize_cis_slices:
-        df = increase_cis_slice_priority(df)
-
-    if "score" in df.columns:
-        df = df.sort_values(["score"], ascending=False)
-
-    if chroms_to_prioritize:
-        df["is_chrom_priority"] = df["chrom"].isin(chroms_to_prioritize).astype(int)
-        df = df.sort_values(["score", "is_chrom_priority"], ascending=False).drop(
-            columns="is_chrom_priority"
-        )
-
-    return (
-        df.drop_duplicates(subset="name", keep="first")
-        .sort_values(["chrom", "start"])[["chrom", "start", "end", "name"]]
-        .rename(columns=lambda col: col.capitalize())
-        .rename(columns={"Chrom": "Chromosome"})
-        .pipe(pr.PyRanges)
-    )
 
 
 def annotate(
@@ -196,48 +117,18 @@ def annotate(
             raise NotImplementedError(
                 "Only supported option at present is to remove duplicates"
             )
-
-        logger.info("Setting-up intersection(s)")
-        ray.init(num_cpus=n_cores, ignore_reinit_error=True, include_dashboard=False)
-
-        # Create a shared object reference to the slices
-        slices_ref = ray.put(slices)
-
-        futures = []
-        for bed, name, action, fraction in zip(
-            bed_files,
-            names,
-            actions,
-            cycle_argument(overlap_fractions),
-        ):
-            logger.info(f"Setting-up intersection for {bed}")
-            bfi = BedFileIntersection.remote(
-                bed_a=slices_ref,
-                bed_b=bed,
+        
+        
+        for action, bed_file, name, fraction in zip(actions, bed_files, names, cycle_argument(overlap_fractions)):
+            logger.info(f"Performing {name} intersection with {bed_file} using {action} method with {fraction} overlap fraction. {len(slices)} slices to intersect.")
+            slices = BedItersector(
+                bed_a=slices,
+                bed_b=bed_file,
                 name=name,
-                action=action,
                 fraction=fraction,
-            )
-            futures.append(bfi.intersection.remote())
-
-        # Collate results
-        df_annotation = slices.df.set_index("Name")
-
-        while len(futures):
-            done_id, futures = ray.wait(futures)
-
-            for ref in done_id:
-                ser_new = ray.get(ref)
-                df_annotation = df_annotation.join(ser_new, how="left")
-                del ser_new
-
-        # Format dataframe for next stage
-        df_annotation = (
-            df_annotation.reset_index()
-            .rename(columns={"Name": "slice_name"})
-            .set_index("slice_name")
-            .reset_index()
-        )
-
+            ).get_intersection(action=action)
+            
+        
         logger.info("Writing annotations to file.")
+        df_annotation = slices.df.rename(columns={"Name": "slice_id"})
         df_annotation.to_parquet(output, compression="snappy")
