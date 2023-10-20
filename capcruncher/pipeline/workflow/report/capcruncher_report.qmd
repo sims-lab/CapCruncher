@@ -543,8 +543,8 @@ pn.pane.Plotly(fig)
 This chart displays the combined statistics from the entire pipeline run summarised at the read pair level.
 
 ```{python}
-raw = dedup_stats[['sample', 'total']].rename(columns={'total': 'n_reads'}).assign(stage="raw", stage_order=0)
-fastq_dedup = dedup_stats[['sample', 'unique']].rename(columns={'unique': 'n_reads'}).assign(stage="fastq_deduplication", stage_order=1)
+raw = df_dedup_stats[['sample', 'total']].rename(columns={'total': 'n_reads'}).assign(stage="raw", stage_order=0)
+fastq_dedup = df_dedup_stats[['sample', 'unique']].rename(columns={'unique': 'n_reads'}).assign(stage="fastq_deduplication", stage_order=1)
 fastq_trim = df_trim[['sample', 'reads_output']].drop_duplicates().rename(columns={'reads_output': 'n_reads'}).assign(stage="fastq_trimming", stage_order=2)
 fastq_digest = df_digestion_read.query("filtered == 'post-digestion' and read_number == 'read1'").groupby("sample")['count'].sum().reset_index().rename(columns={'count': 'n_reads'}).assign(stage="fastq_digestion", stage_order=3)
 aln_filter = df_filter_stats.groupby(['sample', 'stage', 'stage_order'])['n_fragments'].sum().reset_index().rename(columns={'n_fragments': 'n_reads'}).assign(stage_order=lambda df: df['stage_order'] + 3)
