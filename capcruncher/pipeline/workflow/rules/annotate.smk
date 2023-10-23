@@ -55,7 +55,7 @@ rule annotate:
         prioritize_cis_slices="--prioritize-cis-slices"
         if config["analysis_optional"].get("prioritize_cis_slices", "")
         else "",
-    threads: 6
+    threads: 1
     resources:
         mem_mb=lambda wildcards, attempt: 2000 * 2**attempt,
     log:
@@ -71,5 +71,5 @@ rule annotate:
         {params.annotation_files_and_params} \
         {params.priority_chromosomes} \
         {params.prioritize_cis_slices} \
-        -p {threads} > {log} 2>&1
+        > {log} 2>&1
         """
