@@ -187,7 +187,6 @@ analysis_optional:
     # (Optional)
     priority_chromosomes: None
 
-
 normalisation:
 
     # Scaling factor for normalisation.

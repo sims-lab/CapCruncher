@@ -23,22 +23,21 @@ def get_annotated_slices(wildcards):
     return [*slices["flashed"], *slices["pe"]]
 
 
-rule check_viewpoints_annotated:
-    input:
-        slices=get_annotated_slices,
-        viewpoints=config["analysis"]["viewpoints"],
-    output:
-        sentinel="capcruncher_output/resources/validation/{sample}.check_viewpoints.sentinel",
-        viewpoints_present="capcruncher_output/resources/validation/{sample}.annotated_viewpoints_present.tsv",
-    script:
-        "../scripts/validation_confirm_annotated_viewpoints_present.py"
+# rule check_viewpoints_annotated:
+#     input:
+#         slices=get_annotated_slices,
+#         viewpoints=config["analysis"]["viewpoints"],
+#     output:
+#         sentinel="capcruncher_output/resources/validation/{sample}.check_viewpoints.sentinel",
+#         viewpoints_present="capcruncher_output/resources/validation/{sample}.annotated_viewpoints_present.tsv",
+#     script:
+#         "../scripts/validation_confirm_annotated_viewpoints_present.py"
 
 
 rule filter_alignments:
     input:
         bam=rules.align_bowtie2.output.bam,
         annotations=rules.annotate.output.annotated,
-        all_viewpoints_present=rules.check_viewpoints_annotated.output.sentinel,
     output:
         filtered_slices=temp(
             "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet"

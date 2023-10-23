@@ -241,6 +241,7 @@ def annotate(
             .set_index("slice_name")
             .reset_index()
         )
+        futures.append(bfi.intersection.remote())
 
         logger.info("Writing annotations to file.")
         df_annotation.to_parquet(output, compression="snappy")

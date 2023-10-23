@@ -46,6 +46,7 @@ class OptionEatAll(click.Option):
         return retval
 
 
+
 @click.group()
 def cli():
     """Contains methods for fastq splitting, deduplicating and digestion."""

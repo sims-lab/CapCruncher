@@ -5,6 +5,7 @@ import pandas as pd
 from loguru import logger as logging
 import polars as pl
 
+
 def digest(
     fastqs: Tuple,
     restriction_site: str,

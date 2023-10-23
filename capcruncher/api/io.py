@@ -268,7 +268,6 @@ def parse_alignment(aln: pysam.AlignmentFile) -> CCAlignment:
     ref_name = aln.reference_name
     ref_start = aln.reference_start
     ref_end = aln.reference_end
-
     # Check if read mapped
     if aln.is_unmapped:
         mapped = 0
