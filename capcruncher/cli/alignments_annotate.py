@@ -1,24 +1,16 @@
-import itertools
 import os
 import sys
 import warnings
-from typing import Tuple, Union
+from typing import Tuple
 
-import ibis
-import numpy as np
 import pandas as pd
 import pyranges as pr
-import pysam
-import ray
 from loguru import logger
-from pybedtools import BedTool, MalformedBedLineError
+from pybedtools import BedTool
 
-from capcruncher.api.annotate import increase_cis_slice_priority, remove_duplicates_from_bed, BedItersector
+from capcruncher.api.annotate import remove_duplicates_from_bed, BedIntersector
 from capcruncher.utils import (
-    bed_has_name,
-    convert_bed_to_dataframe,
     convert_bed_to_pr,
-    is_valid_bed,
     cycle_argument
 )
 
@@ -121,14 +113,14 @@ def annotate(
         
         for action, bed_file, name, fraction in zip(actions, bed_files, names, cycle_argument(overlap_fractions)):
             logger.info(f"Performing {name} intersection with {bed_file} using {action} method with {fraction} overlap fraction. {len(slices)} slices to intersect.")
-            slices = BedItersector(
+            slices = BedIntersector(
                 bed_a=slices,
                 bed_b=bed_file,
                 name=name,
                 fraction=fraction,
-            ).get_intersection(action=action)
+            ).get_intersection(method=action)
             
         
         logger.info("Writing annotations to file.")
-        df_annotation = slices.df.rename(columns={"Name": "slice_id"})
+        df_annotation = slices.df.rename(columns={"Name": "slice_id"}).assign(slice_id=lambda df: df.slice_id.astype("category"))
         df_annotation.to_parquet(output, compression="snappy")
