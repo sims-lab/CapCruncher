@@ -18,8 +18,6 @@ snakemake.utils.min_version('7.19.1')
 
 
 configfile: "capcruncher_config.yml"
-
-
 container: "library://asmith151/capcruncher/capcruncher:latest"
 
 
@@ -107,7 +105,7 @@ wildcard_constraints:
 
 rule all:
     input:
-        qc=rules.multiqc.output[0],
+        qc=rules.multiqc_report.output[0],
         report="capcruncher_output/results/capcruncher_report.html",
         pileups=capcruncher.pipeline.utils.get_pileups(
             assay=ASSAY,

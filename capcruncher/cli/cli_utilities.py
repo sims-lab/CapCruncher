@@ -8,6 +8,7 @@ from loguru import logger
 from capcruncher.utils import get_file_type
 import ibis
 from ibis import _
+from capcruncher.api.statistics import CisOrTransStats
 
 
 @click.group()
@@ -122,110 +123,19 @@ def cis_and_trans_stats(
         .assign(
             sample=sample_name,
             **{
-                "cis/trans": lambda df: df["cis/trans"].map(
+                "cis_or_trans": lambda df: df["cis/trans"].map(
                     {True: "cis", False: "trans"}
                 )
             },
         )
         .loc[lambda df: ~df["viewpoint"].isna()]
-        .sort_values(["viewpoint", "read_type", "cis/trans"])
+        .sort_values(["viewpoint", "read_type", "cis_or_trans"])
     )
 
-    df_cis_and_trans.to_csv(output, index=False)
-
-
-@cli.command()
-@click.argument("infiles", nargs=-1, required=True)
-@click.option("-o", "--outfile", help="Output file name")
-@click.option(
-    "-i",
-    "--index-cols",
-    help="Columns to use as data_columns for queries",
-    multiple=True,
-)
-@click.option(
-    "-c",
-    "--category-cols",
-    help="Categorical columns",
-    multiple=True,
-)
-@click.option(
-    "-p", "--n-cores", help="Number of processes to use for merging", type=click.INT
-)
-def merge_capcruncher_slices(
-    infiles: Iterable,
-    outfile: os.PathLike,
-    index_cols: List[str] = None,
-    category_cols: List[str] = None,
-    n_cores: int = 1,
-):
-    import dask.dataframe as dd
-    import dask.distributed
-
-    with dask.distributed.Client(
-        n_workers=n_cores,
-        dashboard_address=None,
-        processes=True,
-        scheduler_port=0,
-        local_directory=os.environ.get("TMPDIR", "/tmp/"),
-    ) as _client:
-        storage_kwargs = {}
-        output_format = get_file_type(outfile)
-
-        if output_format == "hdf5":
-            storage_kwargs.update({"data_columns": index_cols} if index_cols else {})
-
-            ddf = dd.read_hdf(infiles, key="slices")
-
-            # TODO: Bug when selecting columns using a string category
-            # To fix, explicitly convert to string before writing
-            transform_to_string = dict()
-            transformed_categories = dict()
-            max_len = dict()
-            for col in index_cols:
-                if ddf[col].dtype == "category":
-                    transform_to_string[col] = str
-                    transformed_categories[col] = list(ddf[col].cat.categories)
-                    max_len[col] = max([len(cat) for cat in ddf[col].cat.categories])
-
-            ddf = ddf.astype(transform_to_string)
-
-            if category_cols:
-                ddf = ddf.categorize(columns=[*category_cols])
-
-            # breakpoint()
-            ddf = ddf.sort_values([*index_cols], npartitions="auto")
-
-            ddf.to_hdf(
-                outfile,
-                key="slices",
-                complib="blosc",
-                complevel=2,
-                min_itemsize=max_len,
-                **storage_kwargs,
-            )
-
-            with pd.HDFStore(outfile, "a") as store:
-                store.create_table_index("slices", columns=index_cols, kind="full")
-
-                if transformed_categories:
-                    store.put(
-                        "/slices_category_metadata",
-                        pd.DataFrame(transformed_categories),
-                    )
-
-        elif output_format == "parquet":
-            import pyarrow.dataset as ds
-
-            datasets = ds.dataset([ds.dataset(fn) for fn in infiles])
-            sc = datasets.scanner()
-            ds.write_dataset(
-                sc,
-                outfile,
-                format="parquet",
-                partitioning_flavor="hive",
-                max_rows_per_file=1024 * 1024 * 10,
-            )
+    stats = CisOrTransStats.from_dataframe(df_cis_and_trans)
+    
+    with open(output, "w") as f:
+        f.write(stats.model_dump_json())
 
 
 def dict_to_fasta(d, path):

@@ -1,10 +1,11 @@
-import pandas as pd
 import os
 import ibis
 from ibis import _
 import pyarrow.dataset as ds
 import shutil
 from loguru import logger
+
+from capcruncher.api.statistics import AlignmentDeduplicationStats
 
 ibis.options.interactive = False
 
@@ -13,8 +14,8 @@ def deduplicate(
     slices: os.PathLike,
     output: os.PathLike,
     read_type: str = "flashed",
-    sample_name: str = "",
-    stats_prefix: os.PathLike = "",
+    sample_name: str = "sampleX",
+    statistics: os.PathLike = "deduplication_stats.json",
 ):
     logger.info("Connecting to DuckDB")
     con = ibis.duckdb.connect()
@@ -25,6 +26,9 @@ def deduplicate(
         slices_tbl_raw = con.register(
             f"parquet://{slices}/*.parquet", table_name="slices_tbl"
         )
+    
+    n_slices_raw = slices_tbl_raw[['slice_id']].distinct().count().execute(limit=None)    
+    n_reads_raw = slices_tbl_raw[["parent_id"]].distinct().count().execute(limit=None)
 
     if read_type == "pe":
         logger.info("Read type is PE")
@@ -83,32 +87,24 @@ def deduplicate(
         df_dummy.to_parquet(f"{output}/dummy.parquet")
 
     logger.info("Calculating deduplication stats")
-    # Calculate the number of slices in the input
 
-    n_reads_total = (
-        slices_tbl_raw.group_by("parent_id")
-        .agg([_.count().name("count")])["count"]
-        .sum()
-        .execute(limit=None)
-    )
-
-    # Calculate the number of slices in the output
+    # Calculate the number of reads in the output
     n_reads_unique = parent_ids_unique.shape[0]
+    
+    # Calculate the number of slices in the output
+    tbl_dedup = con.register(f"parquet://{output}/*.parquet", table_name="dedup_tbl")
+    n_slices_unique = tbl_dedup[['slice_id']].distinct().count().execute(limit=None)
+    
 
-    # Prepare stats
-    df_stats = pd.DataFrame()
-    df_stats["stat_type"] = ["not-deduplicated", "deduplicated"]
-    df_stats["stat"] = [n_reads_total, n_reads_unique]
-    df_stats["sample"] = sample_name
-    df_stats["read_type"] = read_type
-    df_stats["read_number"] = 0
-    df_stats["stage"] = "deduplicate_slices"
-    df_stats["stat"] = df_stats["stat"].fillna(0)
-
-    logger.info("Deduplication stats:")
-    logger.info(f"\n{df_stats.to_string()}")
-
-    logger.info("Writing deduplication stats to disk")
-    df_stats.to_csv(f"{stats_prefix}.read.stats.csv", index=False)
-
-    return df_stats
+    stats = AlignmentDeduplicationStats(
+        sample=sample_name,
+        read_type=read_type,
+        n_total_reads=n_reads_raw,
+        n_unique_reads=n_reads_unique,
+        n_total_slices=n_slices_raw,
+        n_unique_slices=n_slices_unique,
+    )
+    
+    with open(statistics, "w") as f:
+        f.write(stats.model_dump_json())
+    
