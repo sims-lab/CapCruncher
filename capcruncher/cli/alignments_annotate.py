@@ -121,6 +121,7 @@ def annotate(
             ).get_intersection(method=action)
             
         
+
         logger.info("Writing annotations to file.")
         df_annotation = slices.df.rename(columns={"Name": "slice_name"}).assign(slice_id=lambda df: df.slice_name.astype("category"))
         df_annotation.to_parquet(output, compression="snappy")
