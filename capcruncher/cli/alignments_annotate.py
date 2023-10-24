@@ -16,11 +16,6 @@ from capcruncher.utils import (
 
 warnings.simplefilter("ignore")
 
-
-
-
-
-
 def annotate(
     slices: os.PathLike,
     actions: Tuple = None,
@@ -109,7 +104,6 @@ def annotate(
             raise NotImplementedError(
                 "Only supported option at present is to remove duplicates"
             )
-        
         
         for action, bed_file, name, fraction in zip(actions, bed_files, names, cycle_argument(overlap_fractions)):
             logger.info(f"Performing {name} intersection with {bed_file} using {action} method with {fraction} overlap fraction. {len(slices)} slices to intersect.")

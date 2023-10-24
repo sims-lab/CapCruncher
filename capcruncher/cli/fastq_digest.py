@@ -5,13 +5,14 @@ import pandas as pd
 from loguru import logger as logging
 import polars as pl
 
+
 def digest(
     fastqs: Tuple,
     restriction_site: str,
     mode: Literal["flashed", "pe"] = "pe",
     output_file: os.PathLike = "out.fastq.gz",
     minimum_slice_length: int = 18,
-    statistics: os.PathLike = "",
+    statistics: os.PathLike = "digest.json",
     sample_name: str = "sampleX",
     **kwargs,
 ) -> Dict[str, pl.DataFrame]:

@@ -1,4 +1,3 @@
-import pandas as pd
 import os
 import ibis
 from ibis import _
@@ -15,8 +14,8 @@ def deduplicate(
     slices: os.PathLike,
     output: os.PathLike,
     read_type: str = "flashed",
-    sample_name: str = "",
-    statistics: os.PathLike = "",
+    sample_name: str = "sampleX",
+    statistics: os.PathLike = "deduplication_stats.json",
 ):
     logger.info("Connecting to DuckDB")
     con = ibis.duckdb.connect()
