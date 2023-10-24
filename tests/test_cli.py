@@ -340,17 +340,30 @@ def test_interactions_deduplicate(
 
     slices = os.path.join(data_deduplication_alignments, slices)
     output = os.path.join(tmpdir, output)
+    
+    """
+    slices: os.PathLike,
+    output: os.PathLike,
+    read_type: str = "flashed",
+    sample_name: str = "sampleX",
+    statistics: os.PathLike = "deduplication_stats.json",
+    """
+    
 
     result = cli_runner.invoke(
         cli,
         [
             "interactions",
             "deduplicate",
+            slices,
             "--read-type",
             read_type,
-            slices,
             "-o",
             output,
+            "--sample-name",
+            "test",
+            "--statistics",
+            "test_deduplication_cli.json",
         ],
     )
     assert result.exit_code == 0
