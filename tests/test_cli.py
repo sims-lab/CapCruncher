@@ -310,6 +310,7 @@ def test_alignment_filter(
             "-o",
             output_prefix,
             "--sample-name",
+            "test",
             *flags,
         ],
         catch_exceptions=False,
