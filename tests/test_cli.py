@@ -309,7 +309,7 @@ def test_alignment_filter(
             annotations,
             "-o",
             output_prefix,
-            "--sample-name"
+            "--sample-name",
             *flags,
         ],
         catch_exceptions=False,
