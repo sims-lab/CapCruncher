@@ -42,7 +42,7 @@ class CoolerBedGraph:
         self.viewpoint_name = self._cooler.info["metadata"]["viewpoint_name"]
         self._viewpoint_bins = self._cooler.info["metadata"]["viewpoint_bins"]
 
-        if len(self._viewpoint_bins):
+        if len(self._viewpoint_bins) > 1:
             self.multiple_viewpoint_bins = True
             logger.warning(
                 f"Viewpoint {self.viewpoint_name} has multiple bins! {self._viewpoint_bins}. Proceed with caution!"
