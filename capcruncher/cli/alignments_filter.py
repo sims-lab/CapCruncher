@@ -1,9 +1,11 @@
 import os
 import tempfile
+import pathlib
 
 import ibis
 import numpy.core.multiarray
 import pandas as pd
+import polars as pl
 from loguru import logger
 
 ibis.options.interactive = True
@@ -34,24 +36,17 @@ def merge_annotations(slices: os.PathLike, annotations: os.PathLike) -> pd.DataF
     """
 
     logger.info("Opening annotations")
-    con = ibis.duckdb.connect()
-    tbl_annotations = con.register(f"parquet://{annotations}", table_name="annotations")
-    column_replacements = {"Chromosome": "chrom", "Start": "start", "End": "end"}
-    for old, new in column_replacements.items():
-        if old in tbl_annotations.columns:
-            tbl_annotations = tbl_annotations.relabel({old: new})
-
-    logger.info("Opening slices")
-    tbl_slices = con.register(f"parquet://{slices}", table_name="slices")
-
-    logger.info("Setting join query")
-    return (
-        tbl_slices.join(
-            tbl_annotations, how="inner", predicates=["slice_name", "chrom", "start"]
-        )
-        .distinct(on="slice_name")
-        .to_pandas()
-    )
+    
+    with pl.StringCache():
+    
+        df_slices = pl.scan_parquet(slices)    
+        df_annotations = pl.scan_parquet(annotations).rename({"Chromosome": "chrom", "Start": "start", "End": "end"})
+        
+        df_slices = df_slices.join(df_annotations, on=["slice_name", "chrom", "start"], how="inner")
+        df_slices = df_slices.unique(subset=["slice_name"])
+        
+        return df_slices.collect().to_pandas()
+    
 
 
 def filter(
@@ -119,17 +114,23 @@ def filter(
     """
 
     with logger.catch():
-        with tempfile.NamedTemporaryFile(suffix=".parquet") as tmp:
-            # Read bam file and merege annotations
+        
+        # Read bam file and merege annotations
+        tmp = pathlib.Path(output_prefix) / "_tmp.parquet"
+        if not tmp.parent.exists():
+            tmp.parent.mkdir(parents=True)
+        
+        
+        logger.info("Loading bam file")
+        parse_bam(bam).to_parquet(tmp)
 
-            logger.info("Loading bam file")
-            parse_bam(bam).to_parquet(tmp.name)
+        logger.info("Merging bam file with annotations")
+        df_alignment = merge_annotations(tmp, annotations)
 
-            logger.info("Merging bam file with annotations")
-            df_alignment = merge_annotations(tmp.name, annotations)
-
-            if "blacklist" not in df_alignment.columns:
-                df_alignment["blacklist"] = 0
+        if "blacklist" not in df_alignment.columns:
+            df_alignment["blacklist"] = 0
+            
+        tmp.unlink()
 
         # Initialise SliceFilter
         # If no custom filtering, will use the class default.

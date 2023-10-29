@@ -86,18 +86,19 @@ def remove_duplicates_from_bed(
 
 
 class Intersection:
-    def __init__(self, bed_a: pr.PyRanges, bed_b: pr.PyRanges, name: str, fraction: float = 0):
+    def __init__(self, bed_a: pr.PyRanges, bed_b: pr.PyRanges, name: str, fraction: float = 0, n_cores: int = 1):
         self.a = bed_a
         self.b = bed_b
         self.name = name
         self.fraction = fraction
+        self.n_cores = n_cores
     
     @property
     def intersection(self) -> pr.PyRanges:
         raise NotImplementedError("Must be implemented in subclass")
 
 
-class IntersectionGet(Intersection):
+class IntersectionGet(Intersection):    
     @property
     def intersection(self) -> pr.PyRanges:
         return (
@@ -105,7 +106,8 @@ class IntersectionGet(Intersection):
                 self.b,
                 report_overlap=True,
                 how="left", 
-                suffix=f"_{self.name}"
+                suffix=f"_{self.name}",
+                nb_cpu=self.n_cores,
             )
             .df
             .drop(columns=[f"Start_{self.name}", f"End_{self.name}"])
@@ -121,7 +123,7 @@ class IntersectionCount(Intersection):
     @property
     def intersection(self) -> pr.PyRanges:
         return (
-            self.a.coverage(self.b)
+            self.a.coverage(self.b, nb_cpu=self.n_cores)
             .df
             .assign(**{self.name: lambda df: pd.Series(np.where((df["NumberOverlaps"] > 0) & (df["FractionOverlaps"] >= self.fraction), df["NumberOverlaps"], 0)).astype(pd.Int8Dtype())})
             .drop(columns=["NumberOverlaps", "FractionOverlaps"])
@@ -139,22 +141,23 @@ class IntersectionFailed(Intersection):
         )
 
 class BedIntersector:
-    def __init__(self, bed_a: Union[str, pr.PyRanges], bed_b: Union[str, pr.PyRanges], name: str, fraction: float = 0):
+    def __init__(self, bed_a: Union[str, pr.PyRanges], bed_b: Union[str, pr.PyRanges], name: str, fraction: float = 0, max_cores: int = 1):
         self.a = bed_a if isinstance(bed_a, pr.PyRanges) else convert_bed_to_pr(bed_a)
         self.b = bed_b if isinstance(bed_b, pr.PyRanges) else convert_bed_to_pr(bed_b)
         self.name = name
         self.fraction = fraction
+        self.n_cores = max_cores if self.b.df.shape[0] > 50_000 else 1
 
     def get_intersection(self, method: Literal["get", "count"] = "get") -> pr.PyRanges:
         
         if self.b.empty:
-            return IntersectionFailed(self.a, self.b, self.name, self.fraction).intersection
+            return IntersectionFailed(self.a, self.b, self.name, self.fraction, self.n_cores).intersection
         elif method == "get":
-            return IntersectionGet(self.a, self.b, self.name, self.fraction).intersection
+            return IntersectionGet(self.a, self.b, self.name, self.fraction, self.n_cores).intersection
         elif method == "count":
-            return IntersectionCount(self.a, self.b, self.name, self.fraction).intersection
+            return IntersectionCount(self.a, self.b, self.name, self.fraction, self.n_cores).intersection
         else:
-            return IntersectionFailed(self.a, self.b, self.name, self.fraction).intersection
+            return IntersectionFailed(self.a, self.b, self.name, self.fraction, self.n_cores).intersection
         
 
 

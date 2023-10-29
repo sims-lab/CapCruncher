@@ -17,25 +17,6 @@ rule exclusions:
         bedtools subtract -a - -b  {input.viewpoints} > {output.exclusions}
         """
 
-
-# rule check_n_bins_per_viewpoint:
-#     input:
-#         bins=rules.digest_genome.output.bed,
-#         viewpoints=config["analysis"]["viewpoints"],
-#     output:
-#         sentinel="capcruncher_output/resources/validation/check_n_bins_per_viewpoint.sentinel",
-#         n_bins_per_viewpoint="capcruncher_output/resources/validation/n_bins_per_viewpoint.tsv",
-#     params:
-#         ignore_multiple_bins_per_viewpoint=IGNORE_MULTIPLE_FRAGMENTS_PER_VIEWPOINT
-#         if ASSAY in ["capture", "tri"]
-#         else True,
-#     retries: 0
-#     log:
-#         "capcruncher_output/logs/validation/check_n_bins_per_viewpoint.log",
-#     script:
-#         "../scripts/validation_check_n_bins_per_viewpoint.py"
-
-
 rule annotate:
     input:
         bam=rules.align_bowtie2.output.bam,
@@ -55,9 +36,9 @@ rule annotate:
         prioritize_cis_slices="--prioritize-cis-slices"
         if config["analysis_optional"].get("prioritize_cis_slices", "")
         else "",
-    threads: 1
+    threads: 8,
     resources:
-        mem_mb=lambda wildcards, attempt: 2000 * 2**attempt,
+        mem_mb=lambda wildcards, attempt: 4000 * 2**attempt,
     log:
         "capcruncher_output/logs/annotate/{sample}/{sample}_part{part}_{combined}.log",
     shell:
@@ -71,5 +52,6 @@ rule annotate:
         {params.annotation_files_and_params} \
         {params.priority_chromosomes} \
         {params.prioritize_cis_slices} \
+        -p {threads} \
         > {log} 2>&1
         """

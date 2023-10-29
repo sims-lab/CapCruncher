@@ -11,10 +11,12 @@ from pybedtools import BedTool
 from capcruncher.api.annotate import remove_duplicates_from_bed, BedIntersector
 from capcruncher.utils import (
     convert_bed_to_pr,
-    cycle_argument
+    cycle_argument,
+    hash_column,
 )
 
 warnings.simplefilter("ignore")
+
 
 def annotate(
     slices: os.PathLike,
@@ -59,7 +61,6 @@ def annotate(
     """
 
     with logger.catch():
-
         logger.info("Validating commandline arguments")
         len_bed_files = len(bed_files)
         if not all([len(arg) == len_bed_files for arg in [actions, names]]):
@@ -104,18 +105,24 @@ def annotate(
             raise NotImplementedError(
                 "Only supported option at present is to remove duplicates"
             )
-        
-        for action, bed_file, name, fraction in zip(actions, bed_files, names, cycle_argument(overlap_fractions)):
-            logger.info(f"Performing {name} intersection with {bed_file} using {action} method with {fraction} overlap fraction. {len(slices)} slices to intersect.")
+
+        for action, bed_file, name, fraction in zip(
+            actions, bed_files, names, cycle_argument(overlap_fractions)
+        ):
+            logger.info(
+                f"Performing {name} intersection with {bed_file} using {action} method with {fraction} overlap fraction. {len(slices)} slices to intersect."
+            )
             slices = BedIntersector(
                 bed_a=slices,
                 bed_b=bed_file,
                 name=name,
                 fraction=fraction,
+                max_cores=n_cores,
             ).get_intersection(method=action)
             
-        
 
         logger.info("Writing annotations to file.")
-        df_annotation = slices.df.rename(columns={"Name": "slice_name"}).assign(slice_id=lambda df: df.slice_name.astype("category"))
+        df_annotation = slices.df.rename(columns={"Name": "slice_name"}).assign(
+            slice_id=lambda df: hash_column(df.slice_name)
+        )
         df_annotation.to_parquet(output, compression="snappy")

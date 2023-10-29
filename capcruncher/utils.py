@@ -315,7 +315,8 @@ def convert_bed_to_pr(
     if isinstance(bed, str):
         try:
             df = pl.read_csv(
-                bed, separator="\t", new_columns=["Chromosome", "Start", "End", "Name"], has_header=False
+                bed, separator="\t", new_columns=["Chromosome", "Start", "End", "Name"], has_header=False,
+                columns=list(range(4))
             )
 
             converted = df.to_pandas().assign(Name=lambda df: df.Name.astype('category')).pipe(pr.PyRanges)
