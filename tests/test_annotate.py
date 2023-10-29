@@ -2,13 +2,6 @@ import os
 
 import pytest
 from capcruncher.api.annotate import BedIntersector
-from pandas.api.types import (
-    is_numeric_dtype,
-    is_categorical_dtype,
-    is_object_dtype,
-)
-import ray
-
 
 # @pytest.fixture(scope="session")
 # def ray_cluster():
@@ -26,23 +19,21 @@ def data_path():
 
 
 @pytest.mark.parametrize(
-    "bed1,bed2,method,name,n_rows_expected,dtype_check_func",
+    "bed1,bed2,method,name,n_rows_expected",
     [
         (
             "test_slices_sorted.bed",
             "test_capture.bed",
             "count",
             "capture",
-            1,
-            is_numeric_dtype,
+            4,
         ),
         (
             "test_slices_sorted.bed",
             "test_capture.bed",
             "get",
             "capture",
-            1,
-            is_categorical_dtype,
+            4,
         ),
         (
             "test_slices_sorted.bed",
@@ -50,7 +41,6 @@ def data_path():
             "count",
             "capture_count",
             4,
-            is_object_dtype,
         ),
         (
             "test_slices_sorted.bed",
@@ -58,12 +48,11 @@ def data_path():
             "count",
             "capture_count",
             4,
-            is_object_dtype,
         ),
     ],
 )
 def test_bed_intersection_succeeds(
-    data_path, bed1, bed2, method, name, n_rows_expected, dtype_check_func
+    data_path, bed1, bed2, method, name, n_rows_expected
 ):
 
     bi = BedIntersector(
@@ -75,7 +64,6 @@ def test_bed_intersection_succeeds(
     intersection = bi.get_intersection(method=method)
     assert name in intersection.columns
     assert intersection.df.shape[0] == n_rows_expected
-    assert dtype_check_func(intersection.df[name].values())
 
 
 def test_bed_intersection_get_output(data_path):

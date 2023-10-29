@@ -320,7 +320,7 @@ def convert_bed_to_pr(
 
             converted = df.to_pandas().assign(Name=lambda df: df.Name.astype('category')).pipe(pr.PyRanges)
 
-        except FileNotFoundError:
+        except (FileNotFoundError, pl.exceptions.NoDataError):
             from loguru import logger
             logger.warning(f"File {bed} not found")
             converted = pr.PyRanges()
