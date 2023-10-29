@@ -1,11 +1,13 @@
-from loguru import logger
-import pandas as pd
-import os
-import numpy as np
 import itertools
+import os
+
+import numpy as np
+import pandas as pd
 import pandera
-from capcruncher.api.statistics import SliceFilterStats
+from loguru import logger
 from pandera.typing import DataFrame, Series
+
+from capcruncher.api.statistics import SliceFilterStats
 
 
 class SlicesDataFrameSchema(pandera.DataFrameModel):

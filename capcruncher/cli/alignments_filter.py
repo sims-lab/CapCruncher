@@ -1,12 +1,16 @@
 import os
-import pandas as pd
-from loguru import logger
-import ibis
 import tempfile
 
+import ibis
+import numpy.core.multiarray
+import pandas as pd
+from loguru import logger
 
+ibis.options.interactive = True
+
+
+from capcruncher.api.filter import CCSliceFilter, TiledCSliceFilter, TriCSliceFilter
 from capcruncher.api.io import parse_bam
-from capcruncher.api.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
 from capcruncher.api.statistics import SliceFilterStatsList
 
 SLICE_FILTERS = {
@@ -29,6 +33,7 @@ def merge_annotations(slices: os.PathLike, annotations: os.PathLike) -> pd.DataF
         pd.DataFrame: Merged dataframe
     """
 
+    logger.info("Opening annotations")
     con = ibis.duckdb.connect()
     tbl_annotations = con.register(f"parquet://{annotations}", table_name="annotations")
     column_replacements = {"Chromosome": "chrom", "Start": "start", "End": "end"}
@@ -36,13 +41,17 @@ def merge_annotations(slices: os.PathLike, annotations: os.PathLike) -> pd.DataF
         if old in tbl_annotations.columns:
             tbl_annotations = tbl_annotations.relabel({old: new})
 
+    logger.info("Opening slices")
     tbl_slices = con.register(f"parquet://{slices}", table_name="slices")
 
-    tbl = tbl_slices.join(
-        tbl_annotations, how="inner", predicates=["slice_name", "chrom", "start"]
-    ).distinct(on="slice_name")
-
-    return tbl.execute(limit=None)
+    logger.info("Setting join query")
+    return (
+        tbl_slices.join(
+            tbl_annotations, how="inner", predicates=["slice_name", "chrom", "start"]
+        )
+        .distinct(on="slice_name")
+        .to_pandas()
+    )
 
 
 def filter(
@@ -135,14 +144,13 @@ def filter(
         # Filter slices using the slice_filter
         logger.info(f"Filtering slices with method: {method}")
         slice_filter.filter_slices()
-        
+
         # Extract statistics
         logger.info("Extracting statistics")
         stats_list = SliceFilterStatsList.from_list(slice_filter.filtering_stats)
         with open(statistics, "w") as f:
             f.write(stats_list.model_dump_json())
-        
-              
+
         # Write output
         df_slices = slice_filter.slices
         df_slices_with_viewpoint = slice_filter.slices_with_viewpoint
