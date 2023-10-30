@@ -169,9 +169,7 @@ def filter(
                         "capture_slices": "capture",
                         "capture_capture": "viewpoint",
                     }
-                )
-                .assign(id=lambda df: df["id"].astype("int64"))  # Enforce type
-            )
+                )            )
 
             df_fragments.to_parquet(
                 f"{output_prefix}.fragments.parquet",
