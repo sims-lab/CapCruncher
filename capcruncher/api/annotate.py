@@ -101,6 +101,9 @@ class Intersection:
 class IntersectionGet(Intersection):    
     @property
     def intersection(self) -> pr.PyRanges:
+        
+        dtype = pd.CategoricalDtype(self.b.df["Name"].unique())
+        
         return (
             self.a.join(
                 self.b,
@@ -113,15 +116,16 @@ class IntersectionGet(Intersection):
             .drop(columns=[f"Start_{self.name}", f"End_{self.name}"])
             .assign(
                 frac=lambda df: df.eval("Overlap / (End - Start)"),
-                **{self.name: lambda df: pd.Series(np.where(df["frac"] >= self.fraction, df[f"Name_{self.name}"], pd.NA)).astype("category")}
+                **{self.name: lambda df: pd.Series(np.where(df["frac"] >= self.fraction, df[f"Name_{self.name}"], pd.NA)).astype(dtype)}
             )
             .drop(columns=["frac", "Overlap", f"Name_{self.name}"])
+            
             .pipe(pr.PyRanges)
         )
 
 class IntersectionCount(Intersection):
     @property
-    def intersection(self) -> pr.PyRanges:
+    def intersection(self) -> pr.PyRanges:    
         return (
             self.a.coverage(self.b, nb_cpu=self.n_cores)
             .df
