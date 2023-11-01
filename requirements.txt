@@ -8,7 +8,7 @@ ibis-framework[duckdb]
 loguru
 more-itertools
 numpy
-pandas<=2.1.1
+pandas<=2.1.2
 plotly>5.0.0,<=5.17.0
 pyarrow>8.0.0,<14.0.0
 pybedtools
