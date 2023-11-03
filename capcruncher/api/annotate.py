@@ -178,23 +178,17 @@ class BedIntersector:
         max_cores: int = 1,
     ):
         
-        
+
+        self.annotation_columns = None
+
         if isinstance(bed_a, pr.PyRanges):
-            # Remove the annotation columns from the bed file
-            # Will be added back in later
-            self.annotation_col_names = [col for col in bed_a.df.columns if not col in ["Chromosome", "Start", "End", "Strand", "Score", "Name"]]
-            
-            if len(self.annotation_col_names) > 0:
-                self.annotation_columns = bed_a.df.loc[:, self.annotation_col_names]
-            else:
-                self.annotation_columns = None
-                
-            self.a = bed_a.df.loc[:, ["Chromosome", "Start", "End", "Name"]].pipe(pr.PyRanges)
-                
-        elif isinstance(bed_a, (str, pd.DataFrame)):
+            self.a = self.process_bed(bed_a)
+        elif isinstance(bed_a, (str, pybedtools.BedTool, pd.DataFrame)):
             self.a = convert_bed_to_pr(bed_a)
-        
-        
+            self.a = self.process_bed(self.a)
+        else:
+            raise ValueError(f"bed_a must be of type str, pybedtools.BedTool, or pr.PyRanges. Got {type(bed_a)}")
+            
         self.b = bed_b if isinstance(bed_b, pr.PyRanges) else convert_bed_to_pr(bed_b)
         self.name = name
         self.fraction = fraction
@@ -222,6 +216,12 @@ class BedIntersector:
             _intersection = _intersection.df.join(self.annotation_columns, how="left").pipe(pr.PyRanges)
         
         return _intersection
+    
+    def process_bed(self, bed):
+        annotation_col_names = [col for col in bed.df.columns if col not in ["Chromosome", "Start", "End", "Strand", "Score", "Name"]]
+        if annotation_col_names:
+            self.annotation_columns = bed.df.loc[:, annotation_col_names]
+        return bed.df.loc[:, ["Chromosome", "Start", "End", "Name"]].pipe(pr.PyRanges)
 
 
 # @ray.remote
