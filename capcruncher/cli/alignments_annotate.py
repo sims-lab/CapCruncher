@@ -112,6 +112,7 @@ def annotate(
             logger.info(
                 f"Performing {name} intersection with {bed_file} using {action} method with {fraction} overlap fraction. {len(slices)} slices to intersect."
             )
+            
             slices = BedIntersector(
                 bed_a=slices,
                 bed_b=bed_file,

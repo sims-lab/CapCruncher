@@ -112,20 +112,14 @@ class IntersectionGet(Intersection):
             report_overlap=True,
             how="left",
             nb_cpu=self.n_cores,
+            preserve_order=True,
         ).df
 
-        df_a = df_a.assign(
-            frac=lambda df: df.eval("Overlap / (End - Start)"),
-            **{
-                self.name: lambda df: np.where(
-                    df['frac'] >= self.fraction, df['Name_b'], pd.NA
-                )
-            },
-        )
+        df_a['frac'] = df_a.eval("Overlap / (End - Start)")
+        df_a[self.name] = np.where(df_a['frac'] >= self.fraction, df_a['Name_b'], pd.NA)
+        df_a[self.name] = df_a[self.name].astype(str).astype(dtype)
 
-        df_a = df_a.assign(**{self.name: lambda df: df[self.name].astype(str).astype(dtype)})
-
-        df_a = df_a.drop(
+        df_a.drop(
             columns=[
                 "frac",
                 "Overlap",
@@ -136,25 +130,10 @@ class IntersectionGet(Intersection):
                 "Score_b",
             ],
             errors="ignore",
+            inplace=True
         )
-        return df_a.pipe(pr.PyRanges)
 
-        # return (
-        #     self.a.join(
-        #         self.b,
-        #         report_overlap=True,
-        #         how="left",
-        #         nb_cpu=self.n_cores,
-        #     )
-        #     .df
-        #     .assign(
-        #         frac=lambda df: df.eval("Overlap / (End - Start)"),
-        #         **{self.name: lambda df: np.where(df['frac'] >= self.fraction, df['Name_b'], pd.NA)}
-        #     )
-        #     .assign(**{self.name: lambda df: df[self.name].astype(dtype)})
-        #     .drop(columns=["frac", "Overlap", "Name_b", "Start_b", "End_b", "Strand_b", "Score_b"], errors="ignore")
-        #     .pipe(pr.PyRanges)
-        # )
+        return df_a.pipe(pr.PyRanges)
 
 
 class IntersectionCount(Intersection):
@@ -198,7 +177,24 @@ class BedIntersector:
         fraction: float = 0,
         max_cores: int = 1,
     ):
-        self.a = bed_a if isinstance(bed_a, pr.PyRanges) else convert_bed_to_pr(bed_a)
+        
+        
+        if isinstance(bed_a, pr.PyRanges):
+            # Remove the annotation columns from the bed file
+            # Will be added back in later
+            self.annotation_col_names = [col for col in bed_a.df.columns if not col in ["Chromosome", "Start", "End", "Strand", "Score", "Name"]]
+            
+            if len(self.annotation_col_names) > 0:
+                self.annotation_columns = bed_a.df.loc[:, self.annotation_col_names]
+            else:
+                self.annotation_columns = None
+                
+            self.a = bed_a.df.loc[:, ["Chromosome", "Start", "End", "Name"]].pipe(pr.PyRanges)
+                
+        elif isinstance(bed_a, (str, pd.DataFrame)):
+            self.a = convert_bed_to_pr(bed_a)
+        
+        
         self.b = bed_b if isinstance(bed_b, pr.PyRanges) else convert_bed_to_pr(bed_b)
         self.name = name
         self.fraction = fraction
@@ -206,21 +202,26 @@ class BedIntersector:
 
     def get_intersection(self, method: Literal["get", "count"] = "get") -> pr.PyRanges:
         if self.b.empty:
-            return IntersectionFailed(
+            _intersection =  IntersectionFailed(
                 self.a, self.b, self.name, self.fraction, self.n_cores
             ).intersection
         elif method == "get":
-            return IntersectionGet(
+            _intersection =  IntersectionGet(
                 self.a, self.b, self.name, self.fraction, self.n_cores
             ).intersection
         elif method == "count":
-            return IntersectionCount(
+            _intersection = IntersectionCount(
                 self.a, self.b, self.name, self.fraction, self.n_cores
             ).intersection
         else:
-            return IntersectionFailed(
+            _intersection =  IntersectionFailed(
                 self.a, self.b, self.name, self.fraction, self.n_cores
             ).intersection
+        
+        if self.annotation_columns is not None:
+            _intersection = _intersection.df.join(self.annotation_columns, how="left").pipe(pr.PyRanges)
+        
+        return _intersection
 
 
 # @ray.remote
