@@ -11,8 +11,6 @@ from capcruncher.utils import convert_bed_to_pr
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
 
-
-
 def increase_cis_slice_priority(df: pd.DataFrame, score_multiplier: float = 2):
     """
     Prioritizes cis slices by increasing the mapping score.
@@ -86,65 +84,120 @@ def remove_duplicates_from_bed(
 
 
 class Intersection:
-    def __init__(self, bed_a: pr.PyRanges, bed_b: pr.PyRanges, name: str, fraction: float = 0, n_cores: int = 1):
+    def __init__(
+        self,
+        bed_a: pr.PyRanges,
+        bed_b: pr.PyRanges,
+        name: str,
+        fraction: float = 0,
+        n_cores: int = 1,
+    ):
         self.a = bed_a
         self.b = bed_b
         self.name = name
         self.fraction = fraction
         self.n_cores = n_cores
-    
+
     @property
     def intersection(self) -> pr.PyRanges:
         raise NotImplementedError("Must be implemented in subclass")
 
 
-class IntersectionGet(Intersection):    
+class IntersectionGet(Intersection):
     @property
     def intersection(self) -> pr.PyRanges:
-        
         dtype = pd.CategoricalDtype([*self.b.df["Name"].unique().astype(str)])
-        
-        return (
-            self.a.join(
-                self.b,
-                report_overlap=True,
-                how="left", 
-                suffix=f"_{self.name}",
-                nb_cpu=self.n_cores,
-            )
-            .df
-            .drop(columns=[f"Start_{self.name}", f"End_{self.name}"])
-            .assign(
-                frac=lambda df: df.eval("Overlap / (End - Start)"),
-                **{self.name: lambda df: pd.Series(np.where(df["frac"] >= self.fraction, df[f"Name_{self.name}"].replace("-1", pd.NA), pd.NA)).astype(dtype)}
-            )
-            .drop(columns=["frac", "Overlap", f"Name_{self.name}"])
-            .pipe(pr.PyRanges)
+        df_a = self.a.join(
+            self.b,
+            report_overlap=True,
+            how="left",
+            nb_cpu=self.n_cores,
+        ).df
+
+        df_a = df_a.assign(
+            frac=lambda df: df.eval("Overlap / (End - Start)"),
+            **{
+                self.name: lambda df: np.where(
+                    df['frac'] >= self.fraction, df['Name_b'], pd.NA
+                )
+            },
         )
+
+        df_a = df_a.assign(**{self.name: lambda df: df[self.name].astype(str).astype(dtype)})
+
+        df_a = df_a.drop(
+            columns=[
+                "frac",
+                "Overlap",
+                "Name_b",
+                "Start_b",
+                "End_b",
+                "Strand_b",
+                "Score_b",
+            ],
+            errors="ignore",
+        )
+        return df_a.pipe(pr.PyRanges)
+
+        # return (
+        #     self.a.join(
+        #         self.b,
+        #         report_overlap=True,
+        #         how="left",
+        #         nb_cpu=self.n_cores,
+        #     )
+        #     .df
+        #     .assign(
+        #         frac=lambda df: df.eval("Overlap / (End - Start)"),
+        #         **{self.name: lambda df: np.where(df['frac'] >= self.fraction, df['Name_b'], pd.NA)}
+        #     )
+        #     .assign(**{self.name: lambda df: df[self.name].astype(dtype)})
+        #     .drop(columns=["frac", "Overlap", "Name_b", "Start_b", "End_b", "Strand_b", "Score_b"], errors="ignore")
+        #     .pipe(pr.PyRanges)
+        # )
+
 
 class IntersectionCount(Intersection):
     @property
-    def intersection(self) -> pr.PyRanges:    
+    def intersection(self) -> pr.PyRanges:
         return (
             self.a.coverage(self.b, nb_cpu=self.n_cores)
-            .df
-            .assign(**{self.name: lambda df: pd.Series(np.where((df["NumberOverlaps"] > 0) & (df["FractionOverlaps"] >= self.fraction), df["NumberOverlaps"], 0)).astype(pd.Int8Dtype())})
+            .df.assign(
+                **{
+                    self.name: lambda df: pd.Series(
+                        np.where(
+                            (df["NumberOverlaps"] > 0)
+                            & (df["FractionOverlaps"] >= self.fraction),
+                            df["NumberOverlaps"],
+                            0,
+                        )
+                    ).astype(pd.Int8Dtype())
+                }
+            )
             .drop(columns=["NumberOverlaps", "FractionOverlaps"])
             .pipe(pr.PyRanges)
         )
+
 
 class IntersectionFailed(Intersection):
     @property
     def intersection(self):
         return (
-            self.a.df
-            .assign(**{self.name:pd.NA})
+            self.a.df.assign(**{self.name: pd.NA})
             .assign(**{self.name: lambda df: df[self.name].astype(pd.StringDtype())})
             .pipe(pr.PyRanges)
         )
 
+
 class BedIntersector:
-    def __init__(self, bed_a: Union[str, pr.PyRanges], bed_b: Union[str, pr.PyRanges], name: str, fraction: float = 0, max_cores: int = 1):
+    def __init__(
+        self,
+        bed_a: Union[str, pr.PyRanges],
+        bed_b: Union[str, pr.PyRanges],
+        name: str,
+        fraction: float = 0,
+        max_cores: int = 1,
+    ):
         self.a = bed_a if isinstance(bed_a, pr.PyRanges) else convert_bed_to_pr(bed_a)
         self.b = bed_b if isinstance(bed_b, pr.PyRanges) else convert_bed_to_pr(bed_b)
         self.name = name
@@ -152,18 +205,22 @@ class BedIntersector:
         self.n_cores = max_cores if self.b.df.shape[0] > 50_000 else 1
 
     def get_intersection(self, method: Literal["get", "count"] = "get") -> pr.PyRanges:
-        
         if self.b.empty:
-            return IntersectionFailed(self.a, self.b, self.name, self.fraction, self.n_cores).intersection
+            return IntersectionFailed(
+                self.a, self.b, self.name, self.fraction, self.n_cores
+            ).intersection
         elif method == "get":
-            return IntersectionGet(self.a, self.b, self.name, self.fraction, self.n_cores).intersection
+            return IntersectionGet(
+                self.a, self.b, self.name, self.fraction, self.n_cores
+            ).intersection
         elif method == "count":
-            return IntersectionCount(self.a, self.b, self.name, self.fraction, self.n_cores).intersection
+            return IntersectionCount(
+                self.a, self.b, self.name, self.fraction, self.n_cores
+            ).intersection
         else:
-            return IntersectionFailed(self.a, self.b, self.name, self.fraction, self.n_cores).intersection
-        
-
-
+            return IntersectionFailed(
+                self.a, self.b, self.name, self.fraction, self.n_cores
+            ).intersection
 
 
 # @ray.remote
