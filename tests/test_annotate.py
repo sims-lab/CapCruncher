@@ -96,3 +96,18 @@ def test_bed_intersection_count_output(data_path):
     intersection = bi.get_intersection(method="count")
     assert "capture" in intersection.columns
     assert intersection.df["capture"].sum() == 1
+
+def test_multi_intersection(data_path):
+    
+    slices = os.path.join(data_path, "test_slices_sorted.bed")
+    capture = os.path.join(data_path, "test_capture.bed")
+    capture_count = os.path.join(data_path, "test_capture_count.bed")
+    blank = os.path.join(data_path, "blank.bed")
+    
+    
+    for bed, action, name in zip([capture, capture_count, blank], ["get", "count", "get"], ["capture", "capture_count", "blank"]):
+        slices = BedIntersector(
+            bed_a=slices,
+            bed_b=bed,
+            name=name,
+        ).get_intersection(method=action)
