@@ -1,15 +1,10 @@
 import os
-import tempfile
 import pathlib
+import tempfile
 
-import ibis
-import numpy.core.multiarray
 import pandas as pd
 import polars as pl
 from loguru import logger
-
-ibis.options.interactive = True
-
 
 from capcruncher.api.filter import CCSliceFilter, TiledCSliceFilter, TriCSliceFilter
 from capcruncher.api.io import parse_bam
@@ -36,17 +31,19 @@ def merge_annotations(slices: os.PathLike, annotations: os.PathLike) -> pd.DataF
     """
 
     logger.info("Opening annotations")
-    
+
     with pl.StringCache():
-    
-        df_slices = pl.scan_parquet(slices)    
-        df_annotations = pl.scan_parquet(annotations).rename({"Chromosome": "chrom", "Start": "start", "End": "end"})
-        
-        df_slices = df_slices.join(df_annotations, on=["slice_name", "chrom", "start"], how="inner")
+        df_slices = pl.scan_parquet(slices)
+        df_annotations = pl.scan_parquet(annotations).rename(
+            {"Chromosome": "chrom", "Start": "start", "End": "end"}
+        )
+
+        df_slices = df_slices.join(
+            df_annotations, on=["slice_name", "chrom", "start"], how="inner"
+        )
         df_slices = df_slices.unique(subset=["slice_name"])
-        
+
         return df_slices.collect().to_pandas()
-    
 
 
 def filter(
@@ -114,23 +111,20 @@ def filter(
     """
 
     with logger.catch():
-        
-        # Read bam file and merege annotations
-        tmp = pathlib.Path(output_prefix) / "_tmp.parquet"
-        if not tmp.parent.exists():
-            tmp.parent.mkdir(parents=True)
-        
-        
-        logger.info("Loading bam file")
-        parse_bam(bam).to_parquet(tmp)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = pathlib.Path(tmpdir) / "tmp.parquet"
 
-        logger.info("Merging bam file with annotations")
-        df_alignment = merge_annotations(tmp, annotations)
+            logger.info("Loading bam file")
+            # Its faster to write to parquet and then read it back than to join both dataframes with pandas
+            parse_bam(bam).to_parquet(tmp)
 
-        if "blacklist" not in df_alignment.columns:
-            df_alignment["blacklist"] = 0
-            
-        tmp.unlink()
+            # Join bam file with annotations
+            logger.info("Merging bam file with annotations")
+            df_alignment = merge_annotations(tmp, annotations)
+
+            # Make sure that the blacklist column is present
+            if "blacklist" not in df_alignment.columns:
+                df_alignment["blacklist"] = 0
 
         # Initialise SliceFilter
         # If no custom filtering, will use the class default.
@@ -169,7 +163,8 @@ def filter(
                         "capture_slices": "capture",
                         "capture_capture": "viewpoint",
                     }
-                )            )
+                )
+            )
 
             df_fragments.to_parquet(
                 f"{output_prefix}.fragments.parquet",
