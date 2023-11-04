@@ -9,6 +9,8 @@ import pyranges as pr
 import snakemake.utils
 
 import capcruncher.pipeline.utils
+from capcruncher.utils import convert_bed_to_pr
+
 import importlib.util
 from typing import Literal
 import itertools
@@ -39,12 +41,7 @@ else:
 
 ## Read viewpoints
 VIEWPOINTS = config["analysis"]["viewpoints"]
-VIEWPOINT_NAMES = [
-    str(name)
-    for name in pd.read_table(
-        VIEWPOINTS, names=["chrom", "start", "end", "name"], header=None
-    )["name"].to_list()
-]
+VIEWPOINT_NAMES = convert_bed_to_pr(VIEWPOINTS).df.Name.drop_duplicates().tolist()
 
 
 N_SAMPLES = DESIGN["sample"].nunique()

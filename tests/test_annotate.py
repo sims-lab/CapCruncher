@@ -1,20 +1,13 @@
 import os
 
 import pytest
-from capcruncher.api.annotate import BedFileIntersection
-from pandas.api.types import (
-    is_numeric_dtype,
-    is_categorical_dtype,
-    is_object_dtype,
-)
-import ray
+from capcruncher.api.annotate import BedIntersector
 
+# @pytest.fixture(scope="session")
+# def ray_cluster():
+#     import ray
 
-@pytest.fixture(scope="session")
-def ray_cluster():
-    import ray
-
-    ray.init(num_cpus=4, ignore_reinit_error=True, include_dashboard=False)
+#     ray.init(num_cpus=4, ignore_reinit_error=True, include_dashboard=False)
 
 
 @pytest.fixture(scope="module")
@@ -26,23 +19,21 @@ def data_path():
 
 
 @pytest.mark.parametrize(
-    "bed1,bed2,method,name,n_rows_expected,dtype_check_func",
+    "bed1,bed2,method,name,n_rows_expected",
     [
         (
             "test_slices_sorted.bed",
             "test_capture.bed",
             "count",
             "capture",
-            1,
-            is_numeric_dtype,
+            4,
         ),
         (
             "test_slices_sorted.bed",
             "test_capture.bed",
             "get",
             "capture",
-            1,
-            is_categorical_dtype,
+            4,
         ),
         (
             "test_slices_sorted.bed",
@@ -50,7 +41,6 @@ def data_path():
             "count",
             "capture_count",
             4,
-            is_object_dtype,
         ),
         (
             "test_slices_sorted.bed",
@@ -58,25 +48,22 @@ def data_path():
             "count",
             "capture_count",
             4,
-            is_object_dtype,
         ),
     ],
 )
 def test_bed_intersection_succeeds(
-    ray_cluster, data_path, bed1, bed2, method, name, n_rows_expected, dtype_check_func
+    data_path, bed1, bed2, method, name, n_rows_expected
 ):
 
-    bi = BedFileIntersection.remote(
+    bi = BedIntersector(
         bed_a=os.path.join(data_path, bed1),
         bed_b=os.path.join(data_path, bed2),
         name=name,
-        action=method,
     )
 
-    intersection = ray.get(bi.intersection.remote())
-    assert intersection.name == name
-    assert intersection.shape[0] == n_rows_expected
-    assert dtype_check_func(intersection.values)
+    intersection = bi.get_intersection(method=method)
+    assert name in intersection.columns
+    assert intersection.df.shape[0] == n_rows_expected
 
 
 def test_bed_intersection_get_output(data_path):
@@ -84,16 +71,15 @@ def test_bed_intersection_get_output(data_path):
     bed1 = "test_slices_sorted.bed"
     bed2 = "test_capture.bed"
 
-    bi = BedFileIntersection.remote(
+    bi = BedIntersector(
         bed_a=os.path.join(data_path, bed1),
         bed_b=os.path.join(data_path, bed2),
         name="capture",
-        action="get",
     )
 
-    intersection = ray.get(bi.intersection.remote())
-    assert intersection.name == "capture"
-    assert intersection.value_counts().loc["CAPTURE"] == 1
+    intersection = bi.get_intersection(method="get")
+    assert "capture" in intersection.columns
+    assert intersection.df["capture"].value_counts().loc["CAPTURE"] == 1
 
 
 def test_bed_intersection_count_output(data_path):
@@ -101,13 +87,27 @@ def test_bed_intersection_count_output(data_path):
     bed1 = "test_slices_sorted.bed"
     bed2 = "test_capture.bed"
 
-    bi = BedFileIntersection.remote(
+    bi = BedIntersector(
         bed_a=os.path.join(data_path, bed1),
         bed_b=os.path.join(data_path, bed2),
         name="capture",
-        action="count",
     )
 
-    intersection = ray.get(bi.intersection.remote())
-    assert intersection.name == "capture"
-    assert intersection.sum() == 1
+    intersection = bi.get_intersection(method="count")
+    assert "capture" in intersection.columns
+    assert intersection.df["capture"].sum() == 1
+
+def test_multi_intersection(data_path):
+    
+    slices = os.path.join(data_path, "test_slices_sorted.bed")
+    capture = os.path.join(data_path, "test_capture.bed")
+    capture_count = os.path.join(data_path, "test_capture_count.bed")
+    blank = os.path.join(data_path, "blank.bed")
+    
+    
+    for bed, action, name in zip([capture, capture_count, blank], ["get", "count", "get"], ["capture", "capture_count", "blank"]):
+        slices = BedIntersector(
+            bed_a=slices,
+            bed_b=bed,
+            name=name,
+        ).get_intersection(method=action)

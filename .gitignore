@@ -24,3 +24,4 @@ coverage.xml
 tests/data/data_for_pipeline_run/mm9_capture_viewpoints_Slc25A37.bed.gz
 tests/data/data_for_pipeline_run/mm9_capture_viewpoints_Slc25A37.bed.gz.tbi
 .coverage
+sps-*

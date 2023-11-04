@@ -10,6 +10,16 @@ import xxhash
 from pybedtools import BedTool
 import pyranges as pr
 import pysam
+import itertools
+
+
+def cycle_argument(arg):
+    """Allows for the same argument to be stated once but repeated for all files"""
+
+    if len(arg) == 1:
+        return itertools.cycle((arg[0],))
+    else:
+        return arg
 
 
 def read_dataframes(filenames: Iterable, **kwargs):
@@ -19,7 +29,7 @@ def read_dataframes(filenames: Iterable, **kwargs):
     for fn in filenames:
         try:
             df = pd.read_csv(fn, **kwargs)
-        except (pd.errors.EmptyDataError):
+        except pd.errors.EmptyDataError:
             logger.warning(f"{fn} is empty")
 
         if not df.empty:
@@ -90,7 +100,6 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
             return True
 
     except Exception as e:
-
         if isinstance(e, FileNotFoundError):
             logger.warning(f"Bed file: {bed} not found")
 
@@ -292,23 +301,30 @@ def convert_bed_to_pr(
         pybedtools.BedTool,
         pd.DataFrame,
         pr.PyRanges,
-        "ray.ObjectRef",  # noqa: F821
     ],
-    ignore_ray_objrefs=True,
 ) -> pr.PyRanges:
     """Converts a bed file to a PyRanges object.
     Args:
-        bed (Union[str, pybedtools.BedTool, pd.DataFrame, pr.PyRanges, ray.ObjectRef]): Bed file to convert.
-        ignore_ray_objrefs (bool, optional): If False, allows for ray object references to be used instead python objects. Defaults to True.
+        bed (Union[str, pybedtools.BedTool, pd.DataFrame, pr.PyRanges]): Bed file to convert.
     Returns:
         pr.PyRanges: PyRanges object.
     """
 
-    from loguru import logger
-    import ray
+    import polars as pl
 
     if isinstance(bed, str):
-        converted = pr.read_bed(bed)
+        try:
+            df = pl.read_csv(
+                bed, separator="\t", new_columns=["Chromosome", "Start", "End", "Name"], has_header=False,
+                columns=list(range(4))
+            )
+
+            converted = df.to_pandas().assign(Name=lambda df: df.Name.astype('category')).pipe(pr.PyRanges)
+
+        except (FileNotFoundError, pl.exceptions.NoDataError):
+            from loguru import logger
+            logger.warning(f"File {bed} not found")
+            converted = pr.PyRanges()
 
     elif isinstance(bed, pybedtools.BedTool):
         converted = (
@@ -336,15 +352,6 @@ def convert_bed_to_pr(
                 "name": "Name",
             }
         ).pipe(pr.PyRanges)
-
-    elif isinstance(bed, ray.ObjectRef):
-
-        if ignore_ray_objrefs:
-            logger.warning("Assuming ObjectRef is a PyRanges")
-            converted = bed
-        else:
-            bed = ray.get(bed)
-            converted = convert_bed_to_pr(bed)
 
     return converted
 
@@ -390,7 +397,7 @@ def is_tabix(file: str):
         _chroms = tbx.contigs
         _is_tabix = True
 
-    except (OSError) as e:
+    except OSError as e:
         logger.warn(e)
 
     return _is_tabix
@@ -413,7 +420,6 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
     pattern_bed_file = re.compile(r"(.*).bed")
 
     if pattern_genomic_coord.match(coordinates):
-
         coordinates_split = re.split(":|-", coordinates)
         if len(coordinates_split) < 4:
             coordinates_split.append("region_0")
@@ -536,7 +542,6 @@ def get_file_type(fn: os.PathLike) -> str:
 
 
 def get_cooler_uri(store: os.PathLike, viewpoint: str, resolution: Union[str, int]):
-
     cooler_fragment = r"(?P<store>.*?).hdf5::/(?!.*/resolutions/)(?P<viewpoint>.*?)$"
     cooler_binned = (
         r"(?P<store>.*?).hdf5::/(?P<viewpoint>.*?)/resolutions/(?P<binsize>\d+)$"
@@ -552,7 +557,6 @@ def get_cooler_uri(store: os.PathLike, viewpoint: str, resolution: Union[str, in
         uri = store
 
     else:
-
         if not resolution:
             uri = f"{store}::/{viewpoint}"
 

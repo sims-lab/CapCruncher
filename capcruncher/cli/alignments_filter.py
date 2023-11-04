@@ -1,12 +1,18 @@
 import os
-import pandas as pd
-from loguru import logger
-import ibis
 import tempfile
+import pathlib
+
+import ibis
+import numpy.core.multiarray
+import pandas as pd
+import polars as pl
+from loguru import logger
+
+ibis.options.interactive = True
 
 
+from capcruncher.api.filter import CCSliceFilter, TiledCSliceFilter, TriCSliceFilter
 from capcruncher.api.io import parse_bam
-from capcruncher.api.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
 from capcruncher.api.statistics import SliceFilterStatsList
 
 SLICE_FILTERS = {
@@ -29,20 +35,18 @@ def merge_annotations(slices: os.PathLike, annotations: os.PathLike) -> pd.DataF
         pd.DataFrame: Merged dataframe
     """
 
-    con = ibis.duckdb.connect()
-    tbl_annotations = con.register(f"parquet://{annotations}", table_name="annotations")
-    column_replacements = {"Chromosome": "chrom", "Start": "start", "End": "end"}
-    for old, new in column_replacements.items():
-        if old in tbl_annotations.columns:
-            tbl_annotations = tbl_annotations.relabel({old: new})
-
-    tbl_slices = con.register(f"parquet://{slices}", table_name="slices")
-
-    tbl = tbl_slices.join(
-        tbl_annotations, how="inner", predicates=["slice_name", "chrom", "start"]
-    ).distinct(on="slice_name")
-
-    return tbl.execute(limit=None)
+    logger.info("Opening annotations")
+    
+    with pl.StringCache():
+    
+        df_slices = pl.scan_parquet(slices)    
+        df_annotations = pl.scan_parquet(annotations).rename({"Chromosome": "chrom", "Start": "start", "End": "end"})
+        
+        df_slices = df_slices.join(df_annotations, on=["slice_name", "chrom", "start"], how="inner")
+        df_slices = df_slices.unique(subset=["slice_name"])
+        
+        return df_slices.collect().to_pandas()
+    
 
 
 def filter(
@@ -110,17 +114,23 @@ def filter(
     """
 
     with logger.catch():
-        with tempfile.NamedTemporaryFile(suffix=".parquet") as tmp:
-            # Read bam file and merege annotations
+        
+        # Read bam file and merege annotations
+        tmp = pathlib.Path(output_prefix) / "_tmp.parquet"
+        if not tmp.parent.exists():
+            tmp.parent.mkdir(parents=True)
+        
+        
+        logger.info("Loading bam file")
+        parse_bam(bam).to_parquet(tmp)
 
-            logger.info("Loading bam file")
-            parse_bam(bam).to_parquet(tmp.name)
+        logger.info("Merging bam file with annotations")
+        df_alignment = merge_annotations(tmp, annotations)
 
-            logger.info("Merging bam file with annotations")
-            df_alignment = merge_annotations(tmp.name, annotations)
-
-            if "blacklist" not in df_alignment.columns:
-                df_alignment["blacklist"] = 0
+        if "blacklist" not in df_alignment.columns:
+            df_alignment["blacklist"] = 0
+            
+        tmp.unlink()
 
         # Initialise SliceFilter
         # If no custom filtering, will use the class default.
@@ -135,14 +145,13 @@ def filter(
         # Filter slices using the slice_filter
         logger.info(f"Filtering slices with method: {method}")
         slice_filter.filter_slices()
-        
+
         # Extract statistics
         logger.info("Extracting statistics")
         stats_list = SliceFilterStatsList.from_list(slice_filter.filtering_stats)
         with open(statistics, "w") as f:
             f.write(stats_list.model_dump_json())
-        
-              
+
         # Write output
         df_slices = slice_filter.slices
         df_slices_with_viewpoint = slice_filter.slices_with_viewpoint
@@ -160,9 +169,7 @@ def filter(
                         "capture_slices": "capture",
                         "capture_capture": "viewpoint",
                     }
-                )
-                .assign(id=lambda df: df["id"].astype("int64"))  # Enforce type
-            )
+                )            )
 
             df_fragments.to_parquet(
                 f"{output_prefix}.fragments.parquet",

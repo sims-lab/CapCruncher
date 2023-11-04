@@ -1,11 +1,14 @@
-from loguru import logger
-import pandas as pd
-import os
-import numpy as np
 import itertools
+import os
+
+import numpy as np
+import pandas as pd
 import pandera
-from capcruncher.api.statistics import SliceFilterStats
+from loguru import logger
 from pandera.typing import DataFrame, Series
+
+from capcruncher.api.statistics import SliceFilterStats
+
 
 
 class SlicesDataFrameSchema(pandera.DataFrameModel):
@@ -512,12 +515,11 @@ class CCSliceFilter(SliceFilter):
          pd.DataFrame: Slices aggregated by parental read name.
 
         """
-
+        
         df = (
             self.slices.sort_values(["parent_read", "chrom", "start"])
             .groupby("parent_read", as_index=False, sort=False)
             .agg(
-                id=("parent_id", lambda df: df.head(n=1)),
                 unique_slices=("slice", "nunique"),
                 pe=("pe", "first"),
                 mapped=("mapped", "sum"),

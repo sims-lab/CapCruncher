@@ -4,16 +4,16 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - bedtools
+  - bedtools<=2.31.0
   - bowtie2>=2.4.4
   - click<=8.1.0
-  - cooler
-  - cookiecutter
-  - fastqc
-  - flash
-  - ibis-framework>=6.0.0
-  - iced
-  - joblib
+  - cooler<=0.9.2
+  - cookiecutter<=2.1.1
+  - fastqc<=0.12.1
+  - flash<=1.2.11
+  - ibis-framework>=6.0.0,<=7.0.0
+  - iced<=0.5.10
+  - joblib<=1.2.0
   - loguru
   - multiqc
   - numpy<=1.23
@@ -25,21 +25,21 @@ dependencies:
   - pydantic<=2.4.2
   - plotly>5.0.0,<=5.15.0
   - pyarrow>8.0.0,<12.0.0
-  - pybedtools
-  - pyranges
-  - pysam>0.15.0,<=0.19.1
-  - python-duckdb
-  - python-xxhash
-  - python>=3.10,<3.11
+  - pybedtools<=0.9.0
+  - pyranges<=0.0.127
+  - pysam>0.19.1,<=0.22.0
+  - python-duckdb>0.9.0,<=0.9.1
+  - python-xxhash>=3.4.1
+  - python>=3.10,<=3.11
   - quarto
-  - samtools
-  - seaborn
+  - samtools<=1.15.1
+  - seaborn<=0.12.2
   - setuptools>50.1.0,<=65.0.1
   - snakemake<=7.30.2
-  - tqdm
-  - trackhub
-  - trim-galore
+  - tqdm<=4.65.0
+  - trackhub<=0.2.4
+  - trim-galore<=0.6.10
   - ucsc-bedgraphtobigwig
   - ucsc-bedtobigbed
   - ucsc-fetchchromsizes
-  - ujson
+  - ujson<=5.7.0
