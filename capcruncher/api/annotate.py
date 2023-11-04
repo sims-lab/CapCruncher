@@ -106,20 +106,26 @@ class Intersection:
 class IntersectionGet(Intersection):
     @property
     def intersection(self) -> pr.PyRanges:
+        
         dtype = pd.CategoricalDtype([*self.b.df["Name"].unique().astype(str)])
-        df_a = self.a.join(
-            self.b,
-            report_overlap=True,
-            how="left",
-            nb_cpu=self.n_cores,
-            preserve_order=True,
-        ).df
+        
+        # Hack to get around the fact that pyranges has a bug when joining categorical columns
+        # See https://github.com/pyranges/pyranges/issues/230
+        
+        name_col = self.a.df["Name"]
+        
+        gr_a = pr.PyRanges(self.a.df.drop(columns="Name").assign(Name=lambda df: df.reset_index().index))
+        
+        df_overlapping = gr_a.join(self.b, nb_cpu=self.n_cores, report_overlap=True).df
+        df_non_overlapping = gr_a.df.loc[lambda df: df.Name.isin(df_overlapping.Name.unique()) == False]
+        df_both = pd.concat([df_overlapping, df_non_overlapping]).sort_values("Name")
+        
+        df_both['Name'] = df_both['Name'].map(name_col)
+        df_both['frac'] = df_both.eval("Overlap / (End - Start)")
+        df_both[self.name] = np.where(df_both['frac'] >= self.fraction, df_both['Name_b'], pd.NA)
+        df_both[self.name] = df_both[self.name].astype(str).astype(dtype)
 
-        df_a['frac'] = df_a.eval("Overlap / (End - Start)")
-        df_a[self.name] = np.where(df_a['frac'] >= self.fraction, df_a['Name_b'], pd.NA)
-        df_a[self.name] = df_a[self.name].astype(str).astype(dtype)
-
-        df_a.drop(
+        df_both.drop(
             columns=[
                 "frac",
                 "Overlap",
@@ -133,7 +139,7 @@ class IntersectionGet(Intersection):
             inplace=True
         )
 
-        return df_a.pipe(pr.PyRanges)
+        return df_both.pipe(pr.PyRanges)
 
 
 class IntersectionCount(Intersection):
@@ -178,7 +184,6 @@ class BedIntersector:
         max_cores: int = 1,
     ):
         
-
         self.annotation_columns = None
 
         if isinstance(bed_a, pr.PyRanges):
