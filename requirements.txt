@@ -20,7 +20,7 @@ pybedtools<=0.9.0
 pyranges<=0.0.127
 pysam>0.15.0,<=0.21.0
 quarto
-ray<=2.6.0
+ray<=2.8.0
 seaborn<=0.12.2
 snakemake<=7.32.4
 tqdm<=4.65.0
