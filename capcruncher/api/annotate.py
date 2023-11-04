@@ -117,7 +117,13 @@ class IntersectionGet(Intersection):
         gr_a = pr.PyRanges(self.a.df.drop(columns="Name").assign(Name=lambda df: df.reset_index().index))
         
         df_overlapping = gr_a.join(self.b, nb_cpu=self.n_cores, report_overlap=True).df
-        df_non_overlapping = gr_a.df.loc[lambda df: df.Name.isin(df_overlapping.Name.unique()) == False]
+        
+        if not df_overlapping.empty:
+            df_non_overlapping = gr_a.df.loc[lambda df: df.Name.isin(df_overlapping.Name.unique()) == False]
+        else:
+            raise ValueError("No overlapping regions found")
+            
+        
         df_both = pd.concat([df_overlapping, df_non_overlapping]).sort_values("Name")
         
         df_both['Name'] = df_both['Name'].map(name_col)
@@ -200,19 +206,27 @@ class BedIntersector:
         self.n_cores = max_cores if self.b.df.shape[0] > 50_000 else 1
 
     def get_intersection(self, method: Literal["get", "count"] = "get") -> pr.PyRanges:
-        if self.b.empty:
-            _intersection =  IntersectionFailed(
-                self.a, self.b, self.name, self.fraction, self.n_cores
-            ).intersection
-        elif method == "get":
-            _intersection =  IntersectionGet(
-                self.a, self.b, self.name, self.fraction, self.n_cores
-            ).intersection
-        elif method == "count":
-            _intersection = IntersectionCount(
-                self.a, self.b, self.name, self.fraction, self.n_cores
-            ).intersection
-        else:
+        
+        try:
+        
+            if self.b.empty:
+                _intersection =  IntersectionFailed(
+                    self.a, self.b, self.name, self.fraction, self.n_cores
+                ).intersection
+            elif method == "get":
+                _intersection =  IntersectionGet(
+                    self.a, self.b, self.name, self.fraction, self.n_cores
+                ).intersection
+            elif method == "count":
+                _intersection = IntersectionCount(
+                    self.a, self.b, self.name, self.fraction, self.n_cores
+                ).intersection
+            else:
+                _intersection =  IntersectionFailed(
+                    self.a, self.b, self.name, self.fraction, self.n_cores
+                ).intersection
+        
+        except (OSError, IndexError, FileNotFoundError, StopIteration, AssertionError, ValueError):
             _intersection =  IntersectionFailed(
                 self.a, self.b, self.name, self.fraction, self.n_cores
             ).intersection
