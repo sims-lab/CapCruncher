@@ -2,6 +2,7 @@ import pandas as pd
 import pysam
 import pytest
 import os
+import pathlib
 
 
 @pytest.fixture(scope="module")
@@ -54,24 +55,19 @@ def test_digest_fastq(
 
     infiles = [os.path.join(data_path, fn) for fn in fastq_files]
     outfile = os.path.join(tmpdir, "out.fq")
-    stats_prefix = os.path.join(tmpdir, "stats")
+    statistics = pathlib.Path(outfile).with_suffix(".json")
 
     stats = digest(
         infiles,
         enzyme,
         mode=mode,
         output_file=outfile,
-        stats_prefix=stats_prefix,
+        statistics=statistics,
     )
-
-    assert (
-        stats["stats_read_level"].to_pandas()["number_of_read_pairs_unfiltered"].iloc[0]
-        == n_reads_raw
-    )
-    assert (
-        stats["stats_read_level"].to_pandas()["number_of_read_pairs_filtered"].iloc[0]
-        == n_reads_filt
-    )
+    
+    
+    assert stats.read_stats.unfiltered.read1 == n_reads_raw
+    assert stats.read_stats.filtered.read1 == n_reads_filt
     assert count_fragments(outfile) == n_reads_filt
 
 

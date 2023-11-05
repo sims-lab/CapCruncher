@@ -1,12 +1,14 @@
 import os
-import pandas as pd
-from loguru import logger
-import ibis
+import pathlib
 import tempfile
 
+import pandas as pd
+import polars as pl
+from loguru import logger
 
+from capcruncher.api.filter import CCSliceFilter, TiledCSliceFilter, TriCSliceFilter
 from capcruncher.api.io import parse_bam
-from capcruncher.api.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
+from capcruncher.api.statistics import SliceFilterStatsList
 
 SLICE_FILTERS = {
     "capture": CCSliceFilter,
@@ -28,20 +30,20 @@ def merge_annotations(slices: os.PathLike, annotations: os.PathLike) -> pd.DataF
         pd.DataFrame: Merged dataframe
     """
 
-    con = ibis.duckdb.connect()
-    tbl_annotations = con.register(f"parquet://{annotations}", table_name="annotations")
-    column_replacements = {"Chromosome": "chrom", "Start": "start", "End": "end"}
-    for old, new in column_replacements.items():
-        if old in tbl_annotations.columns:
-            tbl_annotations = tbl_annotations.relabel({old: new})
+    logger.info("Opening annotations")
 
-    tbl_slices = con.register(f"parquet://{slices}", table_name="slices")
+    with pl.StringCache():
+        df_slices = pl.scan_parquet(slices)
+        df_annotations = pl.scan_parquet(annotations).rename(
+            {"Chromosome": "chrom", "Start": "start", "End": "end"}
+        )
 
-    tbl = tbl_slices.join(
-        tbl_annotations, how="inner", predicates=["slice_name", "chrom", "start"]
-    ).distinct(on="slice_name")
+        df_slices = df_slices.join(
+            df_annotations, on=["slice_name", "chrom", "start"], how="inner"
+        )
+        df_slices = df_slices.unique(subset=["slice_name"])
 
-    return tbl.execute(limit=None)
+        return df_slices.collect().to_pandas()
 
 
 def filter(
@@ -49,14 +51,11 @@ def filter(
     annotations: os.PathLike,
     custom_filtering: os.PathLike = None,
     output_prefix: os.PathLike = "reporters",
-    stats_prefix: os.PathLike = "",
+    statistics: os.PathLike = "",
     method: str = "capture",
     sample_name: str = "",
     read_type: str = "",
     fragments: bool = True,
-    read_stats: bool = True,
-    slice_stats: bool = True,
-    cis_and_trans_stats: bool = True,
 ):
     """
     Removes unwanted aligned slices and identifies reporters.
@@ -112,15 +111,18 @@ def filter(
     """
 
     with logger.catch():
-        with tempfile.NamedTemporaryFile(suffix=".parquet") as tmp:
-            # Read bam file and merege annotations
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = pathlib.Path(tmpdir) / "tmp.parquet"
 
             logger.info("Loading bam file")
-            parse_bam(bam).to_parquet(tmp.name)
+            # Its faster to write to parquet and then read it back than to join both dataframes with pandas
+            parse_bam(bam).to_parquet(tmp)
 
+            # Join bam file with annotations
             logger.info("Merging bam file with annotations")
-            df_alignment = merge_annotations(tmp.name, annotations)
+            df_alignment = merge_annotations(tmp, annotations)
 
+            # Make sure that the blacklist column is present
             if "blacklist" not in df_alignment.columns:
                 df_alignment["blacklist"] = 0
 
@@ -138,25 +140,13 @@ def filter(
         logger.info(f"Filtering slices with method: {method}")
         slice_filter.filter_slices()
 
-        if slice_stats:
-            slice_stats_path = f"{stats_prefix}.slice.stats.csv"
-            logger.info(f"Writing slice statistics to {slice_stats_path}")
-            slice_filter.filter_stats.to_csv(slice_stats_path, index=False)
+        # Extract statistics
+        logger.info("Extracting statistics")
+        stats_list = SliceFilterStatsList.from_list(slice_filter.filtering_stats)
+        with open(statistics, "w") as f:
+            f.write(stats_list.model_dump_json())
 
-        if read_stats:
-            read_stats_path = f"{stats_prefix}.read.stats.csv"
-            logger.info(f"Writing read statistics to {read_stats_path}")
-            slice_filter.read_stats.to_csv(read_stats_path, index=False)
-
-        # Save reporter stats
-        if cis_and_trans_stats:
-            logger.info("Writing reporter statistics")
-            slice_filter.cis_or_trans_stats.to_csv(
-                f"{stats_prefix}.reporter.stats.csv", index=False
-            )
-
-        # Output slices filtered by viewpoint
-
+        # Write output
         df_slices = slice_filter.slices
         df_slices_with_viewpoint = slice_filter.slices_with_viewpoint
         df_capture = slice_filter.captures
@@ -174,7 +164,6 @@ def filter(
                         "capture_capture": "viewpoint",
                     }
                 )
-                .assign(id=lambda df: df["id"].astype("int64"))  # Enforce type
             )
 
             df_fragments.to_parquet(

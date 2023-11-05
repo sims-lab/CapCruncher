@@ -205,7 +205,7 @@ def test_pipeline(config, cores):
 
     try:
         result = subprocess.run(
-            ["capcruncher", "pipeline", "-c", str(cores), "all", "-p"]
+            ["capcruncher", "pipeline", "-c", str(cores), "all", "-p", "--show-failed-logs"]
         )
     except Exception as e:
         print(e)

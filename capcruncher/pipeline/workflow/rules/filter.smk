@@ -42,16 +42,12 @@ rule filter_alignments:
         filtered_slices=temp(
             "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet"
         ),
-        stats_read="capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.read.stats.csv",
-        stats_slice="capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.slice.stats.csv",
+        statistics="capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.json",
     params:
         analysis_method=config["analysis"]["method"],
         sample_name=lambda wildcards, output: wildcards.sample,
         output_prefix=lambda wildcards, output: output.filtered_slices.replace(
             ".slices.parquet", ""
-        ),
-        stats_prefix=lambda wildcards, output: output.stats_read.replace(
-            ".read.stats.csv", ""
         ),
         read_type=lambda wildcards, output: wildcards.combined,
         custom_filtering=capcruncher.pipeline.utils.validate_custom_filtering(config),
@@ -68,10 +64,9 @@ rule filter_alignments:
         -b {input.bam} \
         -a {input.annotations} \
         -o {params.output_prefix} \
-        --stats-prefix {params.stats_prefix} \
+        --statistics {output.statistics} \
         --sample-name {params.sample_name} \
         --read-type {params.read_type} \
-        --no-cis-and-trans-stats \
         --no-fragments \
         {params.custom_filtering} > {log} 2>&1
         """
@@ -109,14 +104,9 @@ rule remove_duplicate_coordinates:
                 "capcruncher_output/interim/filtering/deduplicated/{sample}/{combined}"
             )
         ),
-        stats_read=temp(
-            "capcruncher_output/interim/statistics/deduplication_by_coordinate/data/{sample}_{combined}.read.stats.csv"
-        ),
+        statistics="capcruncher_output/interim/statistics/deduplication_final/data/{sample}_{combined}.json",
     params:
         sample_name=lambda wildcards, output: wildcards.sample,
-        stats_prefix=lambda wildcards, output: output.stats_read.replace(
-            ".read.stats.csv", ""
-        ),
         read_type=lambda wildcards, output: wildcards.combined,
     resources:
         mem_mb=lambda wc, attempt: 3000 * 2**attempt,
@@ -165,9 +155,7 @@ rule cis_and_trans_stats:
     input:
         slices="capcruncher_output/results/{sample}/{sample}.parquet",
     output:
-        stats=temp(
-            "capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.reporter.stats.csv"
-        ),
+        stats="capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.json",
     params:
         sample_name=lambda wildcards, output: wildcards.sample,
         analysis_method=config["analysis"]["method"],

@@ -5,6 +5,7 @@ from typing import Union
 
 from capcruncher.api.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
 from capcruncher.cli.alignments_filter import merge_annotations
+from capcruncher.utils import convert_bed_to_pr
 from capcruncher.api.io import parse_bam
 
 
