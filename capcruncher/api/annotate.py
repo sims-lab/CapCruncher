@@ -105,22 +105,33 @@ class Intersection:
 
 
 class IntersectionGet(Intersection):
-    @property
-    def intersection(self) -> pr.PyRanges:
+    def get_new_dtype(self):
         # Determine the dtype of the name column
         if is_numeric_dtype(self.b.df["Name"]):
             dtype_new = self.b.df["Name"].dtype
 
         elif is_categorical_dtype(self.b.df["Name"]):
-            
             if is_numeric_dtype(self.b.df["Name"].cat.categories):
                 dtype_new = self.b.df["Name"].cat.categories.dtype
+                numeric_dtype_mapping = {
+                    "int64": "Int64",
+                    "float64": "Float64",
+                    "float32": "Float32",
+                    "int32": "Int32",
+                }
+                dtype_new = numeric_dtype_mapping.get(str(dtype_new), "Int64")
+
             else:
                 dtype_new = self.b.df["Name"].dtype
-            
 
         else:
             dtype_new = pd.CategoricalDtype([*self.b.df["Name"].unique().astype(str)])
+
+        return dtype_new
+
+    @property
+    def intersection(self) -> pr.PyRanges:
+        dtype_new = self.get_new_dtype()
 
         # Hack to get around the fact that pyranges has a bug when joining categorical columns
         # See https://github.com/pyranges/pyranges/issues/230
@@ -264,7 +275,7 @@ class BedIntersector:
         _intersection = _intersection.df.assign(
             Name=lambda df: df.Name.map(self.original_name_mapping)
         )
-        
+
         return pr.PyRanges(df=_intersection)
 
     def process_bed(self, bed: pr.PyRanges):
