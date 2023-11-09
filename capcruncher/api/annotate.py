@@ -112,7 +112,14 @@ class IntersectionGet(Intersection):
             dtype_new = self.b.df["Name"].dtype
 
         elif is_categorical_dtype(self.b.df["Name"]):
-            dtype_new = self.b.df["Name"].dtype
+            
+            if is_numeric_dtype(self.b.df["Name"].cat.categories):
+                dtype_new = self.b.df["Name"].cat.categories.dtype
+            else:
+                dtype_new = self.b.df["Name"].dtype
+            
+            if is_numeric_dtype()
+            
 
         else:
             dtype_new = pd.CategoricalDtype([*self.b.df["Name"].unique().astype(str)])
