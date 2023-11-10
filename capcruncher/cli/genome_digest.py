@@ -72,6 +72,7 @@ def digest(
         logger.info("Sorting output")
         df = pl.read_csv(
             output_file, separator="\t", new_columns=["chrom", "start", "end", "name"]
+            dtypes= [pl.Utf8, pl.Int64, pl.Int64, pl.Utf8]
         )
 
         # If changing the order, also need to change the fragment number
