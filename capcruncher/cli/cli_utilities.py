@@ -20,6 +20,17 @@ def cli():
 @click.argument("gtf")
 @click.option("-o", "--output", help="Output file name")
 def gtf_to_bed12(gtf: str, output: str):
+    """
+    Converts a GTF file to a BED12 file containing only 5' UTRs, 3' UTRs, and exons.
+
+    Args:
+        gtf (str): Path to the input GTF file.
+        output (str): Path to the output BED12 file.
+
+    Returns:
+        None
+    """
+    
     from pybedtools import BedTool
     from capcruncher.utils import gtf_line_to_bed12_line
 
@@ -133,7 +144,7 @@ def cis_and_trans_stats(
     )
 
     stats = CisOrTransStats.from_dataframe(df_cis_and_trans)
-    
+
     with open(output, "w") as f:
         f.write(stats.model_dump_json())
 
@@ -309,3 +320,70 @@ def dump(
         raise ValueError("File type not supported")
 
     df.to_csv(output, sep="\t", index=False)
+
+
+@cli.command()
+@click.option("-1", "--fastq1", help="Path to FASTQ file 1", required=True)
+@click.option("-2", "--fastq2", help="Path to FASTQ file 2", required=True)
+@click.option(
+    "-p",
+    "--parquet-file",
+    help="Path to parquet file from which to extract the required reads",
+    required=True,
+)
+@click.option("-o", "--output", help="Output file prefix", default="regenerated_")
+def regenerate_fastq(
+    fastq1: str, fastq2: str, parquet_file: str = None, output: str = "regenerated_"
+):
+    """
+    Regenerates a FASTQ file from a parquet file containing the required reads
+
+    Args:
+        fastq1 (str): Path to the first FASTQ file
+        fastq2 (str): Path to the second FASTQ file
+        parquet_file (str, optional): Path to the parquet file from which to extract the required reads. Defaults to None.
+        output (str, optional): Prefix for the output file. Defaults to "regenerated_".
+
+    Raises:
+        AssertionError: If the specified parquet file does not exist.
+
+    Returns:
+        None
+    """
+    import pandas as pd
+    import pysam
+    import polars as pl
+    from xopen import xopen
+    import pathlib
+
+    assert os.path.exists(parquet_file), f"File {parquet_file} does not exist"
+
+    parquet_file_path = pathlib.Path(parquet_file)
+    if parquet_file_path.is_dir():
+        parquet_file = str(parquet_file_path / "*.parquet")
+    
+    outpath = pathlib.Path(output).with_suffix("")
+
+    
+    logger.info(f"Extracting reads info from {parquet_file}")
+    read_names = set(
+        pl.scan_parquet(parquet_file)
+        .select("parent_read")
+        .unique()
+        .collect()["parent_read"]
+        .to_list()
+    )
+    
+    logger.info(f"Writing reads to {outpath}")
+    with pysam.FastxFile(fastq1) as r1:
+        with pysam.FastxFile(fastq2) as r2:
+            with xopen(f"{outpath}_1.fastq.gz", "w") as w1:
+                with xopen(f"{outpath}_2.fastq.gz", "w") as w2:
+                    for read_1, read_2 in zip(r1, r2):
+                        if read_1.name in read_names:
+                            w1.write(str(read_1) + "\n")
+                            w2.write(str(read_2) + "\n")    
+    
+    logger.info("Done")
+    
+    
