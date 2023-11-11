@@ -1,6 +1,9 @@
 name: CapCruncher CI
 
-on: [push]
+on:
+  push:
+  pull_request:
+    branches: [master, develop]
 
 env:
   CACHE_NUMBER: 1
