@@ -4,6 +4,7 @@ on:
   push:
   pull_request:
     branches: [master, develop]
+  workflow_dispatch:
 
 env:
   CACHE_NUMBER: 1
