@@ -44,6 +44,10 @@ analysis:
         {%- for bin in genomic_bin_size %}
         - {{bin}}
         {%- endfor %}
+    
+    # Determines if the pipeline will generate FASTQ files with the filtered reads. This is useful for running other pipelines
+    # such as HiCUP or HiC-Pro or CHiCAGO.
+    regenerate_fastq: "{{cookiecutter.regenerate_fastq}}"
 
 genome:
 
