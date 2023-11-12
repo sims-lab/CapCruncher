@@ -11,7 +11,7 @@ rule regenerate_fastq:
         output_prefix="capcruncher_output/results/{sample}/{sample}",
     shell:
         """
-        capcruncher regenerate-fastq \
+        capcruncher utilities regenerate-fastq \
             -p {input.parquet} \
             --output-prefix {params.output_prefix} \
             --fastq1 {input.fq1} \
