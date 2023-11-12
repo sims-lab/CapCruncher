@@ -316,6 +316,7 @@ def convert_bed_to_pr(
         try:
             df = pl.read_csv(
                 bed, separator="\t", new_columns=["Chromosome", "Start", "End", "Name"], has_header=False,
+                dtypes= [pl.Utf8, pl.Int64, pl.Int64, pl.Utf8],
                 columns=list(range(4))
             )
 

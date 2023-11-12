@@ -175,6 +175,7 @@ def config(
             "plotting_coordinates": str(plot_coords),
             "plotting_normalisation": "n_interactions",
             "differential_contrast": "condition",
+            "regenerate_fastq": "yes",
         },
         no_input=True,
     )
