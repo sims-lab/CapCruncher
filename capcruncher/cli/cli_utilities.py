@@ -331,9 +331,9 @@ def dump(
     help="Path to parquet file from which to extract the required reads",
     required=True,
 )
-@click.option("-o", "--output", help="Output file prefix", default="regenerated_")
+@click.option("-o", "--output-prefix", help="Output file prefix", default="regenerated_")
 def regenerate_fastq(
-    fastq1: str, fastq2: str, parquet_file: str = None, output: str = "regenerated_"
+    fastq1: str, fastq2: str, parquet_file: str = None, output_prefix: str = "regenerated_"
 ):
     """
     Regenerates a FASTQ file from a parquet file containing the required reads
@@ -362,7 +362,7 @@ def regenerate_fastq(
     if parquet_file_path.is_dir():
         parquet_file = str(parquet_file_path / "*.parquet")
     
-    outpath = pathlib.Path(output).with_suffix("")
+    outpath = pathlib.Path(output_prefix).with_suffix("")
 
     
     logger.info(f"Extracting reads info from {parquet_file}")
