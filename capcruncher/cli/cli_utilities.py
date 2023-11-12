@@ -1,14 +1,16 @@
+import os
 import subprocess
 from tempfile import NamedTemporaryFile
 from typing import Iterable, List, Literal
+
 import click
-import pandas as pd
-import os
-from loguru import logger
-from capcruncher.utils import get_file_type
 import ibis
+import pandas as pd
 from ibis import _
+from loguru import logger
+
 from capcruncher.api.statistics import CisOrTransStats
+from capcruncher.utils import get_file_type
 
 
 @click.group()
@@ -32,6 +34,7 @@ def gtf_to_bed12(gtf: str, output: str):
     """
     
     from pybedtools import BedTool
+
     from capcruncher.utils import gtf_line_to_bed12_line
 
     bt_gtf = BedTool(gtf)
@@ -194,8 +197,9 @@ def viewpoint_coordinates(
         ValueError: If no bowtie2 indices are supplied
     """
 
-    from capcruncher.cli import genome_digest
     from pybedtools import BedTool
+
+    from capcruncher.cli import genome_digest
 
     digested_genome = NamedTemporaryFile("r+")
     viewpoints_fasta = NamedTemporaryFile("r+")
@@ -350,11 +354,11 @@ def regenerate_fastq(
     Returns:
         None
     """
-    import pandas as pd
-    import pysam
-    import polars as pl
-    from xopen import xopen
     import pathlib
+
+    import polars as pl
+    import pysam
+    from xopen import xopen
 
     assert os.path.exists(parquet_file), f"File {parquet_file} does not exist"
 
@@ -366,24 +370,25 @@ def regenerate_fastq(
 
     
     logger.info(f"Extracting reads info from {parquet_file}")
-    read_names = set(
-        pl.scan_parquet(parquet_file)
-        .select("parent_read")
-        .unique()
-        .collect()["parent_read"]
-        .to_list()
-    )
-    
-    logger.info(f"Writing reads to {outpath}")
-    with pysam.FastxFile(fastq1) as r1:
-        with pysam.FastxFile(fastq2) as r2:
-            with xopen(f"{outpath}_1.fastq.gz", "w") as w1:
-                with xopen(f"{outpath}_2.fastq.gz", "w") as w2:
-                    for read_1, read_2 in zip(r1, r2):
-                        if read_1.name in read_names:
-                            w1.write(str(read_1) + "\n")
-                            w2.write(str(read_2) + "\n")    
-    
+    with pl.StringCache() as cache:
+        read_names = set(
+            pl.scan_parquet(parquet_file)
+            .select("parent_read")
+            .unique()
+            .collect()["parent_read"]
+            .to_list()
+        )
+        
+        logger.info(f"Writing reads to {outpath}")
+        with pysam.FastxFile(fastq1) as r1:
+            with pysam.FastxFile(fastq2) as r2:
+                with xopen(f"{outpath}_1.fastq.gz", "w") as w1:
+                    with xopen(f"{outpath}_2.fastq.gz", "w") as w2:
+                        for read_1, read_2 in zip(r1, r2):
+                            if read_1.name in read_names:
+                                w1.write(str(read_1) + "\n")
+                                w2.write(str(read_2) + "\n")    
+        
     logger.info("Done")
     
     
