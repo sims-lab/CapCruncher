@@ -32,7 +32,7 @@ def gtf_to_bed12(gtf: str, output: str):
     Returns:
         None
     """
-    
+
     from pybedtools import BedTool
 
     from capcruncher.utils import gtf_line_to_bed12_line
@@ -335,9 +335,14 @@ def dump(
     help="Path to parquet file from which to extract the required reads",
     required=True,
 )
-@click.option("-o", "--output-prefix", help="Output file prefix", default="regenerated_")
+@click.option(
+    "-o", "--output-prefix", help="Output file prefix", default="regenerated_"
+)
 def regenerate_fastq(
-    fastq1: str, fastq2: str, parquet_file: str = None, output_prefix: str = "regenerated_"
+    fastq1: str,
+    fastq2: str,
+    parquet_file: str = None,
+    output_prefix: str = "regenerated_",
 ):
     """
     Regenerates a FASTQ file from a parquet file containing the required reads
@@ -365,10 +370,9 @@ def regenerate_fastq(
     parquet_file_path = pathlib.Path(parquet_file)
     if parquet_file_path.is_dir():
         parquet_file = str(parquet_file_path / "*.parquet")
-    
+
     outpath = pathlib.Path(output_prefix).with_suffix("")
 
-    
     logger.info(f"Extracting reads info from {parquet_file}")
     with pl.StringCache() as cache:
         read_names = set(
@@ -378,7 +382,7 @@ def regenerate_fastq(
             .collect()["parent_read"]
             .to_list()
         )
-        
+
         logger.info(f"Writing reads to {outpath}")
         with pysam.FastxFile(fastq1) as r1:
             with pysam.FastxFile(fastq2) as r2:
@@ -387,8 +391,56 @@ def regenerate_fastq(
                         for read_1, read_2 in zip(r1, r2):
                             if read_1.name in read_names:
                                 w1.write(str(read_1) + "\n")
-                                w2.write(str(read_2) + "\n")    
-        
+                                w2.write(str(read_2) + "\n")
+
     logger.info("Done")
+
+
+@cli.command()
+@click.option(
+    "--fragments",
+    help="Path to fragments file (default: capcruncher_output/resources/restriction_fragments/genome.digest.bed.gz)",
+    default="capcruncher_output/resources/restriction_fragments/genome.digest.bed.gz",
+)
+@click.option(
+    "--viewpoints", help="Path to viewpoints file used for capcruncher", required=True
+)
+@click.option("--outputdir", help="Path to output directory", required=True)
+def make_chicago_maps(fragments, viewpoints, outputdir):
+    """
+    Restriction map file (.rmap) - a bed file containing coordinates of the restriction fragments. By default, 4 columns: chr, start, end, fragmentID.
+    Bait map file (.baitmap) - a bed file containing coordinates of the baited restriction fragments, and their associated annotations. By default, 5 columns: chr, start, end, fragmentID, baitAnnotation. The regions specified in this file, including their fragmentIDs, must be an exact subset of those in the .rmap file. The baitAnnotation is a text field that is used only to annotate the output and plots.
+    """
+    import pathlib
+    import pyranges as pr
     
-    
+
+    # Rename fragments file to suit chicago
+    fragments_new = pathlib.Path(outputdir) / (pathlib.Path(fragments).stem + ".rmap")
+    if not fragments_new.exists():
+        fragments_new.symlink_to(pathlib.Path(fragments).resolve())
+
+    # Baitmap file
+    viewpoints = pr.read_bed(viewpoints)
+    fragments = pr.read_bed(fragments)
+
+    df_baitmap = (
+        fragments.join(viewpoints, suffix="_vp")
+        .df[['Chromosome', 'Start', 'End', 'Name', 'Name_vp']]
+        .rename(
+            columns={
+                "Chromosome": "chr",
+                "Start": "start",
+                "End": "end",
+                "Name": "baitAnnotation",
+                "Name_vp": "fragmentID",
+            }
+        )
+    )
+
+    df_baitmap.to_csv(
+        os.path.join(outputdir, "viewpoints.baitmap"),
+        sep="\t",
+        index=False,
+        header=False,
+    )
