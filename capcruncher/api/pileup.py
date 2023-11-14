@@ -226,6 +226,13 @@ class CoolerBedGraph:
         total_counts_in_region = df_counts_in_regions["count"].sum()
 
         bedgraph["count"] = (bedgraph["count"] / total_counts_in_region) * scale_factor
+    
+    def to_pyranges(self, normalisation: Literal["raw", "n_cis", "region"] = "raw", **norm_kwargs):
+        return pr.PyRanges(
+            self.extract_bedgraph(normalisation=normalisation, norm_kwargs=norm_kwargs).rename(
+                columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
+            )
+        )
 
 
 class CoolerBedGraphWindowed(CoolerBedGraph):
