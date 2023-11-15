@@ -11,13 +11,11 @@ more-itertools
 numpy<=1.23
 pandas<=2.1.2
 pandera<=0.17.2
-pandera<=0.17.2
 panel<=1.3.0
 plotly>5.0.0,<=5.18.0
 pyarrow==14.0.*
 pybedtools<=0.9.0
-pydantic<=2.3.0
-pydantic<=2.3.0
+pydantic<=2.14.3
 pyranges<=0.0.127
 pysam>0.15.0,<=0.21.0
 quarto
