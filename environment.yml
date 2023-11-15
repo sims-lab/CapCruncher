@@ -41,5 +41,4 @@ dependencies:
   - trim-galore<=0.6.10
   - ucsc-bedgraphtobigwig
   - ucsc-bedtobigbed
-  - ucsc-fetchchromsizes
   - ujson<=5.7.0
