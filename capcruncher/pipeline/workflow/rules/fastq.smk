@@ -44,7 +44,7 @@ def get_deduplicated_fastq_pair(wildcards):
     input_dir = checkpoints.deduplication.get(**wildcards).output[0]
 
     fq = {
-        f"fq{read}": f"{input_dir.rstrip('/')}/{wildcards.sample}_part{wildcards.part}_{read}.fastq.gz"
+        f"fq{read}": f"{input_dir.rstrip('/')}/{wildcards.sample}_part{wildcards.part}_{read}.fastq{COMPRESSION_EXT}"
         for read in ["1", "2"]
     }
 
@@ -295,7 +295,8 @@ checkpoint rebalance_partitions_combined:
         {params.prefix} \
         -n \
         {params.n_reads} \
-        --gzip \
+        --compression-method \
+        {COMPRESSION_METHOD} \
         -p \
         {threads} \
         --suffix \
