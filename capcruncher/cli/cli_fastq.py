@@ -46,7 +46,6 @@ class OptionEatAll(click.Option):
         return retval
 
 
-
 @click.group()
 def cli():
     """Contains methods for fastq splitting, deduplicating and digestion."""
@@ -81,7 +80,7 @@ def cli():
     type=click.INT,
 )
 @click.option(
-    "--gzip/--no-gzip", help="Determines if files are gziped or not", default=False
+    "--compression-method", type=click.Choice(["", "gzip", "zstd"]), default=""
 )
 @click.option("-p", "--n_cores", default=1, type=click.INT)
 @click.option(
