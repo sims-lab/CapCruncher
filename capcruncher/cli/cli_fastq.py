@@ -67,12 +67,6 @@ def cli():
     default="split",
 )
 @click.option(
-    "--compression_level",
-    help="Level of compression for output files",
-    default=5,
-    type=click.INT,
-)
-@click.option(
     "-n",
     "--n_reads",
     help="Number of reads per fastq file",

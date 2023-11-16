@@ -32,7 +32,6 @@ def run_unix_split(
     suffix: str = "",
     **kwargs,
 ):
-
     statement = []
 
     if suffix:
@@ -67,7 +66,7 @@ def split(
     method: Literal["python", "unix", "seqkit"] = "unix",
     split_type: Literal["n-reads", "n-parts"] = "n-reads",
     output_prefix: os.PathLike = "split",
-    compression_level: int = 5,
+    compression_method: Literal[None, "gzip", "zstd"] = None,
     n_reads: int = 1000000,
     n_parts: int = 1,
     suffix: str = "",
@@ -119,7 +118,7 @@ def split(
             paired_output=paired,
             n_subprocesses=1,
             gzip=gzip,
-            compression_level=compression_level,
+            compression_level=5,
         )
 
         processes = [writer, reader, *formatter]
@@ -134,7 +133,6 @@ def split(
     elif (
         split_type == "n-reads" and method == "unix"
     ):  # Using unix split to perform the splitting
-
         tasks = []
         n_cores_per_task = (n_cores // 2) if (n_cores // 2) > 1 else 1
 
@@ -146,8 +144,7 @@ def split(
                 fn,
                 n_reads=n_reads,
                 read_number=ii + 1,
-                gzip=gzip,
-                compression_level=compression_level,
+                compression_method=compression_method,
                 output_prefix=output_prefix,
                 n_cores=n_cores_per_task,
                 suffix=suffix,
