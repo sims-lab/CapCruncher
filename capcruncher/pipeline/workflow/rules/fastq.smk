@@ -13,7 +13,7 @@ def get_split_1_parts(wildcards):
     import re
 
     outdir = checkpoints.split.get(**wildcards).output[0]
-    fq_files = pathlib.Path(outdir).glob("*.fastq.gz")
+    fq_files = pathlib.Path(outdir).glob(f"*.fastq{COMPRESSION_EXT}")
     parts = sorted(
         set(
             [
@@ -27,17 +27,10 @@ def get_split_1_parts(wildcards):
     return parts
 
 
-def get_pickles(wc):
-    return expand(
-        "capcruncher_output/interim/fastq/deduplicated/{{sample}}/{{sample}}_{part}.pkl",
-        part=get_split_1_parts(wc),
-    )
-
-
 def get_fastq_split_1(wildcards):
     return {
         f"fq{read}": expand(
-            "capcruncher_output/interim/fastq/split/{{sample}}/{{sample}}_part{part}_{read}.fastq.gz",
+            "capcruncher_output/interim/fastq/split/{{sample}}/{{sample}}_part{part}_{read}.fastq{{COMPRESSION_EXT}}",
             part=get_split_1_parts(wildcards),
             read=[read],
         )
@@ -174,6 +167,7 @@ checkpoint split:
     params:
         prefix="capcruncher_output/interim/fastq/split/{sample}/{sample}",
         n_reads=str(config["split"].get("n_reads", 1e6)),
+        compression_method=COMPRESSION_METHOD,
     log:
         "capcruncher_output/logs/split/{sample}.log",
     shell:
@@ -190,7 +184,8 @@ checkpoint split:
         {params.prefix} \
         -n \
         {params.n_reads} \
-        --gzip \
+        --compression-method \
+        {params.compression_method} \
         -p \
         {threads} \
         > {log} 2>&1
