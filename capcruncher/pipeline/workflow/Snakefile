@@ -20,6 +20,8 @@ snakemake.utils.min_version('7.19.1')
 
 
 configfile: "capcruncher_config.yml"
+
+
 container: "library://asmith151/capcruncher/capcruncher:latest"
 
 
@@ -73,6 +75,7 @@ PERFORM_DIFFERENTIAL_ANALYSIS = (
 PERFORM_PLOTTING = capcruncher.pipeline.utils.can_perform_plotting(config)
 PERFORM_BINNING = capcruncher.pipeline.utils.can_perform_binning(config)
 REGENERATE_FASTQ = config["analysis"].get("regenerate_fastq", False)
+CREATE_UCSC_HUB = config["hub"].get("create", False)
 
 ## Pipeline variables
 ASSAY = config["analysis"]["method"]
@@ -120,7 +123,7 @@ rule all:
             sample=SAMPLE_NAMES,
         ),
         hub=rules.create_ucsc_hub.output[0]
-        if ANALYSIS_METHOD in ["capture", "tri"]
+        if ANALYSIS_METHOD in ["capture", "tri"] and CREATE_UCSC_HUB
         else [],
         differential=expand(
             "capcruncher_output/results/differential/{viewpoint}",
@@ -138,7 +141,9 @@ rule all:
             "capcruncher_output/results/{sample}/{sample}_{read}.fastq.gz",
             sample=SAMPLE_NAMES,
             read=["1", "2"],
-        ) if REGENERATE_FASTQ else [],
+        )
+        if REGENERATE_FASTQ
+        else [],
 
 
 onerror:
