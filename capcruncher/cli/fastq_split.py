@@ -27,7 +27,7 @@ def run_unix_split(
     n_reads: int,
     read_number: int,
     output_prefix: os.PathLike = "",
-    gzip: bool = False,
+    compression_method: Literal[None, "gzip", "zstd"] = None,
     n_cores=1,
     suffix: str = "",
     **kwargs,
@@ -49,8 +49,10 @@ def run_unix_split(
         cmd = cmd.replace("split", "gsplit")
         cmd = cmd.replace("zcat", "gzcat")
 
-    if gzip:
-        cmd = cmd.replace("FILTER", f"--filter='pigz -p {n_cores} > $FILE.gz'")
+    if compression_method == "gzip":
+        cmd = cmd.replace("FILTER", f"--filter='pigz -p{n_cores} > $FILE.gz'")
+    elif compression_method == "zstd":
+        cmd = cmd.replace("FILTER", f"--filter='zstd --fast -T{n_cores} > $FILE.zstd'")
     else:
         cmd = cmd.replace("FILTER", "")
 
@@ -162,9 +164,5 @@ def split(
             part_no = int(
                 re.match(r"(?:.*)_part(\d+)_.*([1|2])?.fastq(.gz)?", fn).group(1)
             )
-            dest = re.sub(r"_part\d+_", f"_part{part_no}_", src)
+            dest = re.sub(r"_part\d+_", f"_part{int(part_no)}_", src)
             os.rename(src, dest)
-
-    # elif split_type ==  "n-reads" and method == "seqkit":
-
-    #     cmd  = ["seqkit", "split2", "-1", input]
