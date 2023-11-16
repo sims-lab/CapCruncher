@@ -20,6 +20,8 @@ snakemake.utils.min_version('7.19.1')
 
 
 configfile: "capcruncher_config.yml"
+
+
 container: "library://asmith151/capcruncher/capcruncher:latest"
 
 
@@ -80,6 +82,13 @@ SAMPLE_NAMES = FASTQ_SAMPLES.sample_names_all
 
 # CLEANUP = "full" if config["analysis"].get("cleanup", False) else "partial"
 CLEANUP = False
+COMPRESSION_METHOD = config['compression']['method']
+COMPRESSION_EXT = {
+    "gzip": ".gz",
+    "bzip2": ".bz2",
+    "lzma": ".lzma",
+    "zstd": ".zst",
+}[COMPRESSION_METHOD]
 
 
 include: "rules/digest.smk"
@@ -138,7 +147,9 @@ rule all:
             "capcruncher_output/results/{sample}/{sample}_{read}.fastq.gz",
             sample=SAMPLE_NAMES,
             read=["1", "2"],
-        ) if REGENERATE_FASTQ else [],
+        )
+        if REGENERATE_FASTQ
+        else [],
 
 
 onerror:

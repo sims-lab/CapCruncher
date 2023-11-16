@@ -44,7 +44,7 @@ analysis:
         {%- for bin in genomic_bin_size %}
         - {{bin}}
         {%- endfor %}
-    
+
     # Determines if the pipeline will generate FASTQ files with the filtered reads. This is useful for running other pipelines
     # such as HiCUP or HiC-Pro or CHiCAGO.
     regenerate_fastq: "{{cookiecutter.regenerate_fastq}}"
@@ -146,6 +146,23 @@ plot:
     # (Optional)
     genes: PATH_TO_GENES_IN_BED12_FORMAT
 
+compare:
+    # Method(s) to summarise replicate reporter counts for between sample comparisons.
+    # These must be provided as a comma or tab separated list of summary functions
+    # Note: The function name must be a numpy function
+    # e.g.  mean,sum,median
+    # (Optional)
+    summary_methods: mean
+
+differential:
+    # Column in the design matrix to use for comparisons.
+    # (Optional)
+    contrast: {{cookiecutter.differential_contrast}}
+
+    # Distance from the viewpoint to use for differential analysis.
+    # (Optional)
+    distance: 100000
+
 
 align:
 
@@ -216,19 +233,7 @@ split:
     # (Optional)
     n_reads: 1000000
 
-compare:
-    # Method(s) to summarise replicate reporter counts for between sample comparisons.
-    # These must be provided as a comma or tab separated list of summary functions
-    # Note: The function name must be a numpy function
-    # e.g.  mean,sum,median
+compression:
+    # Compression method to use for output files. Choose from gzip | zstd or leave blank for no compression.
     # (Optional)
-    summary_methods: mean
-
-differential:
-    # Column in the design matrix to use for comparisons.
-    # (Optional)
-    contrast: {{cookiecutter.differential_contrast}}
-
-    # Distance from the viewpoint to use for differential analysis.
-    # (Optional)
-    distance: 100000
+    method: zstd
