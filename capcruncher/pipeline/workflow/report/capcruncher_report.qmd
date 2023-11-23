@@ -9,6 +9,7 @@ format:
     embed-resources: true
 execute:
   echo: false
+jupyter: python3
 ---
 
 

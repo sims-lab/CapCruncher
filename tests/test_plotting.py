@@ -19,6 +19,15 @@ from capcruncher.api.plotting import (
 )
 
 
+def can_import_coolbox():
+    try:
+        import coolbox.api as cb
+
+        return True
+    except ImportError:
+        return False
+
+
 @pytest.fixture(scope="module")
 def repo_path():
     fn = pathlib.Path(__file__).resolve()
@@ -73,6 +82,11 @@ def bigwig_summary(data_path):
     track = CCTrack(file=file_paths, file_type="bigwig_summary")
     return track
 
+@pytest.fixture
+def arcs(data_path):
+    file_path = data_path / "plotting" / "test.bedpe"
+    return CCTrack(file=str(file_path), file_type="Arcs")
+
 
 @pytest.fixture
 def coordinates():
@@ -82,8 +96,8 @@ def coordinates():
     return f"{chrom}:{start - 1e4: .0f}-{end + 1e4: .0f}"
 
 
-@pytest.mark.skipif()
-def test_plotting(tmpdir, heatmap, bigwig, bigwig_summary, bed, coordinates):
+@pytest.mark.skipif(can_import_coolbox() is False, reason="Coolbox not installed")
+def test_plotting(tmpdir, heatmap, bigwig, bigwig_summary, bed, coordinates, arcs):
     # Create the figure
     fig = CCFigure()
     # Add the matrix
@@ -98,6 +112,9 @@ def test_plotting(tmpdir, heatmap, bigwig, bigwig_summary, bed, coordinates):
     fig.add_track(bed)
     # Add the x-axis
     fig.add_track(CCTrack(None, file_type="xaxis"))
+    # Add a random coolbox track
+    fig.add_track(arcs)
+    
 
     # Save the figure
     fig.save(coordinates, output=tmpdir / "test_plotting.png")

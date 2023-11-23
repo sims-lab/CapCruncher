@@ -42,8 +42,8 @@ try:
         logger.warning(f"Creating empty output directory: {outdir}")
         outdir.mkdir(parents=True, exist_ok=True)
 
-        logger.warning(f"Creating empty stats file: {snakemake.output.stats_read}")
-        pd.DataFrame().to_csv(snakemake.output.stats)
+        logger.warning(f"Creating empty stats file: {snakemake.output.statistics}")
+        pd.DataFrame().to_csv(snakemake.output.statistics)
 
 
 except Exception as e:

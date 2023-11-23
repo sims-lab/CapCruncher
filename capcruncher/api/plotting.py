@@ -718,7 +718,12 @@ class CCTrack:
             case "spacer":
                 return cb.Spacer(**self.properties)
             case _:
-                raise ValueError(
+                if getattr(cb, self.properties.get("type")):
+                    return getattr(cb, self.properties.get("type"))(
+                        self.file, **self.properties)
+                
+                else:
+                    raise ValueError(
                     f"Unknown track type {self.properties.get('type')}, select from: heatmap, bigwig, bigwig_summary, scale, bed, xaxis, genes, spacer"
                 )
 
