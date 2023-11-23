@@ -374,7 +374,7 @@ def regenerate_fastq(
     outpath = pathlib.Path(output_prefix).with_suffix("")
 
     logger.info(f"Extracting reads info from {parquet_file}")
-    with pl.StringCache() as cache:
+    with pl.StringCache():
         read_names = set(
             pl.scan_parquet(parquet_file)
             .select("parent_read")
@@ -405,15 +405,14 @@ def regenerate_fastq(
 @click.option(
     "--viewpoints", help="Path to viewpoints file used for capcruncher", required=True
 )
-@click.option("--outputdir", help="Path to output directory", required=True)
-def make_chicago_maps(fragments, viewpoints, outputdir):
+@click.option("-o", "--outputdir", help="Path to output directory", required=True)
+def make_chicago_maps(fragments: str, viewpoints: str, outputdir: str):
     """
     Restriction map file (.rmap) - a bed file containing coordinates of the restriction fragments. By default, 4 columns: chr, start, end, fragmentID.
     Bait map file (.baitmap) - a bed file containing coordinates of the baited restriction fragments, and their associated annotations. By default, 5 columns: chr, start, end, fragmentID, baitAnnotation. The regions specified in this file, including their fragmentIDs, must be an exact subset of those in the .rmap file. The baitAnnotation is a text field that is used only to annotate the output and plots.
     """
     import pathlib
     import pyranges as pr
-    
 
     # Rename fragments file to suit chicago
     fragments_new = pathlib.Path(outputdir) / (pathlib.Path(fragments).stem + ".rmap")

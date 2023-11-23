@@ -101,7 +101,6 @@ def test_cli_runs(cli_runner):
     ],
 )
 def test_genome_digest(cli_runner, data_pipeline, tmpdir, infile, flags):
-
     infile = os.path.join(data_pipeline, infile)
     outfile = os.path.join(tmpdir, "digested.bed")
     tmp_log = os.path.join(tmpdir, "gd.log")
@@ -126,7 +125,6 @@ def test_genome_digest(cli_runner, data_pipeline, tmpdir, infile, flags):
 def test_deduplicate_fastq(
     cli_runner, data_deduplication, tmpdir, infiles, outfile, flags
 ):
-
     infiles = [os.path.join(data_deduplication, fn) for fn in infiles]
     outfile = os.path.join(tmpdir, outfile)
 
@@ -191,7 +189,6 @@ def test_deduplicate_fastq(
     ],
 )
 def test_fastq_digest(cli_runner, data_digestion, tmpdir, infiles, flags):
-
     infiles = [os.path.join(data_digestion, fn) for fn in infiles]
     outfile = os.path.join(tmpdir, "digested.fastq")
 
@@ -239,7 +236,6 @@ def test_fastq_digest(cli_runner, data_digestion, tmpdir, infiles, flags):
     ],
 )
 def test_alignment_annotation(cli_runner, data_annotation, tmpdir, bam, beds, flags):
-
     bam = os.path.join(data_annotation, bam)
     beds = [os.path.join(data_annotation, bed) for bed in beds]
     blacklist = os.path.join(data_annotation, "test_exlcusions_corrected.bed")
@@ -291,7 +287,6 @@ def test_alignment_annotation(cli_runner, data_annotation, tmpdir, bam, beds, fl
 def test_alignment_filter(
     cli_runner, data_filter, tmpdir, mode, bam, annotations, flags
 ):
-
     bam = os.path.join(data_filter, bam)
     annotations = os.path.join(data_filter, annotations)
     output_prefix = os.path.join(tmpdir, "filtered.parquet")
@@ -337,10 +332,9 @@ def test_alignment_filter(
 def test_interactions_deduplicate(
     cli_runner, data_deduplication_alignments, tmpdir, slices, read_type, output
 ):
-
     slices = os.path.join(data_deduplication_alignments, slices)
     output = os.path.join(tmpdir, output)
-    
+
     """
     slices: os.PathLike,
     output: os.PathLike,
@@ -348,7 +342,6 @@ def test_interactions_deduplicate(
     sample_name: str = "sampleX",
     statistics: os.PathLike = "deduplication_stats.json",
     """
-    
 
     result = cli_runner.invoke(
         cli,
@@ -388,7 +381,6 @@ def test_reporters_count(
     output,
     flags,
 ):
-
     slices = os.path.join(data_deduplication_alignments, slices)
     bins = os.path.join(data_reporters_count, bins)
     viewpoints = os.path.join(data_pipeline, "mm9_capture_viewpoints_Slc25A37.bed")
@@ -431,7 +423,6 @@ def test_reporters_store_binned(
     output,
     flags,
 ):
-
     clr = os.path.join(data_reporters_store, cooler_fn)
     output = os.path.join(tmpdir, output)
 
@@ -508,7 +499,6 @@ def test_reporters_pileup(
     outfile,
     flags,
 ):
-
     clr = os.path.join(data_reporters_store, cooler_fn)
     output = os.path.join(tmpdir, output_prefix)
     outfile = os.path.join(tmpdir, outfile)
@@ -526,3 +516,53 @@ def test_reporters_pileup(
     )
     assert result.exit_code == 0
     assert os.path.exists(outfile)
+
+
+@pytest.fixture
+def fragments_file(tmpdir):
+    fragments = os.path.join(tmpdir, "fragments.bed")
+    with open(fragments, "w") as file:
+        file.write("chr1\t100\t200\tfragment1\n")
+        file.write("chr2\t300\t400\tfragment2\n")
+    return fragments
+
+
+@pytest.fixture
+def viewpoints_file(tmpdir):
+    viewpoints = os.path.join(tmpdir, "viewpoints.bed")
+    with open(viewpoints, "w") as file:
+        file.write("chr1\t150\t160\tviewpoint1\n")
+        file.write("chr2\t350\t360\tviewpoint2\n")
+    return viewpoints
+
+
+def test_make_chicago_maps(cli_runner, tmpdir, fragments_file, viewpoints_file):
+    outputdir = str(tmpdir)
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "utilities",
+            "make-chicago-maps",
+            "--fragments",
+            fragments_file,
+            "--viewpoints",
+            viewpoints_file,
+            "-o",
+            outputdir,
+        ],
+    )
+
+    assert result.exit_code == 0
+
+    # Check if the renamed fragments file exists
+    fragments_new = os.path.join(outputdir, "fragments.rmap")
+    assert os.path.exists(fragments_new)
+
+    # Check if the baitmap file exists and has the correct content
+    baitmap_file = os.path.join(outputdir, "viewpoints.baitmap")
+    assert os.path.exists(baitmap_file)
+
+    with open(baitmap_file, "r") as file:
+        content = file.read()
+        assert "chr1\t100\t200\tfragment1\tviewpoint" in content
