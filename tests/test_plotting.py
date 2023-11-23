@@ -4,18 +4,10 @@ from typing import Any, Dict, List
 from unittest import TestCase
 
 import pytest
-import coolbox.api as cb
-from coolbox.core.track import Track
 
 from capcruncher.api.plotting import (
-    CCBigWig,
-    CCBigWigCollection,
     CCFigure,
-    CCMatrix,
-    CCSimpleBed,
     CCTrack,
-    CCXAxisGenomic,
-    ScaleBar,
 )
 
 
@@ -82,6 +74,7 @@ def bigwig_summary(data_path):
     track = CCTrack(file=file_paths, file_type="bigwig_summary")
     return track
 
+
 @pytest.fixture
 def arcs(data_path):
     file_path = data_path / "plotting" / "test.bedpe"
@@ -91,8 +84,8 @@ def arcs(data_path):
 @pytest.fixture
 def coordinates():
     chrom = "chr14"
-    start = 69902454
-    end = 69903469
+    start = 69878303
+    end = 69946880
     return f"{chrom}:{start - 1e4: .0f}-{end + 1e4: .0f}"
 
 
@@ -114,7 +107,6 @@ def test_plotting(tmpdir, heatmap, bigwig, bigwig_summary, bed, coordinates, arc
     fig.add_track(CCTrack(None, file_type="xaxis"))
     # Add a random coolbox track
     fig.add_track(arcs)
-    
 
     # Save the figure
     fig.save(coordinates, output=tmpdir / "test_plotting.png")
