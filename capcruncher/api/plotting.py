@@ -1,29 +1,31 @@
-import os
+import functools
 import math
+import os
 import pathlib
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+
+import coolbox.api as cb
+import cooler.api as cooler
+import iced
+import matplotlib as mpl
+import matplotlib.colors as colors
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import matplotlib as mpl
-
 import pyranges as pr
-import coolbox.api as cb
-from pybedtools import BedTool
-
+import seaborn as sns
+import tqdm
 from coolbox.api import GenomeRange
-import capcruncher.api as cc
-import cooler.api as cooler
-import matplotlib.colors as colors
-import iced
 from coolbox.core.track import Track
 from coolbox.utilities import get_coverage_stack, get_feature_stack
-from matplotlib import cm, transforms
+from coolbox.utilities.genome import GenomeRange
+from loguru import logger
+from matplotlib import cm, colors, transforms
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Polygon
+from pybedtools import BedTool
 
-from typing import List, Tuple, Union, Optional, Dict, Any, Callable, Literal
-from loguru import logger
+import capcruncher.api as cc
 
 
 class CCMatrix(cb.Cool):
@@ -653,6 +655,270 @@ class CCXAxisGenomic(cb.XAxis):
             ax.axis["x"].set_axis_direction("top")
 
 
+# class CCMatrix(cb.Cool):
+#     def __init__(
+#         self,
+#         file: os.PathLike,
+#         binsize: 5000,
+#         viewpoint: str,
+#         remove_viewpoint=False,
+#         **kwargs,
+#     ):
+#         self.binsize = binsize
+#         self.viewpoint = viewpoint
+#         self.remove_viewpoint = remove_viewpoint
+#         self.properties = dict()
+#         self.properties.update(kwargs)
+#         self.properties["name"] = f"CCMatrix.{self.properties.get('title')}"
+#         super(CCMatrix, self).__init__(file, **kwargs)
+#         # Need to override the coolbox default if we need a cmap to be set
+#         self.properties["color"] = kwargs.get("color", self.properties["color"])
+
+#         # Override the defaults
+#         self.properties["balance"] = "no"
+
+#         if not self._cooler_store_has_binsize:
+#             raise ValueError(
+#                 f"Viewpoint {viewpoint} or resolution {binsize} not found in supplied file."
+#             )
+
+#         self.cooler = cooler.Cooler(f"{file}::{viewpoint}/resolutions/{binsize}")
+#         self.capture_bins = self.cooler.info["metadata"]["viewpoint_bins"]
+
+#     def _cooler_store_has_binsize(self):
+#         clrs = cooler.fileops.list_coolers(self.file)
+#         expected_path = f"{self.viewpoint}/resolutions/{self.binsize}"
+
+#         if expected_path in clrs:
+#             return True
+
+#     def get_matrix(self, coordinates, field="count"):
+#         matrix = self.cooler.matrix(field=field, balance=False).fetch(coordinates)
+
+#         offset = self.cooler.offset(coordinates)
+#         capture_bins = [(bin - offset) for bin in self.capture_bins]
+
+#         if self.remove_viewpoint:
+#             matrix[capture_bins, :] = 0
+#             matrix[:, capture_bins] = 0
+
+#         return matrix
+
+#     def get_matrix_normalised(
+#         self, coordinates, normalization_method=None, **normalisation_kwargs
+#     ):
+#         methods_stored = {
+#             "n_interactions": "count_n_interactions_norm",
+#             "n_rf_n_interactions": "count_n_rf_n_interactions_norm",
+#         }
+
+#         if normalization_method == "raw":
+#             matrix_normalised = self.get_matrix(coordinates)
+
+#         elif normalization_method in methods_stored:
+#             matrix_normalised = self.get_matrix(
+#                 coordinates, field=methods_stored[normalization_method]
+#             )
+
+#         elif normalization_method == "ice":
+#             matrix = self.get_matrix(coordinates)
+#             matrix = np.nan_to_num(matrix)
+#             # matrix = iced.filter.filter_low_counts(matrix, percentage=0.04)
+#             matrix_normalised = iced.normalization.ICE_normalization(
+#                 matrix, **normalisation_kwargs
+#             )  # Get iced matrix
+
+#         elif normalization_method == "icen_cis":
+#             matrix = self.get_matrix(coordinates)
+#             matrix = np.nan_to_num(matrix)
+#             matrix_ice = iced.normalization.ICE_normalization(
+#                 matrix, **normalisation_kwargs
+#             )  # Get iced matrix
+#             matrix_normalised = (
+#                 matrix_ice
+#                 / int(self.cooler.info["metadata"]["n_cis_interactions"])
+#                 * 1e6
+#             )  # Correct for number of interactions * 1e6
+
+#         elif normalization_method == "icen_scale":
+#             matrix = self.get_matrix(coordinates)
+#             matrix = np.nan_to_num(matrix)
+#             matrix_ice = iced.normalization.ICE_normalization(
+#                 matrix, **normalisation_kwargs
+#             )  # Get iced matrix
+#             matrix_normalised = matrix_ice / self.properties["scaling_factor"]
+
+#         else:
+#             raise ValueError(
+#                 f'Incorrect normalisation specified choose from: {" ".join(["raw", *methods_stored.keys(),"ice"])}'
+#             )
+
+#         return matrix_normalised
+
+#     def fetch_data(
+#         self, gr: cb.GenomeRange, gr2: cb.GenomeRange = None, **kwargs
+#     ) -> np.ndarray:
+#         norm = self.properties.get("normalization", "raw")
+#         matrix = self.get_matrix_normalised(
+#             f"{gr.chrom}:{gr.start}-{gr.end}", normalization_method=norm, **kwargs
+#         )
+#         return self.fill_zero_nan(matrix)
+
+#     def plot_matrix(self, gr: GenomeRange, gr2: GenomeRange = None):
+#         # Code taken and adapted from coolbox
+#         gr = GenomeRange(gr)
+
+#         if "JuiceBox" in self.properties["color"]:
+#             cmap = CCMatrix.get_juicebox_cmaps()[self.properties["color"]]
+#         else:
+#             cmap = cm.get_cmap(self.properties["color"])
+
+#         lowest = cmap(0)
+#         cmap.set_bad(lowest)
+#         cmap.set_under(lowest)
+
+#         ax = self.ax
+#         arr = self.matrix
+#         c_min, c_max = self.matrix_val_range
+
+#         if self.properties["max_value"] == "auto":
+#             matrix_triu = np.triu(self.matrix)
+#             c_max = np.percentile(matrix_triu, 98)
+
+#         if gr2 is None and self.style == self.STYLE_TRIANGULAR:
+#             # triangular style
+#             scale_r = 1 / math.sqrt(2)
+#             r_len = gr.end - gr.start
+#             # Rotate image using Affine2D, reference:
+#             #     https://stackoverflow.com/a/50920567/8500469
+
+#             tr = (
+#                 transforms.Affine2D()
+#                 .translate(-gr.start, -gr.start)
+#                 .rotate_deg_around(0, 0, 45)
+#                 .scale(scale_r)
+#                 .translate(gr.start + r_len / 2, -r_len / 2)
+#             )
+
+#             img = ax.matshow(
+#                 arr,
+#                 cmap=cmap,
+#                 transform=tr + ax.transData,
+#                 extent=(gr.start, gr.end, gr.start, gr.end),
+#                 aspect="auto",
+#                 interpolation="none",
+#             )
+
+#         elif gr2 is None and self.style == self.STYLE_WINDOW:
+#             # window style
+#             # exist in HicMatBase
+#             fgr = self.fetched_gr
+#             scale_factor = fgr.length / gr.length
+#             scale_r = scale_factor / math.sqrt(2)
+#             length_dialog = gr.length * scale_factor
+#             delta_x = length_dialog * (gr.start - fgr.start) / fgr.length
+#             delta_x = length_dialog / 2 - delta_x
+#             tr = (
+#                 transforms.Affine2D()
+#                 .translate(-gr.start, -gr.start)
+#                 .rotate_deg_around(0, 0, 45)
+#                 .scale(scale_r)
+#                 .translate(gr.start + delta_x, -fgr.length / 2)
+#             )
+#             img = ax.matshow(
+#                 arr,
+#                 cmap=cmap,
+#                 transform=tr + ax.transData,
+#                 extent=(gr.start, gr.end, gr.start, gr.end),
+#                 aspect="auto",
+#             )
+#         else:
+#             if gr2 is None:
+#                 gr2 = gr
+#             # matrix style
+#             img = ax.matshow(
+#                 arr,
+#                 cmap=cmap,
+#                 extent=(gr.start, gr.end, gr2.end, gr2.start),
+#                 aspect="auto",
+#             )
+
+#         if self.norm == "log":
+#             img.set_norm(colors.LogNorm(vmin=c_min, vmax=c_max))
+#         else:
+#             img.set_norm(colors.Normalize(vmin=c_min, vmax=c_max))
+
+#         return img
+
+#     @staticmethod
+#     def get_juicebox_cmaps():
+#         JuiceBoxLikeColor = LinearSegmentedColormap.from_list(
+#             "interaction", ["#FFFFFF", "#FFDFDF", "#FF7575", "#FF2626", "#F70000"]
+#         )
+#         JuiceBoxLikeColor.set_bad("white")
+#         JuiceBoxLikeColor.set_under("white")
+#         JuiceBoxLikeColor2 = LinearSegmentedColormap.from_list(
+#             "interaction", ["#FFFFFF", "#FFDFAF", "#FF7555", "#FF2600", "#F70000"]
+#         )
+#         JuiceBoxLikeColor2.set_bad("white")
+#         JuiceBoxLikeColor2.set_under("white")
+
+#         return {
+#             "JuiceBoxLike": JuiceBoxLikeColor,
+#             "JuiceBoxLike2": JuiceBoxLikeColor2,
+#         }
+
+
+class CCAverageMatrix(CCMatrix):
+    def __init__(
+        self,
+        matricies: List[CCMatrix],
+        aggregation: Literal["sum", "mean", "median"] = "mean",
+        **kwargs,
+    ):
+        self.matricies = matricies
+        self.aggregation = aggregation
+        self.properties = matricies[0].properties
+        self.properties.update(kwargs)
+        self.properties["name"] = f"CCMatrix.{self.properties.get('title')}"
+
+        # Need to override the coolbox default if we need a cmap to be set
+        self.properties["color"] = kwargs.get("color", self.properties["color"])
+
+        # Override the defaults
+        self.properties["balance"] = "no"
+
+    @functools.cache
+    def fetch_data(self, gr: cb.GenomeRange, gr2=None, **kwargs):
+        data = []
+        for matrix in tqdm.tqdm(self.matricies):
+            data.append(matrix.fetch_data(gr, **kwargs))
+
+        try:
+            func_agg = getattr(np, self.aggregation)
+        except AttributeError:
+            raise ValueError(
+                f"Aggregation function {self.aggregation} not found in numpy"
+            )
+
+        # Aggregate the list of matricies into a single matrix
+        data = func_agg(data, axis=0)
+
+        self.fetched_gr = gr
+        self.fetched_gr2 = gr2
+        return data
+
+    def plot(self, ax, gr: GenomeRange, **kwargs):
+        self.ax = ax
+        # fetch processed plot_data
+        self.matrix = self.fetch_data(gr)
+        # plot matrix
+        img = self.plot_matrix(gr, kwargs.get('gr2'))
+        self.adjust_figure(gr, kwargs.get('gr2'))
+        self.draw_colorbar(img)
+        self.plot_label()
+
+
 class CCTrack:
     """
     Provides a wrapper around tracks to provide a consistent interface
@@ -668,6 +934,7 @@ class CCTrack:
         file,
         file_type: Literal[
             "heatmap",
+            "heatmap_summary",
             "bigwig",
             "bigwig_summary",
             "scale",
@@ -698,6 +965,16 @@ class CCTrack:
                     "binsize" in self.properties
                 ), "Binsize must be specified for heatmap track (e.g. binsize=5000)"
                 return CCMatrix(self.file, **self.properties)
+            case "heatmap_summary":
+                assert (
+                    "binsize" in self.properties
+                ), "Binsize must be specified for heatmap track (e.g. binsize=5000)"
+
+                matricies = []
+                for matrix in self.file:
+                    matricies.append(CCMatrix(matrix, **self.properties))
+
+                return CCAverageMatrix(matricies, **self.properties)
             case "bigwig":
                 if self.properties.get("overlay"):
                     return cb.BigWigCoverage(self.file, **self.properties)
@@ -720,12 +997,13 @@ class CCTrack:
             case _:
                 if getattr(cb, self.properties.get("type")):
                     return getattr(cb, self.properties.get("type"))(
-                        self.file, **self.properties)
-                
+                        self.file, **self.properties
+                    )
+
                 else:
                     raise ValueError(
-                    f"Unknown track type {self.properties.get('type')}, select from: heatmap, bigwig, bigwig_summary, scale, bed, xaxis, genes, spacer"
-                )
+                        f"Unknown track type {self.properties.get('type')}, select from: heatmap, bigwig, bigwig_summary, scale, bed, xaxis, genes, spacer"
+                    )
 
 
 class CCFigure:
@@ -741,7 +1019,6 @@ class CCFigure:
     def __init__(
         self, tracks: List[CCTrack] = None, auto_spacing: bool = False, **kwargs
     ) -> None:
-
         self.frame = cb.Frame()
         self.auto_spacing = auto_spacing
         self.properties = dict()
@@ -878,6 +1155,14 @@ class CCFigure:
 
         config = dict()
         for track in self.tracks:
+
+            # Ensure file names are strings and are absolute paths
+            if isinstance(track.file, pathlib.Path):
+                track.file = str(track.file.resolve())
+            elif isinstance(track.file, str):
+                track.file = str(pathlib.Path(track.file).resolve())
+
+            # Perform conversions for file-less tracks
             if track.properties.get("type") in ["spacer", "scale", "xaxis"]:
                 track_type = track.properties.get("type")
                 n = config.get(track_type, 0)
