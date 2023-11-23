@@ -371,7 +371,6 @@ def get_files_to_plot(
     sample_names: List[str],
     summary_methods: List[str],
     compare_samples: bool = False,
-    aggregate_samples: bool = False,
 ):
     files = {
         "bigwigs": [],
@@ -405,11 +404,6 @@ def get_files_to_plot(
         "capcruncher_output/results/{sample}/bigwigs/norm/{sample}_{{viewpoint}}.bigWig",
         sample=sample_names,
     )
-
-    # if AGGREGATE_SAMPLES:
-    #     files["bigwigs_collection"].extend(bigwigs)
-    # else:
-    #     files["bigwigs"].extend(bigwigs)
 
     files["bigwigs"].extend(bigwigs)
 

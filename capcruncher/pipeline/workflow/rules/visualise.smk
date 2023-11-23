@@ -69,7 +69,7 @@ rule plot:
     input:
         unpack(
             lambda wc: capcruncher.pipeline.utils.get_files_to_plot(
-                wc, DESIGN, ASSAY, SAMPLE_NAMES, SUMMARY_METHODS
+                wc, DESIGN, ASSAY, SAMPLE_NAMES, SUMMARY_METHODS, COMPARE_SAMPLES
             )
         ),
         viewpoints=config["analysis"]["viewpoints"],
