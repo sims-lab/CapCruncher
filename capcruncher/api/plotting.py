@@ -911,7 +911,7 @@ class CCAverageMatrix(CCMatrix):
     def plot(self, ax, gr: GenomeRange, **kwargs):
         self.ax = ax
         # fetch processed plot_data
-        self.matrix = self.fetch_data(gr)
+        self.matrix = self.fetch_data(gr, **kwargs)
         # plot matrix
         img = self.plot_matrix(gr, kwargs.get('gr2'))
         self.adjust_figure(gr, kwargs.get('gr2'))
@@ -1004,6 +1004,13 @@ class CCTrack:
                     raise ValueError(
                         f"Unknown track type {self.properties.get('type')}, select from: heatmap, bigwig, bigwig_summary, scale, bed, xaxis, genes, spacer"
                     )
+
+    @property
+    def path(self) -> str:
+        if isinstance(self.file, (list, tuple, np.ndarray)):
+            return [str(pathlib.Path(f).resolve()) for f in self.file]
+        else:
+            return str(pathlib.Path(self.file).resolve())
 
 
 class CCFigure:
@@ -1152,16 +1159,10 @@ class CCFigure:
         """
 
         import toml
+        from collections import OrderedDict
 
-        config = dict()
+        config = OrderedDict()
         for track in self.tracks:
-
-            # Ensure file names are strings and are absolute paths
-            if isinstance(track.file, pathlib.Path):
-                track.file = str(track.file.resolve())
-            elif isinstance(track.file, str):
-                track.file = str(pathlib.Path(track.file).resolve())
-
             # Perform conversions for file-less tracks
             if track.properties.get("type") in ["spacer", "scale", "xaxis"]:
                 track_type = track.properties.get("type")
@@ -1172,10 +1173,10 @@ class CCFigure:
                 track_type = track.properties.get("type")
                 n = config.get(track_type, 0)
                 config[f"{track_type} {n}"] = track.properties
-                config[f"{track_type} {n}"]["file"] = track.file
+                config[f"{track_type} {n}"]["file"] = track.path
             else:
                 config[track.properties["title"]] = track.properties
-                config[track.properties["title"]]["file"] = track.file
+                config[track.properties["title"]]["file"] = track.path
 
         if output:
             with open(output, "w") as f:
