@@ -913,8 +913,8 @@ class CCAverageMatrix(CCMatrix):
         # fetch processed plot_data
         self.matrix = self.fetch_data(gr, **kwargs)
         # plot matrix
-        img = self.plot_matrix(gr, kwargs.get('gr2'))
-        self.adjust_figure(gr, kwargs.get('gr2'))
+        img = self.plot_matrix(gr, kwargs.get("gr2"))
+        self.adjust_figure(gr, kwargs.get("gr2"))
         self.draw_colorbar(img)
         self.plot_label()
 
@@ -1011,6 +1011,9 @@ class CCTrack:
             return [str(pathlib.Path(f).resolve()) for f in self.file]
         else:
             return str(pathlib.Path(self.file).resolve())
+
+    def __repr__(self) -> str:
+        return f"CCTrack({self.properties.get('title')}, {self.properties.get('type')})"
 
 
 class CCFigure:
@@ -1161,28 +1164,30 @@ class CCFigure:
         import toml
         from collections import OrderedDict
 
+        def _get_n_tracks_of_type(config: Dict[str, Dict], track_type: str):
+            return sum(1 for t in config.keys() if track_type in t)
+
         config = OrderedDict()
         for track in self.tracks:
             # Perform conversions for file-less tracks
             if track.properties.get("type") in ["spacer", "scale", "xaxis"]:
                 track_type = track.properties.get("type")
-                n = config.get(track_type, 0)
+                n = _get_n_tracks_of_type(config, track_type)
                 config[f"{track_type} {n}"] = track.properties
                 config[f"{track_type} {n}"]["file"] = None
             elif track.properties.get("type") == "genes":
                 track_type = track.properties.get("type")
-                n = config.get(track_type, 0)
+                n = _get_n_tracks_of_type(config, track_type)
                 config[f"{track_type} {n}"] = track.properties
                 config[f"{track_type} {n}"]["file"] = track.path
             else:
                 config[track.properties["title"]] = track.properties
                 config[track.properties["title"]]["file"] = track.path
 
-        if output:
-            with open(output, "w") as f:
-                toml.dump(config, f)
-        else:
-            with open("config.toml", "w") as f:
-                toml.dump(config, f)
+        outfile = output if output else "config.toml"
 
-            return config
+        with open(outfile, "w") as f:
+            config_str = toml.dumps(config)
+            f.write(config_str)
+
+        return config
