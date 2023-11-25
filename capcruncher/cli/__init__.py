@@ -76,11 +76,31 @@ def interactions():
     """Reporter counting, storing, comparison and pileups"""
 
 
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_plot:cli")
-def plot():
+@cli.command()
+@click.option(
+    "-r", "--region", required=True, help="Genomic coordinates of the region to plot"
+)
+@click.option(
+    "-t",
+    "--template",
+    required=True,
+    help="TOML file containing the template for the plot",
+)
+@click.option(
+    "-o",
+    "--output",
+    default="capcruncher_plot.png",
+    help="Output file path. The file extension determines the output format.",
+)
+def plot(*args, **kwargs):
     """
     Generates plots for the outputs produced by CapCruncher
     """
+    from capcruncher.api.plotting import CCFigure
+
+    CCFigure.from_toml(kwargs["template"]).save(
+        kwargs["region"], output=kwargs["output"]
+    )
 
 
 @cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_utilities:cli")
