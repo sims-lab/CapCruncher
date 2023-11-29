@@ -5,25 +5,19 @@ import capcruncher.pipeline.utils
 
 rule fastqc:
     input:
-        fq="capcruncher_output/interim/fastq/{sample}_{read}.fastq.gz",
+        "capcruncher_output/interim/fastq/{sample}_{read}.fastq.gz",
     output:
-        qc="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
+        html="capcruncher_output/interim/qc/fastqc/{sample}_{read}.html",
+        zip="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.zip",  # the suffix _fastqc.zip is necessary for multiqc to find the file. If not using multiqc, you are free to choose an arbitrary filename
     params:
-        outdir=lambda wc, output: str(pathlib.Path(output.qc).parent),
-        tmpdir="capcruncher_output/interim/qc/fastqc/{sample}_{read}",
+        extra="--quiet",
+    log:
+        "capcruncher_output/logs/fastqc/{sample}_{read}.log",
     threads: 1
     resources:
         mem_mb=1024,
-    log:
-        "capcruncher_output/logs/fastqc/{sample}_{read}.log",
-    shell:
-        """
-        mkdir -p {params.tmpdir} &&
-        fastqc -o {params.tmpdir} {input.fq} -t {threads} > {log} 2>&1 &&
-        mv {params.tmpdir}/{wildcards.sample}_{wildcards.read}_fastqc.html {output.qc} &&
-        mv {params.tmpdir}/{wildcards.sample}_{wildcards.read}_fastqc.zip {params.outdir}/{wildcards.sample}_{wildcards.read}_fastqc.zip &&
-        rm -r {params.tmpdir}
-        """
+    wrapper:
+        "v3.0.1/bio/fastqc"
 
 
 rule samtools_stats:
@@ -42,7 +36,7 @@ rule samtools_stats:
 rule multiqc_report:
     input:
         expand(
-            "capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
+            "capcruncher_output/interim/qc/fastqc/{sample}_{read}.html",
             sample=SAMPLE_NAMES,
             read=[1, 2],
         ),
