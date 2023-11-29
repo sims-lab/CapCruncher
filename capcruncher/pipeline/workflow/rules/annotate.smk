@@ -17,6 +17,7 @@ rule exclusions:
         bedtools subtract -a - -b  {input.viewpoints} > {output.exclusions}
         """
 
+
 rule annotate:
     input:
         bam=rules.align_bowtie2.output.bam,
@@ -36,7 +37,7 @@ rule annotate:
         prioritize_cis_slices="--prioritize-cis-slices"
         if config["analysis_optional"].get("prioritize_cis_slices", "")
         else "",
-    threads: 8,
+    threads: 1
     resources:
         mem_mb=lambda wildcards, attempt: 4000 * 2**attempt,
     log:
