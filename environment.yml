@@ -32,6 +32,7 @@ dependencies:
   - python-xxhash>=3.4.1
   - python>=3.10,<=3.11
   - quarto
+  - ray-default>=2.6.0,2.8.0
   - samtools<=1.15.1
   - seaborn<=0.12.2
   - setuptools>50.1.0,<=65.0.1
