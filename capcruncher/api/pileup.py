@@ -159,7 +159,7 @@ class CoolerBedGraph:
 
         if not normalisation == "raw":
             logger.info("Normalising bedgraph")
-            self.normalise_bedgraph(df_bdg, method=normalisation, **norm_kwargs)
+            self._normalise_bedgraph(df_bdg, method=normalisation, **norm_kwargs)
 
         return df_bdg
 
@@ -177,7 +177,7 @@ class CoolerBedGraph:
             self._reporters = self._get_reporters()
             return self._reporters
 
-    def normalise_bedgraph(
+    def _normalise_bedgraph(
         self, bedgraph, scale_factor=1e6, method: str = "n_cis", region: str = None
     ) -> pd.DataFrame:
         """Normalises the bedgraph (in place).
@@ -226,12 +226,14 @@ class CoolerBedGraph:
         total_counts_in_region = df_counts_in_regions["count"].sum()
 
         bedgraph["count"] = (bedgraph["count"] / total_counts_in_region) * scale_factor
-    
-    def to_pyranges(self, normalisation: Literal["raw", "n_cis", "region"] = "raw", **norm_kwargs):
+
+    def to_pyranges(
+        self, normalisation: Literal["raw", "n_cis", "region"] = "raw", **norm_kwargs
+    ):
         return pr.PyRanges(
-            self.extract_bedgraph(normalisation=normalisation, norm_kwargs=norm_kwargs).rename(
-                columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
-            )
+            self.extract_bedgraph(
+                normalisation=normalisation, norm_kwargs=norm_kwargs
+            ).rename(columns={"chrom": "Chromosome", "start": "Start", "end": "End"})
         )
 
 
@@ -276,7 +278,7 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
 
         return bedgraph_bins
 
-    def normalise_bedgraph(self, bedgraph, scale_factor=1e6):
+    def _normalise_bedgraph(self, bedgraph, scale_factor=1e6):
         bct = self.binner.bin_conversion_table
         reporters = self.reporters
 
