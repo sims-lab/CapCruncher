@@ -26,7 +26,7 @@ snakemake<=7.32.4
 tqdm<=4.65.0
 trackhub<=0.2.4
 tracknado
-ujson<=5.7.0
+ujson<=5.8.0
 xopen
 snakemake_wrapper_utils
 xxhash<=3.4.1
