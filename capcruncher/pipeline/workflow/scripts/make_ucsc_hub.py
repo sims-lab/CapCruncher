@@ -60,9 +60,10 @@ df = pd.concat([df_bw, df_bw_summary, df_bw_compared], axis=0)
 design = tracknado.TrackDesign.from_design(
     df,
     color_by=snakemake.params.color_by,
-    subgroup_by=["sample", "viewpoint", "normalisation", "aggregation"],
+    subgroup_by=["sample", "viewpoint", "aggregation"],
     supergroup_by=[
         "category",
+        "normalisation",
     ],
     overlay_by=[
         "sample",
