@@ -5,7 +5,7 @@ cooler<=0.9.2
 duckdb<=0.9.1
 grpcio >= 1.54.2
 h5py
-ibis-framework[duckdb]>6.1.0,<=7.0.0
+ibis-framework[duckdb]>6.1.0,<=8.0.0
 loguru<=0.7.2
 more-itertools
 numpy<=1.23
