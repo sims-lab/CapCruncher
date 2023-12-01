@@ -67,7 +67,19 @@ def format_config_dict(config: Dict) -> Dict:
 
     """
     for key, value in config.items():
-        config[key] = convert_empty_yaml_entry_to_string(value)
+        if isinstance(value, dict):
+            config[key] = format_config_dict(value)
+        else:
+            entry = convert_empty_yaml_entry_to_string(value)
+
+            if is_on(entry):
+                config[key] = True
+            elif is_off(entry):
+                config[key] = False
+            elif is_none(entry):
+                config[key] = False
+            else:
+                config[key] = entry
 
     return config
 

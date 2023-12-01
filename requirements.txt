@@ -28,4 +28,5 @@ trackhub<=0.2.4
 tracknado
 ujson<=5.7.0
 xopen
+snakemake_wrapper_utils
 xxhash<=3.4.1
