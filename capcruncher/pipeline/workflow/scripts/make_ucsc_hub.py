@@ -17,9 +17,9 @@ df_bw = pd.DataFrame(
 )
 
 df_bw["basename"] = df_bw["fn"].apply(lambda p: p.name)
-df_bw["normalisation"] = df_bw["fn"].apply(lambda p: p.parent)
+df_bw["normalisation"] = df_bw["fn"].apply(lambda p: p.parent.stem)
 df_bw[["sample", "viewpoint"]] = df_bw["basename"].str.extract(
-    "(?P<sample>.*?)_(?P<viewpoint>.*?).bigWig"
+    "(?P<sample>.*)_(?P<viewpoint>.*?).bigWig"
 )
 df_bw["category"] = "Replicates"
 
