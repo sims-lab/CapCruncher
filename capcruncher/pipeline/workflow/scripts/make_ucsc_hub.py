@@ -10,6 +10,8 @@ from loguru import logger
 import trackhub
 import tracknado
 
+
+logger.info("Getting data for Replicate tracks")
 # Single bigwigs
 df_bw = pd.DataFrame(
     [pathlib.Path(p) for p in snakemake.input.bigwigs],
@@ -23,6 +25,8 @@ df_bw[["sample", "viewpoint"]] = df_bw["basename"].str.extract(
 )
 df_bw["category"] = "Replicates"
 
+
+logger.info("Getting data for Summary tracks")
 # Summarised bigwigs
 df_bw_summary = pd.DataFrame(
     [pathlib.Path(p) for p in snakemake.input.bigwigs_summary],
@@ -32,10 +36,11 @@ df_bw_summary["basename"] = df_bw_summary["fn"].apply(lambda p: p.name)
 df_bw_summary["normalisation"] = "norm"
 df_bw_summary[["sample", "aggregation", "viewpoint"]] = df_bw_summary[
     "basename"
-].str.extract("(?P<sample>.*?)\.(?P<method>.*?)(?P<viewpoint>.*?).bigWig")
+].str.extract(r"(?P<sample>.*)\.(?P<method>.*)\.(?P<viewpoint>.*).bigWig")
 df_bw_summary["category"] = "Aggregated"
 
 # Compared bigwigs
+logger.info("Getting data for Comparison tracks")
 df_bw_compared = pd.DataFrame(
     [pathlib.Path(p) for p in snakemake.input.bigwigs_comparison],
     columns=["fn"],
@@ -47,6 +52,7 @@ df_bw_compared[["sample", "aggregation", "viewpoint"]] = df_bw_compared[
 ].str.extract("(.*?)\.(.*?)-subtraction\.(.*?).bigWig")
 df_bw_compared["category"] = "Subtraction"
 
+
 # Combine dataframes
 df = pd.concat([df_bw, df_bw_summary, df_bw_compared], axis=0)
 
@@ -54,7 +60,7 @@ df = pd.concat([df_bw, df_bw_summary, df_bw_compared], axis=0)
 design = tracknado.TrackDesign.from_design(
     df,
     color_by=snakemake.params.color_by,
-    subgroup_by=["sample", "viewpoint", "aggregation"],
+    subgroup_by=["sample", "viewpoint", "normalisation", "aggregation"],
     supergroup_by=[
         "category",
     ],
