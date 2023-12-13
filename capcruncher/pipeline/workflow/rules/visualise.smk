@@ -89,7 +89,7 @@ rule plot:
         comparison=f"[A-Za-z0-9_\.]+-[A-Za-z0-9_\.]+",
         group=f"[A-Za-z0-9_\.]+",
     log:
-        "logs/plot/{viewpoint}.log",
+        "capcruncher_output/logs/plot/{viewpoint}.log",
     threads: 1
     script:
         "../scripts/plot.py"
