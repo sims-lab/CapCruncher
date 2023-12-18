@@ -160,7 +160,7 @@ rule cis_and_trans_stats:
         sample_name=lambda wildcards, output: wildcards.sample,
         analysis_method=config["analysis"]["method"],
     resources:
-        mem_mb=3000,
+        mem_mb=lambda wc, attempt: 3000 * 2**attempt,
     log:
         "capcruncher_output/logs/cis_and_trans_stats/{sample}.log",
     shell:
