@@ -16,8 +16,8 @@ plotly>5.0.0,<=5.18.0
 pyarrow>11.0.0,<14.0.0
 pybedtools<=0.9.0
 polars<=0.19.15
+pyranges<=0.0.129
 pydantic>2.4.0,<2.6.0
-pyranges<=0.0.127
 pysam>0.15.0,<=0.21.0
 quarto
 ray>=2.8.0
