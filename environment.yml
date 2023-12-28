@@ -4,20 +4,21 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - cxx-compiler
-  - git
   - bedtools<=2.31.0
   - bowtie2>=2.4.4
+  - cxx-compiler
   - fastqc<=0.12.1
   - flash<=1.2.11
+  - git
   - iced<=0.5.10
+  - jupyterlab
+  - pairix
+  - pip
+  - quarto
   - samtools<=1.15.1
   - trim-galore<=0.6.10
   - ucsc-bedgraphtobigwig
   - ucsc-bedtobigbed
-  - jupyterlab
-  - quarto
-  - pip
   - pip:
     - "pydantic>2.5"
     - "ray[default] @ https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-3.0.0.dev0-cp310-cp310-manylinux2014_x86_64.whl"
