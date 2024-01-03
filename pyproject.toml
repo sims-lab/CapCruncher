@@ -19,14 +19,14 @@ dynamic = ["version", "dependencies"]
 include = ["capcruncher", "capcruncher.*"]
 
 [tool.setuptools.dynamic]
-dependencies = { file = ["requirements.txt"] }
+dependencies = { file = ["requirements-minimal.txt"] }
 
 [tool.setuptools_scm]
 local_scheme = "no-local-version"
 write_to = "capcruncher/_version.py"
 
 [project.optional-dependencies]
-full = { file = ["requirements-full.txt"] }
+full = { file = ["requirements.txt"] }
 
 [project.scripts]
 capcruncher = "capcruncher.cli:cli"
