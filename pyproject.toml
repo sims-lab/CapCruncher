@@ -12,7 +12,7 @@ description = "An end-to-end solution for processing Capture-C, Tri-C and Tiled-
 license = { file = "LICENSE" }
 readme = "README.md"
 requires-python = ">=3.10"
-dynamic = ["version", "dependencies"]
+dynamic = ["version", "dependencies", "optional-dependencies"]
 
 
 [tool.setuptools.packages.find]
@@ -25,7 +25,7 @@ dependencies = { file = ["requirements-minimal.txt"] }
 local_scheme = "no-local-version"
 write_to = "capcruncher/_version.py"
 
-[project.optional-dependencies]
+[tool.setuptools.dynamic.optional-dependencies]
 full = { file = ["requirements.txt"] }
 
 [project.scripts]
