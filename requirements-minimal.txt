@@ -8,3 +8,6 @@ pandas<=2.1.2
 pyranges<=0.0.129
 snakemake_wrapper_utils
 snakemake<=7.32.4
+pybedtools
+polars
+pyarrow
