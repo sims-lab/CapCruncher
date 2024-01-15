@@ -80,14 +80,14 @@ jobs:
       - name: Install the package
         shell: bash -el {0}
         run: |
-          pip install .[full]
+          pip install .[full] --no-deps
 
       - name: Test with pytest and generate report
         shell: bash -el {0}
         run: |
           pip install pytest-cov pytest-lazy-fixture pytest-order pytest-xdist
           pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 2
-      
+
       - name: Archive production artifacts
         uses: actions/upload-artifact@v3
         with:
