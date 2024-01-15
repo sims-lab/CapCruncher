@@ -30,6 +30,6 @@ jobs:
       - name: Install the package
         shell: bash -el {0}
         run: |
-          pip install .[stats,plotting,experimental]
+          pip install .[full]
       - run: pip install mkdocs-material mkdocstrings-python mkdocs-click pygments mkdocs-gen-files mkdocs-jupyter mkdocs-autorefs mkdocs-literate-nav mkdocs-section-index
       - run: mkdocs gh-deploy --force
