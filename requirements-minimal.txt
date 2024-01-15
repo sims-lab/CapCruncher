@@ -5,9 +5,10 @@ loguru<=0.7.2
 more-itertools
 numpy<=1.23
 pandas<=2.1.2
+polars
+PuLP<2.8.0
+pyarrow
+pybedtools
 pyranges<=0.0.129
 snakemake_wrapper_utils
 snakemake<=7.32.4
-pybedtools
-polars
-pyarrow
