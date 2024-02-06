@@ -79,7 +79,7 @@ jobs:
       - name: Install the package
         shell: bash -el {0}
         run: |
-          pip install .[full] --no-deps
+          pip install .[full]
 
       - name: Test with pytest and generate report
         shell: bash -el {0}
