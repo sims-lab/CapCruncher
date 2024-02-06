@@ -3,7 +3,7 @@ click<=8.2.0
 cookiecutter<=2.1.1
 loguru<=0.7.2
 more-itertools
-numpy<=1.23
+numpy<=1.26.4
 pandas<=2.1.2
 PuLP<2.8.0
 pyranges<=0.0.129
