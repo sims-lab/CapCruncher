@@ -31,6 +31,7 @@ seaborn<=0.12.2
 tqdm<=4.65.0
 trackhub<=0.2.4
 tracknado
+toml
 ujson<=5.7.0
 xopen
 xxhash<=3.4.1
