@@ -84,7 +84,7 @@ jobs:
       - name: Test with pytest and generate report
         shell: bash -el {0}
         run: |
-          pip install pytest-cov pytest-order pytest-xdist
+          pip install pytest-cov pytest-order pytest-xdist git+https://github.com/alsmith151/CoolBox.git
           pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 4
 
       - name: Upload Coverage to Codecov
