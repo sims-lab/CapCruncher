@@ -85,7 +85,7 @@ jobs:
         shell: bash -el {0}
         run: |
           pip install pytest-cov pytest-order pytest-xdist
-          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 2
+          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 4
 
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v3
