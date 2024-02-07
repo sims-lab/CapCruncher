@@ -79,16 +79,16 @@ jobs:
       - name: Install the package
         shell: bash -el {0}
         run: |
-          pip install .[full] --no-deps
+          pip install .[full]
 
       - name: Test with pytest and generate report
         shell: bash -el {0}
         run: |
-          pip install pytest-cov pytest-order pytest-xdist
-          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 2
+          pip install pytest-cov pytest-order pytest-xdist git+https://github.com/alsmith151/CoolBox.git
+          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 4
 
       - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           env_vars: OS,PYTHON
           token: ${{secrets.CODECOV_TOKEN}}
