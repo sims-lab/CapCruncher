@@ -52,13 +52,19 @@ def pipeline(pipeline_options, show_help=False, show_version=False, logo=True):
     # Implicitly deal with a missing --cores option
     if "--cores" not in pipeline_options and "-c" not in pipeline_options:
         cmd.append("--cores 1")
+    
+    # Add the --show-failed-logs option if it is not already present
+    if "--show-failed-logs" not in pipeline_options:
+        cmd.append("--show-failed-logs")
 
     if logo:
         with open(dir_package / "data" / "logo.txt", "r") as f:
             click.echo(f.read())
 
+    # Run the pipeline
     _completed = subprocess.run(cmd)
 
+    # If the pipeline fails, exit with the return code
     if _completed.returncode != 0:
         sys.exit(_completed.returncode)
     else:
