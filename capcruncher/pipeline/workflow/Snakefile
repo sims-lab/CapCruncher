@@ -45,7 +45,14 @@ else:
 VIEWPOINTS = config["analysis"]["viewpoints"]
 VIEWPOINT_NAMES = convert_bed_to_pr(VIEWPOINTS).df.Name.drop_duplicates().tolist()
 
-
+### Check that viewpoints do not contain any special characters
+for viewpoint in VIEWPOINT_NAMES:
+    if not capcruncher.pipeline.utils.is_valid_viewpoint_name(viewpoint):
+        raise ValueError(
+            f"Viewpoint name {viewpoint} contains special characters. "
+            "Please remove special characters from viewpoint names."
+        )
+        
 N_SAMPLES = DESIGN["sample"].nunique()
 ANALYSIS_METHOD = config["analysis"].get("method", "capture")
 BIN_SIZES = capcruncher.pipeline.utils.get_bin_sizes(config)
