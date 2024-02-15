@@ -53,8 +53,6 @@ for viewpoint in VIEWPOINT_NAMES:
             "Please remove special characters from viewpoint names."
         )
         
-breakpoint()
-
 N_SAMPLES = DESIGN["sample"].nunique()
 ANALYSIS_METHOD = config["analysis"].get("method", "capture")
 BIN_SIZES = capcruncher.pipeline.utils.get_bin_sizes(config)
