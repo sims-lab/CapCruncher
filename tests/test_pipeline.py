@@ -87,6 +87,10 @@ def design(data_path):
 def viewpoints(data_path):
     return data_path.joinpath("mm9_capture_viewpoints_Slc25A37.bed")
 
+@pytest.fixture(scope="module")
+def viewpoints_bad(data_path):
+    return data_path.joinpath("mm9_capture_viewpoints_error.bed")
+
 
 @pytest.fixture(scope="module")
 def fastqs(data_path):
@@ -193,6 +197,73 @@ def config(
     yield
 
     os.chdir(cwd)
+    
+    
+@pytest.fixture(scope="module", params=["capture"])
+def config_bad(
+    test_dir,
+    package_path,
+    fasta,
+    fastqs,
+    indicies,
+    binsizes,
+    viewpoints_bad,
+    chromsizes,
+    design,
+    plot_coords,
+    request,
+):
+    cwd = pathlib.Path.cwd()
+    os.chdir(test_dir)
+
+    METHODS = {"capture": "Capture-C", "tri": "Tri-C", "tiled": "Tiled-C"}
+    method = METHODS[request.param]
+
+    cookiecutter(
+        f"{package_path}/pipeline/config/",
+        extra_context={
+            "method": str(method),
+            "design": str(design),
+            "viewpoints": str(viewpoints_bad),
+            "genome": "mm9",
+            "is_custom_genome": "no",
+            "genome_organism": "Mus musculus",
+            "genome_fasta": str(fasta),
+            "genome_chromosome_sizes": str(chromsizes),
+            "genome_indicies": str(indicies),
+            "restriction_enzyme": "dpnii",
+            "remove_blacklist": "no",
+            "genomic_bin_size": " ".join([str(b) for b in binsizes]),
+            "prioritize_cis_slices": "yes",
+            "priority_chromosomes": "viewpoints",
+            "make_ucsc_hub": "yes",
+            "ucsc_hub_directory": "HUB_DIR",
+            "ucsc_hub_name": "CCHUB_TEST",
+            "ucsc_hub_email": "Email address (UCSC required)",
+            "ucsc_track_color_by": "samplename",
+            "make_plots": "yes",
+            "plotting_coordinates": str(plot_coords),
+            "plotting_normalisation": "n_interactions",
+            "differential_contrast": "condition",
+            "regenerate_fastq": "yes",
+        },
+        no_input=True,
+    )
+
+    # Move config files and fastq files
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    project_id = "project_name"
+    assay = method.lower().split("-")[0]
+    os.chdir(f"{current_date}_{project_id}_{assay}")
+
+    for fq in fastqs:
+        fq_new = pathlib.Path(fq.name)
+        fq_new.symlink_to(fq)
+
+    yield
+
+    os.chdir(cwd)    
+
 
 
 @pytest.mark.order(1)
@@ -213,6 +284,25 @@ def test_pipeline(config, cores):
         raise e
 
     assert result.returncode == 0
+
+@pytest.xfail
+def test_pipeline_bad_config(config_bad, cores):
+    import subprocess
+
+    if cores:
+        cores = cores
+    else:
+        cores = 1
+
+    try:
+        result = subprocess.run(
+            ["capcruncher", "pipeline", "-c", str(cores), "all", "-p", "--show-failed-logs"]
+        )
+    except Exception as e:
+        print(e)
+        raise e
+
+    assert result.returncode == 1
 
 
 @pytest.mark.order(2)
