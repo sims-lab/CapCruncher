@@ -285,7 +285,7 @@ def test_pipeline(config, cores):
 
     assert result.returncode == 0
 
-@pytest.xfail
+@pytest.mark.xfail(reason="Viewpoints file is incorrect")
 def test_pipeline_bad_config(config_bad, cores):
     import subprocess
 
