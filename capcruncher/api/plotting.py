@@ -123,7 +123,7 @@ class CCMatrix(cb.Cool):
 
         else:
             raise ValueError(
-                f'Incorrect normalisation specified choose from: {" ".join(["raw", *methods_stored.keys(),"ice"])}'
+                f'Incorrect normalisation specified choose from: {" ".join(["raw", *methods_stored.keys(),"ice", "icen_cis", "icen_scale"])}'
             )
 
         return matrix_normalised

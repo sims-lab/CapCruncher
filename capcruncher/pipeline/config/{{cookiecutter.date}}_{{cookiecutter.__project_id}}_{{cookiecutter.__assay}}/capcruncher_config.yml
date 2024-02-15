@@ -138,7 +138,8 @@ plot:
     # * n_interactions - Normalised based on the number of cis interactions
     # * n_rf_n_interactions - Normalised based on the number of cis interations and the number of restriction fragments per bin
     # * ice - Iterative correction and eigenvector decomposition (ICE) normalisation.
-    # * icen - ICE normalisation followed by correction for the number of cis interactions.
+    # * icen_cis - ICE normalisation followed by correction for the number of cis interactions.
+    # * icen_scale - ICE normalisation followed by scaling 
     # (Required for plotting)
     normalisation: "{{cookiecutter.plotting_normalisation}}"
 
