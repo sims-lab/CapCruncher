@@ -41,11 +41,16 @@ def data_path():
 
 
 # Fixture to create the CCMatrix object for testing
-@pytest.fixture(params=["raw", "n_interactions", "icen_cis", "icen_scale"])
-def heatmap(data_path):
+@pytest.fixture(params=["raw", "icen_cis", "icen_scale"])
+def heatmap(data_path, request):
     file_path = data_path / "reporters_store" / "SAMPLE-A_REP1_binned.hdf5"
     track = CCTrack(
-        file=str(file_path), binsize=5000, viewpoint="Slc25A37", file_type="heatmap"
+        file=str(file_path),
+        binsize=5000,
+        viewpoint="Slc25A37",
+        file_type="heatmap",
+        normalization=request.param,
+        scaling_factor=1,
     )
     return track
 

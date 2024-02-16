@@ -1189,5 +1189,6 @@ class CCFigure:
         with open(outfile, "w") as f:
             config_str = toml.dumps(config)
             f.write(config_str)
-
-        return config
+        
+        if not output:
+            return config
