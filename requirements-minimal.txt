@@ -11,4 +11,4 @@ pyarrow
 pybedtools
 pyranges<=0.0.129
 snakemake_wrapper_utils
-snakemake<=7.32.4
+snakemake<=8.11.1
