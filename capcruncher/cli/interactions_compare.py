@@ -19,6 +19,17 @@ def get_bedgraph_name_from_cooler(cooler_filename):
     return f"{filename}_{viewpoint}"
 
 
+def remove_duplicate_entries(df: pd.DataFrame) -> pd.DataFrame:
+    """Removes duplicate coordinates by aggregating values."""
+
+    return (
+        df.groupby(["chrom", "start", "end"])
+        .agg("sum")
+        .reset_index()
+        .sort_values(["chrom", "start", "end"])
+    )
+
+
 def concat(
     infiles: Tuple[os.PathLike],
     viewpoint: str = None,
@@ -185,7 +196,7 @@ def summarise(
 
             for aggregation, df in df_output.groupby("aggregation"):
                 logger.info(f"Writing {group} {aggregation}")
-                df.drop(columns="aggregation").to_csv(
+                df.drop(columns="aggregation").pipe(remove_duplicate_entries).to_csv(
                     f"{output_prefix}{group}.{aggregation}-summary{suffix}.bedgraph",
                     sep="\t",
                     header=False,
@@ -210,7 +221,7 @@ def summarise(
                 logger.info(f"Writing {output_prefix} {sub} {aggregation}")
                 df_output = df_agg[["chrom", "start", "end", sub, "aggregation"]]
                 for aggregation, df in df_output.groupby("aggregation"):
-                    df.drop(columns="aggregation").to_csv(
+                    df.drop(columns="aggregation").pipe(remove_duplicate_entries).to_csv(
                         f"{output_prefix}{sub}.{aggregation}-subtraction{suffix}.bedgraph",
                         sep="\t",
                         header=False,
