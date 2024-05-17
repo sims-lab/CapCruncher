@@ -70,11 +70,14 @@ jobs:
       - name: Update environment
         run: mamba env update -n test -f environment.yml
         if: steps.cache-conda-env.outputs.cache-hit != 'true'
-
-      - name: Check installed packages
-        shell: bash -el {0}
+      
+      - uses: eWaterCycle/setup-apptainer@v2
+        with:
+          apptainer-version: 1.1.2
+      - name: Add singularity hub remote
         run: |
-          mamba info
+          apptainer remote add --no-login SylabsCloud cloud.sylabs.io
+          apptainer remote use SylabsCloud
 
       - name: Install the package
         shell: bash -el {0}
