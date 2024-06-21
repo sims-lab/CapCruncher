@@ -353,6 +353,11 @@ def bedgraphs_concat(*args, **kwargs):
 
 @compare.command(name="summarise")
 @click.argument("infile", required=True)
+@click.option(
+    '-d',
+    '--design-matrix',
+    help='Design matrix file, should be formatted as a tab separated file with the first column containing the sample names and the other column containing the conditions.',
+)
 @click.option("-o", "--output-prefix", help="Output file prefix")
 @click.option(
     "-f", "--output-format", type=click.Choice(["bedgraph", "tsv"]), default="bedgraph"
