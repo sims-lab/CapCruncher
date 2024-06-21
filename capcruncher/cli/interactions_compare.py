@@ -220,6 +220,11 @@ def summarise(
 
         # Export aggregations
         if output_format == "bedgraph":
+            
+            # Check that there are no duplicate chrom, start, end coordinates
+            coordinates =  coordinates.unique(subset=["chrom", "start", "end"])
+
+            # Write the output
             for aggregation_method, group_names in aggregation.items():
                 for group_name in group_names:
                     df_output = coordinates.select(["chrom", "start", "end", group_name])
