@@ -41,6 +41,12 @@ if os.path.exists(config["analysis"].get("design", None)):
 else:
     DESIGN = FASTQ_SAMPLES.design
 
+## Export the design to the capcruncher_output directory
+outdir = pathlib.Path("capcruncher_output")
+outdir.mkdir(exist_ok=True)
+DESIGN.to_csv("capcruncher_output/design.tsv", sep="\t", index=False)
+
+
 ## Read viewpoints
 VIEWPOINTS = config["analysis"]["viewpoints"]
 VIEWPOINT_NAMES = convert_bed_to_pr(VIEWPOINTS).df.Name.drop_duplicates().tolist()
