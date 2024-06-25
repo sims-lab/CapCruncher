@@ -87,6 +87,7 @@ jobs:
     needs: install
     strategy:
       matrix:
+        os: [ubuntu-latest]
         assay: ['capture', 'tri', 'tiled']
         tests: ['annotate', 'cli', 'counting', 'digest', 'pileup', 'plotting', 'slice_filtering', 'utils']
     
