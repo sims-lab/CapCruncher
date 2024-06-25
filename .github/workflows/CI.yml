@@ -8,6 +8,7 @@ on:
 
 env:
   CACHE_NUMBER: 1
+  CACHE_ID_UNIQ: ${{ github.event.repository.updated_at}}
 
 jobs:
   install:
@@ -35,13 +36,6 @@ jobs:
       #   if: matrix.os == 'macos-latest'
       #   run: |
       #     brew install curl-openssl coreutils
-
-      - name: Restore bowtie2 cache
-        uses: actions/cache@v3
-        with:
-          path: tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/*.bt2
-          key: ${{ env.CACHE_NUMBER }}
-        id: bowtie2_cache
 
       - name: Get Date
         id: get-date
@@ -81,6 +75,13 @@ jobs:
         run: |
           pip install .[full]
           pip install pytest-cov pytest-order pytest-xdist git+https://github.com/alsmith151/CoolBox.git
+      
+      - name: Cache the complete environment
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CONDA }}/envs
+          key: ${{env.CACHE_ID_UNIQ}}
+        id: cache-conda-env-capcruncher 
   
   test:
     runs-on: ${{ matrix.os }}
@@ -92,21 +93,36 @@ jobs:
         tests: ['annotate', 'cli', 'counting', 'digest', 'pileup', 'plotting', 'slice_filtering', 'utils']
     
     steps:
-    - name: Run test for ${{ matrix.tests }}
-      shell: bash -el {0}
-      run: |
-        pytest --cov=./ --cov-report=xml tests/test_${{matrix.tests}}.py
+    
+      - name: Restore bowtie2 cache
+        uses: actions/cache@v3
+        with:
+          path: tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/*.bt2
+          key: ${{ env.CACHE_NUMBER }}
+        id: bowtie2_cache
+      
+      - name: Restore capcruncher env
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CONDA }}/envs
+          key: ${{env.CACHE_ID_UNIQ}}
+          id: cache-conda-env-capcruncher
 
-    - name: Run pipeline test for ${{ matrix.assay }}
-      shell: bash -el {0}
-      run: |
-        pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 4 tests/test_pipeline.py::test_pipeline[${{ matrix.assay }}]
+      - name: Run test for ${{ matrix.tests }}
+        shell: bash -el {0}
+        run: |
+          pytest --cov=./ --cov-report=xml tests/test_${{matrix.tests}}.py
 
-    - name: Upload Coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        env_vars: OS,PYTHON
-        token: ${{secrets.CODECOV_TOKEN}}
-        fail_ci_if_error: true
-        files: ./coverage.xml
-        verbose: true
+      - name: Run pipeline test for ${{ matrix.assay }}
+        shell: bash -el {0}
+        run: |
+          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 4 tests/test_pipeline.py::test_pipeline[${{ matrix.assay }}]
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          env_vars: OS,PYTHON
+          token: ${{secrets.CODECOV_TOKEN}}
+          fail_ci_if_error: true
+          files: ./coverage.xml
+          verbose: true
