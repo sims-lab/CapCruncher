@@ -10,12 +10,10 @@ env:
   CACHE_NUMBER: 1
 
 jobs:
-  install-and-test:
+  install:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        assay: ['capture', 'tri', 'tiled']
-        tests: ['annotate', 'cli', 'counting', 'digest', 'pileup', 'plotting', 'slice_filtering', 'utils']
         os: [ubuntu-latest]
         python-version: ["3.10"]
 
@@ -83,22 +81,31 @@ jobs:
         run: |
           pip install .[full]
           pip install pytest-cov pytest-order pytest-xdist git+https://github.com/alsmith151/CoolBox.git
+  
+  test:
+    runs-on: ${{ matrix.os }}
+    needs: install
+    strategy:
+      matrix:
+        assay: ['capture', 'tri', 'tiled']
+        tests: ['annotate', 'cli', 'counting', 'digest', 'pileup', 'plotting', 'slice_filtering', 'utils']
+    
+    steps:
+    - name: Run test for ${{ matrix.tests }}
+      shell: bash -el {0}
+      run: |
+        pytest --cov=./ --cov-report=xml tests/test_${{matrix.tests}}.py
 
-      - name: Run test for ${{ matrix.tests }}
-        shell: bash -el {0}
-        run: |
-          pytest --cov=./ --cov-report=xml tests/test_${{matrix.tests}}.py
+    - name: Run pipeline test for ${{ matrix.assay }}
+      shell: bash -el {0}
+      run: |
+        pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 4 tests/test_pipeline.py::test_pipeline[${{ matrix.assay }}]
 
-      - name: Run pipeline test for ${{ matrix.assay }}
-        shell: bash -el {0}
-        run: |
-          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 4 tests/test_pipeline.py::test_pipeline[${{ matrix.assay }}]
-
-      - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          env_vars: OS,PYTHON
-          token: ${{secrets.CODECOV_TOKEN}}
-          fail_ci_if_error: true
-          files: ./coverage.xml
-          verbose: true
+    - name: Upload Coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        env_vars: OS,PYTHON
+        token: ${{secrets.CODECOV_TOKEN}}
+        fail_ci_if_error: true
+        files: ./coverage.xml
+        verbose: true
