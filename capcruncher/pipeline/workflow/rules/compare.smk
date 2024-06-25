@@ -51,6 +51,7 @@ rule compare_interactions:
         conditions=capcruncher.pipeline.utils.identify_columns_based_on_condition(
             DESIGN
         ),
+        design_path="capcruncher_output/design.tsv"
     resources:
         mem_mb=5000,
     log:
@@ -65,8 +66,7 @@ rule compare_interactions:
         -o {params.output_prefix} \
         -f bedgraph \
         {params.summary_methods} \
-        {params.names} \
-        {params.conditions} \
+        --design-matrix {params.design_path} \
         --subtraction \
         --suffix .{wildcards.viewpoint} \
         > {log} 2>&1
