@@ -123,7 +123,7 @@ class CCMatrix(cb.Cool):
 
         else:
             raise ValueError(
-                f'Incorrect normalisation specified choose from: {" ".join(["raw", *methods_stored.keys(),"ice"])}'
+                f'Incorrect normalisation specified choose from: {" ".join(["raw", *methods_stored.keys(),"ice", "icen_cis", "icen_scale"])}'
             )
 
         return matrix_normalised
@@ -1189,5 +1189,6 @@ class CCFigure:
         with open(outfile, "w") as f:
             config_str = toml.dumps(config)
             f.write(config_str)
-
-        return config
+        
+        if not output:
+            return config

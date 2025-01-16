@@ -175,6 +175,9 @@ def group_files_by_regex(files: List, regex: str):
         .rename("files_grouped")
     )
 
+def is_valid_viewpoint_name(name: str):
+    return re.match(r"^[A-Za-z0-9_\-]+$", name)
+
 
 class FastqSamples:
     def __init__(self, design):

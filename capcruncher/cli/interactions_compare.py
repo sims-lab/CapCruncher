@@ -6,10 +6,14 @@ from typing import Literal, Tuple, List, Union, Dict
 import cooler
 
 import pandas as pd
+import polars as pl
+
+
 from capcruncher.api.pileup import CoolerBedGraph
 from capcruncher.utils import get_cooler_uri
 from joblib import Parallel, delayed
 from pybedtools import BedTool
+from collections import defaultdict
 
 
 def get_bedgraph_name_from_cooler(cooler_filename):
@@ -17,6 +21,17 @@ def get_bedgraph_name_from_cooler(cooler_filename):
     filename = os.path.basename(cooler_filename.split(".hdf5")[0])
     viewpoint = cooler_filename.split("::/")[1]
     return f"{filename}_{viewpoint}"
+
+
+def remove_duplicate_entries(df: pd.DataFrame) -> pd.DataFrame:
+    """Removes duplicate coordinates by aggregating values."""
+
+    return (
+        df.groupby(["chrom", "start", "end"])
+        .agg("sum")
+        .reset_index()
+        .sort_values(["chrom", "start", "end"])
+    )
 
 
 def concat(
@@ -136,96 +151,101 @@ def get_groups(
 
 def summarise(
     infile: os.PathLike,
+    design_matrix: os.PathLike = None,
     output_prefix: os.PathLike = None,
     output_format: Literal["bedgraph", "tsv"] = "bedgraph",
-    summary_methods: Tuple[str] = None,
+    summary_methods: Tuple[Literal['mean', 'median', 'sum', 'max']] = ("mean",),
     group_names: Tuple[str] = None,
     group_columns: Tuple[int, str] = None,  # Need to ensure these are 0 based
     suffix: str = "",
-    subtraction: bool = False,
+    perform_subtractions: bool = False,
 ):
 
     logger.info(f"Reading {infile}")
     df_union = pd.read_csv(infile, sep="\t")
     df_counts = df_union.iloc[:, 3:]
 
-    summary_functions = get_summary_functions(summary_methods)
-
     logger.info("Identifying groups")
-    groups = (
-        get_groups(df_counts.columns, group_names, group_columns)
-        if group_names
-        else {col: "summary" for col in df_counts.columns}
-    )  # Use all columns if no groups provided
+    if group_columns and group_names:
+        groups = (
+            get_groups(df_counts.columns, group_names, group_columns)
+            if group_names
+            else {col: "summary" for col in df_counts.columns}
+        )  # Use all columns if no groups provided
+    
+    elif design_matrix:
+        df_design = pd.read_csv(design_matrix, sep=r"\s+|,|\t", engine="python")
+        # This design file should look like: sample, condition
+        groups = df_design.set_index("sample").to_dict()["condition"]
+    else:
+        logger.warning("No groups provided, using all columns")
 
     logger.info(f"Extracted groups: {groups}")
+    aggregation = defaultdict(list)
+    subtraction = list()
 
-    # Perform all groupby aggregations.
-    logger.info(f"Performing all aggregations: {summary_methods}")
-    df_agg = (
-        df_union.iloc[:, 3:]
-        .transpose()  # Transpose to enable groupby funcs
-        .groupby(groups)
-        .agg([*summary_functions])  # Apply all aggregaions
-        .transpose()
-        .reset_index()
-        .rename(columns={"level_0": "index", "level_1": "aggregation"})
-        .set_index("index")
-        .join(df_union.iloc[:, :3])
-        .fillna(0)
-    )
+    # Invert the groups so conditions are keys
+    groups_inverted = defaultdict(list) 
+    for k, v in groups.items():
+        groups_inverted[v].append(k)
 
-    # Write out groupby aggregations
-    logger.info("Writing aggregations")
+    # Convert to polars
+    counts = pl.DataFrame(df_counts)
+    coordinates = pl.DataFrame(df_union.iloc[:, :3])
+    summary_methods = ['mean', ] if not summary_methods else summary_methods
 
-    for group in group_names:
+    for aggregation_method in summary_methods:
+        
+        assert aggregation_method in ["mean", "median", "sum", "max"], f"Invalid aggregation method {aggregation_method}"
+        logger.info(f"Performing aggregation: {aggregation_method}")
+
+
+        # Apply aggregation method to each group
+        for group_name, group in groups_inverted.items():
+
+            colname = f'{group_name}_{aggregation_method}'
+            group_counts = getattr(counts.select(group), aggregation_method)(axis=1).alias(colname)
+            coordinates = coordinates.with_columns(group_counts)
+            aggregation[aggregation_method].append(colname)
+        
+        # Perform subtractions
+        subtraction = list()
+        if perform_subtractions:
+            for group_a, group_b in itertools.permutations(groups_inverted, 2):
+
+                group_a_col = f'{group_a}_{aggregation_method}'
+                group_b_col = f'{group_b}_{aggregation_method}'
+
+                a = coordinates.select(group_a_col)
+                b = coordinates.select(group_b_col)
+                diff = a.mean(axis=1) - b.mean(axis=1)
+                coordinates = coordinates.with_columns(diff.alias(f"{group_a}-{group_b}"))
+                subtraction.append(f"{group_a}-{group_b}")
+
+        # Export aggregations
         if output_format == "bedgraph":
+            
+            # Check that there are no duplicate chrom, start, end coordinates
+            coordinates =  coordinates.unique(subset=["chrom", "start", "end"])
 
-            df_output = df_agg[["chrom", "start", "end", group, "aggregation"]]
-
-            for aggregation, df in df_output.groupby("aggregation"):
-                logger.info(f"Writing {group} {aggregation}")
-                df.drop(columns="aggregation").to_csv(
-                    f"{output_prefix}{group}.{aggregation}-summary{suffix}.bedgraph",
-                    sep="\t",
-                    header=False,
-                    index=False,
-                )
+            # Write the output
+            for aggregation_method, group_names in aggregation.items():
+                for group_name in group_names:
+                    df_output = coordinates.select(["chrom", "start", "end", group_name])
+                    
+                    group_name_cleaned = re.sub('|'.join([*summary_methods, '_']), '', group_name) # Remove the aggregation method from the group name
+                    outfile = f"{output_prefix}{group_name_cleaned}.{aggregation_method}-summary{suffix}.bedgraph"
+                    
+                    logger.info(f"Writing {group_name} {aggregation_method} to {outfile}")
+                    df_output.write_csv(outfile, separator="\t", has_header=False)
+            
+            for sub in subtraction:
+                df_output = coordinates.select(["chrom", "start", "end", sub])
+                outfile = f"{output_prefix}{sub}.{aggregation_method}-subtraction{suffix}.bedgraph"
+                logger.info(f"Writing {sub} {aggregation_method} to {outfile}")
+                df_output.write_csv(outfile, separator="\t", has_header=False)
+        
         elif output_format == "tsv":
-            df_output = df_agg[["chrom", "start", "end", "aggregation", group]]
-            df_output.to_csv(f"{output_prefix}{group}{suffix}.tsv")
-
-    # Perform permutations
-    logger.info("Performing subtractions")
-    if subtraction:
-        subtractions_performed = list()
-        for group_a, group_b in itertools.permutations(group_names, 2):
-
-            subtraction_name = f"{group_a}-{group_b}"
-            df_agg[subtraction_name] = df_agg[group_a] - df_agg[group_b]
-            subtractions_performed.append(subtraction_name)
-
-        if output_format == "bedgraph":
-            for sub in subtractions_performed:
-                logger.info(f"Writing {output_prefix} {sub} {aggregation}")
-                df_output = df_agg[["chrom", "start", "end", sub, "aggregation"]]
-                for aggregation, df in df_output.groupby("aggregation"):
-                    df.drop(columns="aggregation").to_csv(
-                        f"{output_prefix}{sub}.{aggregation}-subtraction{suffix}.bedgraph",
-                        sep="\t",
-                        header=False,
-                        index=False,
-                    )
-
-        elif output_format == "tsv":
-            df_output = df_agg[
-                [
-                    "chrom",
-                    "start",
-                    "end",
-                    "aggregation",
-                    *group_names,
-                    *subtractions_performed,
-                ]
-            ]
-            df_output.to_csv(f"{output_prefix}subtractions{suffix}.tsv")
+            df_output = coordinates
+            df_output.write_csv(f"{output_prefix}{suffix}.tsv", separator="\t", has_header=True)
+        

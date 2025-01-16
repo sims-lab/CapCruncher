@@ -16,8 +16,8 @@ rule fastqc:
     threads: 1
     resources:
         mem_mb=1024,
-    wrapper:
-        "v3.0.1/bio/fastqc"
+    script:
+        "../scripts/fastqc_wrapper.py"
 
 
 rule samtools_stats:
