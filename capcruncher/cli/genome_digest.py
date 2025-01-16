@@ -78,7 +78,7 @@ def digest(
         # If changing the order, also need to change the fragment number
         df = (
             df.sort(["chrom", "start"])
-            .drop(columns="name")
+            .drop(["name"])
             .with_row_count("name")[["chrom", "start", "end", "name"]]
         )
 
