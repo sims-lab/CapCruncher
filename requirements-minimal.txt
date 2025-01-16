@@ -5,7 +5,7 @@ loguru<=0.7.2
 more-itertools
 numpy<=1.26.4
 pandas<=2.1.2
-polars
+polars<=1.6.0
 PuLP<2.8.0
 pyarrow
 pybedtools
