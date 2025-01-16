@@ -12,7 +12,7 @@ snakemake<=7.32.4
 
 # Essential for CLI
 capcruncher-tools>=0.2.0
-coolbox
+coolbox@git+https://github.com/GangCaoLab/CoolBox.git
 cooler<=0.9.2
 h5py
 ibis-framework[duckdb]>6.1.0,<=8.0.0
