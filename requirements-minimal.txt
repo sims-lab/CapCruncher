@@ -9,6 +9,6 @@ polars<=1.6.0
 PuLP<2.8.0
 pyarrow
 pybedtools
-pyranges<=0.0.129
+pyranges<=0.1.2
 snakemake_wrapper_utils
 snakemake<=7.32.4
