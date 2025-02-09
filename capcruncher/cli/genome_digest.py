@@ -82,4 +82,4 @@ def digest(
             .with_row_count("name")[["chrom", "start", "end", "name"]]
         )
 
-        df.write_csv(output_file, separator="\t", has_header=False)
+        df.write_csv(output_file, separator="\t", include_header=False)
