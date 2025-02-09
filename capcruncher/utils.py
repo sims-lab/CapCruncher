@@ -1,16 +1,13 @@
+import itertools
 import os
 import pickle
 import re
 from functools import wraps
-from typing import Generator, Iterable, Tuple, Union, Callable
+from typing import Callable, Generator, Iterable, Tuple, Type, Union
+
 import pandas as pd
 import pybedtools
-import ujson
-import xxhash
-from pybedtools import BedTool
 import pyranges as pr
-import pysam
-import itertools
 
 
 def cycle_argument(arg):
@@ -90,12 +87,12 @@ def get_human_readable_number_of_bp(bp: int) -> str:
     return bp
 
 
-def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
+def is_valid_bed(bed: Union[str, pybedtools.BedTool], verbose=True) -> bool:
     from loguru import logger
 
     """Returns true if bed file can be opened and has at least 3 columns"""
     try:
-        bed = BedTool(bed)
+        bed = pybedtools.BedTool(bed)
         if bed.field_count(n=1) >= 3:
             return True
 
@@ -112,19 +109,19 @@ def is_valid_bed(bed: Union[str, BedTool], verbose=True) -> bool:
             logger.warning(f"Exception raised {e}")
 
 
-def bed_has_name(bed: Union[str, BedTool]) -> bool:
+def bed_has_name(bed: Union[str, pybedtools.BedTool]) -> bool:
     """Returns true if bed file has at least 4 columns"""
     if isinstance(bed, str):
-        bed = BedTool(bed)
+        bed = pybedtools.BedTool(bed)
 
     if bed.field_count(n=1) >= 4:
         return True
 
 
-def bed_has_duplicate_names(bed: Union[str, BedTool]) -> bool:
+def bed_has_duplicate_names(bed: Union[str, pybedtools.BedTool]) -> bool:
     """Returns true if bed file has no duplicated names"""
     if isinstance(bed, str):
-        bed = BedTool(bed)
+        bed = pybedtools.BedTool(bed)
 
     df = bed.to_dataframe()
     if not df["name"].duplicated().shape[0] > 1:
@@ -137,6 +134,7 @@ def hash_column(col: Iterable, hash_type=64) -> list:
 
     Function is **not** vectorised.
     """
+    import xxhash
 
     hash_dict = {
         32: xxhash.xxh32_intdigest,
@@ -149,7 +147,9 @@ def hash_column(col: Iterable, hash_type=64) -> list:
     return [hash_func(v) for v in col]
 
 
-def split_intervals_on_chrom(intervals: Union[str, BedTool, pd.DataFrame]) -> dict:
+def split_intervals_on_chrom(
+    intervals: Union[str, pybedtools.BedTool, pd.DataFrame]
+) -> dict:
     """Creates dictionary from bed file with the chroms as keys"""
 
     intervals = convert_bed_to_dataframe(intervals)
@@ -159,14 +159,14 @@ def split_intervals_on_chrom(intervals: Union[str, BedTool, pd.DataFrame]) -> di
 def intersect_bins(
     bins_1: pd.DataFrame, bins_2: pd.DataFrame, **bedtools_kwargs
 ) -> pd.DataFrame:
-    """Intersects two sets of genomic intervals using bedtools intersect.
+    """Intersects two sets of genomic intervals using pybedtools.BedTools intersect.
 
     Formats the intersection in a clearer way than pybedtool auto names.
 
     """
 
-    bt1 = BedTool.from_dataframe(bins_1)
-    bt2 = BedTool.from_dataframe(bins_2)
+    bt1 = pybedtools.BedTool.from_dataframe(bins_1)
+    bt2 = pybedtools.BedTool.from_dataframe(bins_2)
     bt_intersect = bt1.intersect(bt2, **bedtools_kwargs)
     df_intersect = bt_intersect.to_dataframe(
         disable_auto_names=True,
@@ -193,6 +193,7 @@ def load_dict(fn, format: str, dtype: str = "int") -> dict:
 
     import itertools
 
+    import ujson
     from xopen import xopen
 
     if format == "json":
@@ -219,6 +220,7 @@ def save_dict(obj: Union[dict, set], fn: os.PathLike, format: str) -> dict:
     """Convinence function to save [gziped] json/pickle file using xopen."""
 
     from xopen import xopen
+    import ujson
 
     if format == "json":
         with xopen(fn, "w") as w:
@@ -240,6 +242,7 @@ def get_timing(task_name=None) -> Callable:
     """
     import time
     from datetime import timedelta
+
     from loguru import logger
 
     def wrapper(f):
@@ -258,13 +261,15 @@ def get_timing(task_name=None) -> Callable:
     return wrapper
 
 
-def convert_to_bedtool(bed: Union[str, BedTool, pd.DataFrame]) -> BedTool:
+def convert_to_bedtool(
+    bed: Union[str, pybedtools.BedTool, pd.DataFrame]
+) -> pybedtools.BedTool:
     """Converts a str or pd.DataFrame to a pybedtools.BedTool object"""
     if isinstance(bed, str):
-        bed_conv = BedTool(bed)
+        bed_conv = pybedtools.BedTool(bed)
     elif isinstance(bed, pd.DataFrame):
-        bed_conv = BedTool.from_dataframe(bed)
-    elif isinstance(bed, BedTool):
+        bed_conv = pybedtools.BedTool.from_dataframe(bed)
+    elif isinstance(bed, pybedtools.BedTool):
         bed_conv = bed
 
     return bed_conv
@@ -315,15 +320,23 @@ def convert_bed_to_pr(
     if isinstance(bed, str):
         try:
             df = pl.read_csv(
-                bed, separator="\t", new_columns=["Chromosome", "Start", "End", "Name"], has_header=False,
-                dtypes= [pl.Utf8, pl.Int64, pl.Int64, pl.Utf8],
-                columns=list(range(4))
+                bed,
+                separator="\t",
+                new_columns=["Chromosome", "Start", "End", "Name"],
+                has_header=False,
+                dtypes=[pl.Utf8, pl.Int64, pl.Int64, pl.Utf8],
+                columns=list(range(4)),
             )
 
-            converted = df.to_pandas().assign(Name=lambda df: df.Name.astype('category')).pipe(pr.PyRanges)
+            converted = (
+                df.to_pandas()
+                .assign(Name=lambda df: df.Name.astype('category'))
+                .pipe(pr.PyRanges)
+            )
 
         except (FileNotFoundError, pl.exceptions.NoDataError):
             from loguru import logger
+
             logger.warning(f"File {bed} not found")
             converted = pr.PyRanges()
 
@@ -358,17 +371,19 @@ def convert_bed_to_pr(
 
 
 def convert_bed_to_dataframe(
-    bed: Union[str, BedTool, pd.DataFrame, "ray.ObjectRef", pr.PyRanges],  # noqa: F821
+    bed: Union[
+        str, pybedtools.BedTool, pd.DataFrame, pr.PyRanges
+    ],  # noqa: F821
     ignore_ray_objrefs=False,
 ) -> pd.DataFrame:
     """Converts a bed like object (including paths to bed files) to a pd.DataFrame"""
-    from loguru import logger
     import ray
+    from loguru import logger
 
     if isinstance(bed, str):
-        bed_conv = BedTool(bed).to_dataframe()
+        bed_conv = pybedtools.BedTool(bed).to_dataframe()
 
-    elif isinstance(bed, BedTool):
+    elif isinstance(bed, pybedtools.BedTool):
         bed_conv = bed.to_dataframe()
 
     elif isinstance(bed, pd.DataFrame):
@@ -389,6 +404,7 @@ def convert_bed_to_dataframe(
 
 
 def is_tabix(file: str):
+    import pysam
     from loguru import logger
 
     _is_tabix = False
@@ -404,7 +420,7 @@ def is_tabix(file: str):
     return _is_tabix
 
 
-def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
+def format_coordinates(coordinates: Union[str, os.PathLike]) -> pybedtools.BedTool:
     """Converts coordinates supplied in string format or a .bed file to a BedTool.
 
     Args:
@@ -425,21 +441,21 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> BedTool:
         if len(coordinates_split) < 4:
             coordinates_split.append("region_0")
 
-        bt = BedTool(" ".join(coordinates_split), from_string=True)
+        bt = pybedtools.BedTool(" ".join(coordinates_split), from_string=True)
 
     elif pattern_bed_file.match(coordinates):
         if is_valid_bed(coordinates):
             if bed_has_name(coordinates):
-                bt = BedTool(coordinates)
+                bt = pybedtools.BedTool(coordinates)
             else:
                 bt = (
-                    BedTool(coordinates)
+                    pybedtools.BedTool(coordinates)
                     .to_dataframe()
                     .reset_index()
                     .assign(name=lambda df: "region_" + df["index"].astype("string"))[
                         ["chrom", "start", "end", "name"]
                     ]
-                    .pipe(BedTool.from_dataframe)
+                    .pipe(pybedtools.BedTool.from_dataframe)
                 )
         else:
             raise ValueError("Invalid bed file supplied.")

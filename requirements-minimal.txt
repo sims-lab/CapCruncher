@@ -1,0 +1,14 @@
+# Essential to run pipeline
+click<=8.2.0
+cookiecutter<=2.1.1
+loguru<=0.7.2
+more-itertools
+numpy<=1.26.4
+pandas<=2.1.2
+polars<=1.6.0
+PuLP<2.8.0
+pyarrow
+pybedtools
+pyranges<=0.1.2
+snakemake_wrapper_utils
+snakemake<=7.32.4
