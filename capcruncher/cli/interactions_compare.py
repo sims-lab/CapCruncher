@@ -237,15 +237,15 @@ def summarise(
                     outfile = f"{output_prefix}{group_name_cleaned}.{aggregation_method}-summary{suffix}.bedgraph"
                     
                     logger.info(f"Writing {group_name} {aggregation_method} to {outfile}")
-                    df_output.write_csv(outfile, separator="\t", has_header=False)
+                    df_output.write_csv(outfile, separator="\t", include_header=False)
             
             for sub in subtraction:
                 df_output = coordinates.select(["chrom", "start", "end", sub])
                 outfile = f"{output_prefix}{sub}.{aggregation_method}-subtraction{suffix}.bedgraph"
                 logger.info(f"Writing {sub} {aggregation_method} to {outfile}")
-                df_output.write_csv(outfile, separator="\t", has_header=False)
+                df_output.write_csv(outfile, separator="\t", include_header=False)
         
         elif output_format == "tsv":
             df_output = coordinates
-            df_output.write_csv(f"{output_prefix}{suffix}.tsv", separator="\t", has_header=True)
+            df_output.write_csv(f"{output_prefix}{suffix}.tsv", separator="\t", include_header=True)
         
