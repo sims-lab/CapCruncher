@@ -218,7 +218,7 @@ def summarise(
 
                 a = coordinates.select(group_a_col)
                 b = coordinates.select(group_b_col)
-                diff = a.mean(axis=1) - b.mean(axis=1)
+                diff = a.mean_horizontal() - b.mean_horizontal()
                 coordinates = coordinates.with_columns(diff.alias(f"{group_a}-{group_b}"))
                 subtraction.append(f"{group_a}-{group_b}")
 
