@@ -154,7 +154,7 @@ def summarise(
     design_matrix: os.PathLike = None,
     output_prefix: os.PathLike = None,
     output_format: Literal["bedgraph", "tsv"] = "bedgraph",
-    summary_methods: Tuple[Literal['mean', 'median', 'sum', 'max']] = ("mean",),
+    summary_methods: Tuple[Literal['mean']] = ("mean",),
     group_names: Tuple[str] = None,
     group_columns: Tuple[int, str] = None,  # Need to ensure these are 0 based
     suffix: str = "",
@@ -196,7 +196,7 @@ def summarise(
 
     for aggregation_method in summary_methods:
         
-        assert aggregation_method in ["mean", "median", "sum", "max"], f"Invalid aggregation method {aggregation_method}"
+        assert aggregation_method in ["mean"], f"Invalid aggregation method {aggregation_method}"
         logger.info(f"Performing aggregation: {aggregation_method}")
 
 
@@ -204,7 +204,7 @@ def summarise(
         for group_name, group in groups_inverted.items():
 
             colname = f'{group_name}_{aggregation_method}'
-            group_counts = getattr(counts.select(group), aggregation_method)(axis=1).alias(colname)
+            group_counts = getattr(counts.select(group), f'{aggregation_method}_horizontal')().alias(colname)
             coordinates = coordinates.with_columns(group_counts)
             aggregation[aggregation_method].append(colname)
         
