@@ -12,7 +12,6 @@ snakemake<=7.32.4
 
 # Essential for CLI
 capcruncher-tools>=0.2.0
-coolbox
 cooler<=0.10.3
 h5py
 ibis-framework[duckdb]>6.1.0,<=8.0.0
