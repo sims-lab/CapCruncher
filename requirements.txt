@@ -35,6 +35,6 @@ toml
 tqdm<=4.65.0
 trackhub<=1.0
 tracknado
-ujson<=5.7.0
+ujson<=5.8.0
 xopen
 xxhash<=3.4.1
