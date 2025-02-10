@@ -33,7 +33,7 @@ ray>=2.8.0
 seaborn<=0.12.2
 toml
 tqdm<=4.65.0
-trackhub<=0.2.4
+trackhub<=1.0
 tracknado
 ujson<=5.7.0
 xopen
