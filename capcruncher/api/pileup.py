@@ -428,7 +428,17 @@ def cooler_to_bedgraph(
     if viewpoint_distance:
         viewpoint_coords = cooler.Cooler(clr).info["metadata"]["viewpoint_coords"][0]
         viewpoint_coords = re.split("[:-]", viewpoint_coords)
-        region_to_limit = f"{viewpoint_coords[0]}:{int(viewpoint_coords[1]) - viewpoint_distance}-{int(viewpoint_coords[1]) + viewpoint_distance}"
+
+        viewpoint_chrom = viewpoint_coords[0]
+        viewpoint_start = min(0, int(viewpoint_coords[1]) - viewpoint_distance)
+        viewpoint_chromsize = cooler.Cooler(clr).chromsizes[viewpoint_chrom]
+        viewpoint_end = min(
+            int(viewpoint_coords[1]) + viewpoint_distance, viewpoint_chromsize
+        )
+        region_to_limit = f"{viewpoint_chrom}:{viewpoint_start}-{viewpoint_end}"
+        logger.info(
+            f"Limiting bedgraph to {viewpoint_chrom}:{viewpoint_start}-{viewpoint_end}"
+        )
     else:
         region_to_limit = None
 
