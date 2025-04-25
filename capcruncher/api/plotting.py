@@ -36,6 +36,8 @@ try:
     import capcruncher.api as cc
 
 
+
+
     class CCMatrix(cb.Cool):
         def __init__(
             self,
@@ -333,14 +335,33 @@ try:
             coverage_stack = get_coverage_stack()
             for coverage in coverage_stack:
                 self.coverages.append(coverage)
+        
+        def _correct_genomic_range(self, gr: cb.GenomeRange, bw: cb.BigWig):
+            """
+            Corrects the genomic range to use the same chromosome style as the BigWig file.
+            """
+
+            import re
+
+            bw_chromosomes = list(bw.bw.chromsizes())
+
+            if re.match(r'^chr.*', bw_chromosomes[0]) and not re.match(r'^chr.*', gr.chrom):
+                gr.chrom = f"chr{gr.chrom}"
+            elif not re.match(r'^chr.*', bw_chromosomes[0]) and re.match(r'^chr.*', gr.chrom):
+                gr.chrom = gr.chrom[3:]
+            
+            return gr
+        
 
         def fetch_data(self, gr, **kwargs):
-            datasets = [
-                bw.bw.fetch_intervals(gr.chrom, gr.start, gr.end)
-                .set_index(["chrom", "start", "end"])
-                .rename(columns={"value": os.path.basename(bw.properties["file"])})
-                for bw in self.bws
-            ]
+            datasets = []
+            for bw in self.bws:
+                gr = self._correct_genomic_range(gr, bw)
+                bw_data = bw.fetch_intervals(gr.chrom, gr.start, gr.end)
+                bw_data = bw_data.set_index(["chrom", "start", "end"])
+                bw_data = bw_data.rename(columns={"value": os.path.basename(bw.properties["file"])})
+                datasets.append(bw_data)
+            
             df = datasets[0].join(datasets[1:])
             df_summary = df.assign(mean=df.mean(axis=1), sem=df.sem(axis=1)).reset_index()
 
