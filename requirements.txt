@@ -36,4 +36,4 @@ trackhub<=0.2.4
 tracknado
 ujson<=5.8.0
 xopen
-xxhash<=3.4.1
+xxhash<=3.5.0
