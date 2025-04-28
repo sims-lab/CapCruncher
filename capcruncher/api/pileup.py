@@ -428,7 +428,14 @@ def cooler_to_bedgraph(
     if viewpoint_distance:
         viewpoint_coords = cooler.Cooler(clr).info["metadata"]["viewpoint_coords"][0]
         viewpoint_coords = re.split("[:-]", viewpoint_coords)
-        region_to_limit = f"{viewpoint_coords[0]}:{int(viewpoint_coords[1]) - viewpoint_distance}-{int(viewpoint_coords[1]) + viewpoint_distance}"
+        vpstart = (int(viewpoint_coords[1]) - viewpoint_distance)
+        vpend = (int(viewpoint_coords[1]) + viewpoint_distance)
+        # set start to 1 if (start - viewpoint distance) would be negative, because a negative coordinate causes
+        # 'ValueError: Unexpected token "-"'
+        if vpstart <=0:
+            vpstart = 1
+        # TODO: IF VPEND > CHR SIZE, SET TO CHR SIZE (not sure if this is needed as well?)
+        region_to_limit = f"{viewpoint_coords[0]}:{vpstart}-{vpend}"
     else:
         region_to_limit = None
 
