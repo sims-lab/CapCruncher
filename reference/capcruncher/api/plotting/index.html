@@ -1,0 +1,3190 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../pileup/">
+      
+      
+        <link rel="next" href="../statistics/">
+      
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+    
+    
+      
+        <title>plotting - CapCruncher Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.2afb09e1.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#capcruncher.api.plotting" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../.." title="CapCruncher Documentation" class="md-header__button md-logo" aria-label="CapCruncher Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            CapCruncher Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              plotting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/sims-lab/CapCruncher" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../.." title="CapCruncher Documentation" class="md-nav__button md-logo" aria-label="CapCruncher Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    CapCruncher Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/sims-lab/CapCruncher" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Pipeline
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../cluster_config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Cluster Setup
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Hints and Tips
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../plotting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plotting CapCruncher output
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            API Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_8_1" id="__nav_8_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    capcruncher
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_8_1">
+            <span class="md-nav__icon md-icon"></span>
+            capcruncher
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8_1_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_8_1_1" id="__nav_8_1_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    api
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_8_1_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_8_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            api
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../annotate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    annotate
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deduplicate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    deduplicate
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../filter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    filter
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../io/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    io
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pileup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    pileup
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    plotting
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    plotting
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting" class="md-nav__link">
+    <span class="md-ellipsis">
+      plotting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCBigWigCollection" class="md-nav__link">
+    <span class="md-ellipsis">
+      CCBigWigCollection
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure" class="md-nav__link">
+    <span class="md-ellipsis">
+      CCFigure
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CCFigure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.add_track" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_track
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.add_tracks" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_tracks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.from_frame" class="md-nav__link">
+    <span class="md-ellipsis">
+      from_frame
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.from_toml" class="md-nav__link">
+    <span class="md-ellipsis">
+      from_toml
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      plot
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.save" class="md-nav__link">
+    <span class="md-ellipsis">
+      save
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.to_toml" class="md-nav__link">
+    <span class="md-ellipsis">
+      to_toml
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCTrack" class="md-nav__link">
+    <span class="md-ellipsis">
+      CCTrack
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../statistics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    statistics
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    storage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting" class="md-nav__link">
+    <span class="md-ellipsis">
+      plotting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCBigWigCollection" class="md-nav__link">
+    <span class="md-ellipsis">
+      CCBigWigCollection
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure" class="md-nav__link">
+    <span class="md-ellipsis">
+      CCFigure
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CCFigure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.add_track" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_track
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.add_tracks" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_tracks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.from_frame" class="md-nav__link">
+    <span class="md-ellipsis">
+      from_frame
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.from_toml" class="md-nav__link">
+    <span class="md-ellipsis">
+      from_toml
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      plot
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.save" class="md-nav__link">
+    <span class="md-ellipsis">
+      save
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCFigure.to_toml" class="md-nav__link">
+    <span class="md-ellipsis">
+      to_toml
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#capcruncher.api.plotting.CCTrack" class="md-nav__link">
+    <span class="md-ellipsis">
+      CCTrack
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>plotting</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="capcruncher.api.plotting"></a>
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="capcruncher.api.plotting.CCBigWigCollection" class="doc doc-heading">
+            <code>CCBigWigCollection</code>
+
+
+<a href="#capcruncher.api.plotting.CCBigWigCollection" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="coolbox.core.track.Track">Track</span></code></p>
+
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>capcruncher/api/plotting.py</code></summary>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span>
+<span class="normal">419</span>
+<span class="normal">420</span>
+<span class="normal">421</span>
+<span class="normal">422</span>
+<span class="normal">423</span>
+<span class="normal">424</span>
+<span class="normal">425</span>
+<span class="normal">426</span>
+<span class="normal">427</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span>
+<span class="normal">431</span>
+<span class="normal">432</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span>
+<span class="normal">439</span>
+<span class="normal">440</span>
+<span class="normal">441</span>
+<span class="normal">442</span>
+<span class="normal">443</span>
+<span class="normal">444</span>
+<span class="normal">445</span>
+<span class="normal">446</span>
+<span class="normal">447</span>
+<span class="normal">448</span>
+<span class="normal">449</span>
+<span class="normal">450</span>
+<span class="normal">451</span>
+<span class="normal">452</span>
+<span class="normal">453</span>
+<span class="normal">454</span>
+<span class="normal">455</span>
+<span class="normal">456</span>
+<span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span>
+<span class="normal">470</span>
+<span class="normal">471</span>
+<span class="normal">472</span>
+<span class="normal">473</span>
+<span class="normal">474</span>
+<span class="normal">475</span>
+<span class="normal">476</span>
+<span class="normal">477</span>
+<span class="normal">478</span>
+<span class="normal">479</span>
+<span class="normal">480</span>
+<span class="normal">481</span>
+<span class="normal">482</span>
+<span class="normal">483</span>
+<span class="normal">484</span>
+<span class="normal">485</span>
+<span class="normal">486</span>
+<span class="normal">487</span>
+<span class="normal">488</span>
+<span class="normal">489</span>
+<span class="normal">490</span>
+<span class="normal">491</span>
+<span class="normal">492</span>
+<span class="normal">493</span>
+<span class="normal">494</span>
+<span class="normal">495</span>
+<span class="normal">496</span>
+<span class="normal">497</span>
+<span class="normal">498</span>
+<span class="normal">499</span>
+<span class="normal">500</span>
+<span class="normal">501</span>
+<span class="normal">502</span>
+<span class="normal">503</span>
+<span class="normal">504</span>
+<span class="normal">505</span>
+<span class="normal">506</span>
+<span class="normal">507</span>
+<span class="normal">508</span>
+<span class="normal">509</span>
+<span class="normal">510</span>
+<span class="normal">511</span>
+<span class="normal">512</span>
+<span class="normal">513</span>
+<span class="normal">514</span>
+<span class="normal">515</span>
+<span class="normal">516</span>
+<span class="normal">517</span>
+<span class="normal">518</span>
+<span class="normal">519</span>
+<span class="normal">520</span>
+<span class="normal">521</span>
+<span class="normal">522</span>
+<span class="normal">523</span>
+<span class="normal">524</span>
+<span class="normal">525</span>
+<span class="normal">526</span>
+<span class="normal">527</span>
+<span class="normal">528</span>
+<span class="normal">529</span>
+<span class="normal">530</span>
+<span class="normal">531</span>
+<span class="normal">532</span>
+<span class="normal">533</span>
+<span class="normal">534</span>
+<span class="normal">535</span>
+<span class="normal">536</span>
+<span class="normal">537</span>
+<span class="normal">538</span>
+<span class="normal">539</span>
+<span class="normal">540</span>
+<span class="normal">541</span>
+<span class="normal">542</span>
+<span class="normal">543</span>
+<span class="normal">544</span>
+<span class="normal">545</span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-301"><span class="k">class</span><span class="w"> </span><span class="nc">CCBigWigCollection</span><span class="p">(</span><span class="n">Track</span><span class="p">):</span>
+</span><span id="__span-0-302">    <span class="n">DEFAULT_PROPERTIES</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-0-303">        <span class="s2">&quot;style&quot;</span><span class="p">:</span> <span class="s2">&quot;line&quot;</span><span class="p">,</span>
+</span><span id="__span-0-304">        <span class="s2">&quot;fmt&quot;</span><span class="p">:</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span>
+</span><span id="__span-0-305">        <span class="s2">&quot;line_width&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+</span><span id="__span-0-306">        <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+</span><span id="__span-0-307">        <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#a6cee3&quot;</span><span class="p">,</span>
+</span><span id="__span-0-308">        <span class="s2">&quot;threshold_color&quot;</span><span class="p">:</span> <span class="s2">&quot;#ff9c9c&quot;</span><span class="p">,</span>
+</span><span id="__span-0-309">        <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="s2">&quot;inf&quot;</span><span class="p">,</span>
+</span><span id="__span-0-310">        <span class="s2">&quot;cmap&quot;</span><span class="p">:</span> <span class="s2">&quot;bwr&quot;</span><span class="p">,</span>
+</span><span id="__span-0-311">        <span class="s2">&quot;orientation&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-312">        <span class="s2">&quot;data_range_style&quot;</span><span class="p">:</span> <span class="s2">&quot;y-axis&quot;</span><span class="p">,</span>
+</span><span id="__span-0-313">        <span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span>
+</span><span id="__span-0-314">        <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span>
+</span><span id="__span-0-315">    <span class="p">}</span>
+</span><span id="__span-0-316">
+</span><span id="__span-0-317">    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">exclusions</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+</span><span id="__span-0-318">        <span class="bp">self</span><span class="o">.</span><span class="n">file_names</span> <span class="o">=</span> <span class="n">file</span>
+</span><span id="__span-0-319">        <span class="bp">self</span><span class="o">.</span><span class="n">exclusions</span> <span class="o">=</span> <span class="n">exclusions</span>
+</span><span id="__span-0-320">        <span class="bp">self</span><span class="o">.</span><span class="n">bws</span> <span class="o">=</span> <span class="p">[</span><span class="n">cb</span><span class="o">.</span><span class="n">BigWig</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">fn</span><span class="p">))</span> <span class="k">for</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">file</span><span class="p">]</span>
+</span><span id="__span-0-321">        <span class="bp">self</span><span class="o">.</span><span class="n">properties</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;files&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_names</span><span class="p">}</span>
+</span><span id="__span-0-322">        <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">CCBigWigCollection</span><span class="o">.</span><span class="n">DEFAULT_PROPERTIES</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+</span><span id="__span-0-323">        <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-324">        <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;BigWigCollection.</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;title&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-0-325">        <span class="nb">super</span><span class="p">(</span><span class="n">CCBigWigCollection</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+</span><span id="__span-0-326">
+</span><span id="__span-0-327">        <span class="bp">self</span><span class="o">.</span><span class="n">coverages</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-0-328">
+</span><span id="__span-0-329">        <span class="c1"># load features from global feature stack</span>
+</span><span id="__span-0-330">        <span class="n">features_stack</span> <span class="o">=</span> <span class="n">get_feature_stack</span><span class="p">()</span>
+</span><span id="__span-0-331">        <span class="k">for</span> <span class="n">features</span> <span class="ow">in</span> <span class="n">features_stack</span><span class="p">:</span>
+</span><span id="__span-0-332">            <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+</span><span id="__span-0-333">
+</span><span id="__span-0-334">        <span class="c1"># load coverages from global coverages stack</span>
+</span><span id="__span-0-335">        <span class="n">coverage_stack</span> <span class="o">=</span> <span class="n">get_coverage_stack</span><span class="p">()</span>
+</span><span id="__span-0-336">        <span class="k">for</span> <span class="n">coverage</span> <span class="ow">in</span> <span class="n">coverage_stack</span><span class="p">:</span>
+</span><span id="__span-0-337">            <span class="bp">self</span><span class="o">.</span><span class="n">coverages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">coverage</span><span class="p">)</span>
+</span><span id="__span-0-338">
+</span><span id="__span-0-339">    <span class="k">def</span><span class="w"> </span><span class="nf">_correct_genomic_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gr</span><span class="p">:</span> <span class="n">cb</span><span class="o">.</span><span class="n">GenomeRange</span><span class="p">,</span> <span class="n">bw</span><span class="p">:</span> <span class="n">cb</span><span class="o">.</span><span class="n">BigWig</span><span class="p">):</span>
+</span><span id="__span-0-340"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-341"><span class="sd">        Corrects the genomic range to use the same chromosome style as the BigWig file.</span>
+</span><span id="__span-0-342"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="__span-0-343">
+</span><span id="__span-0-344">        <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+</span><span id="__span-0-345">
+</span><span id="__span-0-346">        <span class="n">bw_chromosomes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">bw</span><span class="o">.</span><span class="n">bw</span><span class="o">.</span><span class="n">chromsizes</span><span class="p">())</span>
+</span><span id="__span-0-347">
+</span><span id="__span-0-348">        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^chr.*&#39;</span><span class="p">,</span> <span class="n">bw_chromosomes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^chr.*&#39;</span><span class="p">,</span> <span class="n">gr</span><span class="o">.</span><span class="n">chrom</span><span class="p">):</span>
+</span><span id="__span-0-349">            <span class="n">gr</span><span class="o">.</span><span class="n">chrom</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;chr</span><span class="si">{</span><span class="n">gr</span><span class="o">.</span><span class="n">chrom</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-0-350">        <span class="k">elif</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^chr.*&#39;</span><span class="p">,</span> <span class="n">bw_chromosomes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^chr.*&#39;</span><span class="p">,</span> <span class="n">gr</span><span class="o">.</span><span class="n">chrom</span><span class="p">):</span>
+</span><span id="__span-0-351">            <span class="n">gr</span><span class="o">.</span><span class="n">chrom</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">chrom</span><span class="p">[</span><span class="mi">3</span><span class="p">:]</span>
+</span><span id="__span-0-352">
+</span><span id="__span-0-353">        <span class="k">return</span> <span class="n">gr</span>
+</span><span id="__span-0-354">
+</span><span id="__span-0-355">
+</span><span id="__span-0-356">    <span class="k">def</span><span class="w"> </span><span class="nf">fetch_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gr</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+</span><span id="__span-0-357">        <span class="n">datasets</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-0-358">        <span class="k">for</span> <span class="n">bw</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bws</span><span class="p">:</span>
+</span><span id="__span-0-359">            <span class="n">gr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_correct_genomic_range</span><span class="p">(</span><span class="n">gr</span><span class="p">,</span> <span class="n">bw</span><span class="p">)</span>
+</span><span id="__span-0-360">            <span class="n">bw_data</span> <span class="o">=</span> <span class="n">bw</span><span class="o">.</span><span class="n">fetch_intervals</span><span class="p">(</span><span class="n">gr</span><span class="o">.</span><span class="n">chrom</span><span class="p">,</span> <span class="n">gr</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">gr</span><span class="o">.</span><span class="n">end</span><span class="p">)</span>
+</span><span id="__span-0-361">            <span class="n">bw_data</span> <span class="o">=</span> <span class="n">bw_data</span><span class="o">.</span><span class="n">set_index</span><span class="p">([</span><span class="s2">&quot;chrom&quot;</span><span class="p">,</span> <span class="s2">&quot;start&quot;</span><span class="p">,</span> <span class="s2">&quot;end&quot;</span><span class="p">])</span>
+</span><span id="__span-0-362">            <span class="n">bw_data</span> <span class="o">=</span> <span class="n">bw_data</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">bw</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;file&quot;</span><span class="p">])})</span>
+</span><span id="__span-0-363">            <span class="n">datasets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bw_data</span><span class="p">)</span>
+</span><span id="__span-0-364">
+</span><span id="__span-0-365">        <span class="n">df</span> <span class="o">=</span> <span class="n">datasets</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">datasets</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+</span><span id="__span-0-366">        <span class="n">df_summary</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">sem</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">sem</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+</span><span id="__span-0-367">
+</span><span id="__span-0-368">        <span class="n">intervals_to_bp</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-0-369">        <span class="k">for</span> <span class="n">interval</span> <span class="ow">in</span> <span class="n">df_summary</span><span class="o">.</span><span class="n">itertuples</span><span class="p">():</span>
+</span><span id="__span-0-370">            <span class="n">interval_len</span> <span class="o">=</span> <span class="n">interval</span><span class="o">.</span><span class="n">end</span> <span class="o">-</span> <span class="n">interval</span><span class="o">.</span><span class="n">start</span>
+</span><span id="__span-0-371">
+</span><span id="__span-0-372">            <span class="n">interval_positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">interval_len</span><span class="p">)</span> <span class="o">+</span> <span class="n">interval</span><span class="o">.</span><span class="n">start</span>
+</span><span id="__span-0-373">            <span class="n">scores_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">interval</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">interval_len</span><span class="p">)</span>
+</span><span id="__span-0-374">            <span class="n">scores_sem</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">interval</span><span class="o">.</span><span class="n">sem</span><span class="p">,</span> <span class="n">interval_len</span><span class="p">)</span>
+</span><span id="__span-0-375">
+</span><span id="__span-0-376">            <span class="n">intervals_to_bp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="__span-0-377">                <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">interval_positions</span><span class="p">,</span> <span class="n">scores_mean</span><span class="p">,</span> <span class="n">scores_sem</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+</span><span id="__span-0-378">            <span class="p">)</span>
+</span><span id="__span-0-379">
+</span><span id="__span-0-380">        <span class="n">df_intervals</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+</span><span id="__span-0-381">            <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">intervals_to_bp</span><span class="p">),</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;bp&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;sem&quot;</span><span class="p">]</span>
+</span><span id="__span-0-382">        <span class="p">)</span>
+</span><span id="__span-0-383">
+</span><span id="__span-0-384">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exclusions</span><span class="p">:</span>
+</span><span id="__span-0-385">            <span class="n">df_intervals</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+</span><span id="__span-0-386">                <span class="p">[</span><span class="n">df_intervals</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch_exluded_regions</span><span class="p">(</span><span class="n">gr</span><span class="p">)]</span>
+</span><span id="__span-0-387">            <span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;bp&quot;</span><span class="p">)</span>
+</span><span id="__span-0-388">
+</span><span id="__span-0-389">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;smooth_window&quot;</span><span class="p">):</span>
+</span><span id="__span-0-390">            <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.signal</span><span class="w"> </span><span class="kn">import</span> <span class="n">savgol_filter</span>
+</span><span id="__span-0-391">
+</span><span id="__span-0-392">            <span class="n">df_intervals</span><span class="p">[</span><span class="s2">&quot;mean_smoothed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">savgol_filter</span><span class="p">(</span>
+</span><span id="__span-0-393">                <span class="n">df_intervals</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">],</span>
+</span><span id="__span-0-394">                <span class="n">window_length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;smooth_window&quot;</span><span class="p">,</span> <span class="mi">1001</span><span class="p">),</span>
+</span><span id="__span-0-395">                <span class="n">polyorder</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;polyorder&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+</span><span id="__span-0-396">            <span class="p">)</span>
+</span><span id="__span-0-397">
+</span><span id="__span-0-398">        <span class="k">return</span> <span class="n">df_intervals</span>
+</span><span id="__span-0-399">
+</span><span id="__span-0-400">    <span class="k">def</span><span class="w"> </span><span class="nf">fetch_exluded_regions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gr</span><span class="p">):</span>
+</span><span id="__span-0-401">        <span class="n">excluded_tabix</span> <span class="o">=</span> <span class="n">BedTool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exclusions</span><span class="p">)</span><span class="o">.</span><span class="n">tabix</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-0-402">        <span class="n">df_excluded</span> <span class="o">=</span> <span class="n">excluded_tabix</span><span class="o">.</span><span class="n">tabix_intervals</span><span class="p">(</span>
+</span><span id="__span-0-403">            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">gr</span><span class="o">.</span><span class="n">chrom</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">gr</span><span class="o">.</span><span class="n">start</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">gr</span><span class="o">.</span><span class="n">end</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-0-404">        <span class="p">)</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+</span><span id="__span-0-405">
+</span><span id="__span-0-406">        <span class="n">intervals_to_bp</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-0-407">        <span class="k">for</span> <span class="n">interval</span> <span class="ow">in</span> <span class="n">df_excluded</span><span class="o">.</span><span class="n">itertuples</span><span class="p">():</span>
+</span><span id="__span-0-408">            <span class="n">interval_len</span> <span class="o">=</span> <span class="n">interval</span><span class="o">.</span><span class="n">end</span> <span class="o">-</span> <span class="n">interval</span><span class="o">.</span><span class="n">start</span>
+</span><span id="__span-0-409">
+</span><span id="__span-0-410">            <span class="n">interval_positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">interval_len</span><span class="p">)</span> <span class="o">+</span> <span class="n">interval</span><span class="o">.</span><span class="n">start</span>
+</span><span id="__span-0-411">            <span class="n">scores_nan</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">interval_len</span><span class="p">)</span>
+</span><span id="__span-0-412">            <span class="n">intervals_to_bp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">interval_positions</span><span class="p">)</span>
+</span><span id="__span-0-413">
+</span><span id="__span-0-414">        <span class="n">df_intervals</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">intervals_to_bp</span><span class="p">))</span><span class="o">.</span><span class="n">to_frame</span><span class="p">(</span><span class="s2">&quot;bp&quot;</span><span class="p">)</span>
+</span><span id="__span-0-415">        <span class="n">df_intervals</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+</span><span id="__span-0-416">        <span class="n">df_intervals</span><span class="p">[</span><span class="s2">&quot;sem&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+</span><span id="__span-0-417">
+</span><span id="__span-0-418">        <span class="k">return</span> <span class="n">df_intervals</span>
+</span><span id="__span-0-419">
+</span><span id="__span-0-420">    <span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">gr</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+</span><span id="__span-0-421">        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch_data</span><span class="p">(</span><span class="n">gr</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-422">
+</span><span id="__span-0-423">        <span class="n">line_width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;line_width&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-0-424">        <span class="n">color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;color&quot;</span><span class="p">,</span> <span class="s2">&quot;blue&quot;</span><span class="p">)</span>
+</span><span id="__span-0-425">        <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;alpha&quot;</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span>
+</span><span id="__span-0-426">        <span class="n">downsample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;downsample&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+</span><span id="__span-0-427">
+</span><span id="__span-0-428">        <span class="k">if</span> <span class="n">downsample</span><span class="p">:</span>
+</span><span id="__span-0-429">            <span class="n">rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">downsample</span><span class="p">)</span>
+</span><span id="__span-0-430">            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">rows</span><span class="p">]</span>
+</span><span id="__span-0-431">
+</span><span id="__span-0-432">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;smooth_window&quot;</span><span class="p">):</span>
+</span><span id="__span-0-433">            <span class="n">scores</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;mean_smoothed&quot;</span><span class="p">]</span>
+</span><span id="__span-0-434">        <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-435">            <span class="n">scores</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">]</span>
+</span><span id="__span-0-436">
+</span><span id="__span-0-437">        <span class="n">ax</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span>
+</span><span id="__span-0-438">            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;bp&quot;</span><span class="p">],</span>
+</span><span id="__span-0-439">            <span class="n">scores</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;sem&quot;</span><span class="p">],</span>
+</span><span id="__span-0-440">            <span class="n">scores</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;sem&quot;</span><span class="p">],</span>
+</span><span id="__span-0-441">            <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+</span><span id="__span-0-442">            <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+</span><span id="__span-0-443">            <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-0-444">        <span class="p">)</span>
+</span><span id="__span-0-445">
+</span><span id="__span-0-446">        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+</span><span id="__span-0-447">            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;bp&quot;</span><span class="p">],</span>
+</span><span id="__span-0-448">            <span class="n">scores</span><span class="p">,</span>
+</span><span id="__span-0-449">            <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+</span><span id="__span-0-450">            <span class="n">zorder</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-0-451">        <span class="p">)</span>
+</span><span id="__span-0-452">
+</span><span id="__span-0-453">        <span class="n">min_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_value&quot;</span><span class="p">)</span>
+</span><span id="__span-0-454">        <span class="n">max_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_value&quot;</span><span class="p">)</span>
+</span><span id="__span-0-455">
+</span><span id="__span-0-456">        <span class="n">ymin</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">scores</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="k">if</span> <span class="n">min_val</span> <span class="o">==</span> <span class="s2">&quot;auto&quot;</span> <span class="k">else</span> <span class="n">min_val</span>
+</span><span id="__span-0-457">        <span class="n">ymax</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">scores</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;sem&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="k">if</span> <span class="n">max_val</span> <span class="o">==</span> <span class="s2">&quot;auto&quot;</span> <span class="k">else</span> <span class="n">max_val</span>
+</span><span id="__span-0-458">
+</span><span id="__span-0-459">        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">gr</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">gr</span><span class="o">.</span><span class="n">end</span><span class="p">)</span>
+</span><span id="__span-0-460">        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">)</span>
+</span><span id="__span-0-461">
+</span><span id="__span-0-462">        <span class="bp">self</span><span class="o">.</span><span class="n">plot_data_range</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;data_range_style&quot;</span><span class="p">],</span> <span class="n">gr</span><span class="p">)</span>
+</span><span id="__span-0-463">        <span class="bp">self</span><span class="o">.</span><span class="n">plot_label</span><span class="p">()</span>
+</span><span id="__span-0-464">
+</span><span id="__span-0-465">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_data_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="n">data_range_style</span><span class="p">,</span> <span class="n">gr</span><span class="p">:</span> <span class="n">cb</span><span class="o">.</span><span class="n">GenomeRange</span><span class="p">):</span>
+</span><span id="__span-0-466">        <span class="k">if</span> <span class="n">data_range_style</span> <span class="o">==</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span>
+</span><span id="__span-0-467">            <span class="bp">self</span><span class="o">.</span><span class="n">plot_text_range</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="n">gr</span><span class="p">)</span>
+</span><span id="__span-0-468">        <span class="k">else</span><span class="p">:</span>  <span class="c1"># &#39;y-axis&#39; style</span>
+</span><span id="__span-0-469">            <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-0-470">                <span class="n">y_ax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_ax</span>
+</span><span id="__span-0-471">                <span class="bp">self</span><span class="o">.</span><span class="n">plot_yaxis_range</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">y_ax</span><span class="p">)</span>
+</span><span id="__span-0-472">            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+</span><span id="__span-0-473">                <span class="bp">self</span><span class="o">.</span><span class="n">plot_data_range</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="n">gr</span><span class="p">)</span>
+</span><span id="__span-0-474">
+</span><span id="__span-0-475">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_yaxis_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plot_axis</span><span class="p">,</span> <span class="n">y_ax</span><span class="p">):</span>
+</span><span id="__span-0-476">        <span class="c1"># &quot;&quot;&quot;</span>
+</span><span id="__span-0-477">        <span class="c1"># Plot the scale of the y axis with respect to the plot_axis</span>
+</span><span id="__span-0-478">        <span class="c1"># plot something that looks like this:</span>
+</span><span id="__span-0-479">        <span class="c1"># ymax ┐</span>
+</span><span id="__span-0-480">        <span class="c1">#      │</span>
+</span><span id="__span-0-481">        <span class="c1">#      │</span>
+</span><span id="__span-0-482">        <span class="c1"># ymin ┘</span>
+</span><span id="__span-0-483">        <span class="c1"># Parameters</span>
+</span><span id="__span-0-484">        <span class="c1"># ----------</span>
+</span><span id="__span-0-485">        <span class="c1"># plot_axis : matplotlib.axes.Axes</span>
+</span><span id="__span-0-486">        <span class="c1">#     Main plot axis.</span>
+</span><span id="__span-0-487">        <span class="c1"># y_ax : matplotlib.axes.Axes</span>
+</span><span id="__span-0-488">        <span class="c1">#     Axis to use to plot the scale</span>
+</span><span id="__span-0-489">        <span class="c1"># &quot;&quot;&quot;</span>
+</span><span id="__span-0-490">
+</span><span id="__span-0-491">        <span class="k">if</span> <span class="p">(</span>
+</span><span id="__span-0-492">            <span class="s2">&quot;show_data_range&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span>
+</span><span id="__span-0-493">            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;show_data_range&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;no&quot;</span>
+</span><span id="__span-0-494">        <span class="p">):</span>
+</span><span id="__span-0-495">            <span class="k">return</span>
+</span><span id="__span-0-496">
+</span><span id="__span-0-497">        <span class="k">def</span><span class="w"> </span><span class="nf">value_to_str</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+</span><span id="__span-0-498">            <span class="k">if</span> <span class="n">value</span> <span class="o">%</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="__span-0-499">                <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+</span><span id="__span-0-500">            <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-501">                <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mf">0.01</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-0-502">
+</span><span id="__span-0-503">        <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span> <span class="o">=</span> <span class="n">plot_axis</span><span class="o">.</span><span class="n">get_ylim</span><span class="p">()</span>
+</span><span id="__span-0-504">
+</span><span id="__span-0-505">        <span class="n">ymax_str</span> <span class="o">=</span> <span class="n">value_to_str</span><span class="p">(</span><span class="n">ymax</span><span class="p">)</span>
+</span><span id="__span-0-506">        <span class="n">ymin_str</span> <span class="o">=</span> <span class="n">value_to_str</span><span class="p">(</span><span class="n">ymin</span><span class="p">)</span>
+</span><span id="__span-0-507">        <span class="n">x_pos</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+</span><span id="__span-0-508">        <span class="n">y_pos</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">]</span>
+</span><span id="__span-0-509">        <span class="n">y_ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_pos</span><span class="p">,</span> <span class="n">y_pos</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">y_ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">)</span>
+</span><span id="__span-0-510">        <span class="n">y_ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+</span><span id="__span-0-511">            <span class="o">-</span><span class="mf">0.2</span><span class="p">,</span>
+</span><span id="__span-0-512">            <span class="o">-</span><span class="mf">0.01</span><span class="p">,</span>
+</span><span id="__span-0-513">            <span class="n">ymin_str</span><span class="p">,</span>
+</span><span id="__span-0-514">            <span class="n">verticalalignment</span><span class="o">=</span><span class="s2">&quot;bottom&quot;</span><span class="p">,</span>
+</span><span id="__span-0-515">            <span class="n">horizontalalignment</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">,</span>
+</span><span id="__span-0-516">            <span class="n">transform</span><span class="o">=</span><span class="n">y_ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span>
+</span><span id="__span-0-517">        <span class="p">)</span>
+</span><span id="__span-0-518">        <span class="n">y_ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+</span><span id="__span-0-519">            <span class="o">-</span><span class="mf">0.2</span><span class="p">,</span>
+</span><span id="__span-0-520">            <span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-0-521">            <span class="n">ymax_str</span><span class="p">,</span>
+</span><span id="__span-0-522">            <span class="n">verticalalignment</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">,</span>
+</span><span id="__span-0-523">            <span class="n">horizontalalignment</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">,</span>
+</span><span id="__span-0-524">            <span class="n">transform</span><span class="o">=</span><span class="n">y_ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span>
+</span><span id="__span-0-525">        <span class="p">)</span>
+</span><span id="__span-0-526">        <span class="n">y_ax</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="__span-0-527">
+</span><span id="__span-0-528">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_text_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="n">gr</span><span class="p">:</span> <span class="n">cb</span><span class="o">.</span><span class="n">GenomeRange</span><span class="p">):</span>
+</span><span id="__span-0-529">        <span class="n">ydelta</span> <span class="o">=</span> <span class="n">ymax</span> <span class="o">-</span> <span class="n">ymin</span>
+</span><span id="__span-0-530">
+</span><span id="__span-0-531">        <span class="c1"># set min max</span>
+</span><span id="__span-0-532">        <span class="k">def</span><span class="w"> </span><span class="nf">format_lim</span><span class="p">(</span><span class="n">lim</span><span class="p">):</span>
+</span><span id="__span-0-533">            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">lim</span><span class="p">)</span> <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">lim</span><span class="p">)</span> <span class="o">%</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">lim</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-0-534">
+</span><span id="__span-0-535">        <span class="n">ymax_print</span> <span class="o">=</span> <span class="n">format_lim</span><span class="p">(</span><span class="n">ymax</span><span class="p">)</span>
+</span><span id="__span-0-536">        <span class="n">ymin_print</span> <span class="o">=</span> <span class="n">format_lim</span><span class="p">(</span><span class="n">ymin</span><span class="p">)</span>
+</span><span id="__span-0-537">        <span class="n">small_x</span> <span class="o">=</span> <span class="mf">0.01</span> <span class="o">*</span> <span class="n">gr</span><span class="o">.</span><span class="n">length</span>
+</span><span id="__span-0-538">        <span class="c1"># by default show the data range</span>
+</span><span id="__span-0-539">        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+</span><span id="__span-0-540">            <span class="n">gr</span><span class="o">.</span><span class="n">start</span> <span class="o">-</span> <span class="n">small_x</span><span class="p">,</span>
+</span><span id="__span-0-541">            <span class="n">ymax</span> <span class="o">-</span> <span class="n">ydelta</span> <span class="o">*</span> <span class="mf">0.2</span><span class="p">,</span>
+</span><span id="__span-0-542">            <span class="sa">f</span><span class="s2">&quot;[ </span><span class="si">{</span><span class="n">ymin_print</span><span class="si">}</span><span class="s2"> ~ </span><span class="si">{</span><span class="n">ymax_print</span><span class="si">}</span><span class="s2"> ]&quot;</span><span class="p">,</span>
+</span><span id="__span-0-543">            <span class="n">horizontalalignment</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+</span><span id="__span-0-544">            <span class="n">verticalalignment</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">,</span>
+</span><span id="__span-0-545">        <span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="capcruncher.api.plotting.CCFigure" class="doc doc-heading">
+            <code>CCFigure</code>
+
+
+<a href="#capcruncher.api.plotting.CCFigure" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+
+        <p>Generates a figure from a list of tracks</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>tracks</code>
+            </td>
+            <td>
+                  <code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="CCTrack (capcruncher.api.plotting.CCTrack)" href="#capcruncher.api.plotting.CCTrack">CCTrack</a>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>List of tracks to plot. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>auto_spacing</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Automatically add a spacer track between each track. Defaults to False.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional arguments to pass to the figure</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>capcruncher/api/plotting.py</code></summary>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1048</span>
+<span class="normal">1049</span>
+<span class="normal">1050</span>
+<span class="normal">1051</span>
+<span class="normal">1052</span>
+<span class="normal">1053</span>
+<span class="normal">1054</span>
+<span class="normal">1055</span>
+<span class="normal">1056</span>
+<span class="normal">1057</span>
+<span class="normal">1058</span>
+<span class="normal">1059</span>
+<span class="normal">1060</span>
+<span class="normal">1061</span>
+<span class="normal">1062</span>
+<span class="normal">1063</span>
+<span class="normal">1064</span>
+<span class="normal">1065</span>
+<span class="normal">1066</span>
+<span class="normal">1067</span>
+<span class="normal">1068</span>
+<span class="normal">1069</span>
+<span class="normal">1070</span>
+<span class="normal">1071</span>
+<span class="normal">1072</span>
+<span class="normal">1073</span>
+<span class="normal">1074</span>
+<span class="normal">1075</span>
+<span class="normal">1076</span>
+<span class="normal">1077</span>
+<span class="normal">1078</span>
+<span class="normal">1079</span>
+<span class="normal">1080</span>
+<span class="normal">1081</span>
+<span class="normal">1082</span>
+<span class="normal">1083</span>
+<span class="normal">1084</span>
+<span class="normal">1085</span>
+<span class="normal">1086</span>
+<span class="normal">1087</span>
+<span class="normal">1088</span>
+<span class="normal">1089</span>
+<span class="normal">1090</span>
+<span class="normal">1091</span>
+<span class="normal">1092</span>
+<span class="normal">1093</span>
+<span class="normal">1094</span>
+<span class="normal">1095</span>
+<span class="normal">1096</span>
+<span class="normal">1097</span>
+<span class="normal">1098</span>
+<span class="normal">1099</span>
+<span class="normal">1100</span>
+<span class="normal">1101</span>
+<span class="normal">1102</span>
+<span class="normal">1103</span>
+<span class="normal">1104</span>
+<span class="normal">1105</span>
+<span class="normal">1106</span>
+<span class="normal">1107</span>
+<span class="normal">1108</span>
+<span class="normal">1109</span>
+<span class="normal">1110</span>
+<span class="normal">1111</span>
+<span class="normal">1112</span>
+<span class="normal">1113</span>
+<span class="normal">1114</span>
+<span class="normal">1115</span>
+<span class="normal">1116</span>
+<span class="normal">1117</span>
+<span class="normal">1118</span>
+<span class="normal">1119</span>
+<span class="normal">1120</span>
+<span class="normal">1121</span>
+<span class="normal">1122</span>
+<span class="normal">1123</span>
+<span class="normal">1124</span>
+<span class="normal">1125</span>
+<span class="normal">1126</span>
+<span class="normal">1127</span>
+<span class="normal">1128</span>
+<span class="normal">1129</span>
+<span class="normal">1130</span>
+<span class="normal">1131</span>
+<span class="normal">1132</span>
+<span class="normal">1133</span>
+<span class="normal">1134</span>
+<span class="normal">1135</span>
+<span class="normal">1136</span>
+<span class="normal">1137</span>
+<span class="normal">1138</span>
+<span class="normal">1139</span>
+<span class="normal">1140</span>
+<span class="normal">1141</span>
+<span class="normal">1142</span>
+<span class="normal">1143</span>
+<span class="normal">1144</span>
+<span class="normal">1145</span>
+<span class="normal">1146</span>
+<span class="normal">1147</span>
+<span class="normal">1148</span>
+<span class="normal">1149</span>
+<span class="normal">1150</span>
+<span class="normal">1151</span>
+<span class="normal">1152</span>
+<span class="normal">1153</span>
+<span class="normal">1154</span>
+<span class="normal">1155</span>
+<span class="normal">1156</span>
+<span class="normal">1157</span>
+<span class="normal">1158</span>
+<span class="normal">1159</span>
+<span class="normal">1160</span>
+<span class="normal">1161</span>
+<span class="normal">1162</span>
+<span class="normal">1163</span>
+<span class="normal">1164</span>
+<span class="normal">1165</span>
+<span class="normal">1166</span>
+<span class="normal">1167</span>
+<span class="normal">1168</span>
+<span class="normal">1169</span>
+<span class="normal">1170</span>
+<span class="normal">1171</span>
+<span class="normal">1172</span>
+<span class="normal">1173</span>
+<span class="normal">1174</span>
+<span class="normal">1175</span>
+<span class="normal">1176</span>
+<span class="normal">1177</span>
+<span class="normal">1178</span>
+<span class="normal">1179</span>
+<span class="normal">1180</span>
+<span class="normal">1181</span>
+<span class="normal">1182</span>
+<span class="normal">1183</span>
+<span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span>
+<span class="normal">1190</span>
+<span class="normal">1191</span>
+<span class="normal">1192</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span>
+<span class="normal">1195</span>
+<span class="normal">1196</span>
+<span class="normal">1197</span>
+<span class="normal">1198</span>
+<span class="normal">1199</span>
+<span class="normal">1200</span>
+<span class="normal">1201</span>
+<span class="normal">1202</span>
+<span class="normal">1203</span>
+<span class="normal">1204</span>
+<span class="normal">1205</span>
+<span class="normal">1206</span>
+<span class="normal">1207</span>
+<span class="normal">1208</span>
+<span class="normal">1209</span>
+<span class="normal">1210</span>
+<span class="normal">1211</span>
+<span class="normal">1212</span>
+<span class="normal">1213</span>
+<span class="normal">1214</span>
+<span class="normal">1215</span>
+<span class="normal">1216</span>
+<span class="normal">1217</span>
+<span class="normal">1218</span>
+<span class="normal">1219</span>
+<span class="normal">1220</span>
+<span class="normal">1221</span>
+<span class="normal">1222</span>
+<span class="normal">1223</span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1048"><span class="k">class</span><span class="w"> </span><span class="nc">CCFigure</span><span class="p">:</span>
+</span><span id="__span-0-1049"><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1050"><span class="sd">    Generates a figure from a list of tracks</span>
+</span><span id="__span-0-1051">
+</span><span id="__span-0-1052"><span class="sd">    Args:</span>
+</span><span id="__span-0-1053"><span class="sd">        tracks (List[CCTrack], optional): List of tracks to plot. Defaults to None.</span>
+</span><span id="__span-0-1054"><span class="sd">        auto_spacing (bool, optional): Automatically add a spacer track between each track. Defaults to False.</span>
+</span><span id="__span-0-1055"><span class="sd">        **kwargs: Additional arguments to pass to the figure</span>
+</span><span id="__span-0-1056"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-1057">
+</span><span id="__span-0-1058">    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+</span><span id="__span-0-1059">        <span class="bp">self</span><span class="p">,</span> <span class="n">tracks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CCTrack</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">auto_spacing</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+</span><span id="__span-0-1060">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1061">        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="n">cb</span><span class="o">.</span><span class="n">Frame</span><span class="p">()</span>
+</span><span id="__span-0-1062">        <span class="bp">self</span><span class="o">.</span><span class="n">auto_spacing</span> <span class="o">=</span> <span class="n">auto_spacing</span>
+</span><span id="__span-0-1063">        <span class="bp">self</span><span class="o">.</span><span class="n">properties</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span><span id="__span-0-1064">        <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-1065">
+</span><span id="__span-0-1066">        <span class="k">if</span> <span class="n">tracks</span><span class="p">:</span>
+</span><span id="__span-0-1067">            <span class="bp">self</span><span class="o">.</span><span class="n">tracks</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">tracks</span><span class="p">)</span>
+</span><span id="__span-0-1068">            <span class="bp">self</span><span class="o">.</span><span class="n">add_tracks</span><span class="p">(</span><span class="n">tracks</span><span class="p">)</span>
+</span><span id="__span-0-1069">        <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-1070">            <span class="bp">self</span><span class="o">.</span><span class="n">tracks</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="__span-0-1071">
+</span><span id="__span-0-1072">    <span class="k">def</span><span class="w"> </span><span class="nf">add_track</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">track</span><span class="p">:</span> <span class="n">CCTrack</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1073"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1074"><span class="sd">        Add a track to the figure</span>
+</span><span id="__span-0-1075">
+</span><span id="__span-0-1076"><span class="sd">        Args:</span>
+</span><span id="__span-0-1077"><span class="sd">            track (CCTrack): Track to add</span>
+</span><span id="__span-0-1078"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="__span-0-1079">        <span class="bp">self</span><span class="o">.</span><span class="n">tracks</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">track</span><span class="p">)</span>
+</span><span id="__span-0-1080">        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">add_track</span><span class="p">(</span><span class="n">track</span><span class="o">.</span><span class="n">get_track</span><span class="p">())</span>
+</span><span id="__span-0-1081">
+</span><span id="__span-0-1082">    <span class="k">def</span><span class="w"> </span><span class="nf">add_tracks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tracks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CCTrack</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1083"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1084"><span class="sd">        Add a list of tracks to the figure</span>
+</span><span id="__span-0-1085">
+</span><span id="__span-0-1086"><span class="sd">        Args:</span>
+</span><span id="__span-0-1087"><span class="sd">            tracks (List[CCTrack]): List of tracks to add</span>
+</span><span id="__span-0-1088"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="__span-0-1089">        <span class="k">for</span> <span class="n">track</span> <span class="ow">in</span> <span class="n">tracks</span><span class="p">:</span>
+</span><span id="__span-0-1090">            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_spacing</span><span class="p">:</span>
+</span><span id="__span-0-1091">                <span class="n">spacer</span> <span class="o">=</span> <span class="n">CCTrack</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">file_type</span><span class="o">=</span><span class="s2">&quot;spacer&quot;</span><span class="p">)</span>
+</span><span id="__span-0-1092">                <span class="bp">self</span><span class="o">.</span><span class="n">add_track</span><span class="p">(</span><span class="n">spacer</span><span class="o">.</span><span class="n">get_track</span><span class="p">())</span>
+</span><span id="__span-0-1093">
+</span><span id="__span-0-1094">            <span class="bp">self</span><span class="o">.</span><span class="n">add_track</span><span class="p">(</span><span class="n">track</span><span class="p">)</span>
+</span><span id="__span-0-1095">
+</span><span id="__span-0-1096">    <span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
+</span><span id="__span-0-1097">        <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-1098">        <span class="n">gr</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">GenomeRange</span><span class="p">],</span>
+</span><span id="__span-0-1099">        <span class="n">gr2</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">GenomeRange</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-1100">        <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-1101">        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+</span><span id="__span-0-1102">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1103"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1104"><span class="sd">        Plot the figure</span>
+</span><span id="__span-0-1105">
+</span><span id="__span-0-1106"><span class="sd">        Args:</span>
+</span><span id="__span-0-1107"><span class="sd">            gr (Union[str, GenomeRange]): GenomeRange to plot</span>
+</span><span id="__span-0-1108"><span class="sd">            gr2 (Union[str, GenomeRange], optional): Second GenomeRange to plot. Defaults to None.</span>
+</span><span id="__span-0-1109"><span class="sd">            show (bool, optional): Show the figure. Defaults to True.</span>
+</span><span id="__span-0-1110"><span class="sd">            **kwargs: Additional arguments to pass to the plot</span>
+</span><span id="__span-0-1111"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="__span-0-1112">
+</span><span id="__span-0-1113">        <span class="k">if</span> <span class="n">gr2</span><span class="p">:</span>
+</span><span id="__span-0-1114">            <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">gr</span><span class="p">,</span> <span class="n">gr2</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-1115">        <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-1116">            <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">gr</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-1117">        <span class="k">if</span> <span class="n">show</span><span class="p">:</span>
+</span><span id="__span-0-1118">            <span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</span><span id="__span-0-1119">
+</span><span id="__span-0-1120">        <span class="k">return</span> <span class="n">fig</span>
+</span><span id="__span-0-1121">
+</span><span id="__span-0-1122">    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span>
+</span><span id="__span-0-1123">        <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-1124">        <span class="n">gr</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">GenomeRange</span><span class="p">],</span>
+</span><span id="__span-0-1125">        <span class="n">gr2</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">GenomeRange</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-1126">        <span class="n">output</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-1127">        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+</span><span id="__span-0-1128">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1129"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1130"><span class="sd">        Plots the figure and saves it to a file</span>
+</span><span id="__span-0-1131">
+</span><span id="__span-0-1132"><span class="sd">        Args:</span>
+</span><span id="__span-0-1133"><span class="sd">            gr (Union[str, GenomeRange]): GenomeRange to plot</span>
+</span><span id="__span-0-1134"><span class="sd">            gr2 (Union[str, GenomeRange], optional): Second GenomeRange to plot. Defaults to None.</span>
+</span><span id="__span-0-1135"><span class="sd">            output (str, optional): Path to save the figure to. Defaults to None.</span>
+</span><span id="__span-0-1136"><span class="sd">            **kwargs: Additional arguments to pass to the plot</span>
+</span><span id="__span-0-1137"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="__span-0-1138">
+</span><span id="__span-0-1139">        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">gr</span><span class="p">,</span> <span class="n">gr2</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-1140">        <span class="k">if</span> <span class="n">output</span><span class="p">:</span>
+</span><span id="__span-0-1141">            <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+</span><span id="__span-0-1142">        <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-1143">            <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">gr</span><span class="o">.</span><span class="n">chrom</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">gr</span><span class="o">.</span><span class="n">start</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">gr</span><span class="o">.</span><span class="n">end</span><span class="si">}</span><span class="s2">.png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+</span><span id="__span-0-1144">
+</span><span id="__span-0-1145">    <span class="nd">@classmethod</span>
+</span><span id="__span-0-1146">    <span class="k">def</span><span class="w"> </span><span class="nf">from_toml</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">toml_file</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CCFigure&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1147"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1148"><span class="sd">        Instantiate a CCFigure from a toml file</span>
+</span><span id="__span-0-1149">
+</span><span id="__span-0-1150"><span class="sd">        Args:</span>
+</span><span id="__span-0-1151"><span class="sd">            toml_file (os.PathLike): Path to toml file</span>
+</span><span id="__span-0-1152"><span class="sd">            **kwargs: Additional arguments to pass to the figure</span>
+</span><span id="__span-0-1153"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="__span-0-1154">        <span class="kn">import</span><span class="w"> </span><span class="nn">toml</span>
+</span><span id="__span-0-1155">
+</span><span id="__span-0-1156">        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">toml_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="__span-0-1157">            <span class="n">config</span> <span class="o">=</span> <span class="n">toml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span id="__span-0-1158">
+</span><span id="__span-0-1159">        <span class="n">tracks</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-0-1160">        <span class="k">for</span> <span class="n">track_name</span><span class="p">,</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="__span-0-1161">            <span class="n">file</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;file&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">attr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;file&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+</span><span id="__span-0-1162">            <span class="n">track_name</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">attr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">track_name</span>
+</span><span id="__span-0-1163">            <span class="n">tracks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CCTrack</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">track_name</span><span class="p">,</span> <span class="o">**</span><span class="n">attr</span><span class="p">))</span>
+</span><span id="__span-0-1164">        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">tracks</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-1165">
+</span><span id="__span-0-1166">    <span class="nd">@classmethod</span>
+</span><span id="__span-0-1167">    <span class="k">def</span><span class="w"> </span><span class="nf">from_frame</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="n">cb</span><span class="o">.</span><span class="n">Frame</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CCFigure&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1168"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1169"><span class="sd">        Instantiate a CCFigure from a coolbox Frame</span>
+</span><span id="__span-0-1170">
+</span><span id="__span-0-1171"><span class="sd">        Args:</span>
+</span><span id="__span-0-1172"><span class="sd">            frame (cb.Frame): coolbox Frame to instantiate from</span>
+</span><span id="__span-0-1173"><span class="sd">            **kwargs: Additional arguments to pass to the figure</span>
+</span><span id="__span-0-1174"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="__span-0-1175">        <span class="n">tracks</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-0-1176">        <span class="k">for</span> <span class="n">track</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">tracks</span><span class="p">:</span>
+</span><span id="__span-0-1177">            <span class="n">tracks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CCTrack</span><span class="p">(</span><span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;file&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="p">))</span>
+</span><span id="__span-0-1178">
+</span><span id="__span-0-1179">        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">tracks</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-1180">
+</span><span id="__span-0-1181">    <span class="k">def</span><span class="w"> </span><span class="nf">to_toml</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+</span><span id="__span-0-1182"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1183"><span class="sd">        Save the CCFigure to a toml file</span>
+</span><span id="__span-0-1184">
+</span><span id="__span-0-1185"><span class="sd">        Args:</span>
+</span><span id="__span-0-1186"><span class="sd">            output (str, optional): Path to save the toml file to. Defaults to None.</span>
+</span><span id="__span-0-1187">
+</span><span id="__span-0-1188"><span class="sd">        Returns:</span>
+</span><span id="__span-0-1189"><span class="sd">            Union[None, Dict[str, Any]]: If output is not specified, returns a dict of the toml file</span>
+</span><span id="__span-0-1190">
+</span><span id="__span-0-1191"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="__span-0-1192">
+</span><span id="__span-0-1193">        <span class="kn">import</span><span class="w"> </span><span class="nn">toml</span>
+</span><span id="__span-0-1194">        <span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">OrderedDict</span>
+</span><span id="__span-0-1195">
+</span><span id="__span-0-1196">        <span class="k">def</span><span class="w"> </span><span class="nf">_get_n_tracks_of_type</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">],</span> <span class="n">track_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="__span-0-1197">            <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">track_type</span> <span class="ow">in</span> <span class="n">t</span><span class="p">)</span>
+</span><span id="__span-0-1198">
+</span><span id="__span-0-1199">        <span class="n">config</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+</span><span id="__span-0-1200">        <span class="k">for</span> <span class="n">track</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracks</span><span class="p">:</span>
+</span><span id="__span-0-1201">            <span class="c1"># Perform conversions for file-less tracks</span>
+</span><span id="__span-0-1202">            <span class="k">if</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;spacer&quot;</span><span class="p">,</span> <span class="s2">&quot;scale&quot;</span><span class="p">,</span> <span class="s2">&quot;xaxis&quot;</span><span class="p">]:</span>
+</span><span id="__span-0-1203">                <span class="n">track_type</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span>
+</span><span id="__span-0-1204">                <span class="n">n</span> <span class="o">=</span> <span class="n">_get_n_tracks_of_type</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">track_type</span><span class="p">)</span>
+</span><span id="__span-0-1205">                <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">track_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span>
+</span><span id="__span-0-1206">                <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">track_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">][</span><span class="s2">&quot;file&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-1207">            <span class="k">elif</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;genes&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1208">                <span class="n">track_type</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span>
+</span><span id="__span-0-1209">                <span class="n">n</span> <span class="o">=</span> <span class="n">_get_n_tracks_of_type</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">track_type</span><span class="p">)</span>
+</span><span id="__span-0-1210">                <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">track_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span>
+</span><span id="__span-0-1211">                <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">track_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">][</span><span class="s2">&quot;file&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">path</span>
+</span><span id="__span-0-1212">            <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-1213">                <span class="n">config</span><span class="p">[</span><span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span>
+</span><span id="__span-0-1214">                <span class="n">config</span><span class="p">[</span><span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">]][</span><span class="s2">&quot;file&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">path</span>
+</span><span id="__span-0-1215">
+</span><span id="__span-0-1216">        <span class="n">outfile</span> <span class="o">=</span> <span class="n">output</span> <span class="k">if</span> <span class="n">output</span> <span class="k">else</span> <span class="s2">&quot;config.toml&quot;</span>
+</span><span id="__span-0-1217">
+</span><span id="__span-0-1218">        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="__span-0-1219">            <span class="n">config_str</span> <span class="o">=</span> <span class="n">toml</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</span><span id="__span-0-1220">            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">config_str</span><span class="p">)</span>
+</span><span id="__span-0-1221">
+</span><span id="__span-0-1222">        <span class="k">if</span> <span class="ow">not</span> <span class="n">output</span><span class="p">:</span>
+</span><span id="__span-0-1223">            <span class="k">return</span> <span class="n">config</span>
+</span></code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="capcruncher.api.plotting.CCFigure.add_track" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">add_track</span><span class="p">(</span><span class="n">track</span><span class="p">)</span></code>
+
+<a href="#capcruncher.api.plotting.CCFigure.add_track" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Add a track to the figure</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>track</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="CCTrack (capcruncher.api.plotting.CCTrack)" href="#capcruncher.api.plotting.CCTrack">CCTrack</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Track to add</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>capcruncher/api/plotting.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1072</span>
+<span class="normal">1073</span>
+<span class="normal">1074</span>
+<span class="normal">1075</span>
+<span class="normal">1076</span>
+<span class="normal">1077</span>
+<span class="normal">1078</span>
+<span class="normal">1079</span>
+<span class="normal">1080</span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1072"><span class="k">def</span><span class="w"> </span><span class="nf">add_track</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">track</span><span class="p">:</span> <span class="n">CCTrack</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1073"><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1074"><span class="sd">    Add a track to the figure</span>
+</span><span id="__span-0-1075">
+</span><span id="__span-0-1076"><span class="sd">    Args:</span>
+</span><span id="__span-0-1077"><span class="sd">        track (CCTrack): Track to add</span>
+</span><span id="__span-0-1078"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-1079">    <span class="bp">self</span><span class="o">.</span><span class="n">tracks</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">track</span><span class="p">)</span>
+</span><span id="__span-0-1080">    <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">add_track</span><span class="p">(</span><span class="n">track</span><span class="o">.</span><span class="n">get_track</span><span class="p">())</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="capcruncher.api.plotting.CCFigure.add_tracks" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">add_tracks</span><span class="p">(</span><span class="n">tracks</span><span class="p">)</span></code>
+
+<a href="#capcruncher.api.plotting.CCFigure.add_tracks" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Add a list of tracks to the figure</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>tracks</code>
+            </td>
+            <td>
+                  <code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="CCTrack (capcruncher.api.plotting.CCTrack)" href="#capcruncher.api.plotting.CCTrack">CCTrack</a>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>List of tracks to add</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>capcruncher/api/plotting.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1082</span>
+<span class="normal">1083</span>
+<span class="normal">1084</span>
+<span class="normal">1085</span>
+<span class="normal">1086</span>
+<span class="normal">1087</span>
+<span class="normal">1088</span>
+<span class="normal">1089</span>
+<span class="normal">1090</span>
+<span class="normal">1091</span>
+<span class="normal">1092</span>
+<span class="normal">1093</span>
+<span class="normal">1094</span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1082"><span class="k">def</span><span class="w"> </span><span class="nf">add_tracks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tracks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CCTrack</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1083"><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1084"><span class="sd">    Add a list of tracks to the figure</span>
+</span><span id="__span-0-1085">
+</span><span id="__span-0-1086"><span class="sd">    Args:</span>
+</span><span id="__span-0-1087"><span class="sd">        tracks (List[CCTrack]): List of tracks to add</span>
+</span><span id="__span-0-1088"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-1089">    <span class="k">for</span> <span class="n">track</span> <span class="ow">in</span> <span class="n">tracks</span><span class="p">:</span>
+</span><span id="__span-0-1090">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_spacing</span><span class="p">:</span>
+</span><span id="__span-0-1091">            <span class="n">spacer</span> <span class="o">=</span> <span class="n">CCTrack</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">file_type</span><span class="o">=</span><span class="s2">&quot;spacer&quot;</span><span class="p">)</span>
+</span><span id="__span-0-1092">            <span class="bp">self</span><span class="o">.</span><span class="n">add_track</span><span class="p">(</span><span class="n">spacer</span><span class="o">.</span><span class="n">get_track</span><span class="p">())</span>
+</span><span id="__span-0-1093">
+</span><span id="__span-0-1094">        <span class="bp">self</span><span class="o">.</span><span class="n">add_track</span><span class="p">(</span><span class="n">track</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="capcruncher.api.plotting.CCFigure.from_frame" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">from_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#capcruncher.api.plotting.CCFigure.from_frame" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Instantiate a CCFigure from a coolbox Frame</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>frame</code>
+            </td>
+            <td>
+                  <code><span title="coolbox.api.Frame">Frame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>coolbox Frame to instantiate from</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional arguments to pass to the figure</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>capcruncher/api/plotting.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1166</span>
+<span class="normal">1167</span>
+<span class="normal">1168</span>
+<span class="normal">1169</span>
+<span class="normal">1170</span>
+<span class="normal">1171</span>
+<span class="normal">1172</span>
+<span class="normal">1173</span>
+<span class="normal">1174</span>
+<span class="normal">1175</span>
+<span class="normal">1176</span>
+<span class="normal">1177</span>
+<span class="normal">1178</span>
+<span class="normal">1179</span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1166"><span class="nd">@classmethod</span>
+</span><span id="__span-0-1167"><span class="k">def</span><span class="w"> </span><span class="nf">from_frame</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="n">cb</span><span class="o">.</span><span class="n">Frame</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CCFigure&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1168"><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1169"><span class="sd">    Instantiate a CCFigure from a coolbox Frame</span>
+</span><span id="__span-0-1170">
+</span><span id="__span-0-1171"><span class="sd">    Args:</span>
+</span><span id="__span-0-1172"><span class="sd">        frame (cb.Frame): coolbox Frame to instantiate from</span>
+</span><span id="__span-0-1173"><span class="sd">        **kwargs: Additional arguments to pass to the figure</span>
+</span><span id="__span-0-1174"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-1175">    <span class="n">tracks</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-0-1176">    <span class="k">for</span> <span class="n">track</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">tracks</span><span class="p">:</span>
+</span><span id="__span-0-1177">        <span class="n">tracks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CCTrack</span><span class="p">(</span><span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;file&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="p">))</span>
+</span><span id="__span-0-1178">
+</span><span id="__span-0-1179">    <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">tracks</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="capcruncher.api.plotting.CCFigure.from_toml" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">from_toml</span><span class="p">(</span><span class="n">toml_file</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#capcruncher.api.plotting.CCFigure.from_toml" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Instantiate a CCFigure from a toml file</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>toml_file</code>
+            </td>
+            <td>
+                  <code><span title="os.PathLike">PathLike</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to toml file</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional arguments to pass to the figure</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>capcruncher/api/plotting.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1145</span>
+<span class="normal">1146</span>
+<span class="normal">1147</span>
+<span class="normal">1148</span>
+<span class="normal">1149</span>
+<span class="normal">1150</span>
+<span class="normal">1151</span>
+<span class="normal">1152</span>
+<span class="normal">1153</span>
+<span class="normal">1154</span>
+<span class="normal">1155</span>
+<span class="normal">1156</span>
+<span class="normal">1157</span>
+<span class="normal">1158</span>
+<span class="normal">1159</span>
+<span class="normal">1160</span>
+<span class="normal">1161</span>
+<span class="normal">1162</span>
+<span class="normal">1163</span>
+<span class="normal">1164</span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1145"><span class="nd">@classmethod</span>
+</span><span id="__span-0-1146"><span class="k">def</span><span class="w"> </span><span class="nf">from_toml</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">toml_file</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CCFigure&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1147"><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1148"><span class="sd">    Instantiate a CCFigure from a toml file</span>
+</span><span id="__span-0-1149">
+</span><span id="__span-0-1150"><span class="sd">    Args:</span>
+</span><span id="__span-0-1151"><span class="sd">        toml_file (os.PathLike): Path to toml file</span>
+</span><span id="__span-0-1152"><span class="sd">        **kwargs: Additional arguments to pass to the figure</span>
+</span><span id="__span-0-1153"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-1154">    <span class="kn">import</span><span class="w"> </span><span class="nn">toml</span>
+</span><span id="__span-0-1155">
+</span><span id="__span-0-1156">    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">toml_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="__span-0-1157">        <span class="n">config</span> <span class="o">=</span> <span class="n">toml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span id="__span-0-1158">
+</span><span id="__span-0-1159">    <span class="n">tracks</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-0-1160">    <span class="k">for</span> <span class="n">track_name</span><span class="p">,</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="__span-0-1161">        <span class="n">file</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;file&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">attr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;file&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+</span><span id="__span-0-1162">        <span class="n">track_name</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">attr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">track_name</span>
+</span><span id="__span-0-1163">        <span class="n">tracks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CCTrack</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">track_name</span><span class="p">,</span> <span class="o">**</span><span class="n">attr</span><span class="p">))</span>
+</span><span id="__span-0-1164">    <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">tracks</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="capcruncher.api.plotting.CCFigure.plot" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">plot</span><span class="p">(</span><span class="n">gr</span><span class="p">,</span> <span class="n">gr2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+<a href="#capcruncher.api.plotting.CCFigure.plot" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Plot the figure</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>gr</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="str">str</span>, <span title="coolbox.utilities.genome.GenomeRange">GenomeRange</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>GenomeRange to plot</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>gr2</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="str">str</span>, <span title="coolbox.utilities.genome.GenomeRange">GenomeRange</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Second GenomeRange to plot. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>show</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Show the figure. Defaults to True.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional arguments to pass to the plot</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>capcruncher/api/plotting.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1096</span>
+<span class="normal">1097</span>
+<span class="normal">1098</span>
+<span class="normal">1099</span>
+<span class="normal">1100</span>
+<span class="normal">1101</span>
+<span class="normal">1102</span>
+<span class="normal">1103</span>
+<span class="normal">1104</span>
+<span class="normal">1105</span>
+<span class="normal">1106</span>
+<span class="normal">1107</span>
+<span class="normal">1108</span>
+<span class="normal">1109</span>
+<span class="normal">1110</span>
+<span class="normal">1111</span>
+<span class="normal">1112</span>
+<span class="normal">1113</span>
+<span class="normal">1114</span>
+<span class="normal">1115</span>
+<span class="normal">1116</span>
+<span class="normal">1117</span>
+<span class="normal">1118</span>
+<span class="normal">1119</span>
+<span class="normal">1120</span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1096"><span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
+</span><span id="__span-0-1097">    <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-1098">    <span class="n">gr</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">GenomeRange</span><span class="p">],</span>
+</span><span id="__span-0-1099">    <span class="n">gr2</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">GenomeRange</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-1100">    <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-1101">    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+</span><span id="__span-0-1102"><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1103"><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1104"><span class="sd">    Plot the figure</span>
+</span><span id="__span-0-1105">
+</span><span id="__span-0-1106"><span class="sd">    Args:</span>
+</span><span id="__span-0-1107"><span class="sd">        gr (Union[str, GenomeRange]): GenomeRange to plot</span>
+</span><span id="__span-0-1108"><span class="sd">        gr2 (Union[str, GenomeRange], optional): Second GenomeRange to plot. Defaults to None.</span>
+</span><span id="__span-0-1109"><span class="sd">        show (bool, optional): Show the figure. Defaults to True.</span>
+</span><span id="__span-0-1110"><span class="sd">        **kwargs: Additional arguments to pass to the plot</span>
+</span><span id="__span-0-1111"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-1112">
+</span><span id="__span-0-1113">    <span class="k">if</span> <span class="n">gr2</span><span class="p">:</span>
+</span><span id="__span-0-1114">        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">gr</span><span class="p">,</span> <span class="n">gr2</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-1115">    <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-1116">        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">gr</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-1117">    <span class="k">if</span> <span class="n">show</span><span class="p">:</span>
+</span><span id="__span-0-1118">        <span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</span><span id="__span-0-1119">
+</span><span id="__span-0-1120">    <span class="k">return</span> <span class="n">fig</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="capcruncher.api.plotting.CCFigure.save" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">save</span><span class="p">(</span><span class="n">gr</span><span class="p">,</span> <span class="n">gr2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+<a href="#capcruncher.api.plotting.CCFigure.save" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Plots the figure and saves it to a file</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>gr</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="str">str</span>, <span title="coolbox.utilities.genome.GenomeRange">GenomeRange</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>GenomeRange to plot</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>gr2</code>
+            </td>
+            <td>
+                  <code><span title="typing.Union">Union</span>[<span title="str">str</span>, <span title="coolbox.utilities.genome.GenomeRange">GenomeRange</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Second GenomeRange to plot. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>output</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to save the figure to. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional arguments to pass to the plot</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>capcruncher/api/plotting.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1122</span>
+<span class="normal">1123</span>
+<span class="normal">1124</span>
+<span class="normal">1125</span>
+<span class="normal">1126</span>
+<span class="normal">1127</span>
+<span class="normal">1128</span>
+<span class="normal">1129</span>
+<span class="normal">1130</span>
+<span class="normal">1131</span>
+<span class="normal">1132</span>
+<span class="normal">1133</span>
+<span class="normal">1134</span>
+<span class="normal">1135</span>
+<span class="normal">1136</span>
+<span class="normal">1137</span>
+<span class="normal">1138</span>
+<span class="normal">1139</span>
+<span class="normal">1140</span>
+<span class="normal">1141</span>
+<span class="normal">1142</span>
+<span class="normal">1143</span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1122"><span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span>
+</span><span id="__span-0-1123">    <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-1124">    <span class="n">gr</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">GenomeRange</span><span class="p">],</span>
+</span><span id="__span-0-1125">    <span class="n">gr2</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">GenomeRange</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-1126">    <span class="n">output</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-1127">    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+</span><span id="__span-0-1128"><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1129"><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1130"><span class="sd">    Plots the figure and saves it to a file</span>
+</span><span id="__span-0-1131">
+</span><span id="__span-0-1132"><span class="sd">    Args:</span>
+</span><span id="__span-0-1133"><span class="sd">        gr (Union[str, GenomeRange]): GenomeRange to plot</span>
+</span><span id="__span-0-1134"><span class="sd">        gr2 (Union[str, GenomeRange], optional): Second GenomeRange to plot. Defaults to None.</span>
+</span><span id="__span-0-1135"><span class="sd">        output (str, optional): Path to save the figure to. Defaults to None.</span>
+</span><span id="__span-0-1136"><span class="sd">        **kwargs: Additional arguments to pass to the plot</span>
+</span><span id="__span-0-1137"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-1138">
+</span><span id="__span-0-1139">    <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">gr</span><span class="p">,</span> <span class="n">gr2</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-1140">    <span class="k">if</span> <span class="n">output</span><span class="p">:</span>
+</span><span id="__span-0-1141">        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+</span><span id="__span-0-1142">    <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-1143">        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">gr</span><span class="o">.</span><span class="n">chrom</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">gr</span><span class="o">.</span><span class="n">start</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">gr</span><span class="o">.</span><span class="n">end</span><span class="si">}</span><span class="s2">.png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="capcruncher.api.plotting.CCFigure.to_toml" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">to_toml</span><span class="p">(</span><span class="n">output</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#capcruncher.api.plotting.CCFigure.to_toml" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Save the CCFigure to a toml file</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>output</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to save the toml file to. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.Union">Union</span>[None, <span title="typing.Dict">Dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Union[None, Dict[str, Any]]: If output is not specified, returns a dict of the toml file</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>capcruncher/api/plotting.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1181</span>
+<span class="normal">1182</span>
+<span class="normal">1183</span>
+<span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span>
+<span class="normal">1190</span>
+<span class="normal">1191</span>
+<span class="normal">1192</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span>
+<span class="normal">1195</span>
+<span class="normal">1196</span>
+<span class="normal">1197</span>
+<span class="normal">1198</span>
+<span class="normal">1199</span>
+<span class="normal">1200</span>
+<span class="normal">1201</span>
+<span class="normal">1202</span>
+<span class="normal">1203</span>
+<span class="normal">1204</span>
+<span class="normal">1205</span>
+<span class="normal">1206</span>
+<span class="normal">1207</span>
+<span class="normal">1208</span>
+<span class="normal">1209</span>
+<span class="normal">1210</span>
+<span class="normal">1211</span>
+<span class="normal">1212</span>
+<span class="normal">1213</span>
+<span class="normal">1214</span>
+<span class="normal">1215</span>
+<span class="normal">1216</span>
+<span class="normal">1217</span>
+<span class="normal">1218</span>
+<span class="normal">1219</span>
+<span class="normal">1220</span>
+<span class="normal">1221</span>
+<span class="normal">1222</span>
+<span class="normal">1223</span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1181"><span class="k">def</span><span class="w"> </span><span class="nf">to_toml</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+</span><span id="__span-0-1182"><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-1183"><span class="sd">    Save the CCFigure to a toml file</span>
+</span><span id="__span-0-1184">
+</span><span id="__span-0-1185"><span class="sd">    Args:</span>
+</span><span id="__span-0-1186"><span class="sd">        output (str, optional): Path to save the toml file to. Defaults to None.</span>
+</span><span id="__span-0-1187">
+</span><span id="__span-0-1188"><span class="sd">    Returns:</span>
+</span><span id="__span-0-1189"><span class="sd">        Union[None, Dict[str, Any]]: If output is not specified, returns a dict of the toml file</span>
+</span><span id="__span-0-1190">
+</span><span id="__span-0-1191"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-1192">
+</span><span id="__span-0-1193">    <span class="kn">import</span><span class="w"> </span><span class="nn">toml</span>
+</span><span id="__span-0-1194">    <span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">OrderedDict</span>
+</span><span id="__span-0-1195">
+</span><span id="__span-0-1196">    <span class="k">def</span><span class="w"> </span><span class="nf">_get_n_tracks_of_type</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">],</span> <span class="n">track_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="__span-0-1197">        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">track_type</span> <span class="ow">in</span> <span class="n">t</span><span class="p">)</span>
+</span><span id="__span-0-1198">
+</span><span id="__span-0-1199">    <span class="n">config</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+</span><span id="__span-0-1200">    <span class="k">for</span> <span class="n">track</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracks</span><span class="p">:</span>
+</span><span id="__span-0-1201">        <span class="c1"># Perform conversions for file-less tracks</span>
+</span><span id="__span-0-1202">        <span class="k">if</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;spacer&quot;</span><span class="p">,</span> <span class="s2">&quot;scale&quot;</span><span class="p">,</span> <span class="s2">&quot;xaxis&quot;</span><span class="p">]:</span>
+</span><span id="__span-0-1203">            <span class="n">track_type</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span>
+</span><span id="__span-0-1204">            <span class="n">n</span> <span class="o">=</span> <span class="n">_get_n_tracks_of_type</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">track_type</span><span class="p">)</span>
+</span><span id="__span-0-1205">            <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">track_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span>
+</span><span id="__span-0-1206">            <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">track_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">][</span><span class="s2">&quot;file&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-1207">        <span class="k">elif</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;genes&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1208">            <span class="n">track_type</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span>
+</span><span id="__span-0-1209">            <span class="n">n</span> <span class="o">=</span> <span class="n">_get_n_tracks_of_type</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">track_type</span><span class="p">)</span>
+</span><span id="__span-0-1210">            <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">track_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span>
+</span><span id="__span-0-1211">            <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">track_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">][</span><span class="s2">&quot;file&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">path</span>
+</span><span id="__span-0-1212">        <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-1213">            <span class="n">config</span><span class="p">[</span><span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">properties</span>
+</span><span id="__span-0-1214">            <span class="n">config</span><span class="p">[</span><span class="n">track</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">]][</span><span class="s2">&quot;file&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">track</span><span class="o">.</span><span class="n">path</span>
+</span><span id="__span-0-1215">
+</span><span id="__span-0-1216">    <span class="n">outfile</span> <span class="o">=</span> <span class="n">output</span> <span class="k">if</span> <span class="n">output</span> <span class="k">else</span> <span class="s2">&quot;config.toml&quot;</span>
+</span><span id="__span-0-1217">
+</span><span id="__span-0-1218">    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="__span-0-1219">        <span class="n">config_str</span> <span class="o">=</span> <span class="n">toml</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</span><span id="__span-0-1220">        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">config_str</span><span class="p">)</span>
+</span><span id="__span-0-1221">
+</span><span id="__span-0-1222">    <span class="k">if</span> <span class="ow">not</span> <span class="n">output</span><span class="p">:</span>
+</span><span id="__span-0-1223">        <span class="k">return</span> <span class="n">config</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="capcruncher.api.plotting.CCTrack" class="doc doc-heading">
+            <code>CCTrack</code>
+
+
+<a href="#capcruncher.api.plotting.CCTrack" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+
+        <p>Provides a wrapper around tracks to provide a consistent interface</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>file</code>
+            </td>
+            <td>
+                  <code><span title="os.PathLike">PathLike</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to file to plot</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>file_type</code>
+            </td>
+            <td>
+                  <code><span title="typing.Literal">Literal</span>[&#39;heatmap&#39;, &#39;bigwig&#39;, &#39;bigwig_summary&#39;, &#39;scale&#39;, &#39;bed&#39;, &#39;xaxis&#39;, &#39;genes&#39;, &#39;spacer&#39;]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Type of file to plot. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional arguments to pass to the track</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>capcruncher/api/plotting.py</code></summary>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 951</span>
+<span class="normal"> 952</span>
+<span class="normal"> 953</span>
+<span class="normal"> 954</span>
+<span class="normal"> 955</span>
+<span class="normal"> 956</span>
+<span class="normal"> 957</span>
+<span class="normal"> 958</span>
+<span class="normal"> 959</span>
+<span class="normal"> 960</span>
+<span class="normal"> 961</span>
+<span class="normal"> 962</span>
+<span class="normal"> 963</span>
+<span class="normal"> 964</span>
+<span class="normal"> 965</span>
+<span class="normal"> 966</span>
+<span class="normal"> 967</span>
+<span class="normal"> 968</span>
+<span class="normal"> 969</span>
+<span class="normal"> 970</span>
+<span class="normal"> 971</span>
+<span class="normal"> 972</span>
+<span class="normal"> 973</span>
+<span class="normal"> 974</span>
+<span class="normal"> 975</span>
+<span class="normal"> 976</span>
+<span class="normal"> 977</span>
+<span class="normal"> 978</span>
+<span class="normal"> 979</span>
+<span class="normal"> 980</span>
+<span class="normal"> 981</span>
+<span class="normal"> 982</span>
+<span class="normal"> 983</span>
+<span class="normal"> 984</span>
+<span class="normal"> 985</span>
+<span class="normal"> 986</span>
+<span class="normal"> 987</span>
+<span class="normal"> 988</span>
+<span class="normal"> 989</span>
+<span class="normal"> 990</span>
+<span class="normal"> 991</span>
+<span class="normal"> 992</span>
+<span class="normal"> 993</span>
+<span class="normal"> 994</span>
+<span class="normal"> 995</span>
+<span class="normal"> 996</span>
+<span class="normal"> 997</span>
+<span class="normal"> 998</span>
+<span class="normal"> 999</span>
+<span class="normal">1000</span>
+<span class="normal">1001</span>
+<span class="normal">1002</span>
+<span class="normal">1003</span>
+<span class="normal">1004</span>
+<span class="normal">1005</span>
+<span class="normal">1006</span>
+<span class="normal">1007</span>
+<span class="normal">1008</span>
+<span class="normal">1009</span>
+<span class="normal">1010</span>
+<span class="normal">1011</span>
+<span class="normal">1012</span>
+<span class="normal">1013</span>
+<span class="normal">1014</span>
+<span class="normal">1015</span>
+<span class="normal">1016</span>
+<span class="normal">1017</span>
+<span class="normal">1018</span>
+<span class="normal">1019</span>
+<span class="normal">1020</span>
+<span class="normal">1021</span>
+<span class="normal">1022</span>
+<span class="normal">1023</span>
+<span class="normal">1024</span>
+<span class="normal">1025</span>
+<span class="normal">1026</span>
+<span class="normal">1027</span>
+<span class="normal">1028</span>
+<span class="normal">1029</span>
+<span class="normal">1030</span>
+<span class="normal">1031</span>
+<span class="normal">1032</span>
+<span class="normal">1033</span>
+<span class="normal">1034</span>
+<span class="normal">1035</span>
+<span class="normal">1036</span>
+<span class="normal">1037</span>
+<span class="normal">1038</span>
+<span class="normal">1039</span>
+<span class="normal">1040</span>
+<span class="normal">1041</span>
+<span class="normal">1042</span>
+<span class="normal">1043</span>
+<span class="normal">1044</span>
+<span class="normal">1045</span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-951"><span class="k">class</span><span class="w"> </span><span class="nc">CCTrack</span><span class="p">:</span>
+</span><span id="__span-0-952"><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-953"><span class="sd">    Provides a wrapper around tracks to provide a consistent interface</span>
+</span><span id="__span-0-954">
+</span><span id="__span-0-955"><span class="sd">    Args:</span>
+</span><span id="__span-0-956"><span class="sd">        file (os.PathLike): Path to file to plot</span>
+</span><span id="__span-0-957"><span class="sd">        file_type (Literal[&quot;heatmap&quot;, &quot;bigwig&quot;, &quot;bigwig_summary&quot;, &quot;scale&quot;, &quot;bed&quot;, &quot;xaxis&quot;, &quot;genes&quot;, &quot;spacer&quot;], optional): Type of file to plot. Defaults to None.</span>
+</span><span id="__span-0-958"><span class="sd">        **kwargs: Additional arguments to pass to the track</span>
+</span><span id="__span-0-959"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-960">
+</span><span id="__span-0-961">    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+</span><span id="__span-0-962">        <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-963">        <span class="n">file</span><span class="p">,</span>
+</span><span id="__span-0-964">        <span class="n">file_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
+</span><span id="__span-0-965">            <span class="s2">&quot;heatmap&quot;</span><span class="p">,</span>
+</span><span id="__span-0-966">            <span class="s2">&quot;heatmap_summary&quot;</span><span class="p">,</span>
+</span><span id="__span-0-967">            <span class="s2">&quot;bigwig&quot;</span><span class="p">,</span>
+</span><span id="__span-0-968">            <span class="s2">&quot;bigwig_summary&quot;</span><span class="p">,</span>
+</span><span id="__span-0-969">            <span class="s2">&quot;scale&quot;</span><span class="p">,</span>
+</span><span id="__span-0-970">            <span class="s2">&quot;bed&quot;</span><span class="p">,</span>
+</span><span id="__span-0-971">            <span class="s2">&quot;xaxis&quot;</span><span class="p">,</span>
+</span><span id="__span-0-972">            <span class="s2">&quot;genes&quot;</span><span class="p">,</span>
+</span><span id="__span-0-973">            <span class="s2">&quot;spacer&quot;</span><span class="p">,</span>
+</span><span id="__span-0-974">        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-975">        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+</span><span id="__span-0-976">    <span class="p">):</span>
+</span><span id="__span-0-977">        <span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="o">=</span> <span class="n">file</span>
+</span><span id="__span-0-978">        <span class="bp">self</span><span class="o">.</span><span class="n">properties</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span><span id="__span-0-979">        <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-980">
+</span><span id="__span-0-981">        <span class="k">if</span> <span class="n">file_type</span><span class="p">:</span>
+</span><span id="__span-0-982">            <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">file_type</span>
+</span><span id="__span-0-983">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">):</span>
+</span><span id="__span-0-984">            <span class="k">pass</span>
+</span><span id="__span-0-985">        <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-986">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="__span-0-987">                <span class="s2">&quot;Please specify file_type as one of: heatmap, bigwig, bigwig_summary, scale, bed, xaxis, genes, spacer&quot;</span>
+</span><span id="__span-0-988">            <span class="p">)</span>
+</span><span id="__span-0-989">
+</span><span id="__span-0-990">    <span class="k">def</span><span class="w"> </span><span class="nf">get_track</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-0-991">        <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">):</span>  <span class="c1"># noqa</span>
+</span><span id="__span-0-992">            <span class="k">case</span> <span class="s2">&quot;heatmap&quot;</span><span class="p">:</span>
+</span><span id="__span-0-993">                <span class="k">assert</span> <span class="p">(</span>
+</span><span id="__span-0-994">                    <span class="s2">&quot;binsize&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span>
+</span><span id="__span-0-995">                <span class="p">),</span> <span class="s2">&quot;Binsize must be specified for heatmap track (e.g. binsize=5000)&quot;</span>
+</span><span id="__span-0-996">                <span class="k">return</span> <span class="n">CCMatrix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+</span><span id="__span-0-997">            <span class="k">case</span> <span class="s2">&quot;heatmap_summary&quot;</span><span class="p">:</span>
+</span><span id="__span-0-998">                <span class="k">assert</span> <span class="p">(</span>
+</span><span id="__span-0-999">                    <span class="s2">&quot;binsize&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span>
+</span><span id="__span-0-1000">                <span class="p">),</span> <span class="s2">&quot;Binsize must be specified for heatmap track (e.g. binsize=5000)&quot;</span>
+</span><span id="__span-0-1001">
+</span><span id="__span-0-1002">                <span class="n">matricies</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-0-1003">                <span class="k">for</span> <span class="n">matrix</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">:</span>
+</span><span id="__span-0-1004">                    <span class="n">matricies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CCMatrix</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">))</span>
+</span><span id="__span-0-1005">
+</span><span id="__span-0-1006">                <span class="k">return</span> <span class="n">CCAverageMatrix</span><span class="p">(</span><span class="n">matricies</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+</span><span id="__span-0-1007">            <span class="k">case</span> <span class="s2">&quot;bigwig&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1008">                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;overlay&quot;</span><span class="p">):</span>
+</span><span id="__span-0-1009">                    <span class="k">return</span> <span class="n">cb</span><span class="o">.</span><span class="n">BigWigCoverage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+</span><span id="__span-0-1010">                <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-1011">                    <span class="k">return</span> <span class="n">CCBigWig</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+</span><span id="__span-0-1012">            <span class="k">case</span> <span class="s2">&quot;bigwig_summary&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1013">                <span class="k">return</span> <span class="n">CCBigWigCollection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+</span><span id="__span-0-1014">            <span class="k">case</span> <span class="s2">&quot;scale&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1015">                <span class="k">return</span> <span class="n">ScaleBar</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+</span><span id="__span-0-1016">            <span class="k">case</span> <span class="s2">&quot;bed&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1017">                <span class="k">return</span> <span class="n">CCSimpleBed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+</span><span id="__span-0-1018">            <span class="k">case</span> <span class="s2">&quot;xaxis&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1019">                <span class="k">return</span> <span class="n">CCXAxisGenomic</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+</span><span id="__span-0-1020">            <span class="k">case</span> <span class="s2">&quot;genes&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1021">                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">):</span>
+</span><span id="__span-0-1022">                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">]</span>
+</span><span id="__span-0-1023">                <span class="k">return</span> <span class="n">cb</span><span class="o">.</span><span class="n">BED</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+</span><span id="__span-0-1024">            <span class="k">case</span> <span class="s2">&quot;spacer&quot;</span><span class="p">:</span>
+</span><span id="__span-0-1025">                <span class="k">return</span> <span class="n">cb</span><span class="o">.</span><span class="n">Spacer</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+</span><span id="__span-0-1026">            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+</span><span id="__span-0-1027">                <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)):</span>
+</span><span id="__span-0-1028">                    <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">))(</span>
+</span><span id="__span-0-1029">                        <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span>
+</span><span id="__span-0-1030">                    <span class="p">)</span>
+</span><span id="__span-0-1031">
+</span><span id="__span-0-1032">                <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-1033">                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="__span-0-1034">                        <span class="sa">f</span><span class="s2">&quot;Unknown track type </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">, select from: heatmap, bigwig, bigwig_summary, scale, bed, xaxis, genes, spacer&quot;</span>
+</span><span id="__span-0-1035">                    <span class="p">)</span>
+</span><span id="__span-0-1036">
+</span><span id="__span-0-1037">    <span class="nd">@property</span>
+</span><span id="__span-0-1038">    <span class="k">def</span><span class="w"> </span><span class="nf">path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-0-1039">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
+</span><span id="__span-0-1040">            <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">]</span>
+</span><span id="__span-0-1041">        <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-1042">            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
+</span><span id="__span-0-1043">
+</span><span id="__span-0-1044">    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-0-1045">        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;CCTrack(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;title&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span></code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.copy", "header.autohide"], "search": "../../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      
+    
+  </body>
+</html>
