@@ -14,7 +14,7 @@ snakemake<=7.32.4
 capcruncher-tools>=0.2.0
 cooler<=0.10.3
 h5py
-ibis-framework[duckdb]>6.1.0,<=8.0.0
+ibis-framework[duckdb]>6.1.0,<=10.5.0
 multiqc
 matplotlib>=3.8.4,<3.9.0
 pandera<=0.22.1
