@@ -7,11 +7,6 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 
 try:
-    import iced
-except ImportError:
-    logger.warning("Iced not found, normalisation functions will not be available.")
-
-try:
     import coolbox.api as cb
     from coolbox.api import GenomeRange
     from coolbox.core.track import Track
