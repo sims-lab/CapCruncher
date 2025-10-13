@@ -72,7 +72,7 @@ def cis_and_trans_stats(
     else:
         tbl = con.register(f"parquet://{slices}/*.parquet", table_name="slices_tbl")
 
-    tbl = tbl.mutate(capture=tbl["capture"].fillna("reporter")).select(
+    tbl = tbl.mutate(capture=tbl["capture"].cast("string").fillna("reporter")).select(
         ["capture", "parent_id", "chrom", "viewpoint", "pe"]
     )
 
