@@ -25,15 +25,15 @@ try:
     import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
-    import pyranges as pr
+    import pyranges1 as pr
     import seaborn as sns
     import tqdm
     from matplotlib import cm, colors, transforms
     from matplotlib.colors import LinearSegmentedColormap
     from matplotlib.patches import Polygon
-    from pybedtools import BedTool
 
     import capcruncher.api as cc
+    from capcruncher.utils import fetch_bed_intervals
 
 
 
@@ -398,10 +398,12 @@ try:
             return df_intervals
 
         def fetch_exluded_regions(self, gr):
-            excluded_tabix = BedTool(self.exclusions).tabix(force=True)
-            df_excluded = excluded_tabix.tabix_intervals(
-                f"{gr.chrom}:{gr.start}-{gr.end}"
-            ).to_dataframe()
+            df_excluded = fetch_bed_intervals(
+                self.exclusions, f"{gr.chrom}:{gr.start}-{gr.end}"
+            )
+
+            if df_excluded.empty:
+                return pd.DataFrame(columns=["bp", "mean", "sem"])
 
             intervals_to_bp = []
             for interval in df_excluded.itertuples():
@@ -621,12 +623,7 @@ try:
             self.properties.update(kwargs)
 
         def fetch_data(self, gr):
-            bt = BedTool(self.file)
-            bt_tabix = bt.tabix(force=True)
-
-            return bt_tabix.tabix_intervals(
-                f"{gr.chrom}:{gr.start}-{gr.end}"
-            ).to_dataframe()
+            return fetch_bed_intervals(self.file, f"{gr.chrom}:{gr.start}-{gr.end}")
 
         def plot(self, ax, gr, **kwargs):
             data = self.fetch_data(gr)

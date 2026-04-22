@@ -3,11 +3,26 @@ import os
 import pickle
 import re
 from functools import wraps
-from typing import Callable, Generator, Iterable, Tuple, Type, Union
+from typing import Callable, Iterable, Mapping, Sequence, Tuple, Union
 
 import pandas as pd
-import pybedtools
-import pyranges as pr
+import pyranges1 as pr
+
+
+BED_COLUMN_NAMES = ("chrom", "start", "end", "name", "score", "strand")
+PYRANGES_TO_BED_COLUMNS = {
+    "Chromosome": "chrom",
+    "Start": "start",
+    "End": "end",
+    "Name": "name",
+    "Score": "score",
+    "Strand": "strand",
+}
+BED_TO_PYRANGES_COLUMNS = {value: key for key, value in PYRANGES_TO_BED_COLUMNS.items()}
+
+
+def _pyranges_to_dataframe(gr: pr.PyRanges) -> pd.DataFrame:
+    return pd.DataFrame(gr).copy()
 
 
 def cycle_argument(arg):
@@ -87,20 +102,80 @@ def get_human_readable_number_of_bp(bp: int) -> str:
     return bp
 
 
-def is_valid_bed(bed: Union[str, pybedtools.BedTool], verbose=True) -> bool:
+def _bed_column_names(n_columns: int) -> list[str]:
+    base_columns = list(BED_COLUMN_NAMES[: min(n_columns, len(BED_COLUMN_NAMES))])
+    extra_columns = [f"column_{index}" for index in range(len(base_columns) + 1, n_columns + 1)]
+    return [*base_columns, *extra_columns]
+
+
+def _coerce_bedframe(df: pd.DataFrame) -> pd.DataFrame:
+    bed = df.copy()
+
+    if all(isinstance(column, int) for column in bed.columns):
+        bed.columns = _bed_column_names(bed.shape[1])
+    else:
+        bed = bed.rename(columns=PYRANGES_TO_BED_COLUMNS)
+
+    required_columns = [column for column in BED_COLUMN_NAMES[:3] if column in bed.columns]
+    if len(required_columns) < 3:
+        raise IndexError("Wrong number of fields detected check separator or number of columns")
+
+    bed["start"] = pd.to_numeric(bed["start"], errors="raise").astype(int)
+    bed["end"] = pd.to_numeric(bed["end"], errors="raise").astype(int)
+
+    return bed
+
+
+def _read_bed_file(path: Union[str, os.PathLike]) -> pd.DataFrame:
+    bed = pd.read_csv(path, sep="\t", header=None, comment="#")
+    if bed.empty:
+        raise pd.errors.EmptyDataError(f"{path} is empty")
+
+    bed.columns = _bed_column_names(bed.shape[1])
+    return _coerce_bedframe(bed)
+
+
+def _ensure_name_column(df: pd.DataFrame, prefix: str = "region") -> pd.DataFrame:
+    bed = df.copy()
+    if "name" not in bed.columns:
+        bed["name"] = [f"{prefix}_{index}" for index in range(len(bed))]
+    else:
+        missing_names = bed["name"].isna() | (bed["name"].astype(str).str.len() == 0)
+        if missing_names.any():
+            bed.loc[missing_names, "name"] = [
+                f"{prefix}_{index}" for index in bed.index[missing_names]
+            ]
+
+    return bed
+
+
+def _parse_region(region: Union[str, Sequence[Union[str, int]]]) -> tuple[str, int, int]:
+    if isinstance(region, str):
+        chrom, coordinates = region.split(":", maxsplit=1)
+        start, end = coordinates.split("-", maxsplit=1)
+        return chrom, int(start), int(end)
+
+    chrom, start, end = region[:3]
+    return str(chrom), int(start), int(end)
+
+
+def is_valid_bed(bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges], verbose=True) -> bool:
     from loguru import logger
 
     """Returns true if bed file can be opened and has at least 3 columns"""
     try:
-        bed = pybedtools.BedTool(bed)
-        if bed.field_count(n=1) >= 3:
+        bed = convert_bed_to_dataframe(bed)
+        if {"chrom", "start", "end"}.issubset(bed.columns):
             return True
 
     except Exception as e:
+        if not verbose:
+            return False
+
         if isinstance(e, FileNotFoundError):
             logger.warning(f"Bed file: {bed} not found")
 
-        elif isinstance(e, IndexError):
+        elif isinstance(e, (IndexError, ValueError, pd.errors.ParserError)):
             logger.warning(
                 "Wrong number of fields detected check separator or number of columns"
             )
@@ -108,24 +183,19 @@ def is_valid_bed(bed: Union[str, pybedtools.BedTool], verbose=True) -> bool:
         else:
             logger.warning(f"Exception raised {e}")
 
+    return False
 
-def bed_has_name(bed: Union[str, pybedtools.BedTool]) -> bool:
+
+def bed_has_name(bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges]) -> bool:
     """Returns true if bed file has at least 4 columns"""
-    if isinstance(bed, str):
-        bed = pybedtools.BedTool(bed)
-
-    if bed.field_count(n=1) >= 4:
-        return True
+    bed_df = convert_bed_to_dataframe(bed)
+    return "name" in bed_df.columns
 
 
-def bed_has_duplicate_names(bed: Union[str, pybedtools.BedTool]) -> bool:
-    """Returns true if bed file has no duplicated names"""
-    if isinstance(bed, str):
-        bed = pybedtools.BedTool(bed)
-
-    df = bed.to_dataframe()
-    if not df["name"].duplicated().shape[0] > 1:
-        return True
+def bed_has_duplicate_names(bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges]) -> bool:
+    """Returns true if the bed file contains duplicated names."""
+    bed_df = convert_bed_to_dataframe(bed)
+    return "name" in bed_df.columns and bed_df["name"].duplicated().any()
 
 
 def hash_column(col: Iterable, hash_type=64) -> list:
@@ -148,7 +218,7 @@ def hash_column(col: Iterable, hash_type=64) -> list:
 
 
 def split_intervals_on_chrom(
-    intervals: Union[str, pybedtools.BedTool, pd.DataFrame]
+    intervals: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges]
 ) -> dict:
     """Creates dictionary from bed file with the chroms as keys"""
 
@@ -159,20 +229,45 @@ def split_intervals_on_chrom(
 def intersect_bins(
     bins_1: pd.DataFrame, bins_2: pd.DataFrame, **bedtools_kwargs
 ) -> pd.DataFrame:
-    """Intersects two sets of genomic intervals using pybedtools.BedTools intersect.
+    """Intersects two sets of genomic intervals using PyRanges joins."""
 
-    Formats the intersection in a clearer way than pybedtool auto names.
+    _ = bedtools_kwargs
 
-    """
+    pr_1 = convert_bed_to_pr(_ensure_name_column(bins_1))
+    pr_2 = convert_bed_to_pr(_ensure_name_column(bins_2))
+    df_intersect = _pyranges_to_dataframe(
+        pr_1.join_overlaps(pr_2, report_overlap_column="Overlap")
+    )
 
-    bt1 = pybedtools.BedTool.from_dataframe(bins_1)
-    bt2 = pybedtools.BedTool.from_dataframe(bins_2)
-    bt_intersect = bt1.intersect(bt2, **bedtools_kwargs)
-    df_intersect = bt_intersect.to_dataframe(
-        disable_auto_names=True,
-        header=None,
-        index_col=False,
-        names=[
+    if df_intersect.empty:
+        return pd.DataFrame(
+            columns=[
+                "chrom_1",
+                "start_1",
+                "end_1",
+                "name_1",
+                "chrom_2",
+                "start_2",
+                "end_2",
+                "name_2",
+                "overlap",
+            ]
+        )
+
+    return df_intersect.rename(
+        columns={
+            "Chromosome": "chrom_1",
+            "Start": "start_1",
+            "End": "end_1",
+            "Name": "name_1",
+            "Chromosome_b": "chrom_2",
+            "Start_b": "start_2",
+            "End_b": "end_2",
+            "Name_b": "name_2",
+            "Overlap": "overlap",
+        }
+    )[
+        [
             "chrom_1",
             "start_1",
             "end_1",
@@ -182,10 +277,8 @@ def intersect_bins(
             "end_2",
             "name_2",
             "overlap",
-        ],
-    )
-
-    return df_intersect
+        ]
+    ]
 
 
 def load_dict(fn, format: str, dtype: str = "int") -> dict:
@@ -262,17 +355,10 @@ def get_timing(task_name=None) -> Callable:
 
 
 def convert_to_bedtool(
-    bed: Union[str, pybedtools.BedTool, pd.DataFrame]
-) -> pybedtools.BedTool:
-    """Converts a str or pd.DataFrame to a pybedtools.BedTool object"""
-    if isinstance(bed, str):
-        bed_conv = pybedtools.BedTool(bed)
-    elif isinstance(bed, pd.DataFrame):
-        bed_conv = pybedtools.BedTool.from_dataframe(bed)
-    elif isinstance(bed, pybedtools.BedTool):
-        bed_conv = bed
-
-    return bed_conv
+    bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges]
+) -> pd.DataFrame:
+    """Returns a dataframe representation of a bed-like object."""
+    return convert_bed_to_dataframe(bed)
 
 
 def categorise_tracks(ser: pd.Series) -> list:
@@ -303,7 +389,7 @@ def categorise_tracks(ser: pd.Series) -> list:
 def convert_bed_to_pr(
     bed: Union[
         str,
-        pybedtools.BedTool,
+        os.PathLike,
         pd.DataFrame,
         pr.PyRanges,
     ],
@@ -315,64 +401,31 @@ def convert_bed_to_pr(
         pr.PyRanges: PyRanges object.
     """
 
-    import polars as pl
+    if isinstance(bed, pr.PyRanges):
+        converted = bed
 
-    if isinstance(bed, str):
+    else:
         try:
-            df = pl.read_csv(
-                bed,
-                separator="\t",
-                new_columns=["Chromosome", "Start", "End", "Name"],
-                has_header=False,
-                dtypes=[pl.Utf8, pl.Int64, pl.Int64, pl.Utf8],
-                columns=list(range(4)),
-            )
-
-            converted = (
-                df.to_pandas()
-                .assign(Name=lambda df: df.Name.astype('category'))
-                .pipe(pr.PyRanges)
-            )
-
-        except (FileNotFoundError, pl.exceptions.NoDataError):
+            bed_df = convert_bed_to_dataframe(bed)
+        except (FileNotFoundError, pd.errors.EmptyDataError):
             from loguru import logger
 
             logger.warning(f"File {bed} not found")
-            converted = pr.PyRanges()
+            return pr.PyRanges()
 
-    elif isinstance(bed, pybedtools.BedTool):
         converted = (
-            bed.to_dataframe()
-            .rename(
-                columns={
-                    "chrom": "Chromosome",
-                    "start": "Start",
-                    "end": "End",
-                    "name": "Name",
-                }
-            )
+            _ensure_name_column(bed_df)
+            .rename(columns=BED_TO_PYRANGES_COLUMNS)
+            .assign(Name=lambda df: df["Name"].astype("category"))
             .pipe(pr.PyRanges)
         )
-
-    elif isinstance(bed, pr.PyRanges):
-        converted = bed
-
-    elif isinstance(bed, pd.DataFrame):
-        converted = bed.rename(
-            columns={
-                "chrom": "Chromosome",
-                "start": "Start",
-                "end": "End",
-                "name": "Name",
-            }
-        ).pipe(pr.PyRanges)
 
     return converted
 
 
 def convert_bed_to_dataframe(
     bed: Union[
-        str, pybedtools.BedTool, pd.DataFrame, pr.PyRanges
+        str, os.PathLike, pd.DataFrame, pr.PyRanges
     ],  # noqa: F821
     ignore_ray_objrefs=False,
 ) -> pd.DataFrame:
@@ -380,17 +433,14 @@ def convert_bed_to_dataframe(
     import ray
     from loguru import logger
 
-    if isinstance(bed, str):
-        bed_conv = pybedtools.BedTool(bed).to_dataframe()
-
-    elif isinstance(bed, pybedtools.BedTool):
-        bed_conv = bed.to_dataframe()
+    if isinstance(bed, (str, os.PathLike)):
+        bed_conv = _read_bed_file(bed)
 
     elif isinstance(bed, pd.DataFrame):
-        bed_conv = bed
+        bed_conv = _coerce_bedframe(bed)
 
     elif isinstance(bed, pr.PyRanges):
-        bed_conv = bed.as_df()
+        bed_conv = _coerce_bedframe(_pyranges_to_dataframe(bed))
 
     elif isinstance(bed, ray.ObjectRef):
         if ignore_ray_objrefs:
@@ -401,6 +451,29 @@ def convert_bed_to_dataframe(
             bed_conv = convert_bed_to_dataframe(bed)
 
     return bed_conv
+
+
+def bam_to_bed_dataframe(bam: Union[str, os.PathLike]) -> pd.DataFrame:
+    import pysam
+
+    rows = []
+    with pysam.AlignmentFile(bam, "rb") as alignment_file:
+        for alignment in alignment_file.fetch(until_eof=True):
+            if alignment.is_unmapped:
+                continue
+
+            rows.append(
+                {
+                    "chrom": alignment.reference_name,
+                    "start": alignment.reference_start,
+                    "end": alignment.reference_end,
+                    "name": alignment.query_name,
+                    "score": alignment.mapping_quality,
+                    "strand": "-" if alignment.is_reverse else "+",
+                }
+            )
+
+    return pd.DataFrame(rows, columns=list(BED_COLUMN_NAMES))
 
 
 def is_tabix(file: str):
@@ -420,8 +493,34 @@ def is_tabix(file: str):
     return _is_tabix
 
 
-def format_coordinates(coordinates: Union[str, os.PathLike]) -> pybedtools.BedTool:
-    """Converts coordinates supplied in string format or a .bed file to a BedTool.
+def fetch_bed_intervals(
+    bed: Union[str, os.PathLike],
+    region: Union[str, Sequence[Union[str, int]]],
+) -> pd.DataFrame:
+    import pysam
+
+    chrom, start, end = _parse_region(region)
+
+    if is_tabix(bed):
+        with pysam.TabixFile(bed) as tabix_file:
+            rows = list(tabix_file.fetch(chrom, start, end, parser=pysam.asTuple()))
+
+        if not rows:
+            return pd.DataFrame(columns=list(BED_COLUMN_NAMES[:4]))
+
+        fetched = pd.DataFrame(rows, columns=_bed_column_names(len(rows[0])))
+        fetched = _coerce_bedframe(fetched)
+    else:
+        fetched = convert_bed_to_dataframe(bed)
+        fetched = fetched.loc[
+            lambda df: (df["chrom"] == chrom) & (df["start"] < end) & (df["end"] > start)
+        ]
+
+    return fetched.reset_index(drop=True)
+
+
+def format_coordinates(coordinates: Union[str, os.PathLike]) -> pd.DataFrame:
+    """Converts coordinates supplied in string format or a .bed file to a dataframe.
 
     Args:
         coordinates (Union[str, os.PathLike]): Coordinates in the form chr:start-end/path.
@@ -429,7 +528,7 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> pybedtools.BedTo
         ValueError: Inputs must be supplied in the correct format.
 
     Returns:
-        BedTool: BedTool object containing the required coordinates.
+        pd.DataFrame: DataFrame containing the required coordinates.
     """
 
     coordinates = str(coordinates)
@@ -441,22 +540,16 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> pybedtools.BedTo
         if len(coordinates_split) < 4:
             coordinates_split.append("region_0")
 
-        bt = pybedtools.BedTool(" ".join(coordinates_split), from_string=True)
+        bed = pd.DataFrame(
+            [coordinates_split], columns=["chrom", "start", "end", "name"]
+        ).assign(start=lambda df: df["start"].astype(int), end=lambda df: df["end"].astype(int))
 
     elif pattern_bed_file.match(coordinates):
         if is_valid_bed(coordinates):
-            if bed_has_name(coordinates):
-                bt = pybedtools.BedTool(coordinates)
-            else:
-                bt = (
-                    pybedtools.BedTool(coordinates)
-                    .to_dataframe()
-                    .reset_index()
-                    .assign(name=lambda df: "region_" + df["index"].astype("string"))[
-                        ["chrom", "start", "end", "name"]
-                    ]
-                    .pipe(pybedtools.BedTool.from_dataframe)
-                )
+            bed = convert_bed_to_dataframe(coordinates)
+            bed = _ensure_name_column(bed.reset_index(drop=True))[
+                ["chrom", "start", "end", "name"]
+            ]
         else:
             raise ValueError("Invalid bed file supplied.")
 
@@ -465,31 +558,39 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> pybedtools.BedTo
             """Provide coordinates in the form chr[NUMBER]:[START]-[END]/BED file"""
         )
 
-    return bt
+    return bed
 
 
 def convert_interval_to_coords(
-    interval: Union[pybedtools.Interval, dict], named=False
+    interval: Union[Mapping, pd.Series], named=False
 ) -> Tuple[str]:
     """Converts interval object to standard genomic coordinates.
 
     e.g. chr1:1000-2000
 
     Args:
-        interval (Union[pybedtools.Interval, dict]): Interval to convert.
+        interval (Union[Mapping, pd.Series]): Interval to convert.
 
     Returns:
         Tuple: Genomic coordinates in the format chr:start-end
     """
+    if hasattr(interval, "_asdict"):
+        interval = interval._asdict()
+
+    chrom = interval.get("chrom", interval.get("Chromosome"))
+    start = interval.get("start", interval.get("Start"))
+    end = interval.get("end", interval.get("End"))
+    name = interval.get("name", interval.get("Name", "Unnammed"))
+
     if not named:
         return (
             "Unnammed",
-            f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',
+            f"{chrom}:{start}-{end}",
         )
     else:
         return (
-            interval["name"],
-            f'{interval["chrom"]}:{interval["start"]}-{interval["end"]}',
+            name,
+            f"{chrom}:{start}-{end}",
         )
 
 

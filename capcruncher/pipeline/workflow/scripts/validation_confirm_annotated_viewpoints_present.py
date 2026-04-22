@@ -4,7 +4,7 @@ Aim: Ensure that all viewpoints are found in the annotated slices.
 
 import pandas as pd
 import numpy as np
-import pyranges as pr
+import pyranges1 as pr
 import polars as pl
 import tabulate
 import pathlib
@@ -12,6 +12,7 @@ import pathlib
 slices = snakemake.input.slices
 viewpoints = snakemake.input.viewpoints
 gr_viewpoints = pr.read_bed(viewpoints)
+df_viewpoints = pd.DataFrame(gr_viewpoints)
 
 with pl.StringCache():
     vp_counts = []
@@ -29,9 +30,11 @@ df_counts.rename(columns={"counts": "n_slices"}).to_csv(
 )
 
 
-if not gr_viewpoints.df.Name.isin(df_counts.capture).all():
+if not df_viewpoints["Name"].isin(df_counts.capture).all():
     # check which viewpoints are missing
-    missing = gr_viewpoints.df.Name[~viewpoints.df.Name.isin(df_counts.capture)]
+    missing = df_viewpoints.loc[
+        ~df_viewpoints["Name"].isin(df_counts.capture), "Name"
+    ]
     raise ValueError(f"Not all viewpoints are present in the annotation: {missing}")
 
 else:

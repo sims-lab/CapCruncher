@@ -1,5 +1,6 @@
 import os
 
+import pandas as pd
 import pytest
 from capcruncher.api.annotate import BedIntersector
 
@@ -63,7 +64,7 @@ def test_bed_intersection_succeeds(
 
     intersection = bi.get_intersection(method=method)
     assert name in intersection.columns
-    assert intersection.df.shape[0] == n_rows_expected
+    assert pd.DataFrame(intersection).shape[0] == n_rows_expected
 
 
 def test_bed_intersection_get_output(data_path):
@@ -79,7 +80,7 @@ def test_bed_intersection_get_output(data_path):
 
     intersection = bi.get_intersection(method="get")
     assert "capture" in intersection.columns
-    assert intersection.df["capture"].value_counts().loc["CAPTURE"] == 1
+    assert pd.DataFrame(intersection)["capture"].value_counts().loc["CAPTURE"] == 1
 
 
 def test_bed_intersection_count_output(data_path):
@@ -95,7 +96,7 @@ def test_bed_intersection_count_output(data_path):
 
     intersection = bi.get_intersection(method="count")
     assert "capture" in intersection.columns
-    assert intersection.df["capture"].sum() == 1
+    assert pd.DataFrame(intersection)["capture"].sum() == 1
 
 def test_multi_intersection(data_path):
     

@@ -12,7 +12,6 @@ import polars as pl
 from capcruncher.api.pileup import CoolerBedGraph
 from capcruncher.utils import get_cooler_uri
 from joblib import Parallel, delayed
-from pybedtools import BedTool
 from collections import defaultdict
 
 
@@ -32,6 +31,72 @@ def remove_duplicate_entries(df: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
         .sort_values(["chrom", "start", "end"])
     )
+
+
+def _read_bedgraph(path: os.PathLike, value_column: str) -> pd.DataFrame:
+    return pd.read_csv(
+        path,
+        sep="\t",
+        header=None,
+        names=["chrom", "start", "end", value_column],
+    )
+
+
+def _segment_union_for_chrom(
+    chrom: str, bedgraphs: Dict[str, pd.DataFrame]
+) -> pd.DataFrame:
+    breakpoints = sorted(
+        {
+            point
+            for dataframe in bedgraphs.values()
+            for row in dataframe.loc[dataframe["chrom"] == chrom, ["start", "end"]].itertuples(index=False)
+            for point in row
+        }
+    )
+
+    if len(breakpoints) < 2:
+        return pd.DataFrame(columns=["chrom", "start", "end", *bedgraphs.keys()])
+
+    union = pd.DataFrame(
+        {
+            "chrom": chrom,
+            "start": breakpoints[:-1],
+            "end": breakpoints[1:],
+        }
+    )
+
+    for name, dataframe in bedgraphs.items():
+        intervals = dataframe.loc[dataframe["chrom"] == chrom, ["start", "end", name]].sort_values("start")
+        if intervals.empty:
+            union[name] = 0
+            continue
+
+        merged = pd.merge_asof(
+            union[["start", "end"]].sort_values("start"),
+            intervals,
+            on="start",
+            direction="backward",
+        )
+        union[name] = merged[name].where(merged["end_y"].ge(union["end"]), 0).fillna(0)
+
+    value_columns = list(bedgraphs.keys())
+    union = union.loc[lambda df: df[value_columns].ne(0).any(axis=1)]
+    return union[["chrom", "start", "end", *value_columns]]
+
+
+def union_bedgraphs(bedgraphs: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+    chromosomes = sorted(
+        {
+            chrom
+            for dataframe in bedgraphs.values()
+            for chrom in dataframe["chrom"].dropna().unique().tolist()
+        }
+    )
+    union = pd.concat(
+        [_segment_union_for_chrom(chrom, bedgraphs) for chrom in chromosomes],
+        ignore_index=True,
+    )
+    return union.sort_values(["chrom", "start", "end"]).reset_index(drop=True)
 
 
 def concat(
@@ -72,10 +137,7 @@ def concat(
                             CoolerBedGraph(
                                 uri, region_to_limit=region if region else None
                             )
-                            .extract_bedgraph(
-                                normalisation=normalisation, **norm_kwargs
-                            )
-                            .pipe(BedTool.from_dataframe),
+                            .extract_bedgraph(normalisation=normalisation, **norm_kwargs),
                         )
                     )(uri)
                     for uri in cooler_uris
@@ -84,18 +146,21 @@ def concat(
 
         elif input_format == "bedgraph":
 
-            bedgraphs = {os.path.basename(fn): BedTool(fn) for fn in infiles}
+            bedgraphs = {
+                os.path.basename(fn): _read_bedgraph(fn, os.path.basename(fn))
+                for fn in infiles
+            }
 
         else:
             raise NotImplementedError("Auto currently not implemented")
 
-        union = (
-            BedTool()
-            .union_bedgraphs(i=[bt.fn for bt in bedgraphs.values()])
-            .to_dataframe(
-                disable_auto_names=True,
-                names=["chrom", "start", "end", *list(bedgraphs.keys())],
-            )
+        union = union_bedgraphs(
+            {
+                name: dataframe.rename(columns={"count": name})
+                if "count" in dataframe.columns
+                else dataframe
+                for name, dataframe in bedgraphs.items()
+            }
         )
 
         if output:
