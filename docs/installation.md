@@ -5,7 +5,9 @@
 
 ## Setup
 
-It is highly recommended to install CapCruncher in a conda environment. If you do not have conda installed, see the detailed [conda installation section](#detailed-conda-installation).
+CapCruncher requires Python 3.12 or newer.
+
+For end users, it is still highly recommended to install CapCruncher in a conda-compatible environment because the pipeline depends on several native bioinformatics tools. If you do not have conda installed, see the detailed [conda installation section](#detailed-conda-installation-instructions).
 
 ## Dependencies
 
@@ -27,24 +29,43 @@ mamba install -c bioconda capcruncher
 
 #### Two-step installation using conda and pip
 
-Alternatively, create a new conda environment and install CapCruncher using pip (currently the recommended method):
+Alternatively, create a new conda environment from the checked-in environment definition and install CapCruncher with pip (currently the recommended method):
 
 
 ```{bash}
 wget https://raw.githubusercontent.com/sims-lab/CapCruncher/master/environment.yml
 conda env create -f environment.yml
 conda activate cc
+python -m pip install --upgrade pip
 
 # Install CapCruncher using pip
-pip install capcruncher
-s
+python -m pip install capcruncher
+
 # Optional - highly recommended to install the optional dependencies
-# Installs dependencies for:
-# * plotting,
-# * differential interaction analysis
-# * speeding up the pipeline using experimental features (capcruncher-tools)
-pip install capcruncher[full]
+# Installs the plotting and analysis extras defined by the package.
+python -m pip install 'capcruncher[full]'
 ```
+
+The bundled [environment.yml](https://raw.githubusercontent.com/sims-lab/CapCruncher/master/environment.yml) now creates a Python 3.12 environment and installs the non-Python tools needed by the pipeline.
+
+### Editable development install with uv
+
+For local development, `uv` is the shortest way to get an isolated editable install on Python 3.12+:
+
+```{bash}
+git clone https://github.com/sims-lab/CapCruncher.git
+cd CapCruncher
+
+uv python install 3.12
+uv venv --python 3.12 .venv
+source .venv/bin/activate
+uv pip install -e '.[full]'
+
+# Cheap smoke check for the editable install
+capcruncher --help
+```
+
+Use this path when you are changing Python code or running the test suite. Use the conda environment above when you need the full set of external command-line tools that the pipeline shells out to.
 
 ### Install CapCruncher in a minimal conda environment and use singularity to run the pipeline
 
@@ -55,10 +76,19 @@ pip install capcruncher[full]
 Create a minimal conda environment and install CapCruncher using pip:
 
 ```{bash}
-mamba create -n cc "python>=3.10"
+mamba create -n cc python=3.12
 conda activate cc
+python -m pip install --upgrade pip
+
+# Install the package and optional extras from PyPI
+python -m pip install 'capcruncher[full]'
+```
+
+If you are working from a local checkout instead of PyPI, replace the last command with:
+
+```{bash}
 # Optional - highly recommended to install the optional dependencies
-pip install capcruncher[stats,plotting,experimental]
+python -m pip install -e '.[full]'
 ```
 
 
@@ -75,16 +105,17 @@ Clone the repository and install CapCruncher using pip:
 ```{bash}
 git clone https://github.com/sims-lab/CapCruncher.git
 cd CapCruncher
-pip install .
+python -m pip install --upgrade pip
+python -m pip install .
 
 # Optional - highly recommended to install the optional dependencies
-pip install .[stats,plotting,experimental]
+python -m pip install '.[full]'
 ```
 
 
 ## Detailed Conda Installation Instructions
 
-Download and install MambaForge from [here](https://github.com/conda-forge/miniforge#mambaforge) for your system (You will typically need the x86_64 version for most Linux systems).
+Download and install MambaForge by following the [Miniforge installation instructions](https://github.com/conda-forge/miniforge#mambaforge) for your system. You will typically need the x86_64 installer on most Linux systems.
 
 ### Download and run the installer for your system (only Linux is supported at the moment)
 

@@ -4,13 +4,13 @@ channels:
   - bioconda
   - defaults
 dependencies:
+  - python=3.12
   - bedtools<=2.31.0
   - bowtie2>=2.4.4
   - cxx-compiler
   - fastqc<=0.12.1
   - flash<=1.2.11
   - git
-  - iced<=0.5.10
   - jupyterlab
   - pairix
   - pip
