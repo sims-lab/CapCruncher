@@ -1,7 +1,7 @@
 import pathlib
 
 import pandas as pd
-import pyranges as pr
+import pyranges1 as pr
 import pytest
 
 from capcruncher.api.pileup import CoolerBedGraph

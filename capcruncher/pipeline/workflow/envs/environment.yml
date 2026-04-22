@@ -28,7 +28,9 @@ dependencies:
   - ucsc-bedtobigbed
   - ucsc-bedgraphtobigwig
   - homer
-  - pybedtools
+  - pip
+  - pip:
+    - pyranges1
   - snakemake
   - subread
   - star

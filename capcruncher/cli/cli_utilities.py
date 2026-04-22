@@ -10,7 +10,7 @@ from ibis import _
 from loguru import logger
 
 from capcruncher.api.statistics import CisOrTransStats
-from capcruncher.utils import get_file_type
+from capcruncher.utils import bam_to_bed_dataframe, convert_bed_to_pr, get_file_type
 
 
 @click.group()
@@ -33,12 +33,25 @@ def gtf_to_bed12(gtf: str, output: str):
         None
     """
 
-    from pybedtools import BedTool
-
     from capcruncher.utils import gtf_line_to_bed12_line
 
-    bt_gtf = BedTool(gtf)
-    df_gtf = bt_gtf.to_dataframe()
+    df_gtf = pd.read_csv(
+        gtf,
+        sep="\t",
+        comment="#",
+        header=None,
+        names=[
+            "seqname",
+            "source",
+            "feature",
+            "start",
+            "end",
+            "score",
+            "strand",
+            "frame",
+            "attributes",
+        ],
+    )
     df_gtf["geneid"] = df_gtf["attributes"].str.extract(r"gene_id\s?\"(.*?)\";.*")
     df_gtf = df_gtf.query('feature.isin(["5UTR", "3UTR", "exon"])')
     df_gtf = df_gtf.loc[
@@ -197,13 +210,11 @@ def viewpoint_coordinates(
         ValueError: If no bowtie2 indices are supplied
     """
 
-    from pybedtools import BedTool
-
     from capcruncher.cli import genome_digest
 
     digested_genome = NamedTemporaryFile("r+")
     viewpoints_fasta = NamedTemporaryFile("r+")
-    viewpoints_aligned_bam = NamedTemporaryFile("r+")
+    viewpoints_aligned_bam = NamedTemporaryFile(suffix=".bam")
 
     genome_digest.digest(
         input_fasta=genome,
@@ -242,18 +253,17 @@ def viewpoint_coordinates(
     aligned_res = p_bam.communicate()
 
     # Intersect digested genome with viewpoints
-    bt_genome = BedTool(digested_genome.name)
-    bt_viewpoints = BedTool(viewpoints_aligned_bam.name)
-
-    intersections = bt_genome.intersect(bt_viewpoints, wa=True, wb=True)
+    intersections = convert_bed_to_pr(digested_genome.name).join_overlaps(
+        bam_to_bed_dataframe(viewpoints_aligned_bam.name).pipe(convert_bed_to_pr)
+    )
 
     # Write results to file
     (
-        intersections.to_dataframe()
-        .drop_duplicates("name")
-        .assign(oligo_name=lambda df: df["thickEnd"].str.split("_L").str[0])[
-            ["chrom", "start", "end", "oligo_name"]
-        ]
+        pd.DataFrame(intersections).rename(
+            columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
+        )
+        .assign(oligo_name=lambda df: df["Name_b"].str.split("_L").str[0])
+        .drop_duplicates("oligo_name")[["chrom", "start", "end", "oligo_name"]]
         .to_csv(output, index=False, header=False, sep="\t")
     )
 
@@ -412,7 +422,7 @@ def make_chicago_maps(fragments: str, viewpoints: str, outputdir: str):
     Bait map file (.baitmap) - a bed file containing coordinates of the baited restriction fragments, and their associated annotations. By default, 5 columns: chr, start, end, fragmentID, baitAnnotation. The regions specified in this file, including their fragmentIDs, must be an exact subset of those in the .rmap file. The baitAnnotation is a text field that is used only to annotate the output and plots.
     """
     import pathlib
-    import pyranges as pr
+    import pyranges1 as pr
 
     # Rename fragments file to suit chicago
     fragments_new = pathlib.Path(outputdir) / (pathlib.Path(fragments).stem + ".rmap")
@@ -424,8 +434,9 @@ def make_chicago_maps(fragments: str, viewpoints: str, outputdir: str):
     fragments = pr.read_bed(fragments)
 
     df_baitmap = (
-        fragments.join(viewpoints, suffix="_vp")
-        .df[['Chromosome', 'Start', 'End', 'Name', 'Name_vp']]
+        pd.DataFrame(fragments.join_overlaps(viewpoints, suffix="_vp"))[
+            ["Chromosome", "Start", "End", "Name", "Name_vp"]
+        ]
         .rename(
             columns={
                 "Chromosome": "chr",

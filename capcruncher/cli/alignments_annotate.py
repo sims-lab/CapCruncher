@@ -4,12 +4,12 @@ import warnings
 from typing import Tuple
 
 import pandas as pd
-import pyranges as pr
+import pyranges1 as pr
 from loguru import logger
-from pybedtools import BedTool
 
 from capcruncher.api.annotate import remove_duplicates_from_bed, BedIntersector
 from capcruncher.utils import (
+    bam_to_bed_dataframe,
     convert_bed_to_pr,
     cycle_argument,
     hash_column,
@@ -70,22 +70,22 @@ def annotate(
 
         if slices == "-":
             logger.info("Reading slices from stdin")
-            slices = pd.read_csv(sys.stdin, sep="\t", header=None).pipe(pr.PyRanges)
+            slices = pd.read_csv(sys.stdin, sep="\t", header=None).pipe(convert_bed_to_pr)
 
         elif slices.endswith(".bam"):
             logger.info("Converting bam to bed")
-            slices = BedTool(slices).bam_to_bed().to_dataframe().pipe(convert_bed_to_pr)
+            slices = bam_to_bed_dataframe(slices).pipe(convert_bed_to_pr)
 
         else:
-            slices = pr.PyRanges(slices)
+            slices = convert_bed_to_pr(slices)
 
         logger.info("Validating input bed file before annotation")
 
         if blacklist:
             try:
                 logger.info("Removing blacklisted regions from the bed file")
-                gr_blacklist = pr.PyRanges(blacklist)
-                slices.subtract(gr_blacklist)
+                gr_blacklist = convert_bed_to_pr(blacklist)
+                slices = slices.subtract_overlaps(gr_blacklist)
             except Exception as e:
                 logger.warning(
                     f"Failed to remove blacklisted regions from the bed file. {e}"
@@ -123,7 +123,7 @@ def annotate(
             
 
         logger.info("Writing annotations to file.")
-        df_annotation = slices.df.rename(columns={"Name": "slice_name"}).assign(
+        df_annotation = pd.DataFrame(slices).rename(columns={"Name": "slice_name"}).assign(
             slice_id=lambda df: hash_column(df.slice_name)
         )
         df_annotation.to_parquet(output, compression="snappy")

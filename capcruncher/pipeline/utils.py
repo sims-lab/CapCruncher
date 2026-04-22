@@ -6,7 +6,7 @@ from collections import defaultdict
 import json
 import itertools
 import pandas as pd
-import pyranges as pr
+import pyranges1 as pr
 
 from capcruncher import utils
 
@@ -130,7 +130,7 @@ def get_blacklist(config):
 
 
 def has_high_viewpoint_number(viewpoints: str, config: Dict):
-    n_viewpoints = pr.read_bed(viewpoints).df.shape[0]
+    n_viewpoints = len(pd.DataFrame(pr.read_bed(viewpoints)))
     if n_viewpoints > 500:
         if not config["analysis_optional"].get("force_bigwig_generation", False):
             return True
