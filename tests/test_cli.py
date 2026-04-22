@@ -3,6 +3,7 @@ import pytest
 import os
 from click.testing import CliRunner
 import glob
+import capcruncher.cli as cli_module
 
 from capcruncher.cli import cli
 
@@ -81,6 +82,15 @@ def test_cli_runs(cli_runner):
 
     result = cli_runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
+
+
+def test_cli_version_without_installed_metadata(cli_runner, monkeypatch):
+    def raise_package_not_found(*args, **kwargs):
+        raise cli_module.metadata.PackageNotFoundError
+
+    monkeypatch.setattr(cli_module.metadata, "version", raise_package_not_found)
+
+    assert cli_module.get_capcruncher_version() == "0+unknown"
 
 
 @pytest.mark.parametrize(

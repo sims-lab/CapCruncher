@@ -1,7 +1,6 @@
 import os
-from capcruncher.cli import cli
+from capcruncher.cli import cli, get_capcruncher_version
 import click
-from importlib import metadata
 import subprocess
 import sys
 import pathlib
@@ -16,7 +15,7 @@ import pathlib
     help="Show the capcruncher logo",
     show_default=True,
 )
-@click.version_option(metadata.version(distribution_name="capcruncher"))
+@click.version_option(get_capcruncher_version())
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
 def pipeline(pipeline_options, show_help=False, show_version=False, logo=True):
     """Runs the data processing pipeline"""
@@ -86,7 +85,7 @@ def pipeline(pipeline_options, show_help=False, show_version=False, logo=True):
 @cli.command(name="pipeline-config")
 @click.option("-h", "--help", "show_help", is_flag=True)
 @click.option("--version", "show_version", is_flag=True)
-@click.version_option(metadata.version(distribution_name="capcruncher"))
+@click.version_option(get_capcruncher_version())
 @click.option(
     "-i", "--input", "input_files", type=click.Path(exists=True), multiple=True
 )

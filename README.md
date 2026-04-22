@@ -22,21 +22,42 @@ The CapCruncher package is designed to process Capture-C, Tri-C and Tiled-C data
 >
 > CapCruncher is currently only availible for linux with MacOS support planned in the future.
 
-CapCruncher is available on conda and PyPI. To install the latest version, run:
+CapCruncher requires Python 3.12 or newer.
+
+CapCruncher is available on conda and PyPI. For a standard install, create a fresh Python 3.12 environment and install the package with pip:
 
 ``` bash
-pip install capcruncher
+mamba create -n cc python=3.12
+conda activate cc
+python -m pip install --upgrade pip
+python -m pip install capcruncher
 ```
 
-or
+If you also want the optional plotting and analysis extras, install:
+
+``` bash
+python -m pip install 'capcruncher[full]'
+```
+
+Bioconda remains available for fully managed installs:
 
 ``` bash
 mamba install -c bioconda capcruncher
 ```
 
-Please note that it is highly recommended to install CapCruncher in a conda environment. If you do not have conda installed, please follow the instructions [here](https://github.com/conda-forge/miniforge#mambaforge) to install mambaforge.
+For development or editable installs, `uv` provides the shortest path on Python 3.12+:
 
-See the [installation guide](installation.md) for more detailed instructions.
+``` bash
+uv python install 3.12
+uv venv --python 3.12 .venv
+source .venv/bin/activate
+uv pip install -e '.[full]'
+capcruncher --help
+```
+
+It is still recommended to use a conda-compatible environment for the native command-line dependencies used by the pipeline. If you do not have conda installed, please follow the [Miniforge installation instructions](https://github.com/conda-forge/miniforge#mambaforge).
+
+See the [installation guide](docs/installation.md) for the full pip, conda, and `uv` workflows.
 
 ### Usage
 
