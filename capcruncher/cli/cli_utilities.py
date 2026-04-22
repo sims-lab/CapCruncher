@@ -4,13 +4,17 @@ from tempfile import NamedTemporaryFile
 from typing import Iterable, List, Literal
 
 import click
-import ibis
+import duckdb
 import pandas as pd
-from ibis import _
 from loguru import logger
 
 from capcruncher.api.statistics import CisOrTransStats
 from capcruncher.utils import bam_to_bed_dataframe, convert_bed_to_pr, get_file_type
+
+
+def parquet_source(path: str):
+    parquet_path = f"{path}/*.parquet" if os.path.isdir(path) else str(path)
+    return parquet_path.replace("'", "''")
 
 
 @click.group()
@@ -78,72 +82,93 @@ def cis_and_trans_stats(
     sample_name: str,
     assay: Literal["capture", "tri", "tiled"] = "capture",
 ):
-    con = ibis.duckdb.connect()
-
-    if not os.path.isdir(slices):
-        tbl = con.register(f"parquet://{slices}", table_name="slices_tbl")
-    else:
-        tbl = con.register(f"parquet://{slices}/*.parquet", table_name="slices_tbl")
-
-    tbl = tbl.mutate(capture=tbl["capture"].fillna("reporter")).select(
-        ["capture", "parent_id", "chrom", "viewpoint", "pe"]
-    )
+    con = duckdb.connect()
+    slices_path = parquet_source(slices)
 
     if assay in ["capture", "tri"]:
-        tbl_reporter = tbl[(tbl["capture"] == "reporter")].drop(
-            "viewpoint", "pe", "capture"
-        )
-
-        tbl_capture = tbl[~(tbl["capture"] == "reporter")]
-
-        tbl_merge = tbl_capture.join(
-            tbl_reporter,
-            predicates=[
-                "parent_id",
-            ],
-            lname="{name}_capture",
-            rname="{name}_reporter",
-            how="left",
-        )
-
-        tbl_merge = tbl_merge.mutate(
-            is_cis=(tbl_merge["chrom_capture"] == tbl_merge["chrom_reporter"])
-        )
-
-        df_cis_and_trans = (
-            tbl_merge.group_by(["viewpoint", "is_cis", "pe"])
-            .aggregate(
-                count=_.count(),
+        df_cis_and_trans = con.sql(
+            f"""
+            WITH tbl AS (
+                SELECT
+                    coalesce(capture, 'reporter') AS capture,
+                    parent_id,
+                    chrom,
+                    viewpoint,
+                    pe
+                FROM read_parquet('{slices_path}')
+            ),
+            tbl_reporter AS (
+                SELECT parent_id, chrom AS chrom_reporter
+                FROM tbl
+                WHERE capture = 'reporter'
+            ),
+            tbl_capture AS (
+                SELECT viewpoint, pe, parent_id, chrom AS chrom_capture
+                FROM tbl
+                WHERE capture != 'reporter'
             )
-            .execute(limit=None)
-        )
+            SELECT
+                viewpoint,
+                chrom_capture = chrom_reporter AS is_cis,
+                pe,
+                count(*) AS count
+            FROM tbl_capture
+            LEFT JOIN tbl_reporter USING (parent_id)
+            GROUP BY viewpoint, is_cis, pe
+            """
+        ).df()
 
     else:
-        viewpoint_chroms = (
-            tbl.filter(tbl["capture"] != "reporter")
-            .group_by(["viewpoint", "chrom"])
-            .aggregate(chrom_count=_.count())
-            .order_by(ibis.desc("chrom_count"))
-            .to_pandas()
-            .drop_duplicates("viewpoint")
-            .set_index("viewpoint")
-            .to_dict()["chrom"]
-        )
-
-        chrom_mapping_exp = ibis.case()
-        for k, v in viewpoint_chroms.items():
-            chrom_mapping_exp = chrom_mapping_exp.when(tbl.viewpoint == k, v)
-        chrom_mapping_exp = chrom_mapping_exp.end()
-
-        df_cis_and_trans = (
-            tbl.mutate(cis_chrom=chrom_mapping_exp)
-            .mutate(is_cis=_.chrom == _.cis_chrom)
-            .group_by(["viewpoint", "parent_id", "is_cis", "pe"])
-            .aggregate(count=_.count())
-            .group_by(["viewpoint", "is_cis", "pe"])
-            .aggregate(count=_["count"].sum())
-            .execute(limit=None)
-        )
+        df_cis_and_trans = con.sql(
+            f"""
+            WITH tbl AS (
+                SELECT
+                    coalesce(capture, 'reporter') AS capture,
+                    parent_id,
+                    chrom,
+                    viewpoint,
+                    pe
+                FROM read_parquet('{slices_path}')
+            ),
+            viewpoint_chroms AS (
+                SELECT
+                    viewpoint,
+                    chrom,
+                    row_number() OVER (
+                        PARTITION BY viewpoint
+                        ORDER BY count(*) DESC, chrom
+                    ) AS rn
+                FROM tbl
+                WHERE capture != 'reporter'
+                GROUP BY viewpoint, chrom
+            ),
+            annotated AS (
+                SELECT
+                    t.viewpoint,
+                    t.parent_id,
+                    t.pe,
+                    t.chrom,
+                    vc.chrom AS cis_chrom
+                FROM tbl AS t
+                LEFT JOIN viewpoint_chroms AS vc
+                    ON t.viewpoint = vc.viewpoint
+                   AND vc.rn = 1
+            ),
+            per_parent AS (
+                SELECT
+                    viewpoint,
+                    parent_id,
+                    chrom = cis_chrom AS is_cis,
+                    pe,
+                    count(*) AS count
+                FROM annotated
+                GROUP BY viewpoint, parent_id, is_cis, pe
+            )
+            SELECT viewpoint, is_cis, pe, sum(count) AS count
+            FROM per_parent
+            GROUP BY viewpoint, is_cis, pe
+            """
+        ).df()
 
     df_cis_and_trans = (
         df_cis_and_trans.rename(columns={"pe": "read_type", "is_cis": "cis/trans"})
@@ -284,17 +309,17 @@ def dump_cooler(path: str, viewpoint: str, resolution: int = None) -> pd.DataFra
 
 
 def dump_capcruncher_parquet(path: str, viewpoint: str = None) -> pd.DataFrame:
-    import ibis
-
-    con = ibis.duckdb.connect()
-
+    con = duckdb.connect()
+    parquet_path = parquet_source(path)
     if viewpoint:
-        tbl = con.register(f"parquet://{path}/*.parquet", table_name="slices_tbl")
-        tbl = tbl.filter(tbl.viewpoint == viewpoint)
+        viewpoint = viewpoint.replace("'", "''")
+        query = (
+            f"SELECT * FROM read_parquet('{parquet_path}') WHERE viewpoint = '{viewpoint}'"
+        )
     else:
-        tbl = con.register(f"parquet://{path}", table_name="slices_tbl")
+        query = f"SELECT * FROM read_parquet('{parquet_path}')"
 
-    return tbl.execute(limit=None)
+    return con.sql(query).df()
 
 
 @cli.command()

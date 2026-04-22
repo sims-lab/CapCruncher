@@ -71,15 +71,22 @@ def digest(
     if sort:
         logger.info("Sorting output")
         df = pl.read_csv(
-            output_file, separator="\t", new_columns=["chrom", "start", "end", "name"],
-            dtypes= [pl.Utf8, pl.Int64, pl.Int64, pl.Utf8]
+            output_file,
+            separator="\t",
+            new_columns=["chrom", "start", "end", "name"],
+            schema_overrides={
+                "chrom": pl.Utf8,
+                "start": pl.Int64,
+                "end": pl.Int64,
+                "name": pl.Utf8,
+            },
         )
 
         # If changing the order, also need to change the fragment number
         df = (
             df.sort(["chrom", "start"])
             .drop(["name"])
-            .with_row_count("name")[["chrom", "start", "end", "name"]]
+            .with_row_index("name")[["chrom", "start", "end", "name"]]
         )
 
         df.write_csv(output_file, separator="\t", include_header=False)

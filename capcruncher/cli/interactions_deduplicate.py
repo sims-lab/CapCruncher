@@ -1,13 +1,16 @@
 import os
-import ibis
-from ibis import _
-import pyarrow.dataset as ds
 import shutil
+
+import duckdb
+import pyarrow.dataset as ds
 from loguru import logger
 
 from capcruncher.api.statistics import AlignmentDeduplicationStats
 
-ibis.options.interactive = False
+
+def parquet_source(path: os.PathLike) -> str:
+    parquet_path = f"{path}/*.parquet" if os.path.isdir(path) else str(path)
+    return parquet_path.replace("'", "''")
 
 
 def deduplicate(
@@ -18,49 +21,68 @@ def deduplicate(
     statistics: os.PathLike = "deduplication_stats.json",
 ):
     logger.info("Connecting to DuckDB")
-    con = ibis.duckdb.connect()
+    con = duckdb.connect()
+    slices_source = parquet_source(slices)
 
-    if not os.path.isdir(slices):
-        slices_tbl_raw = con.register(f"parquet://{slices}", table_name="slices_tbl")
-    else:
-        slices_tbl_raw = con.register(
-            f"parquet://{slices}/*.parquet", table_name="slices_tbl"
-        )
-    
-    n_slices_raw = slices_tbl_raw[['slice_id']].distinct().count().execute(limit=None)    
-    n_reads_raw = slices_tbl_raw[["parent_id"]].distinct().count().execute(limit=None)
+    n_slices_raw = con.sql(
+        f"SELECT COUNT(DISTINCT slice_id) AS n_slices FROM read_parquet('{slices_source}')"
+    ).fetchone()[0]
+    n_reads_raw = con.sql(
+        f"SELECT COUNT(DISTINCT parent_id) AS n_reads FROM read_parquet('{slices_source}')"
+    ).fetchone()[0]
 
     if read_type == "pe":
         logger.info("Read type is PE")
         logger.info("Identifying unique fragment IDs")
-        query = (
-            slices_tbl_raw[["chrom", "start", "end", "parent_id"]]
-            .order_by(["chrom", "start", "end", "parent_id"])
-            .group_by(by="parent_id", order_by=["chrom", "start", "end"])
-            .order_by(["chrom", "start", "end", "parent_id"])
-            .mutate(
-                slice_f_chrom=_.chrom.first(),
-                slice_f_start=_.start.first(),
-                slice_l_end=_.end.last(),
+        parent_ids_unique = con.sql(
+            f"""
+            WITH ranked AS (
+                SELECT
+                    chrom,
+                    start,
+                    "end",
+                    parent_id,
+                    row_number() OVER (
+                        PARTITION BY parent_id
+                        ORDER BY chrom, start, "end", parent_id
+                    ) AS rn_first,
+                    row_number() OVER (
+                        PARTITION BY parent_id
+                        ORDER BY chrom DESC, start DESC, "end" DESC, parent_id DESC
+                    ) AS rn_last
+                FROM read_parquet('{slices_source}')
+            ),
+            parent_ranges AS (
+                SELECT
+                    parent_id,
+                    max(CASE WHEN rn_first = 1 THEN chrom END) AS slice_f_chrom,
+                    max(CASE WHEN rn_first = 1 THEN start END) AS slice_f_start,
+                    max(CASE WHEN rn_last = 1 THEN "end" END) AS slice_l_end
+                FROM ranked
+                GROUP BY parent_id
             )
-            .group_by(["slice_f_chrom", "slice_f_start", "slice_l_end"])
-            .mutate(pid=_.parent_id.first())[["pid"]]
-            .distinct()["pid"]
-        )
+            SELECT min(parent_id) AS parent_id_unique
+            FROM parent_ranges
+            GROUP BY slice_f_chrom, slice_f_start, slice_l_end
+            """
+        ).df()["parent_id_unique"].to_numpy()
     elif read_type == "flashed":
         logger.info("Read type is Flashed")
         logger.info("Identifying unique fragment IDs")
-
-        query = (
-            slices_tbl_raw[["coordinates", "parent_id"]]
-            .group_by(by="parent_id", order_by=["coordinates"])
-            .aggregate(coordinates=lambda t: t.coordinates.group_concat(","))
-            .group_by("coordinates")
-            .mutate(parent_id_unique=_.parent_id.first())[["parent_id_unique"]]
-            .distinct()["parent_id_unique"]
-        )
-
-    parent_ids_unique = query.execute(limit=None)
+        parent_ids_unique = con.sql(
+            f"""
+            WITH parent_coordinates AS (
+                SELECT
+                    parent_id,
+                    string_agg(coordinates, ',' ORDER BY coordinates) AS coordinates
+                FROM read_parquet('{slices_source}')
+                GROUP BY parent_id
+            )
+            SELECT min(parent_id) AS parent_id_unique
+            FROM parent_coordinates
+            GROUP BY coordinates
+            """
+        ).df()["parent_id_unique"].to_numpy()
 
     logger.info("Writing deduplicated slices to disk")
     slices_unfiltered_ds = ds.dataset(slices, format="parquet")
@@ -92,8 +114,10 @@ def deduplicate(
     n_reads_unique = parent_ids_unique.shape[0]
     
     # Calculate the number of slices in the output
-    tbl_dedup = con.register(f"parquet://{output}/*.parquet", table_name="dedup_tbl")
-    n_slices_unique = tbl_dedup[['slice_id']].distinct().count().execute(limit=None)
+    output_source = parquet_source(output)
+    n_slices_unique = con.sql(
+        f"SELECT COUNT(DISTINCT slice_id) AS n_slices FROM read_parquet('{output_source}')"
+    ).fetchone()[0]
     
 
     stats = AlignmentDeduplicationStats(
