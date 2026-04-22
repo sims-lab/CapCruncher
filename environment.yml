@@ -11,7 +11,6 @@ dependencies:
   - fastqc<=0.12.1
   - flash<=1.2.11
   - git
-  - iced<=0.5.10
   - jupyterlab
   - pairix
   - pip
