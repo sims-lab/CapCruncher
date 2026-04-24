@@ -1,5 +1,6 @@
 .git
 .github
+.mypy_cache
 .pytest_cache
 .ruff_cache
 .uv-cache
@@ -7,5 +8,10 @@
 __pycache__
 build
 dist
+docs/_build
+htmlcov
 *.egg-info
 .coverage
+*.pyc
+*.pyo
+*.pyd
