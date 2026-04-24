@@ -152,6 +152,7 @@ data_dir.mkdir(exist_ok=True)
         "capcruncher_output/interim/statistics/multiqc_full_data/multiqc_data/multiqc_cutadapt.txt",
         "capcruncher_output/interim/statistics/multiqc_full_data/multiqc_data/multiqc_flash_combo_stats.txt",
         "capcruncher_output/interim/filtering/repartitioned/SAMPLE-A_REP1/flashed",
+        "capcruncher_output/results/SAMPLE-A_REP1/SAMPLE-A_REP1.hdf5",
         "capcruncher_output/results/SAMPLE-A_REP1/SAMPLE-A_REP1.parquet",
         "capcruncher_output/resources/restriction_fragments/genome.digest.bed.gz",
     ]
@@ -380,6 +381,7 @@ def test_workflow_scripts_run_on_capture_pipeline_inputs(
     count_script = load_workflow_script("count_identified_viewpoints.py")
     flash_script = load_workflow_script("extract_flash_data.py")
     trimming_script = load_workflow_script("extract_trimming_data.py")
+    identify_script = load_workflow_script("identify_viewpoints_with_interactions.py")
     remove_dups_script = load_workflow_script("remove_duplicate_coordinates.py")
     validation_script = load_workflow_script("validation_check_n_bins_per_viewpoint.py")
 
@@ -410,7 +412,17 @@ def test_workflow_scripts_run_on_capture_pipeline_inputs(
     )
     identified = pl.read_csv(identified_output, separator="\t")
     assert {"viewpoint", "pe"}.issubset(set(identified.columns))
-    assert identified.height > 0
+
+    viewpoints_output = output_dir / "viewpoints_with_interactions"
+    identify_script.write_viewpoints_with_interactions(
+        [
+            capture_pipeline_run
+            / "capcruncher_output/results/SAMPLE-A_REP1/SAMPLE-A_REP1.hdf5"
+        ],
+        ["SAMPLE-A_REP1"],
+        viewpoints_output,
+    )
+    assert json.loads((viewpoints_output / "SAMPLE-A_REP1.json").read_text())
 
     validation_sentinel = output_dir / "validated.sentinel"
     validation_script.check_n_bins_per_viewpoint(
