@@ -95,7 +95,7 @@ rule merge_bam_partitions:
         bam="capcruncher_output/results/{sample}/{sample}.bam",
     shell:
         """
-        samtools merge -o {output.bam} {input.bam}
+        samtools merge {output.bam} {input.bam}
         """
 
 

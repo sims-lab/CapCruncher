@@ -1,25 +1,39 @@
-# ruff: noqa: F821
-
-
-import os
-import sys
 import pandas as pd
 import ujson
 
 from capcruncher.api.statistics import FlashStats
 
-df_stats = pd.read_csv(snakemake.input[0], sep="\t")
-df_stats["sample"] = df_stats["Sample"].str.split("_part").str[0]
-df_stats = df_stats[["sample", "combopairs", "uncombopairs"]].groupby("sample").sum().reset_index()
 
-stats = []
-for index, row in df_stats.iterrows():
-    stat = FlashStats(
-        sample=row["sample"],
-        n_combined=row["combopairs"],
-        n_uncombined=row["uncombopairs"],)
-    stats.append(stat)
+def extract_flash_stats(flash_summary_path):
+    df_stats = pd.read_csv(flash_summary_path, sep="\t")
+    df_stats["sample"] = df_stats["Sample"].str.split("_part").str[0]
+    df_stats = (
+        df_stats[["sample", "combopairs", "uncombopairs"]]
+        .groupby("sample")
+        .sum()
+        .reset_index()
+    )
 
-with open(snakemake.output[0], "w") as f:
-    stats_json = [s.model_dump_json() for s in stats]
-    f.write(ujson.dumps(stats_json, indent=4))
+    return [
+        FlashStats(
+            sample=row["sample"],
+            n_combined=row["combopairs"],
+            n_uncombined=row["uncombopairs"],
+        )
+        for _, row in df_stats.iterrows()
+    ]
+
+
+def write_flash_stats(flash_summary_path, output_path):
+    stats_json = [
+        stat.model_dump_json() for stat in extract_flash_stats(flash_summary_path)
+    ]
+    with open(output_path, "w") as f:
+        f.write(ujson.dumps(stats_json, indent=4))
+
+
+if "snakemake" in globals():
+    write_flash_stats(
+        globals()["snakemake"].input[0],
+        globals()["snakemake"].output[0],
+    )

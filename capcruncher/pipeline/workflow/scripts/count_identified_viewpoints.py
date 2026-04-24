@@ -21,4 +21,7 @@ def write_identified_viewpoints(parquet_path, output_path):
 
 
 if "snakemake" in globals():
-    write_identified_viewpoints(snakemake.params.slices_dir, snakemake.output[0])
+    write_identified_viewpoints(
+        globals()["snakemake"].params.slices_dir,
+        globals()["snakemake"].output[0],
+    )

@@ -33,9 +33,19 @@ def merge_annotations(slices: os.PathLike, annotations: os.PathLike) -> pd.DataF
     logger.info("Opening annotations")
 
     with pl.StringCache():
-        df_slices = pl.scan_parquet(slices)
+        join_key_types = {
+            "slice_name": pl.Utf8,
+            "chrom": pl.Utf8,
+            "start": pl.Int64,
+        }
+
+        df_slices = pl.scan_parquet(slices).with_columns(
+            pl.col(column).cast(dtype) for column, dtype in join_key_types.items()
+        )
         df_annotations = pl.scan_parquet(annotations).rename(
             {"Chromosome": "chrom", "Start": "start", "End": "end"}
+        ).with_columns(
+            pl.col(column).cast(dtype) for column, dtype in join_key_types.items()
         )
 
         df_slices = df_slices.join(

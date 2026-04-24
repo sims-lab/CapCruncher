@@ -3,9 +3,10 @@ import os
 import pathlib
 from typing import Union
 
+import polars as pl
+
 from capcruncher.api.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
 from capcruncher.cli.alignments_filter import merge_annotations
-from capcruncher.utils import convert_bed_to_pr
 from capcruncher.api.io import parse_bam
 
 
@@ -28,6 +29,43 @@ def get_slices(bam: str, annotations: str, parquet_file: Union[str, pathlib.Path
     df_alignment.to_parquet(parquet_file)
     df_alignment = merge_annotations(parquet_file, annotations)
     return df_alignment
+
+
+def test_merge_annotations_normalises_join_key_dtypes(tmp_path):
+    slices = tmp_path / "slices.parquet"
+    annotations = tmp_path / "annotations.parquet"
+
+    pl.DataFrame(
+        {
+            "slice_name": ["slice-a"],
+            "chrom": ["chr1"],
+            "start": [10],
+            "slice_id": [1],
+        },
+        schema_overrides={"chrom": pl.Categorical},
+    ).write_parquet(slices)
+    pl.DataFrame(
+        {
+            "slice_name": ["slice-a"],
+            "Chromosome": ["chr1"],
+            "Start": [10],
+            "End": [20],
+            "capture": ["vp1"],
+        }
+    ).write_parquet(annotations)
+
+    df_alignment = merge_annotations(slices, annotations)
+
+    assert df_alignment[["slice_name", "chrom", "start", "capture"]].to_dict(
+        "records"
+    ) == [
+        {
+            "slice_name": "slice-a",
+            "chrom": "chr1",
+            "start": 10,
+            "capture": "vp1",
+        }
+    ]
 
 
 @pytest.mark.parametrize(

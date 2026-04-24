@@ -191,7 +191,7 @@ class FlashStats(BaseModel):
 
     @computed_field
     @property
-    def percentage_combined(self) -> int:
+    def percentage_combined(self) -> float:
         return self.n_combined / self.n_total * 100
 
 

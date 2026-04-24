@@ -35,16 +35,16 @@ def run_unix_split(
 ):
 
     statement = []
+    cat_executable = "zcat"
+    split_executable = "split"
 
     if suffix:
         split_suffix = f"{suffix}_{read_number}.fastq"
     else:
         split_suffix = f"_{read_number}.fastq"
 
-    cmd = f"""zcat {fn} | split FILTER -l {n_reads * 4} -d --additional-suffix={split_suffix} - {output_prefix}_part;"""
-
     if ".gz" not in fn:
-        cmd = cmd.replace("zcat", "cat")
+        cat_executable = "cat"
 
     if PLATFORM == "darwin":
         if shutil.which("gsplit") is None:
@@ -52,9 +52,15 @@ def run_unix_split(
                 "GNU split is required for unix FASTQ splitting on macOS. "
                 "Install coreutils or use --method python."
             )
-        cmd = cmd.replace("split", "gsplit")
-        cmd = cmd.replace("zcat", "gzcat")
+        split_executable = "gsplit"
+        if cat_executable == "zcat":
+            cat_executable = "gzcat"
 
+    cmd = (
+        f"{cat_executable} {fn} | "
+        f"{split_executable} FILTER -l {n_reads * 4} -d "
+        f"--additional-suffix={split_suffix} - {output_prefix}_part;"
+    )
     if gzip:
         cmd = cmd.replace("FILTER", f"--filter='pigz -p {n_cores} > $FILE.gz'")
     else:

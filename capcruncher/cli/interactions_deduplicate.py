@@ -58,6 +58,7 @@ def deduplicate(
 
         query = (
             slices_tbl_raw.select(["coordinates", "parent_id"])
+            .with_columns(pl.col("coordinates").cast(pl.Utf8))
             .sort(["parent_id", "coordinates"])
             .group_by("parent_id")
             .agg(
