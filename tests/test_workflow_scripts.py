@@ -1,4 +1,6 @@
 import importlib.util
+import sys
+import types
 from pathlib import Path
 
 import polars as pl
@@ -83,4 +85,151 @@ def test_count_identified_viewpoints_filters_empty_values(tmp_path):
 
     assert pl.read_csv(output, separator="\t").sort("viewpoint").to_dicts() == [
         {"viewpoint": "vp1", "pe": "pe1"},
+    ]
+
+
+def test_make_ucsc_hub_builds_tracknado_metadata(tmp_path):
+    script = load_workflow_script("make_ucsc_hub.py")
+    viewpoints = tmp_path / "viewpoints.bigBed"
+
+    df = script.build_track_metadata(
+        bigwigs=[
+            tmp_path / "raw" / "SAMPLE-A_REP1_Slc25A37.bigWig",
+            tmp_path / "norm" / "SAMPLE-A_REP1_Slc25A37.bigWig",
+        ],
+        bigwigs_summary=[
+            tmp_path / "SAMPLE-A.mean-summary.Slc25A37.bigWig",
+        ],
+        bigwigs_comparison=[
+            tmp_path / "SAMPLE-A-SAMPLE-B.mean-subtraction.Slc25A37.bigWig",
+        ],
+        viewpoints=viewpoints,
+    )
+
+    assert df[["category", "normalisation", "sample", "aggregation", "ext"]].to_dict(
+        "records"
+    ) == [
+        {
+            "category": "Replicates",
+            "normalisation": "raw",
+            "sample": "SAMPLE-A_REP1",
+            "aggregation": "replicate",
+            "ext": "bigWig",
+        },
+        {
+            "category": "Replicates",
+            "normalisation": "norm",
+            "sample": "SAMPLE-A_REP1",
+            "aggregation": "replicate",
+            "ext": "bigWig",
+        },
+        {
+            "category": "Aggregated",
+            "normalisation": "norm",
+            "sample": "SAMPLE-A",
+            "aggregation": "mean",
+            "ext": "bigWig",
+        },
+        {
+            "category": "Subtraction",
+            "normalisation": "norm",
+            "sample": "SAMPLE-A-SAMPLE-B",
+            "aggregation": "mean",
+            "ext": "bigWig",
+        },
+        {
+            "category": "Annotation",
+            "normalisation": "viewpoints",
+            "sample": "viewpoints",
+            "aggregation": "viewpoints",
+            "ext": "bigBed",
+        },
+    ]
+    assert df.loc[df["name"].eq("viewpoint"), "overlay"].isna().all()
+
+
+def test_make_ucsc_hub_uses_modern_tracknado_builder(monkeypatch, tmp_path):
+    script = load_workflow_script("make_ucsc_hub.py")
+    calls = []
+
+    class DummyHub:
+        pass
+
+    class DummyBuilder:
+        def add_tracks_from_df(self, df):
+            calls.append(("add_tracks_from_df", df.copy()))
+            return self
+
+        def group_by(self, *columns, as_supertrack=False):
+            calls.append(("group_by", columns, as_supertrack))
+            return self
+
+        def overlay_by(self, *columns):
+            calls.append(("overlay_by", columns))
+            return self
+
+        def color_by(self, column):
+            calls.append(("color_by", column))
+            return self
+
+        def with_custom_genome(
+            self, name, twobit_file, organism, default_position
+        ):
+            calls.append(
+                ("with_custom_genome", name, twobit_file, organism, default_position)
+            )
+            return self
+
+        def build(self, **kwargs):
+            calls.append(("build", kwargs))
+            return DummyHub()
+
+    monkeypatch.setitem(
+        sys.modules,
+        "tracknado",
+        types.SimpleNamespace(HubBuilder=DummyBuilder),
+    )
+
+    result = script.build_hub(
+        track_metadata=script.build_track_metadata(
+            bigwigs=[tmp_path / "raw" / "SAMPLE-A_REP1_Slc25A37.bigWig"],
+            bigwigs_summary=[],
+            bigwigs_comparison=[],
+            viewpoints=tmp_path / "viewpoints.bigBed",
+        ),
+        color_by="sample",
+        genome="mm10",
+        hub_name="capcruncher",
+        hub_email="test@example.org",
+        custom_genome=True,
+        genome_twobit=tmp_path / "genome.2bit",
+        genome_organism="Mouse",
+        genome_default_position="chr1:1-100",
+        report=tmp_path / "report.html",
+        outdir=tmp_path / "hub",
+    )
+
+    assert isinstance(result, DummyHub)
+    assert calls[1:] == [
+        ("group_by", ("category", "normalisation"), True),
+        ("group_by", ("sample", "viewpoint", "aggregation"), False),
+        ("overlay_by", ("overlay",)),
+        ("color_by", "sample"),
+        (
+            "with_custom_genome",
+            "mm10",
+            tmp_path / "genome.2bit",
+            "Mouse",
+            "chr1:1-100",
+        ),
+        (
+            "build",
+            {
+                "name": "capcruncher",
+                "genome": "mm10",
+                "outdir": tmp_path / "hub",
+                "hub_email": "test@example.org",
+                "description_html": tmp_path / "report.html",
+            },
+        ),
     ]

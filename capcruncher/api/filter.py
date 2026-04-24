@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 import pandas as pd
-import pandera
+import pandera.pandas as pandera
 from loguru import logger
 from pandera.typing import DataFrame, Series
 
