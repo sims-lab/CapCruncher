@@ -64,3 +64,23 @@ def test_validation_confirm_annotated_viewpoints_present_reports_missing(tmp_pat
             tmp_path / "viewpoints_present.tsv",
             tmp_path / "validated.sentinel",
         )
+
+
+def test_count_identified_viewpoints_filters_empty_values(tmp_path):
+    script = load_workflow_script("count_identified_viewpoints.py")
+    slices_dir = tmp_path / "slices"
+    slices_dir.mkdir()
+    output = tmp_path / "identified_viewpoints.tsv"
+
+    pl.DataFrame(
+        {
+            "viewpoint": ["vp1", "vp1", "vp2", "", None],
+            "pe": ["pe1", "pe1", "", "pe2", "pe3"],
+        }
+    ).write_parquet(slices_dir / "slices.parquet")
+
+    script.write_identified_viewpoints(slices_dir, output)
+
+    assert pl.read_csv(output, separator="\t").sort("viewpoint").to_dicts() == [
+        {"viewpoint": "vp1", "pe": "pe1"},
+    ]
