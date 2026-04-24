@@ -10,6 +10,41 @@ import re
 import pyranges1 as pr
 
 
+def _bedgraph_to_pyranges(bedgraph: pd.DataFrame) -> pr.PyRanges:
+    return pr.PyRanges(
+        bedgraph.rename(
+            columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
+        )
+    )
+
+
+def _pyranges_to_bedgraph(ranges: pr.PyRanges) -> pd.DataFrame:
+    return ranges.rename(
+        columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
+    )
+
+
+def _cluster_multi_viewpoint_bins_bedgraph(bedgraph: pd.DataFrame) -> pd.DataFrame:
+    gr_bdg = _bedgraph_to_pyranges(bedgraph)
+
+    return (
+        gr_bdg.cluster()
+        .groupby("Cluster")
+        .agg(
+            {
+                "count": "sum",
+                "Start": "min",
+                "End": "max",
+                "Chromosome": "first",
+            }
+        )
+        .reset_index()
+        .rename(columns={"Start": "start", "End": "end", "Chromosome": "chrom"})[
+            ["chrom", "start", "end", "count"]
+        ]
+    )
+
+
 class CoolerBedGraph:
     """Generates a bedgraph file from a cooler file created by interactions-store.
 
@@ -131,30 +166,8 @@ class CoolerBedGraph:
             .sort_values(["chrom", "start"])
         )
 
-        # TODO: This is a hack to deal with multiple bins for a viewpoint
         if self.multiple_viewpoint_bins:
-            gr_bdg = pr.PyRanges(
-                df_bdg.rename(
-                    columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
-                )
-            )
-
-            df_bdg = (
-                gr_bdg.cluster()
-                .groupby("Cluster")
-                .agg(
-                    {
-                        "count": "sum",
-                        "Start": "min",
-                        "End": "max",
-                        "Chromosome": "first",
-                    }
-                )
-                .reset_index()
-                .rename(
-                    columns={"Start": "start", "End": "end", "Chromosome": "chrom"}
-                )[["chrom", "start", "end", "count"]]
-            )
+            df_bdg = _cluster_multi_viewpoint_bins_bedgraph(df_bdg)
 
         if not normalisation == "raw":
             logger.info("Normalising bedgraph")
@@ -213,15 +226,15 @@ class CoolerBedGraph:
             lambda df: df["name"].str.contains(self.viewpoint_name)
         ]
 
-        counts_in_regions = []
-        for region in df_viewpoint_norm_regions.itertuples():
-            counts_in_regions.append(
-                bedgraph.query(
-                    "(chrom == @region.chrom) and (start >= @region.start) and (start <= @region.end)"
-                )
-            )
-
-        df_counts_in_regions = pd.concat(counts_in_regions)
+        gr_bedgraph = _bedgraph_to_pyranges(
+            bedgraph.reset_index(names="bedgraph_row_id")
+        )
+        gr_regions = _bedgraph_to_pyranges(
+            df_viewpoint_norm_regions.rename(columns={"name": "region_name"})
+        )
+        df_counts_in_regions = gr_bedgraph.join_overlaps(
+            gr_regions, strand_behavior="ignore"
+        ).drop_duplicates("bedgraph_row_id")
         total_counts_in_region = df_counts_in_regions["count"].sum()
 
         bedgraph["count"] = (bedgraph["count"] / total_counts_in_region) * scale_factor
@@ -231,7 +244,7 @@ class CoolerBedGraph:
     ):
         return pr.PyRanges(
             self.extract_bedgraph(
-                normalisation=normalisation, norm_kwargs=norm_kwargs
+                normalisation=normalisation, **norm_kwargs
             ).rename(columns={"chrom": "Chromosome", "start": "Start", "end": "End"})
         )
 
@@ -365,7 +378,7 @@ class CCBedgraph(object):
     def coordinates(self):
         return self.df.loc[:, "chrom":"end"]
 
-    def to_bedtool(self):
+    def to_pyranges(self):
         return self.df.rename(
             columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
         ).pipe(pr.PyRanges)
@@ -455,13 +468,11 @@ def cooler_to_bedgraph(
 
     if regions_of_interest:
         pr_roi = pr.read_bed(regions_of_interest)
-        pr_bedgraph = bedgraph.rename(
-            columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
-        ).pipe(pr.PyRanges)
+        pr_bedgraph = _bedgraph_to_pyranges(bedgraph)
         pr_bedgraph = pr_bedgraph.join_overlaps(pr_roi, strand_behavior="same")
 
-        bedgraph = pr_bedgraph.rename(
-            columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
-        )[["chrom", "start", "end", "score"]]
+        bedgraph = _pyranges_to_bedgraph(pr_bedgraph)[
+            ["chrom", "start", "end", "count"]
+        ]
 
     return bedgraph

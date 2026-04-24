@@ -1,17 +1,14 @@
 import os
 import tempfile
 import pandas as pd
-import numpy as np
 import cooler
 import h5py
 import functools
-import itertools
 from loguru import logger
 import ujson
 from typing import Iterable, Tuple, Union, List, Dict, Literal
 import pyranges1 as pr
 import re
-from dataclasses import dataclass
 
 
 class Viewpoint:
@@ -38,11 +35,11 @@ class Viewpoint:
         Returns:
             Viewpoint: Viewpoint object.
         """
-        gr_viewpoints = pr.read_bed(bed)
-        df_viewpoints = gr_viewpoints
-
+        df_viewpoints = pr.read_bed(bed)
+        viewpoint_names = df_viewpoints["Name"].astype(str)
         df_viewpoints = df_viewpoints.loc[
-            lambda df: df["Name"].str.contains(f"{viewpoint}$")
+            (viewpoint_names == viewpoint)
+            | viewpoint_names.str.endswith(f"_{viewpoint}")
         ]
 
         if df_viewpoints.empty:
@@ -92,7 +89,7 @@ class Viewpoint:
                 lambda df: ~df["Name"].isin(self.bin_names(bins))
             ]
 
-        return df_cis_bins["Name"].to_list()
+        return df_cis_bins["Name"].astype(int).to_list()
 
     @property
     def chromosomes(self) -> List[str]:
@@ -265,16 +262,22 @@ class CoolerBinner:
         fragment_bins = self.fragment_bins
 
         if self.method == "midpoint":
-            fragment_bins = (
-                fragment_bins
-                .assign(
-                    Start=lambda df: df["Start"] + (df["End"] - df["Start"]) / 2,
-                    End=lambda df: df["Start"] + 1,
+            df_fragment_bins = fragment_bins.copy()
+            midpoint = (
+                df_fragment_bins["Start"].astype(int)
+                + (
+                    (
+                        df_fragment_bins["End"].astype(int)
+                        - df_fragment_bins["Start"].astype(int)
+                    )
+                    // 2
                 )
-                .pipe(pr.PyRanges)
+            )
+            fragment_bins = pr.PyRanges(
+                df_fragment_bins.assign(Start=midpoint, End=midpoint + 1)
             )
 
-        pr_fragment_to_bins = self.genomic_bins.join_overlaps(
+        df_fragment_to_bins = self.genomic_bins.join_overlaps(
             fragment_bins,
             strand_behavior="ignore",
             join_type="inner",
@@ -282,17 +285,18 @@ class CoolerBinner:
         )
 
         if self.method == "overlap":
-            pr_fragment_to_bins = pr_fragment_to_bins[
-                pr_fragment_to_bins["Overlap"] >= self.minimum_overlap
+            df_fragment_to_bins = df_fragment_to_bins[
+                df_fragment_to_bins["Overlap"] >= self.minimum_overlap
             ]
 
         # Add number of fragments per bin
-        pr_fragment_to_bins = pr_fragment_to_bins.assign(
-            "n_fragments_per_bin",
-            lambda df: df.groupby("genomic_bin_id")["fragment_id"].transform("nunique"),
+        df_fragment_to_bins = df_fragment_to_bins.assign(
+            n_fragments_per_bin=lambda df: df.groupby("genomic_bin_id")[
+                "fragment_id"
+            ].transform("nunique"),
         )
 
-        return pr_fragment_to_bins
+        return pr.PyRanges(df_fragment_to_bins)
 
     @functools.cached_property
     def fragment_to_genomic_mapping(self) -> Dict[int, int]:
@@ -371,19 +375,19 @@ class CoolerBinner:
         Return list of viewpoint bins
         """
 
-        pr_viewpoint = pr.from_dict(
-            dict(
-                zip(
-                    ["Chromosome", "Start", "End"],
-                    [
-                        [
-                            x,
-                        ]
-                        for x in re.split(
-                            ":|-", self.cooler.info["metadata"]["viewpoint_coords"][0]
-                        )
-                    ],
-                )
+        viewpoint_coords = self.cooler.info["metadata"]["viewpoint_coords"][0]
+        match = re.fullmatch(r"([^:]+):(\d+)-(\d+)", viewpoint_coords)
+        if match is None:
+            raise ValueError(f"Invalid viewpoint coordinates: {viewpoint_coords}")
+
+        chrom, start, end = match.groups()
+        pr_viewpoint = pr.PyRanges(
+            pd.DataFrame(
+                {
+                    "Chromosome": [chrom],
+                    "Start": [int(start)],
+                    "End": [int(end)],
+                }
             )
         )
 

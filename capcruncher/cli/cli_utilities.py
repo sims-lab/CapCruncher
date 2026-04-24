@@ -1,15 +1,25 @@
 import os
 import subprocess
 from tempfile import NamedTemporaryFile
-from typing import Iterable, List, Literal
+from typing import Iterable, Literal
 
 import click
 import pandas as pd
 import polars as pl
+import pyranges1 as pr
 from loguru import logger
 
 from capcruncher.api.statistics import CisOrTransStats
-from capcruncher.utils import get_file_type
+
+
+def _first_existing_column(df: pd.DataFrame, candidates: Iterable[str]) -> str:
+    for column in candidates:
+        if column in df.columns:
+            return column
+
+    raise KeyError(
+        f"None of the expected columns were present: {', '.join(candidates)}"
+    )
 
 
 @click.group()
@@ -266,16 +276,23 @@ def viewpoint_coordinates(
         )
     )
     gr_viewpoints = pr.PyRanges(bam_to_bed_df(viewpoints_aligned_bam.name))
-    intersections = gr_genome.join_overlaps(gr_viewpoints, strand_behavior="ignore").rename(
-        columns={"Name": "name", "Name_b": "thickEnd"}
+    intersections = gr_genome.join_overlaps(
+        gr_viewpoints, suffix="_vp", strand_behavior="ignore"
+    )
+    fragment_name_column = _first_existing_column(intersections, ["Name"])
+    viewpoint_name_column = _first_existing_column(
+        intersections, ["Name_vp", "Name_b"]
     )
 
     # Write results to file
     (
-        intersections.drop_duplicates("name")
-        .assign(oligo_name=lambda df: df["thickEnd"].str.split("_L").str[0])[
-            ["Chromosome", "Start", "End", "oligo_name"]
-        ]
+        intersections.drop_duplicates(fragment_name_column)
+        .assign(
+            oligo_name=lambda df: df[viewpoint_name_column]
+            .astype(str)
+            .str.split("_L")
+            .str[0]
+        )[["Chromosome", "Start", "End", "oligo_name"]]
         .rename(
             columns={
                 "Chromosome": "chrom",
@@ -339,8 +356,6 @@ def dump(
         resolution (int, optional): Resolution to extract. Only used for cooler (hdf5) files. Defaults to None.
         output (str, optional): Output file name. Defaults to "capcruncher_dump.tsv".
     """
-
-    import pandas as pd
 
     assert os.path.exists(path), "File does not exist"
 
@@ -451,16 +466,25 @@ def make_chicago_maps(fragments: str, viewpoints: str, outputdir: str):
     viewpoints = pr.read_bed(viewpoints)
     fragments = pr.read_bed(fragments)
 
+    intersections = fragments.join_overlaps(
+        viewpoints, suffix="_vp", strand_behavior="ignore"
+    )
+    fragment_name_column = _first_existing_column(intersections, ["Name"])
+    viewpoint_name_column = _first_existing_column(
+        intersections, ["Name_vp", "Name_b"]
+    )
+
     df_baitmap = (
-        fragments.join_overlaps(viewpoints, suffix="_vp", strand_behavior="ignore")
-        [['Chromosome', 'Start', 'End', 'Name', 'Name_vp']]
+        intersections[
+            ["Chromosome", "Start", "End", fragment_name_column, viewpoint_name_column]
+        ]
         .rename(
             columns={
                 "Chromosome": "chr",
                 "Start": "start",
                 "End": "end",
-                "Name": "baitAnnotation",
-                "Name_vp": "fragmentID",
+                fragment_name_column: "baitAnnotation",
+                viewpoint_name_column: "fragmentID",
             }
         )
     )

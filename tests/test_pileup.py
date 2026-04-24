@@ -71,7 +71,54 @@ def test_to_pyranges(cooler_bedgraph):
     assert isinstance(pyranges, pr.PyRanges)
 
 
-def test_ccbedgraph_to_bedtool_returns_pyranges():
+def test_to_pyranges_expands_normalisation_kwargs(monkeypatch):
+    bedgraph = CoolerBedGraph.__new__(CoolerBedGraph)
+    captured = {}
+
+    def fake_extract_bedgraph(self, normalisation="raw", **norm_kwargs):
+        captured["normalisation"] = normalisation
+        captured["norm_kwargs"] = norm_kwargs
+        return pd.DataFrame(
+            {
+                "chrom": ["chr1"],
+                "start": [10],
+                "end": [20],
+                "count": [1.0],
+            }
+        )
+
+    monkeypatch.setattr(CoolerBedGraph, "extract_bedgraph", fake_extract_bedgraph)
+
+    converted = bedgraph.to_pyranges(normalisation="region", region="regions.bed")
+
+    assert isinstance(converted, pr.PyRanges)
+    assert captured == {
+        "normalisation": "region",
+        "norm_kwargs": {"region": "regions.bed"},
+    }
+
+
+def test_region_normalisation_uses_interval_overlap(tmp_path):
+    regions = tmp_path / "regions.bed"
+    regions.write_text("chr1\t10\t20\tSlc25A37_region\n")
+
+    bedgraph = CoolerBedGraph.__new__(CoolerBedGraph)
+    bedgraph.viewpoint_name = "Slc25A37"
+    df = pd.DataFrame(
+        {
+            "chrom": ["chr1", "chr1"],
+            "start": [5, 30],
+            "end": [15, 40],
+            "count": [10.0, 5.0],
+        }
+    )
+
+    bedgraph._normalise_by_regions(df, scale_factor=1e6, regions=regions)
+
+    assert df["count"].tolist() == [1e6, 5e5]
+
+
+def test_ccbedgraph_to_pyranges():
     bedgraph = CCBedgraph(
         df=pd.DataFrame(
             {
@@ -83,6 +130,6 @@ def test_ccbedgraph_to_bedtool_returns_pyranges():
         )
     )
 
-    converted = bedgraph.to_bedtool()
+    converted = bedgraph.to_pyranges()
 
     assert isinstance(converted, pr.PyRanges)

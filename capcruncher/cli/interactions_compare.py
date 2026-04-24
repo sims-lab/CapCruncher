@@ -21,12 +21,13 @@ def get_bedgraph_name_from_cooler(cooler_filename):
 
 def remove_duplicate_entries(df: pd.DataFrame) -> pd.DataFrame:
     """Removes duplicate coordinates by aggregating values."""
+    coordinate_columns = ["chrom", "start", "end"]
 
     return (
-        df.groupby(["chrom", "start", "end"])
+        df.groupby(coordinate_columns)
         .agg("sum")
         .reset_index()
-        .sort_values(["chrom", "start", "end"])
+        .sort_values(coordinate_columns)
     )
 
 
@@ -56,6 +57,7 @@ def concat(
     union_by_viewpoint = dict()
 
     for viewpoint in viewpoints:
+        coordinate_columns = ["chrom", "start", "end"]
 
         def _prepare_bedgraph(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
             df = remove_duplicate_entries(df)
@@ -99,15 +101,15 @@ def concat(
             if union is None:
                 union = df
             else:
-                union = union.merge(df, on=["chrom", "start", "end"], how="outer")
+                union = union.merge(df, on=coordinate_columns, how="outer")
 
         if union is None:
-            union = pd.DataFrame(columns=["chrom", "start", "end"])
+            union = pd.DataFrame(columns=coordinate_columns)
 
-        value_columns = [col for col in union.columns if col not in ["chrom", "start", "end"]]
+        value_columns = [col for col in union.columns if col not in coordinate_columns]
         if value_columns:
             union[value_columns] = union[value_columns].fillna(0)
-        union = union.sort_values(["chrom", "start", "end"]).reset_index(drop=True)
+        union = union.sort_values(coordinate_columns).reset_index(drop=True)
 
         if output:
             union.to_csv(output, sep="\t", index=False)

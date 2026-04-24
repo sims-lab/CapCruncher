@@ -161,3 +161,111 @@ def test_intersect_bins_and_interval_conversion():
     name, coord = convert_interval_to_coords({"chrom": "chr1", "start": 10, "end": 30})
     assert name == "Unnammed"
     assert coord == "chr1:10-30"
+
+
+def test_intersect_bins_no_overlap_returns_empty_schema():
+    left = pd.DataFrame(
+        {"chrom": ["chr1"], "start": [10], "end": [20], "name": ["left"]}
+    )
+    right = pd.DataFrame(
+        {"chrom": ["chr1"], "start": [30], "end": [40], "name": ["right"]}
+    )
+
+    intersection = intersect_bins(left, right)
+
+    assert intersection.empty
+    assert list(intersection.columns) == [
+        "chrom_1",
+        "start_1",
+        "end_1",
+        "name_1",
+        "chrom_2",
+        "start_2",
+        "end_2",
+        "name_2",
+        "overlap",
+    ]
+
+
+def test_intersect_bins_multiple_chromosomes():
+    left = pd.DataFrame(
+        {
+            "chrom": ["chr1", "chr2"],
+            "start": [10, 10],
+            "end": [30, 30],
+            "name": ["left_1", "left_2"],
+        }
+    )
+    right = pd.DataFrame(
+        {
+            "chrom": ["chr1", "chr2"],
+            "start": [20, 25],
+            "end": [40, 35],
+            "name": ["right_1", "right_2"],
+        }
+    )
+
+    intersection = intersect_bins(left, right)
+
+    assert intersection["chrom_1"].tolist() == ["chr1", "chr2"]
+    assert intersection["name_2"].tolist() == ["right_1", "right_2"]
+    assert intersection["overlap"].tolist() == [10, 5]
+
+
+def test_intersect_bins_slack_expands_intervals():
+    left = pd.DataFrame(
+        {"chrom": ["chr1"], "start": [10], "end": [20], "name": ["left"]}
+    )
+    right = pd.DataFrame(
+        {"chrom": ["chr1"], "start": [25], "end": [35], "name": ["right"]}
+    )
+
+    intersection = intersect_bins(left, right, slack=5)
+
+    assert intersection.loc[0, "start_1"] == 5
+    assert intersection.loc[0, "end_1"] == 25
+    assert intersection.loc[0, "start_2"] == 20
+    assert intersection.loc[0, "end_2"] == 40
+    assert intersection.loc[0, "overlap"] == 5
+
+
+@pytest.mark.parametrize(
+    "strandedness,expected_names",
+    [
+        ("same", ["same"]),
+        ("opposite", ["opposite"]),
+    ],
+)
+def test_intersect_bins_strand_handling(strandedness, expected_names):
+    left = pd.DataFrame(
+        {
+            "chrom": ["chr1"],
+            "start": [10],
+            "end": [30],
+            "name": ["left"],
+            "strand": ["+"],
+        }
+    )
+    right = pd.DataFrame(
+        {
+            "chrom": ["chr1", "chr1"],
+            "start": [20, 20],
+            "end": [40, 40],
+            "name": ["same", "opposite"],
+            "strand": ["+", "-"],
+        }
+    )
+
+    intersection = intersect_bins(left, right, strandedness=strandedness)
+
+    assert intersection["name_2"].tolist() == expected_names
+
+
+def test_intersect_bins_synthesizes_unnamed_intervals():
+    left = pd.DataFrame({"chrom": ["chr1"], "start": [10], "end": [30]})
+    right = pd.DataFrame({"chrom": ["chr1"], "start": [20], "end": [40]})
+
+    intersection = intersect_bins(left, right)
+
+    assert intersection.loc[0, "name_1"] == "region_1_0"
+    assert intersection.loc[0, "name_2"] == "region_2_0"

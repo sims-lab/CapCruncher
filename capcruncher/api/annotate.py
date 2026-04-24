@@ -1,21 +1,246 @@
 import warnings
-from typing import Union, List, Literal
+from typing import Literal, Union
 
+import numpy as np
 import pandas as pd
 import pyranges1 as pr
-import numpy as np
 from pandas.api.types import is_numeric_dtype
 
-from capcruncher.utils import convert_bed_to_pr
+from capcruncher.utils import convert_bed_to_dataframe, convert_bed_to_pr
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
 
-def increase_cis_slice_priority(df: pd.DataFrame, score_multiplier: float = 2):
-    """
-    Prioritizes cis slices by increasing the mapping score.
+ROW_ID_COLUMN = "__cc_row_id"
+INTERVAL_COLUMNS = ["Chromosome", "Start", "End", "Name"]
+ANNOTATION_EXCLUDE_COLUMNS = {
+    *INTERVAL_COLUMNS,
+    ROW_ID_COLUMN,
+}
+
+
+def _as_pyranges(bed: Union[str, pd.DataFrame, pr.PyRanges]) -> pr.PyRanges:
+    """Normalize supported BED-like inputs to a PyRanges1 interval frame.
+
+    PyRanges1 objects are pandas DataFrame subclasses, so downstream pandas
+    operations should work on the PyRanges frame directly rather than coercing
+    it back out through ``pd.DataFrame(...)``.
     """
 
+    if isinstance(bed, pr.PyRanges):
+        return bed.copy()
+
+    return convert_bed_to_pr(bed)
+
+
+def _annotation_name_dtype(annotations: pr.PyRanges) -> object:
+    """Return a nullable dtype suitable for values copied from annotation Name."""
+
+    if "Name" not in annotations.columns:
+        return pd.StringDtype()
+
+    names = annotations["Name"]
+    nullable_numeric_dtypes = {
+        "int64": "Int64",
+        "int32": "Int32",
+        "float64": "Float64",
+        "float32": "Float32",
+    }
+    if is_numeric_dtype(names):
+        return nullable_numeric_dtypes.get(str(names.dtype), names.dtype)
+
+    if isinstance(names.dtype, pd.CategoricalDtype):
+        if is_numeric_dtype(names.cat.categories):
+            return nullable_numeric_dtypes.get(str(names.cat.categories.dtype), "Int64")
+        return names.dtype
+
+    return pd.CategoricalDtype([*names.dropna().unique().astype(str)])
+
+
+def _add_row_ids(intervals: pr.PyRanges) -> pr.PyRanges:
+    return intervals.copy().assign(**{ROW_ID_COLUMN: np.arange(intervals.shape[0])})
+
+
+def _prepare_annotation_intervals(
+    annotations: Union[str, pd.DataFrame, pr.PyRanges],
+    fallback_name: str,
+) -> pr.PyRanges:
+    intervals = _as_pyranges(annotations)
+    if intervals.empty:
+        return intervals
+
+    intervals = intervals.copy()
+    if "Name" not in intervals.columns:
+        intervals["Name"] = [
+            f"{fallback_name}_{idx}" for idx in range(intervals.shape[0])
+        ]
+
+    return intervals
+
+
+def _split_query_metadata(
+    query: pr.PyRanges,
+) -> tuple[pr.PyRanges, dict[int, object], pd.DataFrame]:
+    query = _add_row_ids(query)
+    original_names = dict(zip(query[ROW_ID_COLUMN], query["Name"]))
+    metadata_columns = [
+        column for column in query.columns if column not in ANNOTATION_EXCLUDE_COLUMNS
+    ]
+    metadata = (
+        query.set_index(ROW_ID_COLUMN).loc[:, metadata_columns]
+        if metadata_columns
+        else pd.DataFrame()
+    )
+
+    return (
+        query.loc[:, [*INTERVAL_COLUMNS, ROW_ID_COLUMN]],
+        original_names,
+        metadata,
+    )
+
+
+def _restore_query_metadata(
+    annotated: pr.PyRanges,
+    original_names: dict[int, object],
+    metadata: pd.DataFrame,
+) -> pr.PyRanges:
+    if not metadata.empty:
+        annotated = (
+            annotated.set_index(ROW_ID_COLUMN)
+            .join(metadata, how="left")
+            .reset_index()
+        )
+
+    return (
+        annotated.assign(Name=lambda df: df[ROW_ID_COLUMN].map(original_names))
+        .drop(columns=ROW_ID_COLUMN, errors="ignore")
+        .reset_index(drop=True)
+    )
+
+
+def _overlaps(
+    query: pr.PyRanges,
+    annotations: pr.PyRanges,
+    fraction: float,
+) -> pr.PyRanges:
+    if annotations.empty:
+        return annotations
+
+    overlaps = query.join_overlaps(
+        annotations,
+        strand_behavior="ignore",
+        report_overlap_column="Overlap",
+        suffix="_b",
+    )
+    if overlaps.empty:
+        return overlaps
+
+    return overlaps.assign(
+        FractionOverlap=lambda df: df["Overlap"] / (df["End"] - df["Start"])
+    ).loc[lambda df: df["FractionOverlap"] >= fraction]
+
+
+def _get_annotation(
+    query: pr.PyRanges,
+    annotations: pr.PyRanges,
+    name: str,
+    fraction: float,
+) -> pr.PyRanges:
+    dtype = _annotation_name_dtype(annotations)
+    hits = _overlaps(query, annotations, fraction)
+
+    if hits.empty:
+        values = pd.Series(dtype=pd.StringDtype(), name=name)
+    else:
+        values = (
+            hits.drop_duplicates(subset=ROW_ID_COLUMN, keep="first")
+            .set_index(ROW_ID_COLUMN)["Name_b"]
+            .rename(name)
+        )
+
+    result = query.copy()
+    result[name] = result[ROW_ID_COLUMN].map(values)
+    result[name] = result[name].astype(dtype)
+    return result
+
+
+def _count_annotations(
+    query: pr.PyRanges,
+    annotations: pr.PyRanges,
+    name: str,
+    fraction: float,
+) -> pr.PyRanges:
+    hits = _overlaps(query, annotations, fraction)
+    if hits.empty:
+        counts = pd.Series(dtype=pd.Int8Dtype(), name=name)
+    else:
+        counts = hits.groupby(ROW_ID_COLUMN).size().astype(pd.Int8Dtype()).rename(name)
+
+    return query.assign(
+        **{name: lambda df: df[ROW_ID_COLUMN].map(counts).fillna(0).astype("Int8")}
+    )
+
+
+def _failed_annotation(query: pr.PyRanges, name: str) -> pr.PyRanges:
+    return (
+        query.assign(**{name: pd.NA})
+        .assign(**{name: lambda df: df[name].astype(pd.StringDtype())})
+    )
+
+
+def annotate_intervals(
+    query: Union[str, pd.DataFrame, pr.PyRanges],
+    annotations: Union[str, pd.DataFrame, pr.PyRanges],
+    name: str,
+    method: Literal["get", "count"] = "get",
+    fraction: float = 0,
+    tolerate_errors: bool = True,
+) -> pr.PyRanges:
+    """Annotate a BED-like interval table with another BED-like table.
+
+    The returned frame has one row per input query interval, preserves query
+    row order and metadata columns, and stores either annotation names (`get`)
+    or annotation counts (`count`) in ``name``.
+    """
+
+    prepared_query, original_names, metadata = _split_query_metadata(
+        _as_pyranges(query)
+    )
+
+    try:
+        annotation_intervals = _prepare_annotation_intervals(
+            annotations, fallback_name=name
+        )
+        if method == "get":
+            annotated = _get_annotation(
+                prepared_query, annotation_intervals, name, fraction
+            )
+        elif method == "count":
+            annotated = _count_annotations(
+                prepared_query, annotation_intervals, name, fraction
+            )
+        else:
+            annotated = _failed_annotation(prepared_query, name)
+    except (
+        OSError,
+        IndexError,
+        FileNotFoundError,
+        StopIteration,
+        AssertionError,
+        TypeError,
+        ValueError,
+    ):
+        if not tolerate_errors:
+            raise
+        annotated = _failed_annotation(prepared_query, name)
+
+    return _restore_query_metadata(annotated, original_names, metadata)
+
+
+def increase_cis_slice_priority(df: pd.DataFrame, score_multiplier: float = 2):
+    """Prioritize cis slices by increasing their mapping score."""
+
+    df = df.copy()
     df["parent_name"] = df["name"].str.split("|").str[0]
 
     df_chrom_counts = (
@@ -43,278 +268,50 @@ def remove_duplicates_from_bed(
     prioritize_cis_slices: bool = False,
     chroms_to_prioritize: Union[list, np.ndarray] = None,
 ) -> pr.PyRanges:
-    """
-    Removes duplicate entries from a PyRanges object.
+    """Remove duplicate BED names, using deterministic random tie-breaking."""
 
-    Args:
-        bed (pr.PyRanges): PyRanges object to be deduplicated.
-        prioritize_cis_slices (bool, optional): Prioritize cis slices by increasing the mapping score. Defaults to False.
-        chroms_to_prioritize (Union[list, np.ndarray], optional): Chromosomes to prioritize. Defaults to None.
+    df = convert_bed_to_dataframe(bed)
+    if df.empty:
+        return pr.PyRanges()
 
-    Returns:
-        pr.PyRanges: Deduplicated PyRanges object.
-    """
+    if "name" not in df.columns:
+        df = df.copy()
+        df["name"] = [f"slice_{idx}" for idx in range(df.shape[0])]
 
-    df = pd.DataFrame(bed).rename(columns=lambda col: col.lower()).rename(
-        columns={"chromosome": "chrom"}
-    )
-
-    # Shuffle the dataframe to randomize the duplicate removal
-    df = df.sample(frac=1)
+    df = df.sample(frac=1, random_state=0)
 
     if prioritize_cis_slices:
         df = increase_cis_slice_priority(df)
 
+    sort_columns = []
+    sort_ascending = []
     if "score" in df.columns:
-        df = df.sort_values(["score"], ascending=False)
+        sort_columns.append("score")
+        sort_ascending.append(False)
 
     if chroms_to_prioritize:
-        df["is_chrom_priority"] = df["chrom"].isin(chroms_to_prioritize).astype(int)
-        df = df.sort_values(["score", "is_chrom_priority"], ascending=False).drop(
-            columns="is_chrom_priority"
+        df = df.assign(
+            is_chrom_priority=lambda frame: (
+                frame["chrom"].isin(chroms_to_prioritize).astype(int)
+            )
         )
+        sort_columns.append("is_chrom_priority")
+        sort_ascending.append(False)
 
-    return (
+    if sort_columns:
+        df = df.sort_values(sort_columns, ascending=sort_ascending, kind="mergesort")
+
+    df = (
         df.drop_duplicates(subset="name", keep="first")
-        .sort_values(["chrom", "start"])[["chrom", "start", "end", "name"]]
-        .rename(columns=lambda col: col.capitalize())
-        .rename(columns={"Chrom": "Chromosome"})
-        .pipe(pr.PyRanges)
+        .sort_values(["chrom", "start"], kind="mergesort")
+        .loc[:, ["chrom", "start", "end", "name"]]
+        .rename(
+            columns={
+                "chrom": "Chromosome",
+                "start": "Start",
+                "end": "End",
+                "name": "Name",
+            }
+        )
     )
-
-
-class Intersection:
-    def __init__(
-        self,
-        bed_a: pr.PyRanges,
-        bed_b: pr.PyRanges,
-        name: str,
-        fraction: float = 0,
-        n_cores: int = 1,
-    ):
-        self.a = bed_a
-        self.b = bed_b
-        self.name = name
-        self.fraction = fraction
-        self.n_cores = n_cores
-
-    @property
-    def intersection(self) -> pr.PyRanges:
-        raise NotImplementedError("Must be implemented in subclass")
-
-
-class IntersectionGet(Intersection):
-    def get_new_dtype(self):
-        df_b = self.b
-        # Determine the dtype of the name column
-        if is_numeric_dtype(df_b["Name"]):
-            dtype_new = df_b["Name"].dtype
-
-        elif isinstance(df_b["Name"].dtype, pd.CategoricalDtype):
-            if is_numeric_dtype(df_b["Name"].cat.categories):
-                dtype_new = df_b["Name"].cat.categories.dtype
-                numeric_dtype_mapping = {
-                    "int64": "Int64",
-                    "float64": "Float64",
-                    "float32": "Float32",
-                    "int32": "Int32",
-                }
-                dtype_new = numeric_dtype_mapping.get(str(dtype_new), "Int64")
-
-            else:
-                dtype_new = df_b["Name"].dtype
-
-        else:
-            dtype_new = pd.CategoricalDtype([*df_b["Name"].unique().astype(str)])
-
-        return dtype_new
-
-    @property
-    def intersection(self) -> pr.PyRanges:
-        dtype_new = self.get_new_dtype()
-
-        # Hack to get around the fact that pyranges has a bug when joining categorical columns
-        # See https://github.com/pyranges/pyranges/issues/230
-
-        df_overlapping = self.a.join_overlaps(
-            self.b,
-            strand_behavior="ignore",
-            report_overlap_column="Overlap",
-            suffix="_b",
-        )
-
-        if not df_overlapping.empty:
-            df_non_overlapping = self.a.loc[
-                lambda df: ~df.Name.isin(df_overlapping.Name)
-            ]
-        else:
-            raise ValueError("No overlapping regions found")
-
-        df_both = pd.concat([df_overlapping, df_non_overlapping]).sort_values("Name")
-
-        # Filter out the non-overlapping regions
-        df_both["frac"] = df_both.eval("Overlap / (End - Start)")
-        df_both[self.name] = np.where(
-            df_both["frac"] >= self.fraction, df_both["Name_b"], pd.NA
-        )
-        df_both[self.name] = df_both[self.name].astype(dtype_new)
-
-        df_both.drop(
-            columns=[
-                "frac",
-                "Overlap",
-                "Name_b",
-                "Start_b",
-                "End_b",
-                "Strand_b",
-                "Score_b",
-            ],
-            errors="ignore",
-            inplace=True,
-        )
-
-        return df_both.pipe(pr.PyRanges)
-
-
-class IntersectionCount(Intersection):
-    @property
-    def intersection(self) -> pr.PyRanges:
-        df_overlapping = self.a.join_overlaps(
-            self.b,
-            strand_behavior="ignore",
-            report_overlap_column="Overlap",
-            suffix="_b",
-        )
-        if df_overlapping.empty:
-            counts = pd.Series(dtype="Int8", name=self.name)
-        else:
-            counts = (
-                df_overlapping.assign(
-                    FractionOverlaps=lambda df: df["Overlap"]
-                    / (df["End"] - df["Start"])
-                )
-                .loc[lambda df: df["FractionOverlaps"] >= self.fraction]
-                .groupby("Name")
-                .size()
-                .astype(pd.Int8Dtype())
-                .rename(self.name)
-            )
-
-        return pr.PyRanges(
-            self.a.assign(**{self.name: lambda df: df["Name"].map(counts).fillna(0)})
-        )
-
-
-class IntersectionFailed(Intersection):
-    @property
-    def intersection(self):
-        return (
-            self.a.assign(**{self.name: pd.NA})
-            .assign(**{self.name: lambda df: df[self.name].astype(pd.StringDtype())})
-            .pipe(pr.PyRanges)
-        )
-
-
-class BedIntersector:
-    def __init__(
-        self,
-        bed_a: Union[str, pd.DataFrame, pr.PyRanges],
-        bed_b: Union[str, pd.DataFrame, pr.PyRanges],
-        name: str,
-        fraction: float = 0,
-        max_cores: int = 1,
-    ):
-        self.annotation_columns = None
-
-        if isinstance(bed_a, pr.PyRanges):
-            self.a = self.process_bed(bed_a)
-        elif isinstance(bed_a, (str, pd.DataFrame)):
-            self.a = convert_bed_to_pr(bed_a)
-            self.a = self.process_bed(self.a)
-        else:
-            raise ValueError(
-                f"bed_a must be of type str, pd.DataFrame, or pr.PyRanges. Got {type(bed_a)}"
-            )
-
-        self.b = bed_b if isinstance(bed_b, pr.PyRanges) else convert_bed_to_pr(bed_b)
-        self.name = name
-        self.fraction = fraction
-        self.n_cores = max_cores if self.b.shape[0] > 50_000 else 1
-
-    def get_intersection(self, method: Literal["get", "count"] = "get") -> pr.PyRanges:
-        try:
-            if self.b.empty:
-                _intersection = IntersectionFailed(
-                    self.a, self.b, self.name, self.fraction, self.n_cores
-                ).intersection
-            elif method == "get":
-                _intersection = IntersectionGet(
-                    self.a, self.b, self.name, self.fraction, self.n_cores
-                ).intersection
-            elif method == "count":
-                _intersection = IntersectionCount(
-                    self.a, self.b, self.name, self.fraction, self.n_cores
-                ).intersection
-            else:
-                _intersection = IntersectionFailed(
-                    self.a, self.b, self.name, self.fraction, self.n_cores
-                ).intersection
-
-        except (
-            OSError,
-            IndexError,
-            FileNotFoundError,
-            StopIteration,
-            AssertionError,
-            ValueError,
-        ):
-            _intersection = IntersectionFailed(
-                self.a, self.b, self.name, self.fraction, self.n_cores
-            ).intersection
-
-        # If there are annotation columns, join them to the intersection
-        if not self.annotation.empty:
-            _intersection = (
-                _intersection.set_index("Name")
-                .join(self.annotation, how="left")
-                .reset_index()
-                .pipe(pr.PyRanges)
-            )
-
-        # Put the original name back
-        _intersection = _intersection.assign(
-            Name=lambda df: df.Name.map(self.original_name_mapping)
-        )
-
-        return pr.PyRanges(_intersection)
-
-    def process_bed(self, bed: pr.PyRanges):
-        # Convert to dataframe
-        bed = bed.copy()
-
-        # Create a unique identifier for each slice
-        self.uid = pd.util.hash_pandas_object(
-            bed.loc[:, ["Chromosome", "Start", "End", "Name"]]
-        )
-        self.original_name_mapping = dict(zip(self.uid, bed.Name))
-
-        # Add the unique identifier to the bed
-        bed = bed.assign(Name=self.uid)
-
-        # Identify colunms that have annotation information
-        self.annotation_col_names = [
-            col
-            for col in bed.columns
-            if col not in ["Chromosome", "Start", "End", "Strand", "Score", "Name"]
-        ]
-
-        # If there are annotation columns, store them in a separate dataframe
-        if self.annotation_col_names:
-            self.annotation = bed.set_index("Name").loc[:, self.annotation_col_names]
-        else:
-            self.annotation = pd.DataFrame()
-
-        # Re-generate the pyranges object with the unique identifier
-        bed = bed.loc[:, ["Chromosome", "Start", "End", "Name"]]
-
-        return bed.pipe(pr.PyRanges)
+    return pr.PyRanges(df)

@@ -7,7 +7,7 @@ import pandas as pd
 import pyranges1 as pr
 from loguru import logger
 
-from capcruncher.api.annotate import remove_duplicates_from_bed, BedIntersector
+from capcruncher.api.annotate import annotate_intervals, remove_duplicates_from_bed
 from capcruncher.utils import (
     convert_bed_to_pr,
     cycle_argument,
@@ -57,9 +57,9 @@ def annotate(
     **kwargs,
 ):
     """
-    Annotates a bed file with other bed files using bedtools intersect.
+    Annotates a BED-like input with other BED files using PyRanges overlaps.
 
-    Whilst bedtools intersect allows for interval names and counts to be used for annotating intervals, this command
+    Whilst interval overlap tools allow interval names and counts to be used for annotating intervals, this command
     provides the ability to annotate intervals with both interval names and counts at the same time. As the pipeline allows
     for empty bed files, this command has built in support to deal with blank/malformed bed files and will return default N/A values.
 
@@ -94,14 +94,14 @@ def annotate(
 
         if slices == "-":
             logger.info("Reading slices from stdin")
-            slices = pd.read_csv(sys.stdin, sep="\t", header=None).pipe(pr.PyRanges)
+            slices = convert_bed_to_pr(pd.read_csv(sys.stdin, sep="\t", header=None))
 
         elif slices.endswith(".bam"):
             logger.info("Converting bam to bed")
             slices = _bam_to_bed_dataframe(slices).pipe(convert_bed_to_pr)
 
         else:
-            slices = pr.PyRanges(slices)
+            slices = convert_bed_to_pr(slices)
 
         logger.info("Validating input bed file before annotation")
 
@@ -137,13 +137,13 @@ def annotate(
                 f"Performing {name} intersection with {bed_file} using {action} method with {fraction} overlap fraction. {len(slices)} slices to intersect."
             )
             
-            slices = BedIntersector(
-                bed_a=slices,
-                bed_b=bed_file,
+            slices = annotate_intervals(
+                query=slices,
+                annotations=bed_file,
                 name=name,
+                method=action,
                 fraction=fraction,
-                max_cores=n_cores,
-            ).get_intersection(method=action)
+            )
             
 
         logger.info("Writing annotations to file.")

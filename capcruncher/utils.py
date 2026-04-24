@@ -9,6 +9,64 @@ from typing import Callable, Iterable, Tuple, Union
 import pandas as pd
 import pyranges1 as pr
 
+BED_COLUMN_NAMES = [
+    "chrom",
+    "start",
+    "end",
+    "name",
+    "score",
+    "strand",
+    "thick_start",
+    "thick_end",
+    "item_rgb",
+    "block_count",
+    "block_sizes",
+    "block_starts",
+]
+
+BED_COLUMN_CASE = {
+    "chrom": "Chromosome",
+    "start": "Start",
+    "end": "End",
+    "name": "Name",
+    "score": "Score",
+    "strand": "Strand",
+    "thick_start": "ThickStart",
+    "thick_end": "ThickEnd",
+    "item_rgb": "ItemRGB",
+    "block_count": "BlockCount",
+    "block_sizes": "BlockSizes",
+    "block_starts": "BlockStarts",
+}
+
+BED_COLUMN_ALIASES = {
+    "chrom": "chrom",
+    "chromosome": "chrom",
+    "start": "start",
+    "end": "end",
+    "name": "name",
+    "score": "score",
+    "strand": "strand",
+    "thickstart": "thick_start",
+    "thickend": "thick_end",
+    "itemrgb": "item_rgb",
+    "blockcount": "block_count",
+    "blocksizes": "block_sizes",
+    "blockstarts": "block_starts",
+}
+
+INTERSECT_COLUMNS = [
+    "chrom_1",
+    "start_1",
+    "end_1",
+    "name_1",
+    "chrom_2",
+    "start_2",
+    "end_2",
+    "name_2",
+    "overlap",
+]
+
 
 def cycle_argument(arg):
     """Allows for the same argument to be stated once but repeated for all files"""
@@ -90,10 +148,10 @@ def get_human_readable_number_of_bp(bp: int) -> str:
 def _read_bed_dataframe(
     bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges], nrows=None
 ) -> pd.DataFrame:
-    if isinstance(bed, pd.DataFrame):
+    if isinstance(bed, pr.PyRanges):
         return bed.copy()
 
-    if isinstance(bed, pr.PyRanges):
+    if isinstance(bed, pd.DataFrame):
         return bed.copy()
 
     df = pd.read_csv(
@@ -104,22 +162,8 @@ def _read_bed_dataframe(
         nrows=nrows,
     )
 
-    column_names = [
-        "chrom",
-        "start",
-        "end",
-        "name",
-        "score",
-        "strand",
-        "thick_start",
-        "thick_end",
-        "item_rgb",
-        "block_count",
-        "block_sizes",
-        "block_starts",
-    ]
     df.columns = [
-        column_names[i] if i < len(column_names) else f"col_{i}"
+        BED_COLUMN_NAMES[i] if i < len(BED_COLUMN_NAMES) else f"col_{i}"
         for i in range(df.shape[1])
     ]
     return df
@@ -130,32 +174,10 @@ def _standardize_bed_columns(
 ) -> pd.DataFrame:
     rename_map = {}
     for column in df.columns:
-        column_str = str(column)
-        lower = column_str.lower()
-        if lower in {"chrom", "chromosome"}:
-            rename_map[column] = "Chromosome" if capitalized else "chrom"
-        elif lower == "start":
-            rename_map[column] = "Start" if capitalized else "start"
-        elif lower == "end":
-            rename_map[column] = "End" if capitalized else "end"
-        elif lower == "name":
-            rename_map[column] = "Name" if capitalized else "name"
-        elif lower == "score":
-            rename_map[column] = "Score" if capitalized else "score"
-        elif lower == "strand":
-            rename_map[column] = "Strand" if capitalized else "strand"
-        elif lower == "thick_start":
-            rename_map[column] = "ThickStart" if capitalized else "thick_start"
-        elif lower == "thick_end":
-            rename_map[column] = "ThickEnd" if capitalized else "thick_end"
-        elif lower == "item_rgb":
-            rename_map[column] = "ItemRGB" if capitalized else "item_rgb"
-        elif lower == "block_count":
-            rename_map[column] = "BlockCount" if capitalized else "block_count"
-        elif lower == "block_sizes":
-            rename_map[column] = "BlockSizes" if capitalized else "block_sizes"
-        elif lower == "block_starts":
-            rename_map[column] = "BlockStarts" if capitalized else "block_starts"
+        alias_key = re.sub(r"[^a-z0-9]", "", str(column).lower())
+        canonical = BED_COLUMN_ALIASES.get(alias_key)
+        if canonical:
+            rename_map[column] = BED_COLUMN_CASE[canonical] if capitalized else canonical
 
     return df.rename(columns=rename_map)
 
@@ -274,64 +296,61 @@ def intersect_bins(
     left = _prepare_intersection_frame(bins_1, name_prefix="region_1")
     right = _prepare_intersection_frame(bins_2, name_prefix="region_2")
 
-    required_columns = [
-        "chrom_1",
-        "start_1",
-        "end_1",
-        "name_1",
-        "chrom_2",
-        "start_2",
-        "end_2",
-        "name_2",
-        "overlap",
-    ]
-
     if left.empty or right.empty:
-        return pd.DataFrame(columns=required_columns)
+        return pd.DataFrame(columns=INTERSECT_COLUMNS)
 
-    left = left.rename(
-        columns={"chrom": "chrom_1", "start": "start_1", "end": "end_1", "name": "name_1"}
-    ).copy()
-    right = right.rename(
-        columns={"chrom": "chrom_2", "start": "start_2", "end": "end_2", "name": "name_2"}
-    ).copy()
+    left = left.copy()
+    right = right.copy()
 
     slack = int(bedtools_kwargs.get("slack", 0) or 0)
     if slack:
-        left["start_1"] = (left["start_1"] - slack).clip(lower=0)
-        left["end_1"] = left["end_1"] + slack
-        right["start_2"] = (right["start_2"] - slack).clip(lower=0)
-        right["end_2"] = right["end_2"] + slack
+        left["start"] = (left["start"] - slack).clip(lower=0)
+        left["end"] = left["end"] + slack
+        right["start"] = (right["start"] - slack).clip(lower=0)
+        right["end"] = right["end"] + slack
 
-    left["_key"] = 1
-    right["_key"] = 1
-    df_intersect = left.merge(right, on="_key", how="inner").drop(columns="_key")
-    df_intersect = df_intersect[df_intersect["chrom_1"] == df_intersect["chrom_2"]]
+    strandedness = bedtools_kwargs.get("strandedness")
+    if bedtools_kwargs.get("s"):
+        strandedness = "same"
 
-    if "strandedness" in bedtools_kwargs or bedtools_kwargs.get("s"):
-        strandedness = bedtools_kwargs.get("strandedness")
-        if bedtools_kwargs.get("s"):
-            strandedness = "same"
-        if "strand_1" in df_intersect.columns and "strand_2" in df_intersect.columns:
-            if strandedness == "same":
-                df_intersect = df_intersect[
-                    df_intersect["strand_1"] == df_intersect["strand_2"]
-                ]
-            elif strandedness == "opposite":
-                df_intersect = df_intersect[
-                    df_intersect["strand_1"] != df_intersect["strand_2"]
-                ]
-
-    overlap = (
-        df_intersect[["end_1", "end_2"]].min(axis=1)
-        - df_intersect[["start_1", "start_2"]].max(axis=1)
+    joined = convert_bed_to_pr(left).join_overlaps(
+        convert_bed_to_pr(right),
+        strand_behavior="ignore",
+        suffix="_2",
+        report_overlap_column="overlap",
     )
-    df_intersect = df_intersect.loc[overlap > 0, required_columns[:-1]].copy()
+    df_intersect = joined.copy()
     if df_intersect.empty:
-        return pd.DataFrame(columns=required_columns)
+        return pd.DataFrame(columns=INTERSECT_COLUMNS)
 
-    df_intersect["overlap"] = overlap.loc[df_intersect.index]
-    return df_intersect[required_columns]
+    if strandedness in {"same", "opposite"} and {"Strand", "Strand_2"}.issubset(
+        df_intersect.columns
+    ):
+        if strandedness == "same":
+            df_intersect = df_intersect[
+                df_intersect["Strand"] == df_intersect["Strand_2"]
+            ]
+        else:
+            df_intersect = df_intersect[
+                df_intersect["Strand"] != df_intersect["Strand_2"]
+            ]
+        if df_intersect.empty:
+            return pd.DataFrame(columns=INTERSECT_COLUMNS)
+
+    return pd.DataFrame(
+        {
+            "chrom_1": df_intersect["Chromosome"],
+            "start_1": df_intersect["Start"],
+            "end_1": df_intersect["End"],
+            "name_1": df_intersect["Name"],
+            "chrom_2": df_intersect["Chromosome"],
+            "start_2": df_intersect["Start_2"],
+            "end_2": df_intersect["End_2"],
+            "name_2": df_intersect["Name_2"],
+            "overlap": df_intersect["overlap"],
+        },
+        columns=INTERSECT_COLUMNS,
+    )
 
 
 def load_dict(fn, format: str, dtype: str = "int") -> dict:
@@ -407,14 +426,6 @@ def get_timing(task_name=None) -> Callable:
     return wrapper
 
 
-def convert_to_bedtool(
-    bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges]
-) -> pr.PyRanges:
-    """Legacy helper preserved as a PyRanges conversion wrapper."""
-
-    return convert_bed_to_pr(bed)
-
-
 def categorise_tracks(ser: pd.Series) -> list:
     """Gets a series for grouping tracks together
 
@@ -455,9 +466,6 @@ def convert_bed_to_pr(
         pr.PyRanges: PyRanges object.
     """
 
-    if isinstance(bed, pr.PyRanges):
-        return bed
-
     df = convert_bed_to_dataframe(bed)
     if df.empty:
         return pr.PyRanges()
@@ -476,7 +484,11 @@ def convert_bed_to_dataframe(
     bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges],
     ignore_ray_objrefs=False,
 ) -> pd.DataFrame:
-    """Converts a bed like object (including paths to bed files) to a pd.DataFrame"""
+    """Converts a BED-like object to a DataFrame-style interval table.
+
+    PyRanges1 frames are pandas DataFrame subclasses, so in-memory PyRanges
+    inputs are copied directly and manipulated with pandas methods.
+    """
     import ray
     from loguru import logger
 
@@ -490,11 +502,11 @@ def convert_bed_to_dataframe(
             logger.warning(f"File {bed} is empty")
             bed_conv = pd.DataFrame()
 
-    elif isinstance(bed, pd.DataFrame):
+    elif isinstance(bed, pr.PyRanges):
         bed_conv = bed.copy()
 
-    elif isinstance(bed, pr.PyRanges):
-        bed_conv = _standardize_bed_columns(bed.copy(), capitalized=False)
+    elif isinstance(bed, pd.DataFrame):
+        bed_conv = bed.copy()
 
     elif isinstance(bed, ray.ObjectRef):
         if ignore_ray_objrefs:
