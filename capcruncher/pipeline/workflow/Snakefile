@@ -6,7 +6,7 @@ import json
 import re
 
 import pandas as pd
-import pyranges as pr
+import pyranges1 as pr
 import snakemake.utils
 
 import capcruncher.pipeline.utils
@@ -52,7 +52,7 @@ DESIGN.to_csv("capcruncher_output/design.tsv", sep="\t", index=False)
 
 ## Read viewpoints
 VIEWPOINTS = config["analysis"]["viewpoints"]
-VIEWPOINT_NAMES = convert_bed_to_pr(VIEWPOINTS).df.Name.drop_duplicates().tolist()
+VIEWPOINT_NAMES = convert_bed_to_pr(VIEWPOINTS).Name.drop_duplicates().tolist()
 
 ### Check that viewpoints do not contain any special characters
 for viewpoint in VIEWPOINT_NAMES:

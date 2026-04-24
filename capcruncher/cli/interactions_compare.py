@@ -9,10 +9,6 @@ import pandas as pd
 import polars as pl
 
 
-from capcruncher.api.pileup import CoolerBedGraph
-from capcruncher.utils import get_cooler_uri
-from joblib import Parallel, delayed
-from pybedtools import BedTool
 from collections import defaultdict
 
 
@@ -61,42 +57,57 @@ def concat(
 
     for viewpoint in viewpoints:
 
+        def _prepare_bedgraph(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
+            df = remove_duplicate_entries(df)
+            return df.rename(columns={"score": column_name})
+
         if input_format == "cooler":
+            from capcruncher.api.pileup import CoolerBedGraph
+            from capcruncher.utils import get_cooler_uri
 
             cooler_uris = [get_cooler_uri(fn, viewpoint, resolution) for fn in infiles]
-            bedgraphs = dict(
-                Parallel(n_jobs=n_cores)(
-                    delayed(
-                        lambda uri: (
-                            get_bedgraph_name_from_cooler(uri),
-                            CoolerBedGraph(
-                                uri, region_to_limit=region if region else None
-                            )
-                            .extract_bedgraph(
-                                normalisation=normalisation, **norm_kwargs
-                            )
-                            .pipe(BedTool.from_dataframe),
-                        )
-                    )(uri)
-                    for uri in cooler_uris
+            bedgraphs = {
+                get_bedgraph_name_from_cooler(uri): _prepare_bedgraph(
+                    CoolerBedGraph(uri, region_to_limit=region if region else None)
+                    .extract_bedgraph(normalisation=normalisation, **norm_kwargs),
+                    get_bedgraph_name_from_cooler(uri),
                 )
-            )
+                for uri in cooler_uris
+            }
 
         elif input_format == "bedgraph":
 
-            bedgraphs = {os.path.basename(fn): BedTool(fn) for fn in infiles}
+            bedgraphs = {
+                os.path.basename(fn): _prepare_bedgraph(
+                    pd.read_csv(
+                        fn,
+                        sep="\t",
+                        header=None,
+                        names=["chrom", "start", "end", "score"],
+                    ),
+                    os.path.basename(fn),
+                )
+                for fn in infiles
+            }
 
         else:
             raise NotImplementedError("Auto currently not implemented")
 
-        union = (
-            BedTool()
-            .union_bedgraphs(i=[bt.fn for bt in bedgraphs.values()])
-            .to_dataframe(
-                disable_auto_names=True,
-                names=["chrom", "start", "end", *list(bedgraphs.keys())],
-            )
-        )
+        union = None
+        for name, df in bedgraphs.items():
+            df = df.rename(columns={"score": name})
+            if union is None:
+                union = df
+            else:
+                union = union.merge(df, on=["chrom", "start", "end"], how="outer")
+
+        if union is None:
+            union = pd.DataFrame(columns=["chrom", "start", "end"])
+
+        value_columns = [col for col in union.columns if col not in ["chrom", "start", "end"]]
+        if value_columns:
+            union[value_columns] = union[value_columns].fillna(0)
+        union = union.sort_values(["chrom", "start", "end"]).reset_index(drop=True)
 
         if output:
             union.to_csv(output, sep="\t", index=False)
@@ -195,7 +206,6 @@ def summarise(
     summary_methods = ['mean', ] if not summary_methods else summary_methods
 
     for aggregation_method in summary_methods:
-        
         assert aggregation_method in ["mean"], f"Invalid aggregation method {aggregation_method}"
         logger.info(f"Performing aggregation: {aggregation_method}")
 
@@ -207,7 +217,7 @@ def summarise(
             group_counts = getattr(counts.select(group), f'{aggregation_method}_horizontal')().alias(colname)
             coordinates = coordinates.with_columns(group_counts)
             aggregation[aggregation_method].append(colname)
-        
+
         # Perform subtractions
         subtraction = list()
         if perform_subtractions:
@@ -244,8 +254,6 @@ def summarise(
                 outfile = f"{output_prefix}{sub}.{aggregation_method}-subtraction{suffix}.bedgraph"
                 logger.info(f"Writing {sub} {aggregation_method} to {outfile}")
                 df_output.write_csv(outfile, separator="\t", include_header=False)
-        
         elif output_format == "tsv":
             df_output = coordinates
             df_output.write_csv(f"{output_prefix}{suffix}.tsv", separator="\t", include_header=True)
-        

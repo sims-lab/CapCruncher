@@ -32,17 +32,23 @@ def gtf_to_bed12(gtf: str, output: str):
         None
     """
 
-    from pybedtools import BedTool
-
     from capcruncher.utils import gtf_line_to_bed12_line
 
-    bt_gtf = BedTool(gtf)
-    df_gtf = bt_gtf.to_dataframe()
-    df_gtf["geneid"] = df_gtf["attributes"].str.extract(r"gene_id\s?\"(.*?)\";.*")
-    df_gtf = df_gtf.query('feature.isin(["5UTR", "3UTR", "exon"])')
-    df_gtf = df_gtf.loc[
-        lambda df: df["seqname"].str.contains(r"^chr[xXYy]?[1-9]?[0-9]?$")
+    gtf_cols = [
+        "seqname",
+        "source",
+        "feature",
+        "start",
+        "end",
+        "score",
+        "strand",
+        "frame",
+        "attributes",
     ]
+    df_gtf = pd.read_csv(gtf, sep="\t", comment="#", header=None, names=gtf_cols)
+    df_gtf["geneid"] = df_gtf["attributes"].str.extract(r"gene_id\s?\"(.*?)\";.*")
+    df_gtf = df_gtf.loc[df_gtf["feature"].isin(["5UTR", "3UTR", "exon"])]
+    df_gtf = df_gtf.loc[df_gtf["seqname"].str.contains(r"^chr[xXYy]?[1-9]?[0-9]?$")]
 
     with open(output, "w") as w:
         for gene, df in df_gtf.sort_values(["seqname", "start"]).groupby("geneid"):
@@ -187,9 +193,28 @@ def viewpoint_coordinates(
         ValueError: If no bowtie2 indices are supplied
     """
 
-    from pybedtools import BedTool
-
     from capcruncher.cli import genome_digest
+    import pysam
+
+    def bam_to_bed_df(bam_path: os.PathLike) -> pd.DataFrame:
+        rows = []
+        with pysam.AlignmentFile(bam_path, "rb") as bam:
+            for read in bam.fetch(until_eof=True):
+                if read.is_unmapped or read.reference_name is None:
+                    continue
+
+                rows.append(
+                    {
+                        "Chromosome": read.reference_name,
+                        "Start": read.reference_start,
+                        "End": read.reference_end,
+                        "Name": read.query_name,
+                    }
+                )
+
+        return pd.DataFrame.from_records(
+            rows, columns=["Chromosome", "Start", "End", "Name"]
+        )
 
     digested_genome = NamedTemporaryFile("r+")
     viewpoints_fasta = NamedTemporaryFile("r+")
@@ -232,18 +257,32 @@ def viewpoint_coordinates(
     aligned_res = p_bam.communicate()
 
     # Intersect digested genome with viewpoints
-    bt_genome = BedTool(digested_genome.name)
-    bt_viewpoints = BedTool(viewpoints_aligned_bam.name)
-
-    intersections = bt_genome.intersect(bt_viewpoints, wa=True, wb=True)
+    gr_genome = pr.PyRanges(
+        pd.read_csv(
+            digested_genome.name,
+            sep="\t",
+            header=None,
+            names=["Chromosome", "Start", "End", "Name"],
+        )
+    )
+    gr_viewpoints = pr.PyRanges(bam_to_bed_df(viewpoints_aligned_bam.name))
+    intersections = gr_genome.join_overlaps(gr_viewpoints, strand_behavior="ignore").rename(
+        columns={"Name": "name", "Name_b": "thickEnd"}
+    )
 
     # Write results to file
     (
-        intersections.to_dataframe()
-        .drop_duplicates("name")
+        intersections.drop_duplicates("name")
         .assign(oligo_name=lambda df: df["thickEnd"].str.split("_L").str[0])[
-            ["chrom", "start", "end", "oligo_name"]
+            ["Chromosome", "Start", "End", "oligo_name"]
         ]
+        .rename(
+            columns={
+                "Chromosome": "chrom",
+                "Start": "start",
+                "End": "end",
+            }
+        )
         .to_csv(output, index=False, header=False, sep="\t")
     )
 
@@ -401,7 +440,7 @@ def make_chicago_maps(fragments: str, viewpoints: str, outputdir: str):
     Bait map file (.baitmap) - a bed file containing coordinates of the baited restriction fragments, and their associated annotations. By default, 5 columns: chr, start, end, fragmentID, baitAnnotation. The regions specified in this file, including their fragmentIDs, must be an exact subset of those in the .rmap file. The baitAnnotation is a text field that is used only to annotate the output and plots.
     """
     import pathlib
-    import pyranges as pr
+    import pyranges1 as pr
 
     # Rename fragments file to suit chicago
     fragments_new = pathlib.Path(outputdir) / (pathlib.Path(fragments).stem + ".rmap")
@@ -413,8 +452,8 @@ def make_chicago_maps(fragments: str, viewpoints: str, outputdir: str):
     fragments = pr.read_bed(fragments)
 
     df_baitmap = (
-        fragments.join(viewpoints, suffix="_vp")
-        .df[['Chromosome', 'Start', 'End', 'Name', 'Name_vp']]
+        fragments.join_overlaps(viewpoints, suffix="_vp", strand_behavior="ignore")
+        [['Chromosome', 'Start', 'End', 'Name', 'Name_vp']]
         .rename(
             columns={
                 "Chromosome": "chr",

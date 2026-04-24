@@ -1,5 +1,5 @@
 import json
-import pyranges as pr
+import pyranges1 as pr
 import capcruncher.pipeline.utils
 
 

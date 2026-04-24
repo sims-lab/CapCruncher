@@ -2,7 +2,6 @@ import os
 import tempfile
 import pandas as pd
 import numpy as np
-from pybedtools import BedTool
 import cooler
 import h5py
 import functools
@@ -10,7 +9,7 @@ import itertools
 from loguru import logger
 import ujson
 from typing import Iterable, Tuple, Union, List, Dict, Literal
-import pyranges as pr
+import pyranges1 as pr
 import re
 from dataclasses import dataclass
 
@@ -40,7 +39,7 @@ class Viewpoint:
             Viewpoint: Viewpoint object.
         """
         gr_viewpoints = pr.read_bed(bed)
-        df_viewpoints = gr_viewpoints.as_df()
+        df_viewpoints = gr_viewpoints
 
         df_viewpoints = df_viewpoints.loc[
             lambda df: df["Name"].str.contains(f"{viewpoint}$")
@@ -51,7 +50,7 @@ class Viewpoint:
                 f"Oligo name cannot be found within viewpoints: {viewpoint}"
             )
 
-        return Viewpoint(df_viewpoints.pipe(pr.PyRanges), assay=assay)
+        return Viewpoint(pr.PyRanges(df_viewpoints), assay=assay)
 
     def bins(self, bins: pr.PyRanges):
         """
@@ -63,10 +62,10 @@ class Viewpoint:
         Returns:
             pr.PyRanges: PyRanges object containing all bins that overlap with the viewpoint.
         """
-        return bins.join(self.coordinates)
+        return bins.join_overlaps(self.coordinates, strand_behavior="ignore")
 
     def bin_names(self, bins: pr.PyRanges) -> List[int]:
-        return self.bins(bins).df["Name"].astype(int).to_list()
+        return self.bins(bins)["Name"].astype(int).to_list()
 
     def bins_cis(self, bins: pr.PyRanges) -> List[int]:
         """
@@ -83,7 +82,7 @@ class Viewpoint:
         viewpoint_chromosomes = self.chromosomes
 
         # Get the bins that are on the same chromosome(s) as the viewpoint
-        df_cis_bins = bins.df.loc[
+        df_cis_bins = bins.loc[
             lambda df: df["Chromosome"].isin(viewpoint_chromosomes)
         ]
 
@@ -97,7 +96,7 @@ class Viewpoint:
 
     @property
     def chromosomes(self) -> List[str]:
-        return self.coordinates.df["Chromosome"].unique().tolist()
+        return self.coordinates["Chromosome"].unique().tolist()
 
     @property
     def coords(self) -> List[str]:
@@ -108,7 +107,7 @@ class Viewpoint:
             List[str]: List of genomic coordinates.
         """
         _coords = []
-        for row in self.coordinates.df.itertuples():
+        for row in self.coordinates.itertuples():
             _coords.append(f"{row.Chromosome}:{row.Start}-{row.End}")
 
         return _coords
@@ -267,7 +266,7 @@ class CoolerBinner:
 
         if self.method == "midpoint":
             fragment_bins = (
-                fragment_bins.as_df()
+                fragment_bins
                 .assign(
                     Start=lambda df: df["Start"] + (df["End"] - df["Start"]) / 2,
                     End=lambda df: df["Start"] + 1,
@@ -275,8 +274,11 @@ class CoolerBinner:
                 .pipe(pr.PyRanges)
             )
 
-        pr_fragment_to_bins = self.genomic_bins.join(
-            fragment_bins, strandedness=0, how=None, report_overlap=True
+        pr_fragment_to_bins = self.genomic_bins.join_overlaps(
+            fragment_bins,
+            strand_behavior="ignore",
+            join_type="inner",
+            report_overlap_column="Overlap",
         )
 
         if self.method == "overlap":
@@ -298,7 +300,7 @@ class CoolerBinner:
         Translate genomic bins to fragment bins
         """
         fragment_to_bins_mapping = (
-            self.fragment_to_genomic_table.as_df()
+            self.fragment_to_genomic_table
             .set_index("fragment_id")["genomic_bin_id"]
             .to_dict()
         )
@@ -329,7 +331,7 @@ class CoolerBinner:
         # Normalize pixels if specified
         if self.n_restriction_fragment_correction:
             n_fragments_per_bin = (
-                self.fragment_to_genomic_table.as_df()
+                self.fragment_to_genomic_table
                 .set_index("genomic_bin_id")["n_fragments_per_bin"]
                 .to_dict()
             )
@@ -385,7 +387,9 @@ class CoolerBinner:
             )
         )
 
-        return pr_viewpoint.join(self.genomic_bins).df["genomic_bin_id"].to_list()
+        return pr_viewpoint.join_overlaps(
+            self.genomic_bins, strand_behavior="ignore"
+        )["genomic_bin_id"].to_list()
 
     def to_cooler(self, store: os.PathLike):
         metadata = {**self.cooler.info["metadata"]}
@@ -412,7 +416,7 @@ class CoolerBinner:
         )
 
         bins = (
-            self.genomic_bins.df.rename(
+            self.genomic_bins.rename(
                 columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
             )
             .sort_values("genomic_bin_id")

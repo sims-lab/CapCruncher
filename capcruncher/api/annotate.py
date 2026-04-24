@@ -2,8 +2,7 @@ import warnings
 from typing import Union, List, Literal
 
 import pandas as pd
-import pybedtools
-import pyranges as pr
+import pyranges1 as pr
 import numpy as np
 from pandas.api.types import is_numeric_dtype
 
@@ -56,7 +55,7 @@ def remove_duplicates_from_bed(
         pr.PyRanges: Deduplicated PyRanges object.
     """
 
-    df = bed.df.rename(columns=lambda col: col.lower()).rename(
+    df = pd.DataFrame(bed).rename(columns=lambda col: col.lower()).rename(
         columns={"chromosome": "chrom"}
     )
 
@@ -106,13 +105,14 @@ class Intersection:
 
 class IntersectionGet(Intersection):
     def get_new_dtype(self):
+        df_b = self.b
         # Determine the dtype of the name column
-        if is_numeric_dtype(self.b.df["Name"]):
-            dtype_new = self.b.df["Name"].dtype
+        if is_numeric_dtype(df_b["Name"]):
+            dtype_new = df_b["Name"].dtype
 
-        elif isinstance(self.b.df["Name"].dtype, pd.CategoricalDtype):
-            if is_numeric_dtype(self.b.df["Name"].cat.categories):
-                dtype_new = self.b.df["Name"].cat.categories.dtype
+        elif isinstance(df_b["Name"].dtype, pd.CategoricalDtype):
+            if is_numeric_dtype(df_b["Name"].cat.categories):
+                dtype_new = df_b["Name"].cat.categories.dtype
                 numeric_dtype_mapping = {
                     "int64": "Int64",
                     "float64": "Float64",
@@ -122,10 +122,10 @@ class IntersectionGet(Intersection):
                 dtype_new = numeric_dtype_mapping.get(str(dtype_new), "Int64")
 
             else:
-                dtype_new = self.b.df["Name"].dtype
+                dtype_new = df_b["Name"].dtype
 
         else:
-            dtype_new = pd.CategoricalDtype([*self.b.df["Name"].unique().astype(str)])
+            dtype_new = pd.CategoricalDtype([*df_b["Name"].unique().astype(str)])
 
         return dtype_new
 
@@ -136,12 +136,15 @@ class IntersectionGet(Intersection):
         # Hack to get around the fact that pyranges has a bug when joining categorical columns
         # See https://github.com/pyranges/pyranges/issues/230
 
-        df_overlapping = self.a.join(
-            self.b, nb_cpu=self.n_cores, report_overlap=True
-        ).df
+        df_overlapping = self.a.join_overlaps(
+            self.b,
+            strand_behavior="ignore",
+            report_overlap_column="Overlap",
+            suffix="_b",
+        )
 
         if not df_overlapping.empty:
-            df_non_overlapping = self.a.df.loc[
+            df_non_overlapping = self.a.loc[
                 lambda df: ~df.Name.isin(df_overlapping.Name)
             ]
         else:
@@ -176,22 +179,29 @@ class IntersectionGet(Intersection):
 class IntersectionCount(Intersection):
     @property
     def intersection(self) -> pr.PyRanges:
-        return (
-            self.a.coverage(self.b, nb_cpu=self.n_cores)
-            .df.assign(
-                **{
-                    self.name: lambda df: pd.Series(
-                        np.where(
-                            (df["NumberOverlaps"] > 0)
-                            & (df["FractionOverlaps"] >= self.fraction),
-                            df["NumberOverlaps"],
-                            0,
-                        )
-                    ).astype(pd.Int8Dtype())
-                }
+        df_overlapping = self.a.join_overlaps(
+            self.b,
+            strand_behavior="ignore",
+            report_overlap_column="Overlap",
+            suffix="_b",
+        )
+        if df_overlapping.empty:
+            counts = pd.Series(dtype="Int8", name=self.name)
+        else:
+            counts = (
+                df_overlapping.assign(
+                    FractionOverlaps=lambda df: df["Overlap"]
+                    / (df["End"] - df["Start"])
+                )
+                .loc[lambda df: df["FractionOverlaps"] >= self.fraction]
+                .groupby("Name")
+                .size()
+                .astype(pd.Int8Dtype())
+                .rename(self.name)
             )
-            .drop(columns=["NumberOverlaps", "FractionOverlaps"])
-            .pipe(pr.PyRanges)
+
+        return pr.PyRanges(
+            self.a.assign(**{self.name: lambda df: df["Name"].map(counts).fillna(0)})
         )
 
 
@@ -199,7 +209,7 @@ class IntersectionFailed(Intersection):
     @property
     def intersection(self):
         return (
-            self.a.df.assign(**{self.name: pd.NA})
+            self.a.assign(**{self.name: pd.NA})
             .assign(**{self.name: lambda df: df[self.name].astype(pd.StringDtype())})
             .pipe(pr.PyRanges)
         )
@@ -208,8 +218,8 @@ class IntersectionFailed(Intersection):
 class BedIntersector:
     def __init__(
         self,
-        bed_a: Union[str, pr.PyRanges],
-        bed_b: Union[str, pr.PyRanges],
+        bed_a: Union[str, pd.DataFrame, pr.PyRanges],
+        bed_b: Union[str, pd.DataFrame, pr.PyRanges],
         name: str,
         fraction: float = 0,
         max_cores: int = 1,
@@ -218,18 +228,18 @@ class BedIntersector:
 
         if isinstance(bed_a, pr.PyRanges):
             self.a = self.process_bed(bed_a)
-        elif isinstance(bed_a, (str, pybedtools.BedTool, pd.DataFrame)):
+        elif isinstance(bed_a, (str, pd.DataFrame)):
             self.a = convert_bed_to_pr(bed_a)
             self.a = self.process_bed(self.a)
         else:
             raise ValueError(
-                f"bed_a must be of type str, pybedtools.BedTool, or pr.PyRanges. Got {type(bed_a)}"
+                f"bed_a must be of type str, pd.DataFrame, or pr.PyRanges. Got {type(bed_a)}"
             )
 
         self.b = bed_b if isinstance(bed_b, pr.PyRanges) else convert_bed_to_pr(bed_b)
         self.name = name
         self.fraction = fraction
-        self.n_cores = max_cores if self.b.df.shape[0] > 50_000 else 1
+        self.n_cores = max_cores if self.b.shape[0] > 50_000 else 1
 
     def get_intersection(self, method: Literal["get", "count"] = "get") -> pr.PyRanges:
         try:
@@ -265,22 +275,22 @@ class BedIntersector:
         # If there are annotation columns, join them to the intersection
         if not self.annotation.empty:
             _intersection = (
-                _intersection.df.set_index("Name")
+                _intersection.set_index("Name")
                 .join(self.annotation, how="left")
                 .reset_index()
                 .pipe(pr.PyRanges)
             )
 
         # Put the original name back
-        _intersection = _intersection.df.assign(
+        _intersection = _intersection.assign(
             Name=lambda df: df.Name.map(self.original_name_mapping)
         )
 
-        return pr.PyRanges(df=_intersection)
+        return pr.PyRanges(_intersection)
 
     def process_bed(self, bed: pr.PyRanges):
         # Convert to dataframe
-        bed = bed.df
+        bed = bed.copy()
 
         # Create a unique identifier for each slice
         self.uid = pd.util.hash_pandas_object(
@@ -308,112 +318,3 @@ class BedIntersector:
         bed = bed.loc[:, ["Chromosome", "Start", "End", "Name"]]
 
         return bed.pipe(pr.PyRanges)
-
-
-# @ray.remote
-# class BedFileIntersection:
-#     """
-#     Intersect two bed files and return the intersection as a pandas series.
-
-#     Args:
-#         bed_a (Union[str, pybedtools.BedTool, pr.PyRanges]): First bed file to intersect.
-#         bed_b (Union[str, pybedtools.BedTool, pr.PyRanges]): Second bed file to intersect.
-#         name (str, optional): Name of the intersection. Defaults to "b".
-#         action (str, optional): Method to use for intersection. Defaults to "get".
-#         fraction (float, optional): Minimum fraction of overlap to consider a hit. Defaults to 1e-9.
-#     """
-
-#     def __init__(
-#         self,
-#         bed_a: Union[str, pybedtools.BedTool, pr.PyRanges],
-#         bed_b: Union[str, pybedtools.BedTool, pr.PyRanges],
-#         name: str = "b",
-#         action: str = "get",
-#         fraction: float = 1e-9,
-#     ):
-
-#         self.a = bed_a
-#         self.b = bed_b
-#         self.name = name
-#         self.action = action
-#         self.fraction = fraction
-
-#         self.pr_a = convert_bed_to_pr(self.a, ignore_ray_objrefs=True)
-
-#         import logging
-
-#         logging.basicConfig(level=logging.INFO)
-#         self.logger = logging.getLogger(__name__)
-
-#     def _get_intersection(self, pr_b: pr.PyRanges):
-
-#         intersection = (
-#             self.pr_a.join(
-#                 pr_b,
-#                 report_overlap=True,
-#             )
-#             .assign("frac", lambda df: df.eval("Overlap / (End - Start)"))
-#             .subset(lambda df: df["frac"] >= self.fraction)
-#             .as_df()
-#         )
-
-#         dtype = pd.CategoricalDtype(pr_b.df["Name"].unique())
-
-#         intersection_data = (
-#             intersection.set_index("Name")["Name_b"].astype(dtype).rename(self.name)
-#         )
-
-#         return intersection_data
-
-#     def _count_intersection(self, pr_b: pr.PyRanges):
-
-#         intersection_data = (
-#             self.pr_a.coverage(pr_b)
-#             .df.query(f"NumberOverlaps > 0 and FractionOverlaps >= {self.fraction}")
-#             .set_index("Name")["NumberOverlaps"]
-#             .rename(self.name)
-#         )
-
-#         return intersection_data
-
-#     def intersection(self):
-#         """
-#         Intersect two bed files and return the intersection as a pandas series.
-
-#         Returns:
-#             pd.Series: A pandas series containing the intersection.
-
-#         Raises:
-#             OSError: Raised if the bed file cannot be read.
-#             IndexError: Raised if the bed file is empty.
-#             FileNotFoundError: Raised if the bed file cannot be found.
-#             StopIteration: Raised if the bed file is empty.
-#             AssertionError: Raised if the bed file is empty.
-
-#         """
-
-#         try:
-
-#             pr_b = convert_bed_to_pr(self.b)
-
-#             if self.action == "get":
-#                 _intersection = self._get_intersection(pr_b)
-#             elif self.action == "count":
-#                 _intersection = self._count_intersection(pr_b)
-
-#         except (OSError, IndexError, FileNotFoundError, StopIteration, AssertionError):
-
-#             self.logger.warning(
-#                 f"Could not intersect {self.b} using {self.action} method."
-#             )
-#             _intersection = pd.Series(
-#                 data=pd.NA,
-#                 index=self.pr_a.df["Name"],
-#                 name=self.name,
-#                 dtype=object,
-#             )
-
-#         return _intersection
-
-#     def __repr__(self):
-#         return f"{self.name} intersection"

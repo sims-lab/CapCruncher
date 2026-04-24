@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from pybedtools import BedTool
 import cooler
 from typing import Literal
 from capcruncher.api.storage import CoolerBinner
@@ -8,7 +7,7 @@ from capcruncher.utils import is_valid_bed
 from loguru import logger
 import ray
 import re
-import pyranges as pr
+import pyranges1 as pr
 
 
 class CoolerBedGraph:
@@ -142,7 +141,7 @@ class CoolerBedGraph:
 
             df_bdg = (
                 gr_bdg.cluster()
-                .df.groupby("Cluster")
+                .groupby("Cluster")
                 .agg(
                     {
                         "count": "sum",
@@ -367,7 +366,9 @@ class CCBedgraph(object):
         return self.df.loc[:, "chrom":"end"]
 
     def to_bedtool(self):
-        return self.df.pipe(BedTool.from_dataframe)
+        return self.df.rename(
+            columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
+        ).pipe(pr.PyRanges)
 
     def to_file(self, path):
         self.df.to_csv(path, sep="\t", header=None, index=None)
@@ -457,9 +458,9 @@ def cooler_to_bedgraph(
         pr_bedgraph = bedgraph.rename(
             columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
         ).pipe(pr.PyRanges)
-        pr_bedgraph = pr_bedgraph.join(pr_roi, strandedness="same")
+        pr_bedgraph = pr_bedgraph.join_overlaps(pr_roi, strand_behavior="same")
 
-        bedgraph = pr_bedgraph.df.rename(
+        bedgraph = pr_bedgraph.rename(
             columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
         )[["chrom", "start", "end", "score"]]
 

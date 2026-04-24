@@ -4,9 +4,8 @@ import warnings
 from typing import Tuple
 
 import pandas as pd
-import pyranges as pr
+import pyranges1 as pr
 from loguru import logger
-from pybedtools import BedTool
 
 from capcruncher.api.annotate import remove_duplicates_from_bed, BedIntersector
 from capcruncher.utils import (
@@ -16,6 +15,31 @@ from capcruncher.utils import (
 )
 
 warnings.simplefilter("ignore")
+
+
+def _bam_to_bed_dataframe(bam_path: os.PathLike) -> pd.DataFrame:
+    import pysam
+
+    rows = []
+    with pysam.AlignmentFile(bam_path, "rb") as bam:
+        for read in bam.fetch(until_eof=True):
+            if read.is_unmapped or read.reference_name is None:
+                continue
+
+            rows.append(
+                {
+                    "chrom": read.reference_name,
+                    "start": read.reference_start,
+                    "end": read.reference_end,
+                    "name": read.query_name,
+                    "score": read.mapping_quality,
+                    "strand": "-" if read.is_reverse else "+",
+                }
+            )
+
+    return pd.DataFrame.from_records(
+        rows, columns=["chrom", "start", "end", "name", "score", "strand"]
+    )
 
 
 def annotate(
@@ -74,7 +98,7 @@ def annotate(
 
         elif slices.endswith(".bam"):
             logger.info("Converting bam to bed")
-            slices = BedTool(slices).bam_to_bed().to_dataframe().pipe(convert_bed_to_pr)
+            slices = _bam_to_bed_dataframe(slices).pipe(convert_bed_to_pr)
 
         else:
             slices = pr.PyRanges(slices)
@@ -84,8 +108,8 @@ def annotate(
         if blacklist:
             try:
                 logger.info("Removing blacklisted regions from the bed file")
-                gr_blacklist = pr.PyRanges(blacklist)
-                slices.subtract(gr_blacklist)
+                gr_blacklist = pr.read_bed(blacklist)
+                slices = slices.subtract_overlaps(gr_blacklist, strand_behavior="ignore")
             except Exception as e:
                 logger.warning(
                     f"Failed to remove blacklisted regions from the bed file. {e}"
@@ -123,7 +147,7 @@ def annotate(
             
 
         logger.info("Writing annotations to file.")
-        df_annotation = slices.df.rename(columns={"Name": "slice_name"}).assign(
+        df_annotation = slices.rename(columns={"Name": "slice_name"}).assign(
             slice_id=lambda df: hash_column(df.slice_name)
         )
         df_annotation.to_parquet(output, compression="snappy")

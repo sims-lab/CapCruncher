@@ -8,8 +8,7 @@ pandas<=2.2.3
 polars<=1.34.0
 PuLP<2.8.0
 pyarrow
-pybedtools
-pyranges<=0.1.2
+pyranges1
 snakemake-executor-plugin-slurm
 snakemake_wrapper_utils
 snakemake>=9.0.0,<10.0.0

@@ -1,10 +1,10 @@
 import pathlib
 
 import pandas as pd
-import pyranges as pr
+import pyranges1 as pr
 import pytest
 
-from capcruncher.api.pileup import CoolerBedGraph
+from capcruncher.api.pileup import CCBedgraph, CoolerBedGraph
 
 
 @pytest.fixture(scope="module")
@@ -69,3 +69,20 @@ def test_to_pyranges(cooler_bedgraph):
     # Test the to_pyranges method
     pyranges = cooler_bedgraph.to_pyranges(normalisation="raw")
     assert isinstance(pyranges, pr.PyRanges)
+
+
+def test_ccbedgraph_to_bedtool_returns_pyranges():
+    bedgraph = CCBedgraph(
+        df=pd.DataFrame(
+            {
+                "chrom": ["chr1"],
+                "start": [10],
+                "end": [20],
+                "score": [1.0],
+            }
+        )
+    )
+
+    converted = bedgraph.to_bedtool()
+
+    assert isinstance(converted, pr.PyRanges)

@@ -25,15 +25,48 @@ try:
     import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
-    import pyranges as pr
+    import pyranges1 as pr
+    import pysam
     import seaborn as sns
     import tqdm
     from matplotlib import cm, colors, transforms
     from matplotlib.colors import LinearSegmentedColormap
     from matplotlib.patches import Polygon
-    from pybedtools import BedTool
 
     import capcruncher.api as cc
+
+
+    def fetch_bed_intervals(file: os.PathLike, gr) -> pd.DataFrame:
+        """Fetch BED intervals from a tabix-indexed or plain BED file."""
+
+        file = str(file)
+        region = f"{gr.chrom}:{gr.start}-{gr.end}"
+        names = ["chrom", "start", "end", "name", "score", "strand"]
+
+        if os.path.exists(f"{file}.tbi"):
+            rows = [
+                row.split("\t")
+                for row in pysam.TabixFile(file).fetch(region=region)
+            ]
+            if not rows:
+                return pd.DataFrame(columns=names[:3])
+
+            df = pd.DataFrame(rows)
+            df.columns = names[: df.shape[1]]
+            df["start"] = df["start"].astype(int)
+            df["end"] = df["end"].astype(int)
+            return df
+
+        df = pd.read_csv(file, sep="\t", header=None, comment="#")
+        if df.empty:
+            return pd.DataFrame(columns=names[:3])
+
+        df.columns = names[: df.shape[1]]
+        return df.loc[
+            (df["chrom"] == gr.chrom)
+            & (df["end"].astype(int) > gr.start)
+            & (df["start"].astype(int) < gr.end)
+        ].copy()
 
 
 
@@ -398,10 +431,7 @@ try:
             return df_intervals
 
         def fetch_exluded_regions(self, gr):
-            excluded_tabix = BedTool(self.exclusions).tabix(force=True)
-            df_excluded = excluded_tabix.tabix_intervals(
-                f"{gr.chrom}:{gr.start}-{gr.end}"
-            ).to_dataframe()
+            df_excluded = fetch_bed_intervals(self.exclusions, gr)
 
             intervals_to_bp = []
             for interval in df_excluded.itertuples():
@@ -621,12 +651,7 @@ try:
             self.properties.update(kwargs)
 
         def fetch_data(self, gr):
-            bt = BedTool(self.file)
-            bt_tabix = bt.tabix(force=True)
-
-            return bt_tabix.tabix_intervals(
-                f"{gr.chrom}:{gr.start}-{gr.end}"
-            ).to_dataframe()
+            return fetch_bed_intervals(self.file, gr)
 
         def plot(self, ax, gr, **kwargs):
             data = self.fetch_data(gr)

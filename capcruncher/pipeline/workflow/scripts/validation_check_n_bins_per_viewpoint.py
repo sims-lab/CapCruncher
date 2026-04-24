@@ -4,7 +4,7 @@ Aim: Check that there is only one restriction fragment per viewpoint.
 
 import pandas as pd
 import numpy as np
-import pyranges as pr
+import pyranges1 as pr
 import polars as pl
 import pathlib
 from loguru import logger
@@ -18,7 +18,7 @@ with logger.catch():
     viewpoints = snakemake.input.viewpoints
     
     gr = BedIntersector(viewpoints, bins, "restriction_fragments", 0.51).get_intersection(method="count")
-    multiple_fragments = (gr.df["restriction_fragments"] > 1).sum()
+    multiple_fragments = (gr["restriction_fragments"] > 1).sum()
     has_multiple_frags = multiple_fragments > 0
 
 
