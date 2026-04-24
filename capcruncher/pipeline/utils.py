@@ -138,10 +138,10 @@ def has_high_viewpoint_number(viewpoints: str, config: Dict):
 
 def can_perform_plotting(config):
     try:
-        pass
+        import plotnado  # noqa: F401
     except ImportError:
         logger.warning(
-            "Plotting capabilities not installed. For plotting please run: pip install capcruncher[plotting]"
+            "Plotting capabilities not installed. For plotting please run: pip install capcruncher[full]"
         )
         return False
 

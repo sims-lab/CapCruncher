@@ -15,7 +15,7 @@ The pipeline is fast, robust and scales from a single workstation to a large HPC
 ### Installation
 
 !!! warning
-    CapCruncher is currently only availible for linux. MacOS support is planned for the future.
+    CapCruncher is currently only available for Linux. MacOS support is planned for the future.
 
 CapCruncher is available on conda and PyPI. To install the latest version, run:
 

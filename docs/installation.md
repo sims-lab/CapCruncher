@@ -1,7 +1,7 @@
 # Installation
 
 !!! warning
-    CapCruncher is currently only availible for linux. MacOS support is planned for the future.
+    CapCruncher is currently only available for Linux. MacOS support is planned for the future.
 
 ## Setup
 
@@ -37,12 +37,8 @@ conda activate cc
 
 # Install CapCruncher using pip
 pip install capcruncher
-s
-# Optional - highly recommended to install the optional dependencies
-# Installs dependencies for:
-# * plotting,
-# * differential interaction analysis
-# * speeding up the pipeline using experimental features (capcruncher-tools)
+
+# Install the full dependency set used by the pipeline and CLI.
 pip install capcruncher[full]
 ```
 
@@ -55,10 +51,9 @@ pip install capcruncher[full]
 Create a minimal conda environment and install CapCruncher using pip:
 
 ```{bash}
-mamba create -n cc "python>=3.10"
+mamba create -n cc "python>=3.12"
 conda activate cc
-# Optional - highly recommended to install the optional dependencies
-pip install capcruncher[stats,plotting,experimental]
+pip install capcruncher[full]
 ```
 
 
@@ -77,8 +72,8 @@ git clone https://github.com/sims-lab/CapCruncher.git
 cd CapCruncher
 pip install .
 
-# Optional - highly recommended to install the optional dependencies
-pip install .[stats,plotting,experimental]
+# Install the full dependency set used by the pipeline and CLI.
+pip install .[full]
 ```
 
 

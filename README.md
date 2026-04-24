@@ -20,7 +20,7 @@ The CapCruncher package is designed to process Capture-C, Tri-C and Tiled-C data
 
 > **Warning:**
 >
-> CapCruncher is currently only availible for linux with MacOS support planned in the future.
+> CapCruncher is currently only available for Linux with MacOS support planned in the future.
 
 CapCruncher is available on conda and PyPI. To install the latest version, run:
 
