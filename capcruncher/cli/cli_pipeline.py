@@ -38,6 +38,15 @@ def has_snakemake_option(options, long_name, short_name=None):
     )
 
 
+def should_touch_pipeline_outputs(options) -> bool:
+    """Return whether a successful pipeline run should be followed by --touch."""
+    return not (
+        has_snakemake_option(options, "--dry-run", "-n")
+        or has_snakemake_option(options, "--dryrun")
+        or has_snakemake_option(options, "--touch")
+    )
+
+
 def get_capcruncher_config_dir() -> pathlib.Path:
     xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
     if xdg_config_home:
@@ -87,12 +96,8 @@ def install_pipeline_preset(
     if destination_dir.exists() and force:
         shutil.rmtree(destination_dir)
 
-    destination_dir.mkdir(parents=True, exist_ok=True)
-    for child in source_dir.iterdir():
-        if child.is_file():
-            (destination_dir / child.name).write_text(
-                child.read_text(), encoding="utf-8"
-            )
+    with resources.as_file(source_dir) as source_path:
+        shutil.copytree(source_path, destination_dir)
 
     return destination_dir
 
@@ -182,7 +187,7 @@ def pipeline(
     # If the pipeline fails, exit with the return code
     if _completed.returncode != 0:
         sys.exit(_completed.returncode)
-    else:
+    elif should_touch_pipeline_outputs(pipeline_options):
         # Touch all files to correct timestamps
         subprocess.run(
             [

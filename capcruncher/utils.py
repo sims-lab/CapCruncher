@@ -86,6 +86,7 @@ def read_dataframes(filenames: Iterable, **kwargs):
             df = pd.read_csv(fn, **kwargs)
         except pd.errors.EmptyDataError:
             logger.warning(f"{fn} is empty")
+            continue
 
         if not df.empty:
             dframes.append(df)

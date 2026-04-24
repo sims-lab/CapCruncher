@@ -14,6 +14,7 @@ from capcruncher.utils import (
     format_coordinates,
     intersect_bins,
     is_valid_bed,
+    read_dataframes,
 )
 
 
@@ -134,6 +135,26 @@ def test_bed_validation_and_formatting(data_path_alignment_annotation):
 
     named = format_coordinates(slices)
     assert convert_bed_to_dataframe(named).shape[0] == 4
+
+
+def test_read_dataframes_skips_empty_files(tmp_path):
+    empty = tmp_path / "empty.tsv"
+    nonempty = tmp_path / "nonempty.tsv"
+    empty.touch()
+    nonempty.write_text("sample\tvalue\nA\t1\n", encoding="utf-8")
+
+    frames = read_dataframes([empty, nonempty], sep="\t")
+
+    assert len(frames) == 1
+    assert frames[0].to_dict("records") == [{"sample": "A", "value": 1}]
+
+
+def test_read_dataframes_reports_all_empty_files(tmp_path):
+    empty = tmp_path / "empty.tsv"
+    empty.touch()
+
+    with pytest.raises(RuntimeError, match="All dataframes supplied are empty"):
+        read_dataframes([empty], sep="\t")
 
 
 def test_intersect_bins_and_interval_conversion():

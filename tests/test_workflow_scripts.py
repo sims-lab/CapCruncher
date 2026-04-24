@@ -252,3 +252,23 @@ def test_make_ucsc_hub_uses_modern_tracknado_builder(monkeypatch, tmp_path):
             },
         ),
     ]
+
+
+def test_make_ucsc_hub_requires_twobit_for_custom_genome(tmp_path):
+    script = load_workflow_script("make_ucsc_hub.py")
+
+    with pytest.raises(ValueError, match="genome twoBit file"):
+        script.build_hub(
+            tracks=[
+                tmp_path / "raw" / "SAMPLE-A_REP1_Slc25A37.bigWig",
+                tmp_path / "viewpoints.bigBed",
+            ],
+            color_by="sample",
+            genome="custom",
+            hub_name="capcruncher",
+            hub_email="test@example.org",
+            custom_genome=True,
+            genome_twobit=None,
+            report=tmp_path / "report.html",
+            outdir=tmp_path / "hub",
+        )

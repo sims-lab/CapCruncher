@@ -139,6 +139,12 @@ def build_hub(
     genome_organism: str | None = None,
     genome_default_position: str | None = None,
 ):
+    if custom_genome and not genome_twobit:
+        raise ValueError(
+            "Custom UCSC hub genomes require a genome twoBit file. "
+            "Set genome.twobit in capcruncher_config.yml."
+        )
+
     import tracknado as tn
 
     builder = (

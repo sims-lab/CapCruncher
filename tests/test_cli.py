@@ -5,8 +5,10 @@ import pathlib
 import subprocess
 from click.testing import CliRunner
 import glob
+from types import SimpleNamespace
 
 from capcruncher.cli import cli
+from capcruncher.cli import cli_pipeline
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -137,13 +139,67 @@ def test_pipeline_uses_installed_preset(cli_runner, tmp_path, monkeypatch):
     )
 
     assert result.exit_code == 0
-    assert len(recorded_calls) == 2
+    assert len(recorded_calls) == 1
     first_call = recorded_calls[0]
     expected_profile = tmp_path / "snakemake" / "capcruncher-local"
     assert "--profile" in first_call
     assert str(expected_profile) in first_call
     assert "--cores" in first_call
     assert "1" in first_call
+
+
+def test_pipeline_touches_outputs_after_real_run(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli, ["pipeline", "--preset", "capcruncher-local", "--no-logo"]
+    )
+
+    assert result.exit_code == 0
+    assert len(recorded_calls) == 2
+    assert "--touch" not in recorded_calls[0]
+    assert "--touch" in recorded_calls[1]
+
+
+def test_pipeline_init_copies_nested_profile_files(tmp_path, monkeypatch):
+    package_root = tmp_path / "package"
+    source_profile = package_root / "pipeline" / "profiles" / "local"
+    source_profile.mkdir(parents=True)
+    (source_profile / "profile.v9+.yaml").write_text(
+        "executor: local\n", encoding="utf-8"
+    )
+    (source_profile / "scripts").mkdir()
+    (source_profile / "scripts" / "submit.sh").write_text(
+        "#!/usr/bin/env bash\n", encoding="utf-8"
+    )
+
+    monkeypatch.setattr(
+        cli_pipeline.resources,
+        "files",
+        lambda package: SimpleNamespace(joinpath=lambda *parts: package_root.joinpath(*parts)),
+    )
+
+    destination = cli_pipeline.install_pipeline_preset(
+        "capcruncher-local", tmp_path / "profiles", force=False
+    )
+
+    assert (destination / "profile.v9+.yaml").exists()
+    assert (destination / "scripts" / "submit.sh").exists()
 
 
 def test_pipeline_accepts_legacy_preset_alias(cli_runner, tmp_path, monkeypatch):
