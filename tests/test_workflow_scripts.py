@@ -156,8 +156,12 @@ def test_make_ucsc_hub_uses_modern_tracknado_builder(monkeypatch, tmp_path):
         pass
 
     class DummyBuilder:
-        def add_tracks_from_df(self, df):
-            calls.append(("add_tracks_from_df", df.copy()))
+        def add_tracks(self, tracks):
+            calls.append(("add_tracks", tracks))
+            return self
+
+        def with_metadata_extractor(self, extractor):
+            calls.append(("with_metadata_extractor", extractor.__name__))
             return self
 
         def group_by(self, *columns, as_supertrack=False):
@@ -191,7 +195,7 @@ def test_make_ucsc_hub_uses_modern_tracknado_builder(monkeypatch, tmp_path):
     )
 
     result = script.build_hub(
-        track_metadata=script.build_track_metadata(
+        tracks=script.collect_track_paths(
             bigwigs=[tmp_path / "raw" / "SAMPLE-A_REP1_Slc25A37.bigWig"],
             bigwigs_summary=[],
             bigwigs_comparison=[],
@@ -211,6 +215,7 @@ def test_make_ucsc_hub_uses_modern_tracknado_builder(monkeypatch, tmp_path):
 
     assert isinstance(result, DummyHub)
     assert calls[1:] == [
+        ("with_metadata_extractor", "capcruncher_track_metadata"),
         ("group_by", ("category", "normalisation"), True),
         ("group_by", ("sample", "viewpoint", "aggregation"), False),
         ("overlay_by", ("overlay",)),

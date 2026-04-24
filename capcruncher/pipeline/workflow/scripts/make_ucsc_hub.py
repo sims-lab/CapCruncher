@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pathlib
+import re
+import sys
 from collections.abc import Iterable
 
 import pandas as pd
@@ -53,6 +55,73 @@ def _comparison_tracks(bigwigs: Iterable[str | pathlib.Path]) -> pd.DataFrame:
     return df
 
 
+def capcruncher_track_metadata(path: pathlib.Path) -> dict[str, str]:
+    """Extract TrackNado metadata from CapCruncher result paths."""
+    basename = path.name
+    metadata: dict[str, str] = {}
+
+    if path.suffix.lower() in {".bb", ".bigbed"}:
+        return {
+            "category": "Annotation",
+            "normalisation": "viewpoints",
+            "sample": "viewpoints",
+            "viewpoint": "viewpoints",
+            "aggregation": "viewpoints",
+            "name": "viewpoint",
+        }
+
+    if path.suffix.lower() not in {".bw", ".bigwig"}:
+        raise ValueError(f"Unsupported UCSC hub track type: {path}")
+
+    summary_match = re.match(
+        r"(?P<sample>.*)\.(?P<aggregation>.*)-summary\.(?P<viewpoint>.*).bigWig$",
+        basename,
+    )
+    if summary_match:
+        metadata.update(summary_match.groupdict())
+        metadata["category"] = "Aggregated"
+        metadata["normalisation"] = "norm"
+    else:
+        comparison_match = re.match(
+            r"(?P<sample>.*?)\.(?P<aggregation>.*?)-subtraction\.(?P<viewpoint>.*?).bigWig$",
+            basename,
+        )
+        if comparison_match:
+            metadata.update(comparison_match.groupdict())
+            metadata["category"] = "Subtraction"
+            metadata["normalisation"] = "norm"
+        else:
+            replicate_match = re.match(
+                r"(?P<sample>.*)_(?P<viewpoint>.*?).bigWig$",
+                basename,
+            )
+            if not replicate_match:
+                raise ValueError(f"Could not parse CapCruncher track path: {path}")
+            metadata.update(replicate_match.groupdict())
+            metadata["category"] = "Replicates"
+            metadata["normalisation"] = path.parent.stem
+            metadata["aggregation"] = "replicate"
+
+    metadata["overlay"] = metadata["sample"]
+    return metadata
+
+
+def collect_track_paths(
+    *,
+    bigwigs: Iterable[str | pathlib.Path],
+    bigwigs_summary: Iterable[str | pathlib.Path],
+    bigwigs_comparison: Iterable[str | pathlib.Path],
+    viewpoints: str | pathlib.Path,
+) -> list[pathlib.Path]:
+    """Return all files that should be added to the TrackNado hub builder."""
+    return [
+        *[pathlib.Path(path) for path in bigwigs],
+        *[pathlib.Path(path) for path in bigwigs_summary],
+        *[pathlib.Path(path) for path in bigwigs_comparison],
+        pathlib.Path(viewpoints),
+    ]
+
+
 def build_track_metadata(
     *,
     bigwigs: Iterable[str | pathlib.Path],
@@ -61,44 +130,41 @@ def build_track_metadata(
     viewpoints: str | pathlib.Path,
 ) -> pd.DataFrame:
     """Create the TrackNado metadata table for CapCruncher hub generation."""
-    tracks = pd.concat(
-        [
-            _replicate_tracks(bigwigs),
-            _summary_tracks(bigwigs_summary),
-            _comparison_tracks(bigwigs_comparison),
-        ],
-        ignore_index=True,
+    paths = collect_track_paths(
+        bigwigs=bigwigs,
+        bigwigs_summary=bigwigs_summary,
+        bigwigs_comparison=bigwigs_comparison,
+        viewpoints=viewpoints,
     )
-
-    if not tracks.empty:
-        tracks["overlay"] = tracks["sample"]
-        tracks["ext"] = "bigWig"
-
-    viewpoint_track = pd.DataFrame(
-        [
+    records = []
+    for path in paths:
+        metadata = capcruncher_track_metadata(path)
+        records.append(
             {
-                "fn": pathlib.Path(viewpoints),
-                "basename": pathlib.Path(viewpoints).name,
-                "category": "Annotation",
-                "normalisation": "viewpoints",
-                "sample": "viewpoints",
-                "viewpoint": "viewpoints",
-                "aggregation": "viewpoints",
-                "overlay": pd.NA,
-                "ext": "bigBed",
-                "name": "viewpoint",
+                "fn": str(path),
+                "basename": path.name,
+                "ext": "bigBed"
+                if path.suffix.lower() in {".bb", ".bigbed"}
+                else "bigWig",
+                **metadata,
             }
-        ]
-    )
+        )
+    return pd.DataFrame(records)
 
-    df = pd.concat([tracks, viewpoint_track], ignore_index=True)
-    df["fn"] = df["fn"].map(str)
-    return df
+
+def configure_logger(snakemake):
+    """Route script logs to the Snakemake log file when one is available."""
+    if not getattr(snakemake, "log", None):
+        return
+
+    logger.remove()
+    logger.add(snakemake.log[0], format="{time} {level} {message}", level="INFO")
+    logger.add(sys.stderr, format="{time} {level} {message}", level="ERROR")
 
 
 def build_hub(
     *,
-    track_metadata: pd.DataFrame,
+    tracks: Iterable[str | pathlib.Path],
     color_by: str,
     genome: str,
     hub_name: str,
@@ -112,16 +178,14 @@ def build_hub(
 ):
     import tracknado as tn
 
-    builder = tn.HubBuilder().add_tracks_from_df(track_metadata)
-    for track in getattr(builder, "tracks", []):
-        if track.track_type != "bigWig":
-            track.metadata.pop("overlay", None)
-
     builder = (
-        builder.group_by("category", "normalisation", as_supertrack=True)
+        tn.HubBuilder()
+        .add_tracks([pathlib.Path(path) for path in tracks])
+        .with_metadata_extractor(capcruncher_track_metadata)
+        .group_by("category", "normalisation", as_supertrack=True)
         .group_by("sample", "viewpoint", "aggregation")
         .overlay_by("overlay")
-        .color_by(color_by)
+        .color_by(color_by or "sample")
     )
 
     if custom_genome:
@@ -142,8 +206,9 @@ def build_hub(
 
 
 def main(snakemake):
+    configure_logger(snakemake)
     logger.info("Getting data for UCSC hub tracks")
-    track_metadata = build_track_metadata(
+    tracks = collect_track_paths(
         bigwigs=snakemake.input.bigwigs,
         bigwigs_summary=snakemake.input.bigwigs_summary,
         bigwigs_comparison=snakemake.input.bigwigs_comparison,
@@ -151,7 +216,7 @@ def main(snakemake):
     )
 
     hub = build_hub(
-        track_metadata=track_metadata,
+        tracks=tracks,
         color_by=snakemake.params.color_by,
         genome=snakemake.params.genome,
         hub_name=snakemake.params.hub_name,
@@ -164,6 +229,7 @@ def main(snakemake):
         outdir=snakemake.output[0],
     )
     hub.stage_hub()
+    logger.info(f"Hub successfully generated in {snakemake.output[0]}")
 
 
 if "snakemake" in globals():
