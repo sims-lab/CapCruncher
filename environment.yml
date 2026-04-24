@@ -9,7 +9,7 @@ dependencies:
   - bowtie2>=2.4.4
   - coreutils
   - fastqc<=0.12.1
-  - flash<=1.2.11
+  - flash2
   - multiqc
   - pip
   - pigz

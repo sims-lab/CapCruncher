@@ -17,6 +17,7 @@ dependencies:
   - samtools>1.7
   - trim-galore
   - fastqc
+  - flash2
   - multiqc
   - pigz
   - seaborn
