@@ -1,13 +1,5 @@
-import click
 import os
-import pathlib
-import sys
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-
-import capcruncher.api.plotting as cp
-from loguru import logger
+from plotnado import GenomicFigure
 
 
 def plot(
@@ -24,5 +16,5 @@ def plot(
 
     """
 
-    fig = cp.CCFigure.from_toml(template)
-    fig.save(region, output=output)
+    fig = GenomicFigure.from_toml(str(template))
+    fig.save(output, region=region)

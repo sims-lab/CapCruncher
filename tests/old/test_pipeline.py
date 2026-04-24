@@ -271,22 +271,12 @@
 
 # @pytest.mark.order(2)
 # def test_plot_template_exists(run_directory_capture):
-#     try:
-#         import coolbox
-
-#         assert os.path.exists(
-#             f"{run_directory_capture}/capcruncher_plots/templates/Slc25A37.pileup.yml"
-#         )
-#     except ImportError:
-#         pass
+#     assert os.path.exists(
+#         f"{run_directory_capture}/capcruncher_plots/templates/Slc25A37.pileup.toml"
+#     )
 
 # @pytest.mark.order(2)
 # def test_plot_exists(run_directory_capture):
-#     try:
-#         import coolbox
-
-#         assert os.path.exists(
-#             f"{run_directory_capture}/capcruncher_plots/Slc25A37_chr14:69878554-69933221.svg"
-#         )
-#     except ImportError:
-#         pass
+#     assert os.path.exists(
+#         f"{run_directory_capture}/capcruncher_plots/Slc25A37_chr14:69878554-69933221.svg"
+#     )

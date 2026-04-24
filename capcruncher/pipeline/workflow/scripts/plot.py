@@ -1,17 +1,13 @@
 # ruff: noqa: F821
 
-import os
 import pathlib
-import sys
 
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 from loguru import logger
-
-import capcruncher.api.plotting as cp
+from plotnado import GenomicFigure
 
 logger.add(open(snakemake.log[0], "w"))
+
 
 with logger.catch():
     logger.info("Checking if we can group tracks by condition")
@@ -20,11 +16,10 @@ with logger.catch():
     )
 
     logger.info("Setting up tracks")
-    # Set-up tracks
-    tracks = []
+    fig = GenomicFigure()
 
     # Add scale bar
-    tracks.append(cp.CCTrack(None, file_type="scale"))
+    fig.scalebar()
 
     # Bigwig tracks
     if snakemake.input.bigwigs:
@@ -46,28 +41,24 @@ with logger.catch():
             )
 
             for condition, df in df_bw.groupby("condition"):
-                tracks.append(
-                    cp.CCTrack(
-                        df.fn.tolist(),
-                        file_type="bigwig_summary",
-                        title=condition,
-                        min=0,
-                        max="auto",
-                    )
+                fig.bigwig_collection(
+                    [str(fn) for fn in df.fn.tolist()],
+                    title=condition,
                 )
                 logger.info(f"Added {condition} bigwig track")
-                tracks.append(cp.CCTrack(None, file_type="spacer"))
+                fig.spacer()
 
         else:
             for bw in snakemake.input.bigwigs:
                 bw_path = pathlib.Path(bw)
-                tracks.append(
-                    cp.CCTrack(
-                        bw, file_type="bigwig", title=bw_path.stem, min=0, max="auto"
-                    )
+                fig.bigwig(
+                    bw,
+                    title=bw_path.stem,
+                    min_value=0,
+                    max_value=None,
                 )
                 logger.info(f"Added {bw_path.stem} bigwig track")
-                tracks.append(cp.CCTrack(None, file_type="spacer"))
+                fig.spacer()
 
     # Add subtractions if available
     if snakemake.input.subtractions:
@@ -75,10 +66,8 @@ with logger.catch():
         for sub in snakemake.input.subtractions:
             sub_path = pathlib.Path(sub)
             logger.info(f"Adding {sub_path.stem} subtraction track")
-            tracks.append(
-                cp.CCTrack(sub, file_type="bigwig", title=sub_path.stem, min="auto")
-            )
-            tracks.append(cp.CCTrack(None, file_type="spacer"))
+            fig.bigwig(sub, title=sub_path.stem)
+            fig.spacer()
 
     # Add heatmaps if available
     if snakemake.input.heatmaps:
@@ -101,52 +90,47 @@ with logger.catch():
 
             for condition, df in df_hm.groupby("condition"):
                 logger.info(f"Adding {condition} heatmap track")
-                tracks.append(
-                    cp.CCTrack(
-                        df.fn.tolist(),
-                        file_type="heatmap_summary",
-                        title=condition,
-                        binsize=snakemake.params.binsize,
+                for heatmap in df.fn.tolist():
+                    fig.add_track(
+                        "capcruncher",
+                        file=str(heatmap),
+                        title=f"{condition}: {pathlib.Path(heatmap).stem}",
+                        resolution=snakemake.params.binsize,
                         viewpoint=snakemake.params.viewpoint,
-                        style="triangular",
-                        normalization=snakemake.params.normalization_method,
+                        normalisation=snakemake.params.normalization_method,
+                        balance=False,
                     )
-                )
-                tracks.append(cp.CCTrack(None, file_type="spacer"))
+                fig.spacer()
         else:
             for hm in snakemake.input.heatmaps:
                 hm_path = pathlib.Path(hm)
                 logger.info(f"Adding {hm_path.stem} heatmap track")
-                tracks.append(
-                    cp.CCTrack(
-                        hm,
-                        file_type="heatmap",
-                        title=hm_path.stem,
-                        binsize=snakemake.params.binsize,
-                        viewpoint=snakemake.params.viewpoint,
-                        style="triangular",
-                        normalization=snakemake.params.normalization_method,
-                    )
+                fig.add_track(
+                    "capcruncher",
+                    file=hm,
+                    title=hm_path.stem,
+                    resolution=snakemake.params.binsize,
+                    viewpoint=snakemake.params.viewpoint,
+                    normalisation=snakemake.params.normalization_method,
+                    balance=False,
                 )
-                tracks.append(cp.CCTrack(None, file_type="spacer"))
+                fig.spacer()
 
     # Add genes if available
     if snakemake.params.genes:
         logger.info("Adding genes track")
         genes = snakemake.params.genes
-        genes_path = pathlib.Path(genes)
-        tracks.append(cp.CCTrack(genes, file_type="genes"))
-        tracks.append(cp.CCTrack(None, file_type="spacer"))
+        fig.genes(data=genes)
+        fig.spacer()
 
     # Add X-axis
-    tracks.append(cp.CCTrack(None, file_type="xaxis"))
+    fig.axis()
 
     # Make figure and save
     logger.info("Making figure")
-    fig = cp.CCFigure(tracks)
 
     logger.info(f"Saving figure to: {snakemake.output.fig}")
-    fig.save(snakemake.params.coordinates, output=snakemake.output.fig)
+    fig.save(snakemake.output.fig, region=snakemake.params.coordinates)
 
     # Export template used to make figure
     logger.info(f"Exporting template to {snakemake.output.template}")

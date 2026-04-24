@@ -103,10 +103,10 @@ def plot(*args, **kwargs):
     """
     Generates plots for the outputs produced by CapCruncher
     """
-    from capcruncher.api.plotting import CCFigure
+    from plotnado import GenomicFigure
 
-    CCFigure.from_toml(kwargs["template"]).save(
-        kwargs["region"], output=kwargs["output"]
+    GenomicFigure.from_toml(kwargs["template"]).save(
+        kwargs["output"], region=kwargs["region"]
     )
 
 
