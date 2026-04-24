@@ -11,6 +11,7 @@ dependencies:
     - lanceotron
     - git+https://github.com/alsmith151/ucsc_hub_maker.git
   - bowtie2
+  - coreutils
   - samtools>1.7
   - deeptools
   - trim-galore

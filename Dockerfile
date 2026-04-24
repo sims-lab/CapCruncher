@@ -9,6 +9,8 @@ RUN micromamba install -y -n base -c conda-forge -c bioconda \
         pip \
         'bedtools>=2.31.0' \
         'bowtie2>=2.4.4' \
+        coreutils \
+        curl \
         cxx-compiler \
         'fastqc<=0.12.1' \
         flash2 \
@@ -16,11 +18,13 @@ RUN micromamba install -y -n base -c conda-forge -c bioconda \
         'iced>=0.5.10' \
         jupyterlab \
         pairix \
+        pigz \
         rust \
-        'samtools<=1.15.1' \
+        'samtools>=1.15.1' \
         'trim-galore<=0.6.10' \
         ucsc-bedgraphtobigwig \
         ucsc-bedtobigbed && \
+    ln -sf /opt/conda/bin/flash2 /opt/conda/bin/flash && \
     micromamba clean --all --yes
 
 WORKDIR /opt/capcruncher
@@ -52,7 +56,7 @@ RUN QUARTO_ARCH="$(uname -m)" && \
 
 ENV CONDA_PREFIX=/opt/conda \
     MPLCONFIGDIR=/tmp/matplotlib \
-    PATH=/opt/conda/bin:$PATH \
+    PATH=/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     XDG_CACHE_HOME=/tmp/.cache \
     PYTHONUNBUFFERED=1
 

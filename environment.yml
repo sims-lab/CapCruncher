@@ -7,6 +7,7 @@ dependencies:
   - python=3.12
   - bedtools>=2.31.0
   - bowtie2>=2.4.4
+  - coreutils
   - cxx-compiler
   - fastqc<=0.12.1
   - flash<=1.2.11

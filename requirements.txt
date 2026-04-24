@@ -1,4 +1,5 @@
 # Essential to run pipeline
+biopython
 click<=8.2.0
 cookiecutter<=2.1.1
 loguru<=0.7.2

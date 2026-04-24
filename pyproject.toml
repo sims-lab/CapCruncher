@@ -21,6 +21,20 @@ include = ["capcruncher", "capcruncher.*"]
 [tool.setuptools]
 include-package-data = true
 
+[tool.setuptools.package-data]
+capcruncher = [
+    "data/*.txt",
+    "pipeline/config/**",
+    "pipeline/profiles/**/*.yaml",
+    "pipeline/workflow/Snakefile",
+    "pipeline/workflow/data/*.json",
+    "pipeline/workflow/envs/*.yml",
+    "pipeline/workflow/report/*.qmd",
+    "pipeline/workflow/report/*.yml",
+    "pipeline/workflow/rules/*.smk",
+    "pipeline/workflow/scripts/*.py",
+]
+
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements-minimal.txt"] }
 
