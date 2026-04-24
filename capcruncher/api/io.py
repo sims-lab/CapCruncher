@@ -1,22 +1,16 @@
-import glob
 from loguru import logger
 import multiprocessing
 import os
 import pathlib
-import queue
-import random
-import string
 import traceback
-from typing import Literal, Union
+from typing import Union
 
 import pandas as pd
 import pysam
-import tqdm
-from capcruncher.utils import get_timing
 from pysam import FastxFile
 from xopen import xopen
 import xxhash
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 
 
 class FastqReaderProcess(multiprocessing.Process):
@@ -256,8 +250,6 @@ def parse_alignment(aln: pysam.AlignmentFile) -> CCAlignment:
      list: Containing the attributes extracted.
 
     """
-
-    import numpy as np
 
     slice_name = aln.query_name
     parent_read, pe, slice_number, uid = slice_name.split("|")
