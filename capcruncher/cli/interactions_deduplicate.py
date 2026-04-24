@@ -1,21 +1,18 @@
 import os
-import ibis
-from ibis import _
 import pyarrow.dataset as ds
 import shutil
+import polars as pl
 from loguru import logger
 
 from capcruncher.api.statistics import AlignmentDeduplicationStats
 
-ibis.options.interactive = False
 
-
-def read_parquet_with_ibis(con, path: os.PathLike):
+def read_parquet(path: os.PathLike):
     parquet_path = str(path)
     if os.path.isdir(parquet_path):
         parquet_path = os.path.join(parquet_path, "*.parquet")
 
-    return con.read_parquet(parquet_path)
+    return pl.scan_parquet(parquet_path)
 
 
 def deduplicate(
@@ -25,45 +22,59 @@ def deduplicate(
     sample_name: str = "sampleX",
     statistics: os.PathLike = "deduplication_stats.json",
 ):
-    logger.info("Connecting to DuckDB")
-    con = ibis.duckdb.connect()
+    logger.info("Loading parquet input")
+    slices_tbl_raw = read_parquet(slices)
 
-    slices_tbl_raw = read_parquet_with_ibis(con, slices)
-    
-    n_slices_raw = slices_tbl_raw[["slice_id"]].distinct().count().execute()
-    n_reads_raw = slices_tbl_raw[["parent_id"]].distinct().count().execute()
+    n_slices_raw = (
+        slices_tbl_raw.select(pl.col("slice_id").n_unique().alias("count"))
+        .collect()
+        .item()
+    )
+    n_reads_raw = (
+        slices_tbl_raw.select(pl.col("parent_id").n_unique().alias("count"))
+        .collect()
+        .item()
+    )
 
     if read_type == "pe":
         logger.info("Read type is PE")
         logger.info("Identifying unique fragment IDs")
         query = (
-            slices_tbl_raw[["chrom", "start", "end", "parent_id"]]
-            .order_by(["chrom", "start", "end", "parent_id"])
-            .group_by(by="parent_id", order_by=["chrom", "start", "end"])
-            .order_by(["chrom", "start", "end", "parent_id"])
-            .mutate(
-                slice_f_chrom=_.chrom.first(),
-                slice_f_start=_.start.first(),
-                slice_l_end=_.end.last(),
+            slices_tbl_raw.select(["chrom", "start", "end", "parent_id"])
+            .sort(["parent_id", "chrom", "start", "end"])
+            .group_by("parent_id")
+            .agg(
+                slice_f_chrom=pl.col("chrom").first(),
+                slice_f_start=pl.col("start").first(),
+                slice_l_end=pl.col("end").last(),
             )
             .group_by(["slice_f_chrom", "slice_f_start", "slice_l_end"])
-            .mutate(pid=_.parent_id.first())[["pid"]]
-            .distinct()["pid"]
+            .agg(pl.col("parent_id").first().alias("pid"))
+            .select(pl.col("pid").unique())
         )
     elif read_type == "flashed":
         logger.info("Read type is Flashed")
         logger.info("Identifying unique fragment IDs")
 
         query = (
-            slices_tbl_raw[["coordinates", "parent_id"]]
-            .group_by(by="parent_id", order_by=["coordinates"])
-            .aggregate(coordinates=lambda t: t.coordinates.group_concat(","))
+            slices_tbl_raw.select(["coordinates", "parent_id"])
+            .sort(["parent_id", "coordinates"])
+            .group_by("parent_id")
+            .agg(
+                pl.col("coordinates")
+                .sort()
+                .implode()
+                .list.join(",")
+                .alias("coordinates")
+            )
             .group_by("coordinates")
-            .mutate(parent_id_unique=_.parent_id.first())[["parent_id_unique"]]
-            .distinct()["parent_id_unique"]
+            .agg(pl.col("parent_id").first().alias("parent_id_unique"))
+            .select(pl.col("parent_id_unique").unique())
         )
+    else:
+        raise ValueError(f"Unsupported read_type: {read_type}")
 
-    parent_ids_unique = query.execute()
+    parent_ids_unique = query.collect().to_series(0).to_list()
 
     logger.info("Writing deduplicated slices to disk")
     slices_unfiltered_ds = ds.dataset(slices, format="parquet")
@@ -92,12 +103,15 @@ def deduplicate(
     logger.info("Calculating deduplication stats")
 
     # Calculate the number of reads in the output
-    n_reads_unique = parent_ids_unique.shape[0]
-    
+    n_reads_unique = len(parent_ids_unique)
+
     # Calculate the number of slices in the output
-    tbl_dedup = read_parquet_with_ibis(con, output)
-    n_slices_unique = tbl_dedup[["slice_id"]].distinct().count().execute()
-    
+    tbl_dedup = read_parquet(output)
+    n_slices_unique = (
+        tbl_dedup.select(pl.col("slice_id").n_unique().alias("count"))
+        .collect()
+        .item()
+    )
 
     stats = AlignmentDeduplicationStats(
         sample=sample_name,
@@ -107,7 +121,6 @@ def deduplicate(
         n_total_slices=n_slices_raw,
         n_unique_slices=n_slices_unique,
     )
-    
+
     with open(statistics, "w") as f:
         f.write(stats.model_dump_json())
-    

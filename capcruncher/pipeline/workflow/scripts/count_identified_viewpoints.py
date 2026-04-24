@@ -1,27 +1,17 @@
 import os
-import sys
-import pandas as pd
-import numpy as np
-import subprocess
+import polars as pl
 
-from capcruncher import api
-import ibis
-
-
-ibis.options.interactive = False
-
-con = ibis.duckdb.connect(threads=snakemake.threads)
 parquet_path = snakemake.params.slices_dir
 if os.path.isdir(parquet_path):
     parquet_path = os.path.join(parquet_path, "*.parquet")
 
-tbl = con.read_parquet(parquet_path)
-unique_viewpoints = (tbl[["viewpoint", "pe"]]
-                        .distinct()
-                        .execute()
-                        .replace("", pd.NA)
-                        .dropna()
+unique_viewpoints = (
+    pl.scan_parquet(parquet_path)
+    .select(["viewpoint", "pe"])
+    .unique()
+    .filter((pl.col("viewpoint") != "") & pl.col("viewpoint").is_not_null())
+    .filter((pl.col("pe") != "") & pl.col("pe").is_not_null())
+    .collect()
 )
 
-unique_viewpoints.to_csv(snakemake.output[0], sep="\t", index=False)
-
+unique_viewpoints.write_csv(snakemake.output[0], separator="\t")

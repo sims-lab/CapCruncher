@@ -15,7 +15,6 @@ snakemake>=9.0.0,<10.0.0
 capcruncher-tools>=0.2.0
 cooler<=0.10.3
 h5py
-ibis-framework[duckdb]>=11.0.0,<12.0.0
 multiqc
 matplotlib>=3.8.4,<3.9.0
 pandera<=0.22.1

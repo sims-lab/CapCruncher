@@ -4,9 +4,8 @@ from tempfile import NamedTemporaryFile
 from typing import Iterable, List, Literal
 
 import click
-import ibis
 import pandas as pd
-from ibis import _
+import polars as pl
 from loguru import logger
 
 from capcruncher.api.statistics import CisOrTransStats
@@ -65,75 +64,66 @@ def cis_and_trans_stats(
     sample_name: str,
     assay: Literal["capture", "tri", "tiled"] = "capture",
 ):
-    con = ibis.duckdb.connect()
+    parquet_path = slices
+    if os.path.isdir(parquet_path):
+        parquet_path = os.path.join(parquet_path, "*.parquet")
 
-    if not os.path.isdir(slices):
-        tbl = con.register(f"parquet://{slices}", table_name="slices_tbl")
-    else:
-        tbl = con.register(f"parquet://{slices}/*.parquet", table_name="slices_tbl")
-
-    tbl = tbl.mutate(capture=tbl["capture"].fillna("reporter")).select(
-        ["capture", "parent_id", "chrom", "viewpoint", "pe"]
+    tbl = (
+        pl.scan_parquet(parquet_path)
+        .with_columns(pl.col("capture").fill_null("reporter"))
+        .select(["capture", "parent_id", "chrom", "viewpoint", "pe"])
     )
 
     if assay in ["capture", "tri"]:
-        tbl_reporter = tbl[(tbl["capture"] == "reporter")].drop(
-            "viewpoint", "pe", "capture"
+        tbl_reporter = tbl.filter(pl.col("capture") == "reporter").select(
+            ["parent_id", "chrom"]
         )
+        tbl_reporter = tbl_reporter.rename({"chrom": "chrom_reporter"})
 
-        tbl_capture = tbl[~(tbl["capture"] == "reporter")]
+        tbl_capture = (
+            tbl.filter(pl.col("capture") != "reporter")
+            .select(["parent_id", "viewpoint", "chrom", "pe"])
+            .rename({"chrom": "chrom_capture"})
+        )
 
         tbl_merge = tbl_capture.join(
             tbl_reporter,
-            predicates=[
-                "parent_id",
-            ],
-            lname="{name}_capture",
-            rname="{name}_reporter",
+            on="parent_id",
             how="left",
         )
 
-        tbl_merge = tbl_merge.mutate(
-            is_cis=(tbl_merge["chrom_capture"] == tbl_merge["chrom_reporter"])
+        tbl_merge = tbl_merge.with_columns(
+            (pl.col("chrom_capture") == pl.col("chrom_reporter")).alias("is_cis")
         )
 
-        df_cis_and_trans = (
-            tbl_merge.group_by(["viewpoint", "is_cis", "pe"])
-            .aggregate(
-                count=_.count(),
-            )
-            .execute(limit=None)
-        )
+        df_cis_and_trans = tbl_merge.group_by(["viewpoint", "is_cis", "pe"]).agg(
+            pl.len().alias("count")
+        ).collect()
 
     else:
         viewpoint_chroms = (
-            tbl.filter(tbl["capture"] != "reporter")
+            tbl.filter(pl.col("capture") != "reporter")
             .group_by(["viewpoint", "chrom"])
-            .aggregate(chrom_count=_.count())
-            .order_by(ibis.desc("chrom_count"))
-            .to_pandas()
-            .drop_duplicates("viewpoint")
-            .set_index("viewpoint")
-            .to_dict()["chrom"]
+            .agg(pl.len().alias("chrom_count"))
+            .sort(["viewpoint", "chrom_count"], descending=[False, True])
+            .group_by("viewpoint")
+            .agg(pl.col("chrom").first().alias("cis_chrom"))
         )
 
-        chrom_mapping_exp = ibis.case()
-        for k, v in viewpoint_chroms.items():
-            chrom_mapping_exp = chrom_mapping_exp.when(tbl.viewpoint == k, v)
-        chrom_mapping_exp = chrom_mapping_exp.end()
-
         df_cis_and_trans = (
-            tbl.mutate(cis_chrom=chrom_mapping_exp)
-            .mutate(is_cis=_.chrom == _.cis_chrom)
+            tbl.join(viewpoint_chroms, on="viewpoint", how="left")
+            .with_columns((pl.col("chrom") == pl.col("cis_chrom")).alias("is_cis"))
             .group_by(["viewpoint", "parent_id", "is_cis", "pe"])
-            .aggregate(count=_.count())
+            .agg(pl.len().alias("count"))
             .group_by(["viewpoint", "is_cis", "pe"])
-            .aggregate(count=_["count"].sum())
-            .execute(limit=None)
+            .agg(pl.col("count").sum().alias("count"))
+            .collect()
         )
 
     df_cis_and_trans = (
-        df_cis_and_trans.rename(columns={"pe": "read_type", "is_cis": "cis/trans"})
+        df_cis_and_trans.to_pandas().rename(
+            columns={"pe": "read_type", "is_cis": "cis/trans"}
+        )
         .assign(
             sample=sample_name,
             **{
@@ -274,17 +264,16 @@ def dump_cooler(path: str, viewpoint: str, resolution: int = None) -> pd.DataFra
 
 
 def dump_capcruncher_parquet(path: str, viewpoint: str = None) -> pd.DataFrame:
-    import ibis
-
-    con = ibis.duckdb.connect()
+    parquet_path = path
+    if os.path.isdir(parquet_path):
+        parquet_path = os.path.join(parquet_path, "*.parquet")
 
     if viewpoint:
-        tbl = con.register(f"parquet://{path}/*.parquet", table_name="slices_tbl")
-        tbl = tbl.filter(tbl.viewpoint == viewpoint)
+        tbl = pl.scan_parquet(parquet_path).filter(pl.col("viewpoint") == viewpoint)
     else:
-        tbl = con.register(f"parquet://{path}", table_name="slices_tbl")
+        tbl = pl.scan_parquet(parquet_path)
 
-    return tbl.execute(limit=None)
+    return tbl.collect().to_pandas()
 
 
 @cli.command()
