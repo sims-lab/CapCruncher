@@ -14,10 +14,6 @@ RUN micromamba install -y -n base -c conda-forge -c bioconda \
         cxx-compiler \
         'fastqc<=0.12.1' \
         flash2 \
-        git \
-        'iced>=0.5.10' \
-        jupyterlab \
-        pairix \
         pigz \
         rust \
         'samtools>=1.15.1' \
