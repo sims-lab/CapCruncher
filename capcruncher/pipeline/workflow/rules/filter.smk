@@ -74,7 +74,8 @@ rule filter_alignments:
 
 rule split_flashed_and_pe_datasets:
     input:
-        unpack(get_filtered_slices),
+        flashed=lambda wc: get_filtered_slices(wc)["flashed"],
+        pe=lambda wc: get_filtered_slices(wc)["pe"],
     output:
         slices_flashed=temp(
             directory(

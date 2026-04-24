@@ -100,6 +100,13 @@ def test_pipeline_init_installs_presets(cli_runner, tmp_path, monkeypatch):
     assert (profiles_dir / "local-apptainer" / "profile.v9+.yaml").exists()
     assert (profiles_dir / "slurm" / "profile.v9+.yaml").exists()
     assert (profiles_dir / "slurm-apptainer" / "profile.v9+.yaml").exists()
+    assert not list(profiles_dir.glob("*/config.yaml"))
+    assert "executor: slurm" in (
+        profiles_dir / "slurm" / "profile.v9+.yaml"
+    ).read_text()
+    assert "software-deployment-method:" in (
+        profiles_dir / "slurm-apptainer" / "profile.v9+.yaml"
+    ).read_text()
 
 
 def test_pipeline_uses_installed_preset(cli_runner, tmp_path, monkeypatch):
@@ -130,6 +137,45 @@ def test_pipeline_uses_installed_preset(cli_runner, tmp_path, monkeypatch):
     assert str(expected_profile) in first_call
     assert "--cores" in first_call
     assert "1" in first_call
+
+
+def test_pipeline_preset_forwards_container_config(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "pipeline",
+            "--preset",
+            "local-apptainer",
+            "--no-logo",
+            "-n",
+            "--config",
+            "execution.container_image=docker://example/capcruncher:test",
+        ],
+    )
+
+    assert result.exit_code == 0
+    first_call = recorded_calls[0]
+    expected_profile = tmp_path / "capcruncher" / "profiles" / "local-apptainer"
+    assert first_call[first_call.index("--profile") + 1] == str(expected_profile)
+    assert "--config" in first_call
+    assert "execution.container_image=docker://example/capcruncher:test" in first_call
 
 
 def test_pipeline_does_not_add_default_cores_for_equals_form(

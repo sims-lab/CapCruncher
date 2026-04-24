@@ -81,7 +81,7 @@ use rule bedgraph_to_bigwig as bigwig_compared with:
     params:
         chrom_sizes=config["genome"]["chrom_sizes"],
     wildcard_constraints:
-        comparison=f"[A-Za-z0-9_\.]+-[A-Za-z0-9_\.]+",
+        comparison=r"[A-Za-z0-9_.]+-[A-Za-z0-9_.]+",
     log:
         "capcruncher_output/logs/bedgraph_to_bigwig/{comparison}.{method}-subtraction.{viewpoint}.log",
 
@@ -94,7 +94,7 @@ use rule bedgraph_to_bigwig as bigwig_summarised with:
     params:
         chrom_sizes=config["genome"]["chrom_sizes"],
     wildcard_constraints:
-        comparison=f"[A-Za-z0-9_\.]+-[A-Za-z0-9_\.]+",
+        comparison=r"[A-Za-z0-9_.]+-[A-Za-z0-9_.]+",
     log:
         "capcruncher_output/logs/bedgraph_to_bigwig/{group}.{method}-summary.{viewpoint}.log",
 

@@ -170,7 +170,7 @@ checkpoint split:
     threads: 4
     resources:
         mem_mb=1000,
-        time="0-03:00:00",
+        runtime=180,
     params:
         prefix="capcruncher_output/interim/fastq/split/{sample}/{sample}",
         n_reads=str(config["split"].get("n_reads", 1e6)),
@@ -199,7 +199,8 @@ checkpoint split:
 
 checkpoint deduplication:
     input:
-        unpack(get_fastq_split_1),
+        fq1=lambda wc: get_fastq_split_1(wc)["fq1"],
+        fq2=lambda wc: get_fastq_split_1(wc)["fq2"],
     output:
         fastq_dir=directory("capcruncher_output/interim/fastq/deduplicated/{sample}/"),
         stats="capcruncher_output/interim/statistics/deduplication/data/{sample}.deduplication.json",
@@ -207,7 +208,7 @@ checkpoint deduplication:
         prefix_fastq="capcruncher_output/interim/fastq/deduplicated/{sample}/",
     log:
         "capcruncher_output/logs/deduplication_fastq/{sample}.log",
-    threads: workflow.cores * 0.5
+    threads: max(1, workflow.cores // 2)
     resources:
         mem_mb=lambda wildcards, attempt: 2000 * 2**attempt,
     shell:
@@ -219,7 +220,8 @@ checkpoint deduplication:
 
 rule trim:
     input:
-        unpack(get_deduplicated_fastq_pair),
+        fq1=lambda wc: get_deduplicated_fastq_pair(wc)["fq1"],
+        fq2=lambda wc: get_deduplicated_fastq_pair(wc)["fq2"],
     output:
         trimmed1=temp(
             "capcruncher_output/interim/fastq/trimmed/{sample}/{sample}_part{part}_1.fastq.gz"

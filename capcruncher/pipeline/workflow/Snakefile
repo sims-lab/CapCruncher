@@ -7,9 +7,9 @@ import re
 
 import pandas as pd
 import pyranges1 as pr
+import snakemake
 import snakemake.utils
 
-import capcruncher.pipeline.utils
 from capcruncher.utils import convert_bed_to_pr
 
 import importlib.util
@@ -19,13 +19,23 @@ import itertools
 
 snakemake.utils.min_version('9.0.0')
 
+# Snakemake 9 no longer exposes snakemake.Workflow at package level, but
+# capcruncher.pipeline.utils still imports it in an annotation at parse time.
+if not hasattr(snakemake, "Workflow"):
+    snakemake.Workflow = object
+
+import capcruncher.pipeline.utils
+
 
 configfile: "capcruncher_config.yml"
 
 
-container: config.get("execution", {}).get(
+DEFAULT_CONTAINER_IMAGE = config.get("execution", {}).get(
     "container_image", "docker://ghcr.io/sims-lab/capcruncher:latest"
 )
+
+
+container: DEFAULT_CONTAINER_IMAGE
 
 
 # Pipeline set-up
