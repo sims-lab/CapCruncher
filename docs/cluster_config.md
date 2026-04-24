@@ -30,9 +30,10 @@ jobs: 100
 latency-wait: 60
 printshellcmds: true
 rerun-incomplete: true
+retries: 3
 show-failed-logs: true
 default-resources:
-  mem_mb: 4000
+  mem: "4G"
   runtime: 60
 ```
 
@@ -47,9 +48,10 @@ software-deployment-method:
 apptainer-args: --cleanenv
 printshellcmds: true
 rerun-incomplete: true
+retries: 3
 show-failed-logs: true
 default-resources:
-  mem_mb: 4000
+  mem: "4G"
   runtime: 60
 ```
 
@@ -68,6 +70,16 @@ Use `--set-resources` or `--default-resources` for rule-level tuning:
 ```bash
 capcruncher pipeline \
   --preset slurm \
-  --default-resources mem_mb=6000 runtime=120 disk_mb=100000 \
-  --set-resources align_bowtie2:mem_mb=12000 split:runtime=240
+  --default-resources mem=6G runtime=120 disk_mb=100000 \
+  --set-resources align_bowtie2:mem=12G split:runtime=240
+```
+
+CapCruncher also supports SeqNado-style resource scaling for retry-prone
+runs. The bundled presets set `retries: 3`; on each retry, workflow resources
+that use `mem` and `runtime` are recalculated from the Snakemake `attempt`
+number. Use `--scale-resources` to raise all workflow-defined memory and runtime
+requests without editing the profile:
+
+```bash
+capcruncher pipeline --preset slurm-apptainer --scale-resources 1.5 --jobs 50
 ```

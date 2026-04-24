@@ -42,13 +42,6 @@ class FastqReaderProcess(multiprocessing.Process):
         self.input_files = input_files
         self._multifile = self._is_multifile(input_files)
 
-        if self._multifile:
-            self._input_files_pysam = [FastxFile(f) for f in self.input_files]
-        else:
-            self._input_files_pysam = [
-                FastxFile(self.input_files),
-            ]
-
         # Multiprocessing variables
         self.outq = outq
 
@@ -58,20 +51,25 @@ class FastqReaderProcess(multiprocessing.Process):
         super(FastqReaderProcess, self).__init__()
 
     def _is_multifile(self, files):
-        if not isinstance(files, (str, pathlib.Path)):
+        if isinstance(files, (list, tuple)) and len(files) > 1:
             return True
-        elif isinstance(files, (list, tuple)) and len(files > 1):
-            return True
-        else:
-            return False
+
+        return False
 
     def run(self):
         """Performs reading and chunking of fastq file(s)."""
 
+        if self._multifile:
+            input_files_pysam = [FastxFile(f) for f in self.input_files]
+        else:
+            input_files_pysam = [
+                FastxFile(self.input_files),
+            ]
+
         try:
             buffer = []
             rc = 0
-            for read_counter, read in enumerate(zip(*self._input_files_pysam)):
+            for read_counter, read in enumerate(zip(*input_files_pysam)):
                 # print(f"read_counter: {read_counter}, read: {read}, read_buffer: {self.read_buffer}")
                 buffer.append(read)
                 if read_counter % self.read_buffer == 0 and not read_counter == 0:
@@ -83,7 +81,7 @@ class FastqReaderProcess(multiprocessing.Process):
                     rc = read_counter
 
             self.outq.put(buffer)  # Deal with remainder
-            self.outq.put_nowait(None)  # Poison pill to terminate queue
+            self.outq.put("END")  # Poison pill to terminate queue
             logger.info(f"{rc} reads parsed (final)")
 
         except Exception as e:
@@ -91,7 +89,7 @@ class FastqReaderProcess(multiprocessing.Process):
             raise
 
         finally:
-            for fh in self._input_files_pysam:
+            for fh in input_files_pysam:
                 fh.close()
 
 
@@ -196,7 +194,7 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
 
                 elif is_string_input:
                     for fh, read in zip(self._get_file_handles(), reads):
-                        fh.write(read)
+                        fh.write(read + "\n")
                         fh.close()
 
                 else:

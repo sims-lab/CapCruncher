@@ -15,6 +15,7 @@ import subprocess
 import glob
 import os
 import re
+import shutil
 from joblib import Parallel, delayed
 from typing import Literal
 import sys
@@ -46,6 +47,11 @@ def run_unix_split(
         cmd = cmd.replace("zcat", "cat")
 
     if PLATFORM == "darwin":
+        if shutil.which("gsplit") is None:
+            raise RuntimeError(
+                "GNU split is required for unix FASTQ splitting on macOS. "
+                "Install coreutils or use --method python."
+            )
         cmd = cmd.replace("split", "gsplit")
         cmd = cmd.replace("zcat", "gzcat")
 
@@ -57,7 +63,7 @@ def run_unix_split(
     statement.append(cmd)
 
     logger.info(f"Running: {cmd}")
-    subprocess.run(" ".join(statement), shell=True)
+    subprocess.run(" ".join(statement), shell=True, check=True)
 
 
 def split(
@@ -104,7 +110,6 @@ def split(
             input_files=input_files,
             outq=readq,
             read_buffer=n_reads,
-            n_subprocesses=1,
         )
 
         formatter = [

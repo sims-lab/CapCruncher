@@ -3,7 +3,8 @@ jobs: 100
 latency-wait: 60
 printshellcmds: true
 rerun-incomplete: true
+retries: 3
 show-failed-logs: true
 default-resources:
-  mem_mb: 4000
+  mem: "4G"
   runtime: 60

@@ -169,11 +169,12 @@ checkpoint split:
         directory("capcruncher_output/interim/fastq/split/{sample}"),
     threads: 4
     resources:
-        mem_mb=1000,
-        runtime=180,
+        mem=lambda wildcards, attempt: scale_memory(1, attempt),
+        runtime=lambda wildcards, attempt: scale_resource(180, attempt),
     params:
         prefix="capcruncher_output/interim/fastq/split/{sample}/{sample}",
         n_reads=str(config["split"].get("n_reads", 1e6)),
+        method=default_fastq_split_method(),
     log:
         "capcruncher_output/logs/split/{sample}.log",
     shell:
@@ -185,7 +186,7 @@ checkpoint split:
         {input.fq1} \
         {input.fq2} \
         -m \
-        unix \
+        {params.method} \
         -o \
         {params.prefix} \
         -n \
@@ -210,7 +211,7 @@ checkpoint deduplication:
         "capcruncher_output/logs/deduplication_fastq/{sample}.log",
     threads: max(1, workflow.cores // 2)
     resources:
-        mem_mb=lambda wildcards, attempt: 2000 * 2**attempt,
+        mem=lambda wildcards, attempt: scale_memory(2, attempt),
     shell:
         """
         mkdir -p {params.prefix_fastq} &&
@@ -233,7 +234,7 @@ rule trim:
         outdir="capcruncher_output/interim/fastq/trimmed/{sample}/",
     threads: 4
     resources:
-        mem_mb=2000,
+        mem=lambda wildcards, attempt: scale_memory(2, attempt),
     log:
         "capcruncher_output/logs/trimming/{sample}_{part}.log",
     shell:
@@ -262,7 +263,7 @@ rule flash:
         outdir="capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}",
     threads: 4
     resources:
-        mem_mb=1000,
+        mem=lambda wildcards, attempt: scale_memory(1, attempt),
     log:
         "capcruncher_output/logs/flash/{sample}_{part}.log",
     shell:
@@ -288,7 +289,7 @@ checkpoint rebalance_partitions_combined:
         "capcruncher_output/logs/rebalance_partitions/{sample}_flashed.log",
     threads: 4
     resources:
-        mem_mb=1000,
+        mem=lambda wildcards, attempt: scale_memory(1, attempt),
     shell:
         """
         mkdir -p {output[0]} &&
@@ -330,7 +331,7 @@ checkpoint rebalance_partitions_pe:
         "capcruncher_output/logs/rebalance_partitions/{sample}_pe.log",
     threads: 4
     resources:
-        mem_mb=1000,
+        mem=lambda wildcards, attempt: scale_memory(1, attempt),
     shell:
         """
         mkdir -p {output[0]} &&
@@ -367,7 +368,7 @@ rule digest_flashed_combined:
         restriction_site=config["analysis"]["restriction_enzyme"],
     threads: 4
     resources:
-        mem_mb=2000,
+        mem=lambda wildcards, attempt: scale_memory(2, attempt),
     log:
         "capcruncher_output/logs/digestion/{sample}_{part}.log",
     shell:
@@ -405,7 +406,7 @@ rule digest_flashed_pe:
         restriction_site=config["analysis"]["restriction_enzyme"],
     threads: 4
     resources:
-        mem_mb=2000,
+        mem=lambda wildcards, attempt: scale_memory(2, attempt),
     log:
         "capcruncher_output/logs/digestion/{sample}_{part}.log",
     shell:

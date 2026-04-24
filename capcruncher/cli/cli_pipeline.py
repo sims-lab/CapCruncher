@@ -94,9 +94,21 @@ def install_pipeline_preset(
     type=str,
     help="CapCruncher-managed execution preset name or a profile directory path.",
 )
+@click.option(
+    "--scale-resources",
+    type=float,
+    default=None,
+    help="Scale workflow memory and runtime requests for retries and constrained clusters.",
+)
 @click.version_option(get_capcruncher_version())
 @click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
-def pipeline(pipeline_options, show_help=False, logo=True, preset=None):
+def pipeline(
+    pipeline_options,
+    show_help=False,
+    logo=True,
+    preset=None,
+    scale_resources=None,
+):
     """Runs the data processing pipeline"""
 
     fn = pathlib.Path(__file__).resolve()
@@ -135,7 +147,7 @@ def pipeline(pipeline_options, show_help=False, logo=True, preset=None):
     # Implicitly deal with a missing --cores option
     if not has_snakemake_option(pipeline_options, "--cores", "-c"):
         cmd.extend(["--cores", "1"])
-    
+
     # Add the --show-failed-logs option if it is not already present
     if not has_snakemake_option(pipeline_options, "--show-failed-logs"):
         cmd.append("--show-failed-logs")
@@ -144,8 +156,12 @@ def pipeline(pipeline_options, show_help=False, logo=True, preset=None):
         with open(dir_package / "data" / "logo.txt", "r") as f:
             click.echo(f.read())
 
+    env = os.environ.copy()
+    if scale_resources is not None:
+        env["SCALE_RESOURCES"] = str(scale_resources)
+
     # Run the pipeline
-    _completed = subprocess.run(cmd)
+    _completed = subprocess.run(cmd, env=env)
 
     # If the pipeline fails, exit with the return code
     if _completed.returncode != 0:
@@ -161,6 +177,7 @@ def pipeline(pipeline_options, show_help=False, logo=True, preset=None):
                 "--cores",
                 "1",
             ],
+            env=env,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )

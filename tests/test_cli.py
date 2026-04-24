@@ -1,6 +1,7 @@
 from loguru import logger
 import pytest
 import os
+import pathlib
 import subprocess
 from click.testing import CliRunner
 import glob
@@ -104,9 +105,13 @@ def test_pipeline_init_installs_presets(cli_runner, tmp_path, monkeypatch):
     assert "executor: slurm" in (
         profiles_dir / "slurm" / "profile.v9+.yaml"
     ).read_text()
-    assert "software-deployment-method:" in (
+    slurm_apptainer_profile = (
         profiles_dir / "slurm-apptainer" / "profile.v9+.yaml"
     ).read_text()
+    assert "software-deployment-method:" in slurm_apptainer_profile
+    assert "retries: 3" in slurm_apptainer_profile
+    assert 'mem: "4G"' in slurm_apptainer_profile
+    assert "mem_mb:" not in slurm_apptainer_profile
 
 
 def test_pipeline_uses_installed_preset(cli_runner, tmp_path, monkeypatch):
@@ -176,6 +181,44 @@ def test_pipeline_preset_forwards_container_config(cli_runner, tmp_path, monkeyp
     assert first_call[first_call.index("--profile") + 1] == str(expected_profile)
     assert "--config" in first_call
     assert "execution.container_image=docker://example/capcruncher:test" in first_call
+
+
+def test_pipeline_scale_resources_sets_environment(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append((cmd, kwargs.get("env")))
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "pipeline",
+            "--preset",
+            "slurm-apptainer",
+            "--scale-resources",
+            "1.5",
+            "--no-logo",
+            "-n",
+        ],
+    )
+
+    assert result.exit_code == 0
+    first_call, first_env = recorded_calls[0]
+    expected_profile = tmp_path / "capcruncher" / "profiles" / "slurm-apptainer"
+    assert first_call[first_call.index("--profile") + 1] == str(expected_profile)
+    assert first_env["SCALE_RESOURCES"] == "1.5"
 
 
 def test_pipeline_does_not_add_default_cores_for_equals_form(
@@ -256,6 +299,32 @@ def test_genome_digest(cli_runner, data_pipeline, tmpdir, infile, flags):
     )
     assert result.exit_code == 0
     assert os.path.exists(outfile)
+
+
+def test_fastq_split_python(cli_runner, data_pipeline, tmpdir):
+    output_prefix = pathlib.Path(tmpdir) / "split" / "sample"
+    output_prefix.parent.mkdir()
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "fastq",
+            "split",
+            os.path.join(data_pipeline, "SAMPLE-A_REP1_1.fastq.gz"),
+            os.path.join(data_pipeline, "SAMPLE-A_REP1_2.fastq.gz"),
+            "-m",
+            "python",
+            "-o",
+            str(output_prefix),
+            "-n",
+            "1000000",
+            "--gzip",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert (output_prefix.parent / "sample_part0_1.fastq.gz").exists()
+    assert (output_prefix.parent / "sample_part0_2.fastq.gz").exists()
 
 
 @pytest.mark.parametrize(

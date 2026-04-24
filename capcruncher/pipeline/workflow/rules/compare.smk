@@ -53,7 +53,7 @@ rule compare_interactions:
         ),
         design_path="capcruncher_output/design.tsv"
     resources:
-        mem_mb=5000,
+        mem=lambda wildcards, attempt: scale_memory(5, attempt),
     log:
         "capcruncher_output/logs/compare_interactions/{viewpoint}.log",
     shell:
@@ -122,7 +122,7 @@ rule differential_interactions:
         contrast=config["differential"]["contrast"],
         viewpoint_distance=config["differential"]["distance"],
     resources:
-        mem_mb=5000,
+        mem=lambda wildcards, attempt: scale_memory(5, attempt),
     log:
         "capcruncher_output/logs/differential_interactions/{viewpoint}.log",
     shell:

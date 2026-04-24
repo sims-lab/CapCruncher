@@ -52,7 +52,7 @@ rule filter_alignments:
         read_type=lambda wildcards, output: wildcards.combined,
         custom_filtering=capcruncher.pipeline.utils.validate_custom_filtering(config),
     resources:
-        mem_mb=5000,
+        mem=lambda wildcards, attempt: scale_memory(5, attempt),
     log:
         "capcruncher_output/interim/statistics/filtering/logs/{sample}_part{part}_{combined}.log",
     shell:
@@ -110,7 +110,7 @@ rule remove_duplicate_coordinates:
         sample_name=lambda wildcards, output: wildcards.sample,
         read_type=lambda wildcards, output: wildcards.combined,
     resources:
-        mem_mb=lambda wc, attempt: 3000 * 2**attempt,
+        mem=lambda wildcards, attempt: scale_memory(3, attempt),
     threads: 12
     log:
         "capcruncher_output/logs/remove_duplicate_coordinates/{sample}_{combined}.log",
@@ -161,7 +161,7 @@ rule cis_and_trans_stats:
         sample_name=lambda wildcards, output: wildcards.sample,
         analysis_method=config["analysis"]["method"],
     resources:
-        mem_mb=lambda wc, attempt: 3000 * 2**attempt,
+        mem=lambda wildcards, attempt: scale_memory(3, attempt),
     log:
         "capcruncher_output/logs/cis_and_trans_stats/{sample}.log",
     shell:

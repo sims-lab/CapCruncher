@@ -3,6 +3,7 @@ import sys
 import pathlib
 import shutil
 import json
+import math
 import re
 
 import pandas as pd
@@ -33,9 +34,44 @@ configfile: "capcruncher_config.yml"
 DEFAULT_CONTAINER_IMAGE = config.get("execution", {}).get(
     "container_image", "docker://ghcr.io/sims-lab/capcruncher:latest"
 )
+SCALE_RESOURCES = float(os.environ.get("SCALE_RESOURCES", "1"))
 
 
 container: DEFAULT_CONTAINER_IMAGE
+
+
+def scale_resource(base_value: int, attempt: int = 1) -> int:
+    return max(1, math.ceil(base_value * 2 ** (int(attempt) - 1) * SCALE_RESOURCES))
+
+
+def scale_memory(base_gb: int, attempt: int = 1) -> str:
+    return f"{scale_resource(base_gb, attempt)}G"
+
+
+def scale_thread_memory(base_gb: int, threads: int, attempt: int = 1) -> str:
+    return scale_memory(base_gb * threads, attempt)
+
+
+def default_fastq_split_method() -> str:
+    configured_method = config.get("split", {}).get("method")
+    if configured_method:
+        return configured_method
+
+    if sys.platform == "darwin" and shutil.which("gsplit") is None:
+        return "python"
+
+    return "unix"
+
+
+def copy_workflow_log(log_value, destination):
+    if isinstance(log_value, (str, bytes, os.PathLike)):
+        shutil.copyfile(log_value, destination)
+        return
+
+    for log_path in reversed(list(log_value)):
+        if pathlib.Path(log_path).exists():
+            shutil.copyfile(log_path, destination)
+            return
 
 
 # Pipeline set-up
@@ -174,7 +210,7 @@ rule all:
 
 onerror:
     log_out = "capcruncher_error.log"
-    shutil.copyfile(log, log_out)
+    copy_workflow_log(log, log_out)
     print(
         f"An error occurred. Please check the log file {log_out} for more information."
     )
@@ -182,7 +218,7 @@ onerror:
 
 onsuccess:
     log_out = "capcruncher.log"
-    shutil.copyfile(log, log_out)
+    copy_workflow_log(log, log_out)
     print(f"Pipeline completed successfully. See {log_out} for more information.")
 
     if CLEANUP == "full":

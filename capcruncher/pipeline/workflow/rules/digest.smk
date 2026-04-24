@@ -9,7 +9,7 @@ rule digest_genome:
         enzyme_or_site=config["analysis"]["restriction_enzyme"],
     threads: 4
     resources:
-        mem_mb=2000,
+        mem=lambda wildcards, attempt: scale_memory(2, attempt),
     shell:
         """
         capcruncher genome digest {input.fasta} -r {params.enzyme_or_site} -o {output.bed}.tmp --sort > {log} 2>&1 &&

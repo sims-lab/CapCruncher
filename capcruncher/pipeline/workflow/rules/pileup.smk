@@ -1,8 +1,8 @@
 import capcruncher.pipeline.utils
 
 
-def get_mem_mb(wildcards, threads, attempt=0):
-    return threads * 3000 * 2 ** (attempt - 1)
+def get_mem(wildcards, threads, attempt=1):
+    return scale_thread_memory(3, threads, attempt)
 
 
 def get_outdir(wildcards, output):
@@ -22,7 +22,7 @@ rule count:
         "capcruncher_output/logs/counts/{sample}.log",
     threads: 8
     resources:
-        mem_mb=get_mem_mb,
+        mem=get_mem,
     params:
         outdir=get_outdir,
         assay=config["analysis"]["method"],
@@ -54,7 +54,7 @@ rule bin_counts:
         "capcruncher_output/logs/bin_counts/{sample}.log",
     threads: 4
     resources:
-        mem_mb=lambda wc, attempt: 3000 * 2**attempt,
+        mem=lambda wildcards, attempt: scale_memory(3, attempt),
     shell:
         """
         capcruncher \

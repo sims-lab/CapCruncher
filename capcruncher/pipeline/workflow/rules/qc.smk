@@ -7,17 +7,28 @@ rule fastqc:
     input:
         "capcruncher_output/interim/fastq/{sample}_{read}.fastq.gz",
     output:
-        html="capcruncher_output/interim/qc/fastqc/{sample}_{read}.html",
-        zip="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.zip",  # the suffix _fastqc.zip is necessary for multiqc to find the file. If not using multiqc, you are free to choose an arbitrary filename
+        html="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
+        zip="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.zip",
     params:
         extra="--quiet",
+        outdir="capcruncher_output/interim/qc/fastqc",
+        memory=1024,
     log:
         "capcruncher_output/logs/fastqc/{sample}_{read}.log",
     threads: 1
     resources:
-        mem_mb=1024,
-    script:
-        "../scripts/fastqc_wrapper.py"
+        mem=lambda wildcards, attempt: scale_memory(1, attempt),
+    shell:
+        """
+        mkdir -p {params.outdir} &&
+        fastqc \
+            --threads {threads} \
+            --memory {params.memory} \
+            {params.extra} \
+            --outdir {params.outdir} \
+            {input} \
+            > {log} 2>&1
+        """
 
 
 rule samtools_stats:
@@ -28,7 +39,7 @@ rule samtools_stats:
         stats=temp("capcruncher_output/interim/qc/alignment_raw/{sample}.txt"),
     threads: 1
     resources:
-        mem_mb=1000,
+        mem=lambda wildcards, attempt: scale_memory(1, attempt),
     shell:
         """samtools stats {input.bam} > {output.stats}"""
 
@@ -36,7 +47,7 @@ rule samtools_stats:
 rule multiqc_report:
     input:
         expand(
-            "capcruncher_output/interim/qc/fastqc/{sample}_{read}.html",
+            "capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
             sample=SAMPLE_NAMES,
             read=[1, 2],
         ),
@@ -52,7 +63,7 @@ rule multiqc_report:
         outdir=lambda wc, output: str(pathlib.Path(output[0]).parent),
         dir_analysis="capcruncher_output/interim/qc",
     resources:
-        mem_mb=1000,
+        mem=lambda wildcards, attempt: scale_memory(1, attempt),
     shell:
         "multiqc -o {params.outdir} {params.dir_analysis} -n full_qc_report.html --force > {log} 2>&1"
 
