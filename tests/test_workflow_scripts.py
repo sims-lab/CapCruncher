@@ -92,7 +92,7 @@ def test_make_ucsc_hub_builds_tracknado_metadata(tmp_path):
     script = load_workflow_script("make_ucsc_hub.py")
     viewpoints = tmp_path / "viewpoints.bigBed"
 
-    df = script.build_track_metadata(
+    records = script.build_track_metadata(
         bigwigs=[
             tmp_path / "raw" / "SAMPLE-A_REP1_Slc25A37.bigWig",
             tmp_path / "norm" / "SAMPLE-A_REP1_Slc25A37.bigWig",
@@ -106,9 +106,16 @@ def test_make_ucsc_hub_builds_tracknado_metadata(tmp_path):
         viewpoints=viewpoints,
     )
 
-    assert df[["category", "normalisation", "sample", "aggregation", "ext"]].to_dict(
-        "records"
-    ) == [
+    assert [
+        {
+            "category": record["category"],
+            "normalisation": record["normalisation"],
+            "sample": record["sample"],
+            "aggregation": record["aggregation"],
+            "ext": record["ext"],
+        }
+        for record in records
+    ] == [
         {
             "category": "Replicates",
             "normalisation": "raw",
@@ -145,7 +152,14 @@ def test_make_ucsc_hub_builds_tracknado_metadata(tmp_path):
             "ext": "bigBed",
         },
     ]
-    assert df.loc[df["name"].eq("viewpoint"), "overlay"].isna().all()
+    assert "overlay" not in records[-1]
+
+
+def test_make_ucsc_hub_rejects_unsupported_track_names(tmp_path):
+    script = load_workflow_script("make_ucsc_hub.py")
+
+    with pytest.raises(ValueError, match="Could not parse CapCruncher track path"):
+        script.capcruncher_track_metadata(tmp_path / "sample.invalid-name.bigWig")
 
 
 def test_make_ucsc_hub_uses_modern_tracknado_builder(monkeypatch, tmp_path):

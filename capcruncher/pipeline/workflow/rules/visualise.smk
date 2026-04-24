@@ -56,8 +56,6 @@ rule create_ucsc_hub:
         custom_genome=config["hub"].get("custom_genome", None),
         genome_twobit=config["genome"].get("twobit", None),
         hub_name=config["hub"].get("name"),
-        hub_short_label=config["hub"].get("short_label"),
-        hub_long_label=config["hub"].get("long_label"),
         hub_email=config["hub"].get("email"),
         genome_organism=config["genome"].get("organism"),
         genome_default_position=config["genome"].get("genome_default_position"),

@@ -86,22 +86,59 @@ For further information see both the [Snakemake documentation](https://snakemake
 This is a quick example of how to run the pipeline with a pre-generated profile. This is not a complete guide and you will need to modify the configuration to suit your cluster.
 
 ``` bash
-capcruncher pipeline -c <NUMBER OF CORES e.g. 20> --profile <NAME OF PROFILE OR PATH TO PROFILE>
+capcruncher pipeline -c <NUMBER OF CORES e.g. 20> --preset <PRESET NAME>
 ```
 
-### Singularity Usage (Recommended if available)
+Install bundled editable profiles with `capcruncher pipeline-init`. They are
+written to `${XDG_CONFIG_HOME:-~/.config}/snakemake`, where they can be edited
+like normal Snakemake profiles. See the [cluster setup guide](cluster_config.md)
+for update and customization instructions.
 
-Containers have the advantage of their contents being fixed at the time of creation. This means that the pipeline will always run with the same versions of the software and aids reliablity and reproducibility. The pipeline can be run using singularity containers. This is the recommended method of running the pipeline.
+### Apptainer Usage (Recommended if available)
 
-The pipeline can be run using singularity containers using the `--use-singularity` option.
+Containers have the advantage of their contents being fixed at the time of creation. This means that the pipeline will always run with the same versions of the software and aids reliablity and reproducibility. The pipeline can be run using Apptainer containers through the bundled Snakemake presets. This is the recommended method of running the pipeline on clusters that provide Apptainer.
+
+Apptainer is the supported container runtime on HPC systems. Docker is intended for local workstation and CI usage, not shared cluster execution.
+
+The pipeline can be run using the bundled Snakemake 9 Apptainer presets.
 
 ``` bash
 # Local mode
-capcruncher pipeline --use-singularity --cores <NUMBER OF CORES TO USE>
+capcruncher pipeline --preset capcruncher-local-apptainer --cores <NUMBER OF CORES TO USE>
 
 # Cluster mode
-capcruncher pipeline --use-singularity --cores <NUMBER OF CORES TO USE> --profile <NAME OF PROFILE OR PATH TO PROFILE>
+capcruncher pipeline --preset capcruncher-slurm-apptainer --cores <NUMBER OF CORES TO USE>
 ```
+
+You can also run the CapCruncher container directly with Apptainer:
+
+``` bash
+apptainer exec \
+  --bind "$PWD":/work \
+  --pwd /work \
+  docker://ghcr.io/sims-lab/capcruncher:latest \
+  capcruncher pipeline --cores 8
+```
+
+### Docker Usage
+
+Docker is supported for running the whole CapCruncher CLI image. This is most useful on local workstations and CI runners. For HPC systems, use Apptainer.
+
+``` bash
+docker run --rm -it \
+  --user "$(id -u):$(id -g)" \
+  -e HOME=/tmp \
+  -v "$PWD":/work \
+  -w /work \
+  ghcr.io/sims-lab/capcruncher:latest \
+  pipeline --cores 8
+```
+
+The command must be run from the directory containing `capcruncher_config.yml` and the FASTQ files or mounted symlinks. See the [Docker guide](docker.md) for details.
+
+The Docker image also includes Apptainer for nested containerised workflow execution. If your Docker host permits nested Apptainer, run the image with the required host privileges and use the `capcruncher-local-apptainer` preset inside the container. See the [Docker guide](docker.md) for the full command.
+
+For Snakemake-managed job containers on the host, use the Apptainer presets instead of a Docker preset. Snakemake uses Apptainer to execute `docker://` container image URIs, including the default CapCruncher image configured in `capcruncher_config.yml`.
 
 ### Avoiding Disconnection from the Cluster
 
@@ -110,10 +147,10 @@ In order to avoid disconnecting from the cluster, it is recommended to run the p
 ``` bash
 # tmux example
 tmux new -s capcruncher
-capcruncher pipeline --cores 8 --profile slurm --use-singularity
+capcruncher pipeline --cores 8 --preset capcruncher-slurm-apptainer
 
 # nohup example
-nohup capcruncher pipeline --cores 8 --profile slurm --use-singularity &
+nohup capcruncher pipeline --cores 8 --preset capcruncher-slurm-apptainer &
 ```
 
 ## Pipeline Steps

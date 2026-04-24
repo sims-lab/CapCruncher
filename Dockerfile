@@ -3,9 +3,12 @@ FROM mambaorg/micromamba:2.0.5
 ARG CAPCRUNCHER_VERSION=0.0.0+container
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 ARG QUARTO_VERSION=1.9.37
+ARG TARGETARCH
+ARG TARGETOS
 
 RUN micromamba install -y -n base -c conda-forge -c bioconda \
         python=3.12 \
+        apptainer \
         pip \
         'bedtools>=2.31.0' \
         'bowtie2>=2.4.4' \
@@ -34,6 +37,10 @@ RUN printf 'setuptools<80\n' > /tmp/pip-build-constraints.txt && \
         python -m pip install --no-cache-dir '.[full]'
 
 RUN QUARTO_ARCH="$(uname -m)" && \
+    if [ -n "${TARGETOS}" ] && [ "${TARGETOS}" != "linux" ]; then \
+        echo "Unsupported container target OS: ${TARGETOS}" >&2; exit 1; \
+    fi && \
+    if [ -n "${TARGETARCH}" ]; then QUARTO_ARCH="${TARGETARCH}"; fi && \
     case "${QUARTO_ARCH}" in \
         aarch64|arm64) QUARTO_ARCH="arm64" ;; \
         x86_64|amd64) QUARTO_ARCH="amd64" ;; \

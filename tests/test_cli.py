@@ -95,18 +95,18 @@ def test_pipeline_init_installs_presets(cli_runner, tmp_path, monkeypatch):
     result = cli_runner.invoke(cli, ["pipeline-init"])
 
     assert result.exit_code == 0
-    profiles_dir = tmp_path / "capcruncher" / "profiles"
-    assert (profiles_dir / "local" / "profile.v9+.yaml").exists()
-    assert (profiles_dir / "local-conda" / "profile.v9+.yaml").exists()
-    assert (profiles_dir / "local-apptainer" / "profile.v9+.yaml").exists()
-    assert (profiles_dir / "slurm" / "profile.v9+.yaml").exists()
-    assert (profiles_dir / "slurm-apptainer" / "profile.v9+.yaml").exists()
+    profiles_dir = tmp_path / "snakemake"
+    assert (profiles_dir / "capcruncher-local" / "profile.v9+.yaml").exists()
+    assert (profiles_dir / "capcruncher-local-conda" / "profile.v9+.yaml").exists()
+    assert (profiles_dir / "capcruncher-local-apptainer" / "profile.v9+.yaml").exists()
+    assert (profiles_dir / "capcruncher-slurm" / "profile.v9+.yaml").exists()
+    assert (profiles_dir / "capcruncher-slurm-apptainer" / "profile.v9+.yaml").exists()
     assert not list(profiles_dir.glob("*/config.yaml"))
     assert "executor: slurm" in (
-        profiles_dir / "slurm" / "profile.v9+.yaml"
+        profiles_dir / "capcruncher-slurm" / "profile.v9+.yaml"
     ).read_text()
     slurm_apptainer_profile = (
-        profiles_dir / "slurm-apptainer" / "profile.v9+.yaml"
+        profiles_dir / "capcruncher-slurm-apptainer" / "profile.v9+.yaml"
     ).read_text()
     assert "software-deployment-method:" in slurm_apptainer_profile
     assert "retries: 3" in slurm_apptainer_profile
@@ -132,16 +132,45 @@ def test_pipeline_uses_installed_preset(cli_runner, tmp_path, monkeypatch):
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    result = cli_runner.invoke(cli, ["pipeline", "--preset", "local", "--no-logo", "-n"])
+    result = cli_runner.invoke(
+        cli, ["pipeline", "--preset", "capcruncher-local", "--no-logo", "-n"]
+    )
 
     assert result.exit_code == 0
     assert len(recorded_calls) == 2
     first_call = recorded_calls[0]
-    expected_profile = tmp_path / "capcruncher" / "profiles" / "local"
+    expected_profile = tmp_path / "snakemake" / "capcruncher-local"
     assert "--profile" in first_call
     assert str(expected_profile) in first_call
     assert "--cores" in first_call
     assert "1" in first_call
+
+
+def test_pipeline_accepts_legacy_preset_alias(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(cli, ["pipeline", "--preset", "local", "--no-logo", "-n"])
+
+    assert result.exit_code == 0
+    expected_profile = tmp_path / "snakemake" / "capcruncher-local"
+    assert recorded_calls[0][recorded_calls[0].index("--profile") + 1] == str(
+        expected_profile
+    )
 
 
 def test_pipeline_preset_forwards_container_config(cli_runner, tmp_path, monkeypatch):
@@ -167,7 +196,7 @@ def test_pipeline_preset_forwards_container_config(cli_runner, tmp_path, monkeyp
         [
             "pipeline",
             "--preset",
-            "local-apptainer",
+            "capcruncher-local-apptainer",
             "--no-logo",
             "-n",
             "--config",
@@ -177,7 +206,7 @@ def test_pipeline_preset_forwards_container_config(cli_runner, tmp_path, monkeyp
 
     assert result.exit_code == 0
     first_call = recorded_calls[0]
-    expected_profile = tmp_path / "capcruncher" / "profiles" / "local-apptainer"
+    expected_profile = tmp_path / "snakemake" / "capcruncher-local-apptainer"
     assert first_call[first_call.index("--profile") + 1] == str(expected_profile)
     assert "--config" in first_call
     assert "execution.container_image=docker://example/capcruncher:test" in first_call
@@ -206,7 +235,7 @@ def test_pipeline_scale_resources_sets_environment(cli_runner, tmp_path, monkeyp
         [
             "pipeline",
             "--preset",
-            "slurm-apptainer",
+            "capcruncher-slurm-apptainer",
             "--scale-resources",
             "1.5",
             "--no-logo",
@@ -216,7 +245,7 @@ def test_pipeline_scale_resources_sets_environment(cli_runner, tmp_path, monkeyp
 
     assert result.exit_code == 0
     first_call, first_env = recorded_calls[0]
-    expected_profile = tmp_path / "capcruncher" / "profiles" / "slurm-apptainer"
+    expected_profile = tmp_path / "snakemake" / "capcruncher-slurm-apptainer"
     assert first_call[first_call.index("--profile") + 1] == str(expected_profile)
     assert first_env["SCALE_RESOURCES"] == "1.5"
 
@@ -242,7 +271,8 @@ def test_pipeline_does_not_add_default_cores_for_equals_form(
     monkeypatch.setattr(subprocess, "run", fake_run)
 
     result = cli_runner.invoke(
-        cli, ["pipeline", "--preset", "local", "--no-logo", "--cores=8", "-n"]
+        cli,
+        ["pipeline", "--preset", "capcruncher-local", "--no-logo", "--cores=8", "-n"],
     )
 
     assert result.exit_code == 0

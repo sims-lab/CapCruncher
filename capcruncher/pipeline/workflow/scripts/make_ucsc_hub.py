@@ -7,52 +7,18 @@ import re
 import sys
 from collections.abc import Iterable
 
-import pandas as pd
 from loguru import logger
 
 
-def _paths_to_frame(paths: Iterable[str | pathlib.Path], category: str) -> pd.DataFrame:
-    return pd.DataFrame({"fn": [pathlib.Path(path) for path in paths]}).assign(
-        basename=lambda df: df["fn"].map(lambda path: path.name),
-        category=category,
-    )
-
-
-def _replicate_tracks(bigwigs: Iterable[str | pathlib.Path]) -> pd.DataFrame:
-    df = _paths_to_frame(bigwigs, "Replicates")
-    if df.empty:
-        return df
-
-    df["normalisation"] = df["fn"].map(lambda path: path.parent.stem)
-    df[["sample", "viewpoint"]] = df["basename"].str.extract(
-        r"(?P<sample>.*)_(?P<viewpoint>.*?).bigWig"
-    )
-    df["aggregation"] = "replicate"
-    return df
-
-
-def _summary_tracks(bigwigs: Iterable[str | pathlib.Path]) -> pd.DataFrame:
-    df = _paths_to_frame(bigwigs, "Aggregated")
-    if df.empty:
-        return df
-
-    df["normalisation"] = "norm"
-    df[["sample", "aggregation", "viewpoint"]] = df["basename"].str.extract(
-        r"(?P<sample>.*)\.(?P<aggregation>.*)-summary\.(?P<viewpoint>.*).bigWig"
-    )
-    return df
-
-
-def _comparison_tracks(bigwigs: Iterable[str | pathlib.Path]) -> pd.DataFrame:
-    df = _paths_to_frame(bigwigs, "Subtraction")
-    if df.empty:
-        return df
-
-    df["normalisation"] = "norm"
-    df[["sample", "aggregation", "viewpoint"]] = df["basename"].str.extract(
-        r"(?P<sample>.*?)\.(?P<aggregation>.*?)-subtraction\.(?P<viewpoint>.*?).bigWig"
-    )
-    return df
+SUMMARY_TRACK_PATTERN = re.compile(
+    r"^(?P<sample>[^.]+)\.(?P<aggregation>[^.]+)-summary\.(?P<viewpoint>[^.]+)\.bigWig$"
+)
+COMPARISON_TRACK_PATTERN = re.compile(
+    r"^(?P<sample>[^.]+-[^.]+)\.(?P<aggregation>[^.]+)-subtraction\.(?P<viewpoint>[^.]+)\.bigWig$"
+)
+REPLICATE_TRACK_PATTERN = re.compile(
+    r"^(?P<sample>.+)_(?P<viewpoint>[^_]+)\.bigWig$"
+)
 
 
 def capcruncher_track_metadata(path: pathlib.Path) -> dict[str, str]:
@@ -70,33 +36,30 @@ def capcruncher_track_metadata(path: pathlib.Path) -> dict[str, str]:
             "name": "viewpoint",
         }
 
-    if path.suffix.lower() not in {".bw", ".bigwig"}:
+    if path.suffix != ".bigWig":
         raise ValueError(f"Unsupported UCSC hub track type: {path}")
 
-    summary_match = re.match(
-        r"(?P<sample>.*)\.(?P<aggregation>.*)-summary\.(?P<viewpoint>.*).bigWig$",
-        basename,
-    )
+    summary_match = SUMMARY_TRACK_PATTERN.fullmatch(basename)
     if summary_match:
         metadata.update(summary_match.groupdict())
         metadata["category"] = "Aggregated"
         metadata["normalisation"] = "norm"
     else:
-        comparison_match = re.match(
-            r"(?P<sample>.*?)\.(?P<aggregation>.*?)-subtraction\.(?P<viewpoint>.*?).bigWig$",
-            basename,
-        )
+        comparison_match = COMPARISON_TRACK_PATTERN.fullmatch(basename)
         if comparison_match:
             metadata.update(comparison_match.groupdict())
             metadata["category"] = "Subtraction"
             metadata["normalisation"] = "norm"
         else:
-            replicate_match = re.match(
-                r"(?P<sample>.*)_(?P<viewpoint>.*?).bigWig$",
-                basename,
-            )
+            replicate_match = REPLICATE_TRACK_PATTERN.fullmatch(basename)
             if not replicate_match:
-                raise ValueError(f"Could not parse CapCruncher track path: {path}")
+                raise ValueError(
+                    "Could not parse CapCruncher track path. Expected one of: "
+                    "<sample>_<viewpoint>.bigWig, "
+                    "<sample>.<aggregation>-summary.<viewpoint>.bigWig, or "
+                    "<sampleA>-<sampleB>.<aggregation>-subtraction.<viewpoint>.bigWig. "
+                    f"Got: {path}"
+                )
             metadata.update(replicate_match.groupdict())
             metadata["category"] = "Replicates"
             metadata["normalisation"] = path.parent.stem
@@ -128,7 +91,7 @@ def build_track_metadata(
     bigwigs_summary: Iterable[str | pathlib.Path],
     bigwigs_comparison: Iterable[str | pathlib.Path],
     viewpoints: str | pathlib.Path,
-) -> pd.DataFrame:
+) -> list[dict[str, str]]:
     """Create the TrackNado metadata table for CapCruncher hub generation."""
     paths = collect_track_paths(
         bigwigs=bigwigs,
@@ -149,7 +112,7 @@ def build_track_metadata(
                 **metadata,
             }
         )
-    return pd.DataFrame(records)
+    return records
 
 
 def configure_logger(snakemake):

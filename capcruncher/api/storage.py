@@ -142,6 +142,8 @@ def create_cooler_cc(
         bed=viewpoint_path, viewpoint=viewpoint_name, assay=assay
     )
 
+    bins = pd.DataFrame(bins).copy()
+
     gr_bins = pr.PyRanges(
         bins.rename(
             columns={
@@ -420,7 +422,8 @@ class CoolerBinner:
         )
 
         bins = (
-            self.genomic_bins.rename(
+            pd.DataFrame(self.genomic_bins).copy()
+            .rename(
                 columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
             )
             .sort_values("genomic_bin_id")

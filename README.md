@@ -9,7 +9,7 @@
 
 ![CapCruncher Logo](https://raw.githubusercontent.com/sims-lab/CapCruncher/master/docs/img/capcruncher_logo.png)
 
-The CapCruncher package is designed to process Capture-C, Tri-C and Tiled-C data. Unlike other pipelines that are designed to process Hi-C or Capture-HiC data, the filtering steps in CapCruncher are specifically optimized for these datasets. The package consists of a configurable data processing pipeline and a supporting command line interface to enable fine-grained control over the analysis. The pipeline is fast, robust and scales from a single workstation to a large HPC cluster. It is designed to be run on an HPC cluster and can be configured to use a variety of package management systems, such as conda and singularity. For more information, see the [documentation](https://sims-lab.github.io/CapCruncher/).
+The CapCruncher package is designed to process Capture-C, Tri-C and Tiled-C data. Unlike other pipelines that are designed to process Hi-C or Capture-HiC data, the filtering steps in CapCruncher are specifically optimized for these datasets. The package consists of a configurable data processing pipeline and a supporting command line interface to enable fine-grained control over the analysis. The pipeline is fast, robust and scales from a single workstation to a large HPC cluster. It is designed to be run on an HPC cluster and can be configured to use conda environments or container-backed Snakemake presets. For more information, see the [documentation](https://sims-lab.github.io/CapCruncher/).
 
 > **Note:**
 > The current version of CapCruncher is in beta. Please report any issues you encounter to the [issue tracker](https://github.com/sims-lab/CapCruncher/issues/new/choose)
@@ -34,6 +34,13 @@ or
 mamba install -c bioconda capcruncher
 ```
 
+or run the Docker image:
+
+``` bash
+docker pull ghcr.io/sims-lab/capcruncher:latest
+docker run --rm ghcr.io/sims-lab/capcruncher:latest --help
+```
+
 Please note that it is highly recommended to install CapCruncher in a conda environment. If you do not have conda installed, please follow the instructions [here](https://github.com/conda-forge/miniforge#mambaforge) to install mambaforge.
 
 See the [installation guide](installation.md) for more detailed instructions.
@@ -56,7 +63,7 @@ See the [CLI Reference](https://sims-lab.github.io/CapCruncher/cli/) for more de
 
 ### Pipeline
 
-The CapCruncher pipeline handles the processing of raw data from the sequencer to the generation of a contact matrix, generation of plots and production of a UCSC genome browser track hub. See the [pipeline guide](https://sims-lab.github.io/CapCruncher/pipeline/) for more detailed instructions including how to configure the pipeline to run on [HPC clusters](https://sims-lab.github.io/CapCruncher/pipeline/#hpc-cluster-usage-recommended-if-available) and use various package management systems [conda](https://sims-lab.github.io/CapCruncher/installation/#install-all-dependencies-using-conda) and [singularity](https://sims-lab.github.io/CapCruncher/pipeline/#singularity-usage-recommended-if-available).
+The CapCruncher pipeline handles the processing of raw data from the sequencer to the generation of a contact matrix, generation of plots and production of a UCSC genome browser track hub. See the [pipeline guide](https://sims-lab.github.io/CapCruncher/pipeline/) for more detailed instructions including how to configure the pipeline to run on [HPC clusters](https://sims-lab.github.io/CapCruncher/pipeline/#hpc-cluster-usage-recommended-if-available) and use conda or Apptainer-backed Snakemake presets.
 
 #### Pipeline Configuration
 
@@ -76,8 +83,11 @@ The pipeline is run using the `capcruncher pipeline` command. Ensure that you ha
 # Basic usage
 capcruncher pipeline --cores <NUMBER OF CORES TO USE>
 
-# Real example running the pipeline with 8 cores, using the slurm profile for running on a cluster with a SLURM workflow management system and using singularity for dependency management
-capcruncher pipeline --cores 8 --profile slurm --use-singularity
+# Real example running the pipeline with 8 cores, using the bundled SLURM Apptainer preset
+capcruncher pipeline --cores 8 --preset capcruncher-slurm-apptainer
+
+# Docker example from the directory containing capcruncher_config.yml
+docker run --rm -it -v "$PWD":/work -w /work ghcr.io/sims-lab/capcruncher:latest pipeline --cores 8
 ```
 
 > **Note:**
@@ -87,10 +97,10 @@ capcruncher pipeline --cores 8 --profile slurm --use-singularity
 > ``` bash
 > # tmux example
 >tmux new -s capcruncher
-> capcruncher pipeline --cores 8 --profile slurm --use-singularity
+> capcruncher pipeline --cores 8 --preset capcruncher-slurm-apptainer
 >
 ># nohup example
->nohup capcruncher pipeline --cores 8 --profile slurm --use-singularity &
+>nohup capcruncher pipeline --cores 8 --preset capcruncher-slurm-apptainer &
 >```
 
 See the [pipeline guide](https://sims-lab.github.io/CapCruncher/pipeline/) for more detailed instructions.

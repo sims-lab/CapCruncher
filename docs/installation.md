@@ -11,6 +11,33 @@ It is highly recommended to install CapCruncher in a conda environment. If you d
 
 There are two main ways to obtain the dependencies required to run CapCruncher:
 
+### Use the Docker image
+
+CapCruncher publishes a Docker image containing the CLI, pipeline runtime, native tools, and reporting dependencies:
+
+```{bash}
+docker pull ghcr.io/sims-lab/capcruncher:latest
+docker run --rm ghcr.io/sims-lab/capcruncher:latest --help
+```
+
+To run a pipeline from a directory containing `capcruncher_config.yml` and input FASTQs:
+
+```{bash}
+docker run --rm -it \
+  --user "$(id -u):$(id -g)" \
+  -e HOME=/tmp \
+  -v "$PWD":/work \
+  -w /work \
+  ghcr.io/sims-lab/capcruncher:latest \
+  pipeline --cores 8
+```
+
+See the [Docker guide](docker.md) for path mounting, local image builds, and examples for other CLI commands.
+
+Docker is intended for local workstation and CI usage. On HPC systems, use
+Apptainer; Docker daemons are generally not available or permitted on shared
+clusters.
+
 ### Install all dependencies using conda
 
 #### Direct Installation
@@ -42,10 +69,10 @@ pip install capcruncher
 pip install capcruncher[full]
 ```
 
-### Install CapCruncher in a minimal conda environment and use singularity to run the pipeline
+### Install CapCruncher in a minimal conda environment and use Apptainer to run the pipeline
 
 !!! note
-    Singularity must be installed on your system to use this method. See the [pipeline guide](pipeline.md) for more information. The pipeline will only function correctly if using the --use-singularity option. This is because the pipeline uses singularity containers to run the pipeline steps. See the [pipeline guide](pipeline.md) for more information.
+    Apptainer is the supported container runtime for HPC usage. See the [pipeline guide](pipeline.md) for more information. Use the bundled `capcruncher-local-apptainer` or `capcruncher-slurm-apptainer` presets to run workflow steps in containers.
 
 
 Create a minimal conda environment and install CapCruncher using pip:
@@ -54,6 +81,22 @@ Create a minimal conda environment and install CapCruncher using pip:
 mamba create -n cc "python>=3.12"
 conda activate cc
 pip install capcruncher[full]
+```
+
+Install the editable Snakemake profiles after installation:
+
+```{bash}
+capcruncher pipeline-init
+```
+
+This writes profiles to `${XDG_CONFIG_HOME:-~/.config}/snakemake`, Snakemake's
+standard user profile directory on Linux. See the [cluster setup guide](cluster_config.md)
+for editing profiles and refreshing them with `capcruncher pipeline-init --force`.
+
+You can also run the CapCruncher container directly with Apptainer:
+
+```{bash}
+apptainer exec docker://ghcr.io/sims-lab/capcruncher:latest capcruncher --help
 ```
 
 

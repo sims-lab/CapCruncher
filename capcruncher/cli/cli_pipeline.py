@@ -8,12 +8,21 @@ import pathlib
 import shutil
 
 
-BUILTIN_PIPELINE_PRESETS = (
-    "local",
-    "local-conda",
-    "local-apptainer",
-    "slurm",
-    "slurm-apptainer",
+PIPELINE_PRESET_SOURCES = {
+    "capcruncher-local": "local",
+    "capcruncher-local-conda": "local-conda",
+    "capcruncher-local-apptainer": "local-apptainer",
+    "capcruncher-slurm": "slurm",
+    "capcruncher-slurm-apptainer": "slurm-apptainer",
+}
+LEGACY_PIPELINE_PRESET_ALIASES = {
+    source_name: preset_name
+    for preset_name, source_name in PIPELINE_PRESET_SOURCES.items()
+}
+BUILTIN_PIPELINE_PRESETS = tuple(PIPELINE_PRESET_SOURCES)
+PIPELINE_PRESET_CHOICES = (
+    *BUILTIN_PIPELINE_PRESETS,
+    *LEGACY_PIPELINE_PRESET_ALIASES,
 )
 
 
@@ -32,13 +41,17 @@ def has_snakemake_option(options, long_name, short_name=None):
 def get_capcruncher_config_dir() -> pathlib.Path:
     xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
     if xdg_config_home:
-        return pathlib.Path(xdg_config_home).expanduser() / "capcruncher"
+        return pathlib.Path(xdg_config_home).expanduser()
 
-    return pathlib.Path.home() / ".config" / "capcruncher"
+    return pathlib.Path.home() / ".config"
 
 
 def get_pipeline_preset_dir() -> pathlib.Path:
-    return get_capcruncher_config_dir() / "profiles"
+    return get_capcruncher_config_dir() / "snakemake"
+
+
+def normalise_pipeline_preset_name(preset: str) -> str:
+    return LEGACY_PIPELINE_PRESET_ALIASES.get(preset, preset)
 
 
 def resolve_pipeline_preset(preset: str) -> pathlib.Path:
@@ -46,7 +59,8 @@ def resolve_pipeline_preset(preset: str) -> pathlib.Path:
     if preset_path.exists():
         return preset_path.resolve()
 
-    bundled_path = get_pipeline_preset_dir() / preset
+    preset_name = normalise_pipeline_preset_name(preset)
+    bundled_path = get_pipeline_preset_dir() / preset_name
     if bundled_path.exists():
         return bundled_path.resolve()
 
@@ -58,8 +72,10 @@ def resolve_pipeline_preset(preset: str) -> pathlib.Path:
 def install_pipeline_preset(
     preset_name: str, output_dir: pathlib.Path, force: bool
 ) -> pathlib.Path:
+    preset_name = normalise_pipeline_preset_name(preset_name)
+    source_name = PIPELINE_PRESET_SOURCES[preset_name]
     source_dir = resources.files("capcruncher").joinpath(
-        "pipeline", "profiles", preset_name
+        "pipeline", "profiles", source_name
     )
     destination_dir = output_dir / preset_name
 
@@ -193,7 +209,7 @@ def pipeline(
 @click.option(
     "--preset",
     "preset_names",
-    type=click.Choice(BUILTIN_PIPELINE_PRESETS),
+    type=click.Choice(PIPELINE_PRESET_CHOICES),
     multiple=True,
     help="Install only the selected preset. Repeat to install multiple presets.",
 )

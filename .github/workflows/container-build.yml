@@ -67,13 +67,22 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          platforms: linux/amd64
           load: true
           tags: capcruncher:smoke-test
 
       - name: Run CLI smoke test
         run: |
           docker run --rm capcruncher:smoke-test --help
+          docker run --rm --entrypoint apptainer capcruncher:smoke-test --version
           docker run --rm --entrypoint quarto capcruncher:smoke-test --version
+
+      - name: Build Apple Silicon compatibility image
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/arm64
 
       - name: Build and push Docker image
         if: startsWith(github.ref, 'refs/tags/v')
