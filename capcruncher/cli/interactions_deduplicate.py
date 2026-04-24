@@ -10,6 +10,14 @@ from capcruncher.api.statistics import AlignmentDeduplicationStats
 ibis.options.interactive = False
 
 
+def read_parquet_with_ibis(con, path: os.PathLike):
+    parquet_path = str(path)
+    if os.path.isdir(parquet_path):
+        parquet_path = os.path.join(parquet_path, "*.parquet")
+
+    return con.read_parquet(parquet_path)
+
+
 def deduplicate(
     slices: os.PathLike,
     output: os.PathLike,
@@ -20,15 +28,10 @@ def deduplicate(
     logger.info("Connecting to DuckDB")
     con = ibis.duckdb.connect()
 
-    if not os.path.isdir(slices):
-        slices_tbl_raw = con.register(f"parquet://{slices}", table_name="slices_tbl")
-    else:
-        slices_tbl_raw = con.register(
-            f"parquet://{slices}/*.parquet", table_name="slices_tbl"
-        )
+    slices_tbl_raw = read_parquet_with_ibis(con, slices)
     
-    n_slices_raw = slices_tbl_raw[['slice_id']].distinct().count().execute(limit=None)    
-    n_reads_raw = slices_tbl_raw[["parent_id"]].distinct().count().execute(limit=None)
+    n_slices_raw = slices_tbl_raw[["slice_id"]].distinct().count().execute()
+    n_reads_raw = slices_tbl_raw[["parent_id"]].distinct().count().execute()
 
     if read_type == "pe":
         logger.info("Read type is PE")
@@ -60,7 +63,7 @@ def deduplicate(
             .distinct()["parent_id_unique"]
         )
 
-    parent_ids_unique = query.execute(limit=None)
+    parent_ids_unique = query.execute()
 
     logger.info("Writing deduplicated slices to disk")
     slices_unfiltered_ds = ds.dataset(slices, format="parquet")
@@ -92,8 +95,8 @@ def deduplicate(
     n_reads_unique = parent_ids_unique.shape[0]
     
     # Calculate the number of slices in the output
-    tbl_dedup = con.register(f"parquet://{output}/*.parquet", table_name="dedup_tbl")
-    n_slices_unique = tbl_dedup[['slice_id']].distinct().count().execute(limit=None)
+    tbl_dedup = read_parquet_with_ibis(con, output)
+    n_slices_unique = tbl_dedup[["slice_id"]].distinct().count().execute()
     
 
     stats = AlignmentDeduplicationStats(

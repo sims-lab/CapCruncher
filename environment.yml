@@ -4,6 +4,7 @@ channels:
   - bioconda
   - defaults
 dependencies:
+  - python=3.12
   - bedtools<=2.31.0
   - bowtie2>=2.4.4
   - cxx-compiler

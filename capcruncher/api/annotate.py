@@ -5,7 +5,7 @@ import pandas as pd
 import pybedtools
 import pyranges as pr
 import numpy as np
-from pandas.api.types import is_categorical_dtype, is_numeric_dtype
+from pandas.api.types import is_numeric_dtype
 
 from capcruncher.utils import convert_bed_to_pr
 
@@ -110,7 +110,7 @@ class IntersectionGet(Intersection):
         if is_numeric_dtype(self.b.df["Name"]):
             dtype_new = self.b.df["Name"].dtype
 
-        elif is_categorical_dtype(self.b.df["Name"]):
+        elif isinstance(self.b.df["Name"].dtype, pd.CategoricalDtype):
             if is_numeric_dtype(self.b.df["Name"].cat.categories):
                 dtype_new = self.b.df["Name"].cat.categories.dtype
                 numeric_dtype_mapping = {

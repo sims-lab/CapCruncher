@@ -4,11 +4,12 @@ cookiecutter<=2.1.1
 loguru<=0.7.2
 more-itertools
 numpy<=1.26.4
-pandas<=2.1.2
-polars<=1.6.0
+pandas<=2.2.3
+polars<=1.34.0
 PuLP<2.8.0
 pyarrow
 pybedtools
 pyranges<=0.1.2
+snakemake-executor-plugin-slurm
 snakemake_wrapper_utils
-snakemake<=7.32.4
+snakemake>=9.0.0,<10.0.0

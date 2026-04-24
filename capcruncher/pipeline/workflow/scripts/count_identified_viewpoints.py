@@ -11,14 +11,17 @@ import ibis
 ibis.options.interactive = False
 
 con = ibis.duckdb.connect(threads=snakemake.threads)
-tbl = con.register(f"parquet://{snakemake.params.slices_dir}", table_name="reporters")
+parquet_path = snakemake.params.slices_dir
+if os.path.isdir(parquet_path):
+    parquet_path = os.path.join(parquet_path, "*.parquet")
+
+tbl = con.read_parquet(parquet_path)
 unique_viewpoints = (tbl[["viewpoint", "pe"]]
                         .distinct()
-                        .execute(limit=None)
+                        .execute()
                         .replace("", pd.NA)
                         .dropna()
 )
 
 unique_viewpoints.to_csv(snakemake.output[0], sep="\t", index=False)
-
 

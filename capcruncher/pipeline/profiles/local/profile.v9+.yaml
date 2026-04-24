@@ -1,0 +1,4 @@
+executor: local
+printshellcmds: true
+rerun-incomplete: true
+show-failed-logs: true

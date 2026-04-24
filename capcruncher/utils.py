@@ -324,7 +324,12 @@ def convert_bed_to_pr(
                 separator="\t",
                 new_columns=["Chromosome", "Start", "End", "Name"],
                 has_header=False,
-                dtypes=[pl.Utf8, pl.Int64, pl.Int64, pl.Utf8],
+                schema_overrides={
+                    "Chromosome": pl.String,
+                    "Start": pl.Int64,
+                    "End": pl.Int64,
+                    "Name": pl.String,
+                },
                 columns=list(range(4)),
             )
 

@@ -3,6 +3,7 @@ import sys
 import pathlib
 import shutil
 import json
+import re
 
 import pandas as pd
 import pyranges as pr
@@ -16,13 +17,15 @@ from typing import Literal
 import itertools
 
 
-snakemake.utils.min_version('7.19.1')
+snakemake.utils.min_version('9.0.0')
 
 
 configfile: "capcruncher_config.yml"
 
 
-container: "library://asmith151/capcruncher/capcruncher:latest"
+container: config.get("execution", {}).get(
+    "container_image", "docker://ghcr.io/sims-lab/capcruncher:latest"
+)
 
 
 # Pipeline set-up

@@ -1,0 +1,12 @@
+executor: slurm
+jobs: 100
+latency-wait: 60
+software-deployment-method:
+  - apptainer
+apptainer-args: --cleanenv
+printshellcmds: true
+rerun-incomplete: true
+show-failed-logs: true
+default-resources:
+  mem_mb: 4000
+  runtime: 60

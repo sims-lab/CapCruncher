@@ -1,6 +1,7 @@
 from loguru import logger
 import pytest
 import os
+import subprocess
 from click.testing import CliRunner
 import glob
 
@@ -79,8 +80,107 @@ def cli_runner():
 def test_cli_runs(cli_runner):
     """Test checks that the cli is functional and the help option works"""
 
+    import capcruncher.cli
+
+    assert capcruncher.cli.cli is cli
     result = cli_runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
+    assert "pipeline-init" in result.output
+
+
+def test_pipeline_init_installs_presets(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+
+    result = cli_runner.invoke(cli, ["pipeline-init"])
+
+    assert result.exit_code == 0
+    profiles_dir = tmp_path / "capcruncher" / "profiles"
+    assert (profiles_dir / "local" / "profile.v9+.yaml").exists()
+    assert (profiles_dir / "local-conda" / "profile.v9+.yaml").exists()
+    assert (profiles_dir / "local-apptainer" / "profile.v9+.yaml").exists()
+    assert (profiles_dir / "slurm" / "profile.v9+.yaml").exists()
+    assert (profiles_dir / "slurm-apptainer" / "profile.v9+.yaml").exists()
+
+
+def test_pipeline_uses_installed_preset(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(cli, ["pipeline", "--preset", "local", "--no-logo", "-n"])
+
+    assert result.exit_code == 0
+    assert len(recorded_calls) == 2
+    first_call = recorded_calls[0]
+    expected_profile = tmp_path / "capcruncher" / "profiles" / "local"
+    assert "--profile" in first_call
+    assert str(expected_profile) in first_call
+    assert "--cores" in first_call
+    assert "1" in first_call
+
+
+def test_pipeline_does_not_add_default_cores_for_equals_form(
+    cli_runner, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli, ["pipeline", "--preset", "local", "--no-logo", "--cores=8", "-n"]
+    )
+
+    assert result.exit_code == 0
+    first_call = recorded_calls[0]
+    assert "--cores=8" in first_call
+    assert "--cores" not in first_call
+
+
+def test_pipeline_rejects_preset_and_profile_together(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "pipeline",
+            "--preset",
+            "local",
+            "--no-logo",
+            "--profile=custom-profile",
+            "-n",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Use either --preset or --profile" in result.output
 
 
 @pytest.mark.parametrize(

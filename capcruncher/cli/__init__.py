@@ -6,6 +6,13 @@ from loguru import logger
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
 
+def get_capcruncher_version() -> str:
+    try:
+        return metadata.version(distribution_name="capcruncher")
+    except metadata.PackageNotFoundError:
+        return "0+unknown"
+
+
 class UnsortedGroup(click.Group):
     def list_commands(self, ctx):
         return list(self.commands)
@@ -45,7 +52,7 @@ class LazyGroup(click.Group):
 
 
 @click.group(cls=UnsortedGroup)
-@click.version_option(metadata.version(distribution_name="capcruncher"))
+@click.version_option(get_capcruncher_version())
 def cli():
     """
     An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.

@@ -117,6 +117,13 @@ hub:
     # (Required for hub)
     email: "{{cookiecutter.ucsc_hub_email}}"
 
+execution:
+
+    # Default container image for Snakemake container or Apptainer execution.
+    # Use docker:// URIs for the broadest runtime compatibility.
+    # (Optional)
+    container_image: docker://ghcr.io/sims-lab/capcruncher:latest
+
 ###################################
 # Optional configuration options #
 ###################################
