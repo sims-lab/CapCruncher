@@ -1,10 +1,7 @@
 import os
 import subprocess
-import shutil
-import glob
 import pytest
 from loguru import logger
-import numpy as np
 import pathlib
 from cookiecutter.main import cookiecutter
 from datetime import datetime
@@ -267,7 +264,7 @@ def config_bad(
 
 
 @pytest.mark.order(1)
-def test_pipeline(config, cores):
+def test_pipeline(config, cores, capcruncher_subprocess_env):
     import subprocess
 
     if cores:
@@ -277,7 +274,16 @@ def test_pipeline(config, cores):
 
     try:
         result = subprocess.run(
-            ["capcruncher", "pipeline", "-c", str(cores), "all", "-p", "--show-failed-logs"]
+            [
+                "capcruncher",
+                "pipeline",
+                "-c",
+                str(cores),
+                "all",
+                "-p",
+                "--show-failed-logs",
+            ],
+            env=capcruncher_subprocess_env,
         )
     except Exception as e:
         print(e)
@@ -286,7 +292,7 @@ def test_pipeline(config, cores):
     assert result.returncode == 0
 
 @pytest.mark.xfail(reason="Viewpoints file is incorrect")
-def test_pipeline_bad_config(config_bad, cores):
+def test_pipeline_bad_config(config_bad, cores, capcruncher_subprocess_env):
     import subprocess
 
     if cores:
@@ -296,7 +302,16 @@ def test_pipeline_bad_config(config_bad, cores):
 
     try:
         result = subprocess.run(
-            ["capcruncher", "pipeline", "-c", str(cores), "all", "-p", "--show-failed-logs"]
+            [
+                "capcruncher",
+                "pipeline",
+                "-c",
+                str(cores),
+                "all",
+                "-p",
+                "--show-failed-logs",
+            ],
+            env=capcruncher_subprocess_env,
         )
     except Exception as e:
         print(e)

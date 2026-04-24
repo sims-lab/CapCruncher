@@ -22,6 +22,17 @@ def _first_existing_column(df: pd.DataFrame, candidates: Iterable[str]) -> str:
     )
 
 
+def _has_parquet_files(path: str) -> bool:
+    if os.path.isdir(path):
+        return any(
+            os.path.isfile(os.path.join(path, filename))
+            and filename.endswith(".parquet")
+            for filename in os.listdir(path)
+        )
+
+    return os.path.isfile(path)
+
+
 @click.group()
 def cli():
     """Contains miscellaneous functions"""
@@ -80,6 +91,12 @@ def cis_and_trans_stats(
     sample_name: str,
     assay: Literal["capture", "tri", "tiled"] = "capture",
 ):
+    if not _has_parquet_files(slices):
+        stats = CisOrTransStats(stats=[])
+        with open(output, "w") as f:
+            f.write(stats.model_dump_json())
+        return
+
     parquet_path = slices
     if os.path.isdir(parquet_path):
         parquet_path = os.path.join(parquet_path, "*.parquet")

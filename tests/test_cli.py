@@ -867,3 +867,27 @@ def test_make_chicago_maps(cli_runner, tmpdir, fragments_file, viewpoints_file):
     with open(baitmap_file, "r") as file:
         content = file.read()
         assert "chr1\t100\t200\tfragment1\tviewpoint" in content
+
+
+def test_cis_and_trans_stats_accepts_empty_parquet_directory(cli_runner, tmp_path):
+    slices = tmp_path / "empty_slices.parquet"
+    slices.mkdir()
+    output = tmp_path / "cis_and_trans.json"
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "utilities",
+            "cis-and-trans-stats",
+            str(slices),
+            "--assay",
+            "tiled",
+            "--sample-name",
+            "SAMPLE-A",
+            "-o",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert output.read_text() == '{"stats":[]}'

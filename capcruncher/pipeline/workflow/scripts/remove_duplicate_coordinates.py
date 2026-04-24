@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import subprocess
 import pyarrow.dataset as ds
+import pyarrow.parquet as pq
 import pathlib
 from loguru import logger
 
@@ -43,6 +44,7 @@ def remove_duplicate_coordinates(
 
         logger.warning(f"Creating empty output directory: {outdir}")
         outdir.mkdir(parents=True, exist_ok=True)
+        pq.write_table(dataset.to_table().slice(0, 0), outdir / "empty.parquet")
 
         logger.warning(f"Creating empty stats file: {output_statistics}")
         pd.DataFrame().to_csv(output_statistics)

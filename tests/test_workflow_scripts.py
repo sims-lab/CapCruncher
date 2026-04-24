@@ -29,7 +29,7 @@ def load_workflow_script(script_name):
 
 
 @pytest.fixture(scope="module")
-def capture_pipeline_run(tmp_path_factory):
+def capture_pipeline_run(tmp_path_factory, capcruncher_subprocess_env):
     repo_root = Path(__file__).resolve().parents[1]
     data_dir = repo_root / "tests" / "data" / "data_for_pipeline_run"
     run_parent = tmp_path_factory.mktemp("workflow_script_pipeline")
@@ -71,83 +71,6 @@ def capture_pipeline_run(tmp_path_factory):
     for fastq in data_dir.glob("*.fastq*"):
         (run_dir / fastq.name).symlink_to(fastq)
 
-    bin_dir = run_parent / "bin"
-    bin_dir.mkdir()
-    gzcat = bin_dir / "gzcat"
-    gzcat.write_text(
-        """#!/usr/bin/env python
-import gzip
-import shutil
-import sys
-
-with gzip.open(sys.argv[1], "rb") as source:
-    shutil.copyfileobj(source, sys.stdout.buffer)
-""",
-        encoding="utf-8",
-    )
-    gsplit = bin_dir / "gsplit"
-    gsplit.write_text(
-        """#!/usr/bin/env python
-import gzip
-import pathlib
-import sys
-
-args = sys.argv[1:]
-n_lines = int(args[args.index("-l") + 1])
-suffix = ""
-for arg in args:
-    if arg.startswith("--additional-suffix="):
-        suffix = arg.split("=", 1)[1]
-prefix = args[-1]
-
-lines = sys.stdin.buffer.readlines()
-for part, offset in enumerate(range(0, len(lines), n_lines)):
-    output = f"{prefix}{part:02d}{suffix}.gz"
-    pathlib.Path(output).parent.mkdir(parents=True, exist_ok=True)
-    with gzip.open(output, "wb") as handle:
-        handle.writelines(lines[offset : offset + n_lines])
-""",
-        encoding="utf-8",
-    )
-    multiqc = bin_dir / "multiqc"
-    multiqc.write_text(
-        """#!/usr/bin/env python
-import pathlib
-import sys
-
-args = sys.argv[1:]
-outdir = pathlib.Path(".")
-name = "multiqc_report.html"
-for idx, arg in enumerate(args):
-    if arg in {"-o", "--outdir"}:
-        outdir = pathlib.Path(args[idx + 1])
-    elif arg == "-n":
-        name = args[idx + 1]
-
-outdir.mkdir(parents=True, exist_ok=True)
-(outdir / name).write_text("<html></html>\\n", encoding="utf-8")
-
-data_dir = outdir / "multiqc_data"
-data_dir.mkdir(exist_ok=True)
-(data_dir / "multiqc_cutadapt.txt").write_text(
-    "Sample\\tr_processed\\tr_written\\tr_with_adapters\\n"
-    "SAMPLE-A_REP1_part0_1\\t10\\t9\\t1\\n"
-    "SAMPLE-A_REP1_part0_2\\t10\\t8\\t2\\n",
-    encoding="utf-8",
-)
-(data_dir / "multiqc_flash_combo_stats.txt").write_text(
-    "Sample\\tcombopairs\\tuncombopairs\\n"
-    "SAMPLE-A_REP1_part0\\t7\\t3\\n",
-    encoding="utf-8",
-)
-(data_dir / "multiqc_bowtie2.txt").write_text("Sample\\n", encoding="utf-8")
-""",
-        encoding="utf-8",
-    )
-    gzcat.chmod(0o755)
-    gsplit.chmod(0o755)
-    multiqc.chmod(0o755)
-
     targets = [
         "capcruncher_output/interim/statistics/multiqc_full_data/multiqc_data/multiqc_cutadapt.txt",
         "capcruncher_output/interim/statistics/multiqc_full_data/multiqc_data/multiqc_flash_combo_stats.txt",
@@ -167,7 +90,7 @@ data_dir.mkdir(exist_ok=True)
             *targets,
         ],
         cwd=run_dir,
-        env={**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"},
+        env=capcruncher_subprocess_env,
     )
     assert result.returncode == 0
     return run_dir
@@ -449,6 +372,41 @@ def test_workflow_scripts_run_on_capture_pipeline_inputs(
     assert deduplicated_output.exists()
     assert list(deduplicated_output.rglob("*.parquet"))
     assert deduplication_stats.exists()
+
+
+def test_remove_duplicate_coordinates_preserves_empty_parquet_schema(tmp_path):
+    script = load_workflow_script("remove_duplicate_coordinates.py")
+    slices = tmp_path / "slices"
+    slices.mkdir()
+    output = tmp_path / "deduplicated"
+    statistics = tmp_path / "stats.csv"
+
+    pl.DataFrame(
+        {
+            "viewpoint": [],
+            "parent_id": [],
+            "slice_id": [],
+            "coordinates": [],
+        },
+        schema={
+            "viewpoint": pl.String,
+            "parent_id": pl.Int64,
+            "slice_id": pl.Int64,
+            "coordinates": pl.String,
+        },
+    ).write_parquet(slices / "empty.parquet")
+
+    script.remove_duplicate_coordinates(
+        slices_directory=slices,
+        output_slices=output,
+        output_statistics=statistics,
+        read_type="flashed",
+        sample_name="sample-a",
+        log_path=tmp_path / "deduplicate.log",
+    )
+
+    assert pl.scan_parquet(output).collect_schema()["viewpoint"] == pl.String
+    assert statistics.exists()
 
 
 def test_make_ucsc_hub_builds_tracknado_metadata(tmp_path):
