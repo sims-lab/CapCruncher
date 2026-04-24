@@ -10,7 +10,9 @@ dependencies:
   - coreutils
   - fastqc<=0.12.1
   - flash<=1.2.11
+  - multiqc
   - pip
+  - pigz
   - quarto
   - samtools<=1.15.1
   - trim-galore<=0.6.10

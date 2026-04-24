@@ -18,6 +18,7 @@ dependencies:
   - trim-galore
   - fastqc
   - multiqc
+  - pigz
   - seaborn
   - click
   - cookiecutter
