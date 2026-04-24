@@ -131,6 +131,9 @@ execution:
 plot:
 
     # Determines if plots are created or not.
+    # CapCruncher writes PlotNado-compatible TOML templates alongside the generated plots.
+    # For advanced/customisable plots, edit those templates or use PlotNado directly:
+    # https://alsmith151.github.io/plotnado/
     create: {%- if cookiecutter.make_plots == "no" %} False {%- else %} True {%- endif %}
 
     # Path to a bed file containing coordinates for regions to plot .
