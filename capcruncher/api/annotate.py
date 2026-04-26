@@ -1,5 +1,7 @@
+import os
 import warnings
-from typing import Literal, Union
+from collections.abc import Sequence
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -11,6 +13,7 @@ from capcruncher.utils import convert_bed_to_dataframe, convert_bed_to_pr
 warnings.simplefilter("ignore", category=RuntimeWarning)
 
 
+type IntervalInput = str | os.PathLike[str] | pd.DataFrame | pr.PyRanges
 ROW_ID_COLUMN = "__cc_row_id"
 INTERVAL_COLUMNS = ["Chromosome", "Start", "End", "Name"]
 ANNOTATION_EXCLUDE_COLUMNS = {
@@ -19,7 +22,7 @@ ANNOTATION_EXCLUDE_COLUMNS = {
 }
 
 
-def _as_pyranges(bed: Union[str, pd.DataFrame, pr.PyRanges]) -> pr.PyRanges:
+def _as_pyranges(bed: IntervalInput) -> pr.PyRanges:
     """Normalize supported BED-like inputs to a PyRanges1 interval frame.
 
     PyRanges1 objects are pandas DataFrame subclasses, so downstream pandas
@@ -62,7 +65,7 @@ def _add_row_ids(intervals: pr.PyRanges) -> pr.PyRanges:
 
 
 def _prepare_annotation_intervals(
-    annotations: Union[str, pd.DataFrame, pr.PyRanges],
+    annotations: IntervalInput,
     fallback_name: str,
 ) -> pr.PyRanges:
     intervals = _as_pyranges(annotations)
@@ -189,8 +192,8 @@ def _failed_annotation(query: pr.PyRanges, name: str) -> pr.PyRanges:
 
 
 def annotate_intervals(
-    query: Union[str, pd.DataFrame, pr.PyRanges],
-    annotations: Union[str, pd.DataFrame, pr.PyRanges],
+    query: IntervalInput,
+    annotations: IntervalInput,
     name: str,
     method: Literal["get", "count"] = "get",
     fraction: float = 0,
@@ -237,7 +240,9 @@ def annotate_intervals(
     return _restore_query_metadata(annotated, original_names, metadata)
 
 
-def increase_cis_slice_priority(df: pd.DataFrame, score_multiplier: float = 2):
+def increase_cis_slice_priority(
+    df: pd.DataFrame, score_multiplier: float = 2
+) -> pd.DataFrame:
     """Prioritize cis slices by increasing their mapping score."""
 
     df = df.copy()
@@ -266,7 +271,7 @@ def increase_cis_slice_priority(df: pd.DataFrame, score_multiplier: float = 2):
 def remove_duplicates_from_bed(
     bed: pr.PyRanges,
     prioritize_cis_slices: bool = False,
-    chroms_to_prioritize: Union[list, np.ndarray] = None,
+    chroms_to_prioritize: Sequence[str] | np.ndarray | None = None,
 ) -> pr.PyRanges:
     """Remove duplicate BED names, using deterministic random tie-breaking."""
 

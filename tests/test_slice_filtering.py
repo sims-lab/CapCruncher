@@ -1,7 +1,6 @@
 import pytest
 import os
 import pathlib
-from typing import Union
 
 import pandas as pd
 import polars as pl
@@ -25,7 +24,7 @@ def parquet_file(tmpdir):
     return pathlib.Path(tmpdir) / "test.parquet"
 
 
-def get_slices(bam: str, annotations: str, parquet_file: Union[str, pathlib.Path]):
+def get_slices(bam: str, annotations: str, parquet_file: str | pathlib.Path):
     df_alignment = parse_bam(bam)
     df_alignment.to_parquet(parquet_file)
     df_alignment = merge_annotations(parquet_file, annotations)
