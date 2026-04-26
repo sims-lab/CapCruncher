@@ -5,11 +5,24 @@ import os
 
 import pandas as pd
 from loguru import logger
-from pydeseq2.dds import DeseqDataSet
-from pydeseq2.default_inference import DefaultInference
-from pydeseq2.ds import DeseqStats
 
 from capcruncher.api.pileup import cooler_to_bedgraph
+
+
+def _load_pydeseq2():
+    try:
+        from pydeseq2.dds import DeseqDataSet
+        from pydeseq2.default_inference import DefaultInference
+        from pydeseq2.ds import DeseqStats
+    except ModuleNotFoundError as exc:
+        if exc.name and exc.name.startswith("pydeseq2"):
+            raise ModuleNotFoundError(
+                "PyDESeq2 is required for differential interactions. "
+                "Install CapCruncher with the 'differential' extra."
+            ) from exc
+        raise
+
+    return DeseqDataSet, DefaultInference, DeseqStats
 
 
 def get_differential_interactions(
@@ -22,6 +35,8 @@ def get_differential_interactions(
     lfc_shrink: bool = False,
 ):
     """Runs DESeq2 on interaction counts."""
+    DeseqDataSet, DefaultInference, DeseqStats = _load_pydeseq2()
+
     # Create DeseqDataSet
 
     inference = DefaultInference(n_cpus=1)

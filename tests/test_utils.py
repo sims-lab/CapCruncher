@@ -1,6 +1,7 @@
 import os
 import builtins
 import importlib
+import sys
 
 import pandas as pd
 import pytest
@@ -155,6 +156,27 @@ def test_interval_helpers_import_without_ray(monkeypatch):
         "capcruncher.utils",
     ):
         importlib.reload(importlib.import_module(module))
+
+
+def test_differential_module_imports_without_pydeseq2(monkeypatch):
+    real_import = builtins.__import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "pydeseq2" or name.startswith("pydeseq2."):
+            raise ModuleNotFoundError("No module named 'pydeseq2'", name="pydeseq2")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    for module in list(sys.modules):
+        if module == "capcruncher.cli.interactions_differential" or module.startswith(
+            "pydeseq2"
+        ):
+            monkeypatch.delitem(sys.modules, module, raising=False)
+
+    differential = importlib.import_module("capcruncher.cli.interactions_differential")
+
+    with pytest.raises(ModuleNotFoundError, match="differential"):
+        differential._load_pydeseq2()
 
 
 def test_read_dataframes_skips_empty_files(tmp_path):

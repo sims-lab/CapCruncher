@@ -93,6 +93,23 @@ def test_cli_runs(cli_runner):
     assert "pipeline-init" in result.output
 
 
+def test_differential_help_does_not_import_pydeseq2(cli_runner, monkeypatch):
+    real_import = __import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "pydeseq2" or name.startswith("pydeseq2."):
+            raise ModuleNotFoundError("No module named 'pydeseq2'", name="pydeseq2")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", guarded_import)
+
+    result = cli_runner.invoke(
+        cli, ["interactions", "compare", "differential", "--help"]
+    )
+
+    assert result.exit_code == 0
+
+
 def test_pipeline_init_installs_presets(cli_runner, tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
 

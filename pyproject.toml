@@ -45,6 +45,7 @@ write_to = "capcruncher/_version.py"
 [tool.setuptools.dynamic.optional-dependencies]
 full = { file = ["requirements.txt"] }
 ray = { file = ["requirements-ray.txt"] }
+differential = { file = ["requirements-differential.txt"] }
 
 [project.scripts]
 capcruncher = "capcruncher.cli:cli"
