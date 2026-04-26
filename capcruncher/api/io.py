@@ -1,16 +1,19 @@
-from loguru import logger
+from collections import namedtuple
+from collections.abc import Callable, Sequence
 import multiprocessing
 import os
-import pathlib
 import traceback
-from typing import Union
+
+from loguru import logger
 
 import pandas as pd
 import pysam
 from pysam import FastxFile
 from xopen import xopen
 import xxhash
-from collections import namedtuple
+
+type FilePath = str | os.PathLike[str]
+type FastqFormatFunction = Callable[[object], object]
 
 
 class FastqReaderProcess(multiprocessing.Process):
@@ -28,13 +31,13 @@ class FastqReaderProcess(multiprocessing.Process):
 
     def __init__(
         self,
-        input_files: Union[str, list],
+        input_files: FilePath | Sequence[FilePath],
         outq: multiprocessing.Queue,
         read_buffer: int = 100000,
     ) -> None:
         # Input variables
-        self.input_files = input_files
-        self._multifile = self._is_multifile(input_files)
+        self.input_files = self._normalise_input_files(input_files)
+        self._multifile = len(self.input_files) > 1
 
         # Multiprocessing variables
         self.outq = outq
@@ -42,22 +45,23 @@ class FastqReaderProcess(multiprocessing.Process):
         # Reader variables
         self.read_buffer = read_buffer
 
-        super(FastqReaderProcess, self).__init__()
+        super().__init__()
 
-    def _is_multifile(self, files):
-        if isinstance(files, (list, tuple)) and len(files) > 1:
-            return True
+    def _normalise_input_files(
+        self, input_files: FilePath | Sequence[FilePath]
+    ) -> list[str]:
+        if isinstance(input_files, str | os.PathLike):
+            return [os.fspath(input_files)]
+        return [os.fspath(input_file) for input_file in input_files]
 
-        return False
-
-    def run(self):
+    def run(self) -> None:
         """Performs reading and chunking of fastq file(s)."""
 
         if self._multifile:
             input_files_pysam = [FastxFile(f) for f in self.input_files]
         else:
             input_files_pysam = [
-                FastxFile(self.input_files),
+                FastxFile(self.input_files[0]),
             ]
 
         try:
@@ -92,7 +96,7 @@ class FastqReadFormatterProcess(multiprocessing.Process):
         self,
         inq: multiprocessing.SimpleQueue,
         outq: multiprocessing.SimpleQueue,
-        formatting: list = None,
+        formatting: Sequence[FastqFormatFunction] | None = None,
     ) -> None:
         self.inq = inq
         self.outq = outq
@@ -104,13 +108,13 @@ class FastqReadFormatterProcess(multiprocessing.Process):
             else formatting
         )
 
-        super(FastqReadFormatterProcess, self).__init__()
+        super().__init__()
 
-    def _format_as_str(self, reads):
+    def _format_as_str(self, reads: object) -> list[str]:
         # [(r1, r2), (r1, r2)] -> [r1 combined string, r2 combined string]
         return ["\n".join([str(rn) for rn in r]) for r in zip(*reads)]
 
-    def run(self):
+    def run(self) -> None:
         try:
             reads = self.inq.get()
 
@@ -132,17 +136,17 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
     def __init__(
         self,
         inq: multiprocessing.Queue,
-        output_prefix: Union[str, list],
+        output_prefix: FilePath,
         paired_output: bool = False,
-        gzip=False,
+        gzip: bool = False,
         compression_level: int = 3,
         compression_threads: int = 8,
         n_subprocesses: int = 1,
         n_workers_terminated: int = 0,
         n_files_written: int = 0,
-    ):
+    ) -> None:
         self.inq = inq
-        self.output_prefix = output_prefix
+        self.output_prefix = os.fspath(output_prefix)
         self.paired_output = paired_output
 
         self.gzip = gzip
@@ -153,9 +157,9 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
         self.n_workers_terminated = n_workers_terminated
         self.n_files_written = n_files_written
 
-        super(FastqWriterSplitterProcess, self).__init__()
+        super().__init__()
 
-    def _get_file_handles(self):
+    def _get_file_handles(self) -> list[object]:
         if not self.paired_output:
             fnames = [
                 f'{self.output_prefix}_part{self.n_files_written}.fastq{".gz" if self.gzip else ""}',
@@ -176,7 +180,7 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
             for fn in fnames
         ]
 
-    def run(self):
+    def run(self) -> None:
         try:
             reads = self.inq.get()
             is_string_input = True if isinstance(reads[0], str) else False
@@ -228,7 +232,7 @@ CCAlignment = namedtuple(
 )
 
 
-def parse_alignment(aln: pysam.AlignmentFile) -> CCAlignment:
+def parse_alignment(aln: pysam.AlignedSegment) -> CCAlignment:
     """Parses reads from a bam file into a list.
 
     Extracts:
@@ -292,7 +296,7 @@ def parse_alignment(aln: pysam.AlignmentFile) -> CCAlignment:
     )
 
 
-def parse_bam(bam: Union[str, pathlib.Path]) -> pd.DataFrame:
+def parse_bam(bam: FilePath) -> pd.DataFrame:
     """Uses parse_alignment function convert bam file to a dataframe.
 
     Extracts:
@@ -316,6 +320,8 @@ def parse_bam(bam: Union[str, pathlib.Path]) -> pd.DataFrame:
     """
 
     import numpy as np
+
+    bam = os.fspath(bam)
 
     # Load reads into dataframe
     logger.info("Parsing BAM file")
@@ -347,8 +353,8 @@ def parse_bam(bam: Union[str, pathlib.Path]) -> pd.DataFrame:
 
 
 def bam_to_parquet(
-    bam: Union[str, pathlib.Path], output: Union[str, pathlib.Path]
-) -> Union[str, pathlib.Path]:
+    bam: FilePath, output: FilePath
+) -> FilePath:
     """Converts bam file to parquet file.
 
     Args:
