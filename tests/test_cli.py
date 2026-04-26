@@ -4,6 +4,7 @@ import pytest
 import os
 import pathlib
 import subprocess
+import sys
 from click.testing import CliRunner
 import glob
 from types import SimpleNamespace
@@ -91,6 +92,24 @@ def test_cli_runs(cli_runner):
     result = cli_runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
     assert "pipeline-init" in result.output
+
+
+def test_cli_import_does_not_import_heavy_runtime_modules():
+    code = (
+        "import sys; "
+        "import capcruncher.cli; "
+        "blocked = [name for name in ('pandas', 'polars', 'pyranges1') if name in sys.modules]; "
+        "print(','.join(blocked))"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+
+    assert result.stdout.strip() == ""
 
 
 @pytest.mark.parametrize(

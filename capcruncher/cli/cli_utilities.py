@@ -1,18 +1,13 @@
 import os
 import subprocess
 from tempfile import NamedTemporaryFile
-from typing import Iterable, Literal
+from typing import Any, Iterable, Literal
 
 import click
-import pandas as pd
-import polars as pl
-import pyranges1 as pr
 from loguru import logger
 
-from capcruncher.api.statistics import CisOrTransStats
 
-
-def _first_existing_column(df: pd.DataFrame, candidates: Iterable[str]) -> str:
+def _first_existing_column(df: Any, candidates: Iterable[str]) -> str:
     for column in candidates:
         if column in df.columns:
             return column
@@ -54,6 +49,7 @@ def gtf_to_bed12(gtf: str, output: str):
     """
 
     from capcruncher.utils import gtf_line_to_bed12_line
+    import pandas as pd
 
     gtf_cols = [
         "seqname",
@@ -91,6 +87,9 @@ def cis_and_trans_stats(
     sample_name: str,
     assay: Literal["capture", "tri", "tiled"] = "capture",
 ):
+    import polars as pl
+    from capcruncher.api.statistics import CisOrTransStats
+
     if not _has_parquet_files(slices):
         stats = CisOrTransStats(stats=[])
         with open(output, "w") as f:
@@ -221,9 +220,11 @@ def viewpoint_coordinates(
     """
 
     from capcruncher.cli import genome_digest
+    import pandas as pd
+    import pyranges1 as pr
     import pysam
 
-    def bam_to_bed_df(bam_path: os.PathLike) -> pd.DataFrame:
+    def bam_to_bed_df(bam_path: os.PathLike):
         rows = []
         with pysam.AlignmentFile(bam_path, "rb") as bam:
             for read in bam.fetch(until_eof=True):
@@ -324,7 +325,7 @@ def viewpoint_coordinates(
         tmp.close()
 
 
-def dump_cooler(path: str, viewpoint: str, resolution: int = None) -> pd.DataFrame:
+def dump_cooler(path: str, viewpoint: str, resolution: int = None):
     import cooler.api as cooler
 
     if resolution:
@@ -336,7 +337,9 @@ def dump_cooler(path: str, viewpoint: str, resolution: int = None) -> pd.DataFra
     return pixels
 
 
-def dump_capcruncher_parquet(path: str, viewpoint: str = None) -> pd.DataFrame:
+def dump_capcruncher_parquet(path: str, viewpoint: str = None):
+    import polars as pl
+
     parquet_path = path
     if os.path.isdir(parquet_path):
         parquet_path = os.path.join(parquet_path, "*.parquet")
