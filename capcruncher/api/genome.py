@@ -1,11 +1,17 @@
+import os
+from typing import Any
+
+type FilePath = str | os.PathLike[str]
+
+
 def digest_genome(
-    input_fasta: str,
+    input_fasta: FilePath,
     recognition_site: str,
-    output_file: str = "genome_digest.bed",
+    output_file: FilePath = "genome_digest.bed",
     sort: bool = False,
     remove_cutsite: bool = True,
-    **kwargs,
-):
+    **kwargs: Any,
+) -> None:
     """Digest a genome FASTA and optionally sort the resulting BED file."""
 
     from capcruncher_tools.api import digest_genome as digest_genome_records

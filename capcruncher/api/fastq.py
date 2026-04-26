@@ -4,26 +4,28 @@ import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Sequence
 from multiprocessing import SimpleQueue
 from pathlib import Path
-from typing import Literal, Tuple
+from typing import Any, Literal
 
 from joblib import Parallel, delayed
 from loguru import logger
 
 PLATFORM = sys.platform
+type FilePath = str | os.PathLike[str]
 
 
 def run_unix_split(
-    fn: os.PathLike,
+    fn: FilePath,
     n_reads: int,
     read_number: int,
-    output_prefix: os.PathLike = "",
+    output_prefix: FilePath = "",
     gzip: bool = False,
-    n_cores=1,
+    n_cores: int = 1,
     suffix: str = "",
-    **kwargs,
-):
+    **kwargs: Any,
+) -> None:
     statement = []
     cat_executable = "zcat"
     split_executable = "split"
@@ -63,17 +65,17 @@ def run_unix_split(
 
 
 def split_fastq(
-    input_files: Tuple,
+    input_files: Sequence[FilePath],
     method: Literal["python", "unix", "seqkit"] = "unix",
     split_type: Literal["n-reads", "n-parts"] = "n-reads",
-    output_prefix: os.PathLike = "split",
+    output_prefix: FilePath = "split",
     compression_level: int = 5,
     n_reads: int = 1000000,
     n_parts: int = 1,
     suffix: str = "",
     gzip: bool = True,
     n_cores: int = 1,
-):
+) -> None:
     """Split FASTQ file(s) into chunks."""
 
     from capcruncher.api.io import (
@@ -121,7 +123,7 @@ def split_fastq(
         n_cores_per_task = (n_cores // 2) if (n_cores // 2) > 1 else 1
 
         if "," in input_files[0]:
-            input_files = [fnames.replace(",", " ") for fnames in input_files]
+            input_files = [str(fnames).replace(",", " ") for fnames in input_files]
 
         for ii, fn in enumerate(input_files):
             tasks.append(
@@ -149,15 +151,15 @@ def split_fastq(
 
 
 def digest_fastq(
-    fastqs: tuple,
+    fastqs: Sequence[FilePath],
     restriction_site: str,
     mode: str = "pe",
     output_file: Path | str = "out.fastq.gz",
     minimum_slice_length: int = 18,
     statistics: Path | str = "digest.json",
     sample_name: str = "sampleX",
-    **kwargs,
-):
+    **kwargs: Any,
+) -> Any:
     """Digest FASTQ files and write digestion statistics."""
 
     from capcruncher_tools.api import digest_fastq as digest_fastq_records
@@ -186,14 +188,14 @@ def digest_fastq(
 
 
 def deduplicate_fastq(
-    fastq_1: list[str],
-    fastq_2: list[str],
+    fastq_1: Sequence[FilePath],
+    fastq_2: Sequence[FilePath],
     output_prefix: str | Path = "deduplicated_",
     statistics: str = "deduplication_statistics.json",
     sample_name: str = "sampleX",
     shuffle: bool = False,
-    **kwargs,
-):
+    **kwargs: Any,
+) -> None:
     """Deduplicate paired FASTQ files and write deduplication statistics."""
 
     from capcruncher.api.statistics import FastqDeduplicationStatistics
