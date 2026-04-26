@@ -210,6 +210,92 @@ def test_genome_digest_option_aliases(cli_runner, monkeypatch, command):
     ]
 
 
+def test_alignments_typer_option_aliases(cli_runner, monkeypatch):
+    import capcruncher.cli.alignments_annotate as alignments_annotate
+    import capcruncher.cli.alignments_filter as alignments_filter
+
+    annotate_calls = []
+    filter_calls = []
+
+    def fake_annotate(**kwargs):
+        annotate_calls.append(kwargs)
+
+    def fake_filter(**kwargs):
+        filter_calls.append(kwargs)
+
+    monkeypatch.setattr(alignments_annotate, "annotate", fake_annotate)
+    monkeypatch.setattr(alignments_filter, "filter", fake_filter)
+
+    annotate_result = cli_runner.invoke(
+        cli,
+        [
+            "alignments",
+            "annotate",
+            "slices.bam",
+            "--bed_files",
+            "targets.bed",
+            "--actions",
+            "get",
+            "--names",
+            "targets",
+            "--overlap_fractions",
+            "0.5",
+            "--n_cores",
+            "2",
+            "--invalid_bed_action",
+            "ignore",
+        ],
+    )
+    filter_result = cli_runner.invoke(
+        cli,
+        [
+            "alignments",
+            "filter",
+            "capture",
+            "--bam",
+            "reads.bam",
+            "--annotations",
+            "annotations.parquet",
+            "--output_prefix",
+            "filtered",
+            "--no-fragments",
+        ],
+    )
+
+    assert annotate_result.exit_code == 0
+    assert filter_result.exit_code == 0
+    assert annotate_calls == [
+        {
+            "slices": "slices.bam",
+            "actions": ("get",),
+            "bed_files": ("targets.bed",),
+            "names": ("targets",),
+            "overlap_fractions": (0.5,),
+            "dtypes": ("str",),
+            "output": "annotated.slices.parquet",
+            "duplicates": "remove",
+            "n_cores": 2,
+            "invalid_bed_action": "ignore",
+            "blacklist": "",
+            "prioritize_cis_slices": False,
+            "priority_chroms": "",
+        }
+    ]
+    assert filter_calls == [
+        {
+            "method": "capture",
+            "bam": "reads.bam",
+            "annotations": "annotations.parquet",
+            "custom_filtering": None,
+            "output_prefix": "filtered",
+            "statistics": "filtering_stats.json",
+            "sample_name": None,
+            "read_type": "flashed",
+            "fragments": False,
+        }
+    ]
+
+
 @pytest.mark.parametrize(
     "command",
     [

@@ -1,157 +1,183 @@
-import click
+import typer
 
 
-@click.group()
-def cli():
+alignments_app = typer.Typer(
+    help="Contains methods for reporter annotating, identifying and deduplication.",
+    context_settings={"help_option_names": ["-h", "--help"]},
+    no_args_is_help=True,
+)
+
+
+@alignments_app.callback()
+def alignments():
     """Contains methods for reporter annotating, identifying and deduplication."""
 
 
-@cli.command()
-@click.argument("slices")
-@click.option(
-    "-a",
-    "--actions",
-    help="Determines if the overlaps are counted or if the name should just be reported",
-    multiple=True,
-    type=click.Choice(
-        ["get", "count"],
+@alignments_app.command()
+def annotate(
+    slices: str = typer.Argument(...),
+    actions: list[str] | None = typer.Option(
+        None,
+        "-a",
+        "--actions",
+        help="Determines if the overlaps are counted or if the name should just be reported.",
     ),
-)
-@click.option(
-    "-b", "--bed_files", help="Bed file(s) to intersect with slices", multiple=True
-)
-@click.option(
-    "-n",
-    "--names",
-    help="Names to use as column names for the output tsv file.",
-    multiple=True,
-)
-@click.option(
-    "-f",
-    "--overlap_fractions",
-    help="The minimum overlap required for an intersection between two intervals to be reported.",
-    multiple=True,
-    default=[
-        1e-9,
-    ],
-    type=click.FLOAT,
-)
-@click.option(
-    "-t",
-    "--dtypes",
-    help="Data type for column",
-    multiple=True,
-    default=[
-        "str",
-    ],
-)
-@click.option(
-    "-o",
-    "--output",
-    help="Path for the annotated slices to be output.",
-    default="annotated.slices.parquet",
-)
-@click.option(
-    "--duplicates",
-    help="Method to use for reconciling duplicate slices (i.e. multimapping). Currently only 'remove' is supported.",
-    type=click.Choice(["remove"]),
-    default="remove",
-)
-@click.option(
-    "-p",
-    "--n_cores",
-    help="Intersections are performed in parallel, set this to the number of intersections required",
-    default=1,
-)
-@click.option(
-    "--invalid_bed_action",
-    help=" ".join(
-        [
-            "Method to deal with invalid bed files e.g. blank or incorrectly formatted.",
-            "Setting this to 'ignore' will report default N/A values (either '.' or 0) for invalid files",
-        ]
+    bed_files: list[str] | None = typer.Option(
+        None,
+        "-b",
+        "--bed-files",
+        "--bed_files",
+        help="Bed file(s) to intersect with slices.",
     ),
-    default="error",
-    type=click.Choice(["ignore", "error"]),
-)
-@click.option(
-    "--blacklist",
-    help="Regions to remove from the BAM file prior to annotation",
-)
-@click.option(
-    "--prioritize-cis-slices",
-    is_flag=True,
-    help="Attempts to prevent slices on the most common chromosome in a fragment (ideally cis to the viewpoint) being removed by deduplication",
-)
-@click.option(
-    "--priority-chroms",
-    help="A comma separated list of chromosomes to prioritize during deduplication",
-)
-def annotate(*args, **kwargs):
-    """
-    Annotates a bed file with other bed files using bedtools intersect.
+    names: list[str] | None = typer.Option(
+        None,
+        "-n",
+        "--names",
+        help="Names to use as column names for the output tsv file.",
+    ),
+    overlap_fractions: list[float] | None = typer.Option(
+        None,
+        "-f",
+        "--overlap-fractions",
+        "--overlap_fractions",
+        help="The minimum overlap required for an intersection between two intervals to be reported.",
+    ),
+    dtypes: list[str] | None = typer.Option(
+        None,
+        "-t",
+        "--dtypes",
+        help="Data type for column.",
+    ),
+    output: str = typer.Option(
+        "annotated.slices.parquet",
+        "-o",
+        "--output",
+        help="Path for the annotated slices to be output.",
+    ),
+    duplicates: str = typer.Option(
+        "remove",
+        "--duplicates",
+        help="Method to use for reconciling duplicate slices.",
+    ),
+    n_cores: int = typer.Option(
+        1,
+        "-p",
+        "--n-cores",
+        "--n_cores",
+        help="Intersections are performed in parallel, set this to the number of intersections required.",
+    ),
+    invalid_bed_action: str = typer.Option(
+        "error",
+        "--invalid-bed-action",
+        "--invalid_bed_action",
+        help="Method to deal with invalid bed files.",
+    ),
+    blacklist: str = typer.Option(
+        "",
+        "--blacklist",
+        help="Regions to remove from the BAM file prior to annotation.",
+    ),
+    prioritize_cis_slices: bool = typer.Option(
+        False,
+        "--prioritize-cis-slices",
+        help="Attempts to prevent cis slices being removed by deduplication.",
+    ),
+    priority_chroms: str = typer.Option(
+        "",
+        "--priority-chroms",
+        help="A comma separated list of chromosomes to prioritize during deduplication.",
+    ),
+):
+    """Annotate a bed file with other bed files."""
 
-    Whilst bedtools intersect allows for interval names and counts to be used for annotating intervals, this command
-    provides the ability to annotate intervals with both interval names and counts at the same time. As the pipeline allows
-    for empty bed files, this command has built in support to deal with blank/malformed bed files and will return default N/A values.
+    from capcruncher.cli.alignments_annotate import annotate as annotate_alignments
 
-    Prior to interval annotation, the bed file to be intersected is validated and duplicate entries/multimapping reads are removed
-    to ensure consistent annotations and prevent issues with reporter identification.
+    annotate_alignments(
+        slices=slices,
+        actions=tuple(actions or ()),
+        bed_files=tuple(bed_files or ()),
+        names=tuple(names or ()),
+        overlap_fractions=tuple(overlap_fractions or (1e-9,)),
+        dtypes=tuple(dtypes or ("str",)),
+        output=output,
+        duplicates=duplicates,
+        n_cores=n_cores,
+        invalid_bed_action=invalid_bed_action,
+        blacklist=blacklist,
+        prioritize_cis_slices=prioritize_cis_slices,
+        priority_chroms=priority_chroms,
+    )
 
-    """
 
-    from capcruncher.cli.alignments_annotate import annotate
+@alignments_app.command("filter")
+def filter_alignments(
+    method: str = typer.Argument(..., help="Filtering method: capture, tri, or tiled."),
+    bam: str = typer.Option(
+        ...,
+        "-b",
+        "--bam",
+        help="Bam file to process.",
+    ),
+    annotations: str = typer.Option(
+        ...,
+        "-a",
+        "--annotations",
+        help="Annotations for the bam file.",
+    ),
+    custom_filtering: str | None = typer.Option(
+        None,
+        "--custom-filtering",
+        help="Custom filtering yaml file.",
+    ),
+    output_prefix: str = typer.Option(
+        "",
+        "-o",
+        "--output-prefix",
+        "--output_prefix",
+        help="Output prefix for deduplicated fastq file(s).",
+    ),
+    statistics: str = typer.Option(
+        "filtering_stats.json",
+        "--statistics",
+        help="Output path for stats file.",
+    ),
+    sample_name: str | None = typer.Option(
+        None,
+        "--sample-name",
+        help="Name of sample e.g. DOX_treated_1.",
+    ),
+    read_type: str = typer.Option(
+        "flashed",
+        "--read-type",
+        help="Type of read.",
+    ),
+    fragments: bool = typer.Option(
+        True,
+        "--fragments/--no-fragments",
+        help="Determines if read fragment aggregations are produced.",
+    ),
+):
+    """Remove unwanted aligned slices and identify reporters."""
 
-    
-    annotate(*args, **kwargs)
+    if method not in {"capture", "tri", "tiled"}:
+        raise typer.BadParameter("method must be one of: capture, tri, tiled")
+
+    if read_type.lower() not in {"flashed", "pe"}:
+        raise typer.BadParameter("read-type must be one of: flashed, pe")
+
+    from capcruncher.cli.alignments_filter import filter as filter_slices
+
+    filter_slices(
+        method=method,
+        bam=bam,
+        annotations=annotations,
+        custom_filtering=custom_filtering,
+        output_prefix=output_prefix,
+        statistics=statistics,
+        sample_name=sample_name,
+        read_type=read_type,
+        fragments=fragments,
+    )
 
 
-@cli.command()
-@click.argument("method", type=click.Choice(["capture", "tri", "tiled"]))
-@click.option("-b", "--bam", help="Bam file to process", required=True)
-@click.option(
-    "-a",
-    "--annotations",
-    help="Annotations for the bam file that must contain the required columns, see description.",
-    required=True,
-)
-@click.option(
-    "--custom-filtering",
-    help="Custom filtering to be used. This must be supplied as a path to a yaml file.",
-    default=None,
-)
-@click.option(
-    "-o",
-    "--output_prefix",
-    help="Output prefix for deduplicated fastq file(s)",
-    default="",
-)
-@click.option(
-    "--statistics",
-    help="Output path for stats file",
-    default="filtering_stats.json",
-)
-@click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
-@click.option(
-    "--read-type",
-    help="Type of read",
-    default="flashed",
-    type=click.Choice(["flashed", "pe"], case_sensitive=False),
-)
-@click.option(
-    "--fragments/--no-fragments",
-    help="Determines if read fragment aggregations are produced",
-    default=True,
-)
-def filter(*args, **kwargs):
-    """
-    Removes unwanted aligned slices and identifies reporters.
-
-    Parses a BAM file and merges this with a supplied annotation to identify unwanted slices.
-    Filtering can be tuned for Capture-C, Tri-C and Tiled-C data to ensure optimal filtering.
-
-    """
-    from capcruncher.cli.alignments_filter import filter
-
-    filter(*args, **kwargs)
-
+cli = typer.main.get_command(alignments_app)
