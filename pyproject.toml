@@ -48,6 +48,7 @@ ray = { file = ["requirements-ray.txt"] }
 differential = { file = ["requirements-differential.txt"] }
 plot = { file = ["requirements-plot.txt"] }
 hub = { file = ["requirements-hub.txt"] }
+hpc = { file = ["requirements-hpc.txt"] }
 
 [project.scripts]
 capcruncher = "capcruncher.cli:cli"
