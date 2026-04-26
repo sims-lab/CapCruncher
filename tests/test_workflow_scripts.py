@@ -374,6 +374,72 @@ def test_workflow_scripts_run_on_capture_pipeline_inputs(
     assert deduplication_stats.exists()
 
 
+def test_capture_pipeline_golden_outputs(capture_pipeline_run):
+    import cooler
+
+    reporter_parquet = (
+        capture_pipeline_run
+        / "capcruncher_output/results/SAMPLE-A_REP1/SAMPLE-A_REP1.parquet"
+    )
+    cooler_path = (
+        capture_pipeline_run
+        / "capcruncher_output/results/SAMPLE-A_REP1/SAMPLE-A_REP1.hdf5"
+    )
+    digest_bed = (
+        capture_pipeline_run
+        / "capcruncher_output/resources/restriction_fragments/genome.digest.bed.gz"
+    )
+
+    reporters = pd.read_parquet(reporter_parquet)
+    assert len(reporters) == 205
+    assert reporters["viewpoint"].astype(str).value_counts().to_dict() == {
+        "Slc25A37": 205
+    }
+    assert reporters["capture"].notna().sum() == 94
+    assert set(reporters["capture"].dropna().astype(str)) == {"Slc25A37"}
+
+    assert len(pd.read_csv(digest_bed, sep="\t", header=None)) == 303591
+
+    assert cooler.api.list_coolers(str(cooler_path)) == [
+        "/Slc25A37",
+        "/Slc25A37/resolutions/10000",
+        "/Slc25A37/resolutions/20000",
+    ]
+
+    raw_cooler = cooler.Cooler(f"{cooler_path}::/Slc25A37")
+    assert raw_cooler.info["metadata"] == {
+        "viewpoint_bins": [169744],
+        "viewpoint_name": "Slc25A37",
+        "viewpoint_chrom": ["chr14"],
+        "viewpoint_coords": ["chr14:69902454-69903469"],
+        "n_cis_interactions": 130,
+        "n_total_interactions": 130,
+    }
+    assert raw_cooler.pixels()[:].to_dict("records") == [
+        {"bin1_id": 169686, "bin2_id": 169687, "count": 9},
+        {"bin1_id": 169686, "bin2_id": 169744, "count": 82},
+        {"bin1_id": 169687, "bin2_id": 169744, "count": 10},
+        {"bin1_id": 169744, "bin2_id": 169786, "count": 1},
+        {"bin1_id": 169744, "bin2_id": 169845, "count": 10},
+        {"bin1_id": 169744, "bin2_id": 169846, "count": 6},
+        {"bin1_id": 169744, "bin2_id": 169847, "count": 2},
+        {"bin1_id": 169845, "bin2_id": 169846, "count": 6},
+        {"bin1_id": 169845, "bin2_id": 169847, "count": 2},
+        {"bin1_id": 169846, "bin2_id": 169847, "count": 2},
+    ]
+
+    for group, expected_bins, expected_pixels in [
+        ("/Slc25A37/resolutions/10000", 12520, 5),
+        ("/Slc25A37/resolutions/20000", 6260, 5),
+    ]:
+        binned_cooler = cooler.Cooler(f"{cooler_path}::{group}")
+        assert len(binned_cooler.bins()[:]) == expected_bins
+        pixels = binned_cooler.pixels()[:]
+        assert len(pixels) == expected_pixels
+        assert int(pixels["count"].sum()) == 130
+        assert binned_cooler.info["metadata"]["n_interactions_total"] == 130
+
+
 def test_remove_duplicate_coordinates_preserves_empty_parquet_schema(tmp_path):
     script = load_workflow_script("remove_duplicate_coordinates.py")
     slices = tmp_path / "slices"
