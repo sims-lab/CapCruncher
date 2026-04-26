@@ -1,6 +1,5 @@
 import os
 
-import click
 import typer
 
 plot_app = typer.Typer(
@@ -31,7 +30,9 @@ def render_plot(
 
 def _render_or_raise(region: str | None, template: os.PathLike | None, output: str):
     if region is None or template is None:
-        raise click.UsageError("Missing option '-r' / '--region' or '-t' / '--template'.")
+        raise typer.BadParameter(
+            "Missing option '-r' / '--region' or '-t' / '--template'."
+        )
 
     render_plot(region=region, template=template, output=output)
 

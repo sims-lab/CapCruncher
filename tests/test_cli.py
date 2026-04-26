@@ -10,8 +10,8 @@ import glob
 from types import SimpleNamespace
 
 from capcruncher.cli import cli
-from capcruncher.cli import cli_pipeline
-from capcruncher.cli.interactions_count import _write_countable_reporters
+from capcruncher.cli import pipeline as cli_pipeline
+from capcruncher.cli.interactions import _write_countable_reporters
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -144,7 +144,7 @@ def test_differential_help_does_not_import_pydeseq2(
     ],
 )
 def test_plot_render_commands(cli_runner, monkeypatch, command):
-    import capcruncher.cli.cli_plot as cli_plot
+    import capcruncher.cli.plot as cli_plot
 
     calls = []
 
@@ -389,7 +389,7 @@ def test_pipeline_uses_installed_preset(cli_runner, tmp_path, monkeypatch):
     monkeypatch.setattr(subprocess, "run", fake_run)
 
     result = cli_runner.invoke(
-        cli, ["pipeline", "--preset", "capcruncher-local", "--no-logo", "-n"]
+        cli, ["pipeline", "run", "--preset", "capcruncher-local", "--no-logo", "-n"]
     )
 
     assert result.exit_code == 0
@@ -435,6 +435,35 @@ def test_pipeline_run_subcommand_uses_installed_preset(
     assert "1" in first_call
 
 
+def test_pipeline_legacy_invocation_warns_with_new_command(
+    cli_runner, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli, ["pipeline", "--preset", "capcruncher-local", "--no-logo", "-n"]
+    )
+
+    assert result.exit_code == 0
+    assert "Use 'capcruncher pipeline run ...' instead" in result.output
+    assert recorded_calls
+
+
 def test_pipeline_touches_outputs_after_real_run(cli_runner, tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     init_result = cli_runner.invoke(cli, ["pipeline-init"])
@@ -454,7 +483,7 @@ def test_pipeline_touches_outputs_after_real_run(cli_runner, tmp_path, monkeypat
     monkeypatch.setattr(subprocess, "run", fake_run)
 
     result = cli_runner.invoke(
-        cli, ["pipeline", "--preset", "capcruncher-local", "--no-logo"]
+        cli, ["pipeline", "run", "--preset", "capcruncher-local", "--no-logo"]
     )
 
     assert result.exit_code == 0
@@ -507,7 +536,7 @@ def test_pipeline_accepts_legacy_preset_alias(cli_runner, tmp_path, monkeypatch)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    result = cli_runner.invoke(cli, ["pipeline", "--preset", "local", "--no-logo", "-n"])
+    result = cli_runner.invoke(cli, ["pipeline", "run", "--preset", "local", "--no-logo", "-n"])
 
     assert result.exit_code == 0
     expected_profile = tmp_path / "snakemake" / "capcruncher-local"
@@ -538,6 +567,7 @@ def test_pipeline_preset_forwards_container_config(cli_runner, tmp_path, monkeyp
         cli,
         [
             "pipeline",
+            "run",
             "--preset",
             "capcruncher-local-apptainer",
             "--no-logo",
@@ -577,6 +607,7 @@ def test_pipeline_scale_resources_sets_environment(cli_runner, tmp_path, monkeyp
         cli,
         [
             "pipeline",
+            "run",
             "--preset",
             "capcruncher-slurm-apptainer",
             "--scale-resources",
@@ -615,7 +646,7 @@ def test_pipeline_does_not_add_default_cores_for_equals_form(
 
     result = cli_runner.invoke(
         cli,
-        ["pipeline", "--preset", "capcruncher-local", "--no-logo", "--cores=8", "-n"],
+        ["pipeline", "run", "--preset", "capcruncher-local", "--no-logo", "--cores=8", "-n"],
     )
 
     assert result.exit_code == 0
@@ -633,6 +664,7 @@ def test_pipeline_rejects_preset_and_profile_together(cli_runner, tmp_path, monk
         cli,
         [
             "pipeline",
+            "run",
             "--preset",
             "local",
             "--no-logo",

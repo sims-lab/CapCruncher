@@ -3,8 +3,15 @@ import subprocess
 from tempfile import NamedTemporaryFile
 from typing import Any, Iterable, Literal
 
-import click
 from loguru import logger
+import typer
+
+
+utilities_app = typer.Typer(
+    help="Contains miscellaneous functions.",
+    context_settings={"help_option_names": ["-h", "--help"]},
+    no_args_is_help=True,
+)
 
 
 def _first_existing_column(df: Any, candidates: Iterable[str]) -> str:
@@ -28,15 +35,16 @@ def _has_parquet_files(path: str) -> bool:
     return os.path.isfile(path)
 
 
-@click.group()
-def cli():
+@utilities_app.callback()
+def utilities() -> None:
     """Contains miscellaneous functions"""
 
 
-@cli.command()
-@click.argument("gtf")
-@click.option("-o", "--output", help="Output file name")
-def gtf_to_bed12(gtf: str, output: str):
+@utilities_app.command()
+def gtf_to_bed12(
+    gtf: str = typer.Argument(...),
+    output: str = typer.Option(..., "-o", "--output", help="Output file name."),
+) -> None:
     """
     Converts a GTF file to a BED12 file containing only 5' UTRs, 3' UTRs, and exons.
 
@@ -72,21 +80,17 @@ def gtf_to_bed12(gtf: str, output: str):
             w.write(gtf_line_to_bed12_line(df) + "\n")
 
 
-@cli.command()
-@click.argument("slices")
-@click.option("-o", "--output", help="Output file name")
-@click.option("--sample-name", help="Name of sample e.g. DOX_treated_1")
-@click.option(
-    "--assay",
-    help="Assay used to generate slices",
-    type=click.Choice(["capture", "tri", "tiled"]),
-)
+@utilities_app.command()
 def cis_and_trans_stats(
-    slices: str,
-    output: str,
-    sample_name: str,
-    assay: Literal["capture", "tri", "tiled"] = "capture",
-):
+    slices: str = typer.Argument(...),
+    output: str = typer.Option(..., "-o", "--output", help="Output file name."),
+    sample_name: str = typer.Option(
+        ..., "--sample-name", help="Name of sample e.g. DOX_treated_1."
+    ),
+    assay: Literal["capture", "tri", "tiled"] = typer.Option(
+        "capture", "--assay", help="Assay used to generate slices."
+    ),
+) -> None:
     import polars as pl
     from capcruncher.api.statistics import CisOrTransStats
 
@@ -182,23 +186,20 @@ def dict_to_fasta(d, path):
     return path
 
 
-@cli.command()
-@click.option("-v", "--viewpoints", help="Path to viewpoints", required=True)
-@click.option("-g", "--genome", help="Path to genome fasta file", required=True)
-@click.option(
-    "-i", "--genome-indicies", help="Path to genome bowtie2 indices", required=True
-)
-@click.option("-r", "--recognition-site", help="Restriction site used", default="dpnii")
-@click.option(
-    "-o", "--output", help="Output file name", default="viewpoint_coordinates.bed"
-)
+@utilities_app.command()
 def viewpoint_coordinates(
-    viewpoints: os.PathLike,
-    genome: os.PathLike,
-    genome_indicies: os.PathLike = None,
-    recognition_site: str = "dpnii",
-    output: os.PathLike = "viewpoint_coordinates.bed",
-):
+    viewpoints: str = typer.Option(..., "-v", "--viewpoints", help="Path to viewpoints."),
+    genome: str = typer.Option(..., "-g", "--genome", help="Path to genome fasta file."),
+    genome_indicies: str = typer.Option(
+        ..., "-i", "--genome-indicies", help="Path to genome bowtie2 indices."
+    ),
+    recognition_site: str = typer.Option(
+        "dpnii", "-r", "--recognition-site", help="Restriction site used."
+    ),
+    output: str = typer.Option(
+        "viewpoint_coordinates.bed", "-o", "--output", help="Output file name."
+    ),
+) -> None:
     """
     Aligns viewpoints to a genome and returns the coordinates of the viewpoint
     in the genome.
@@ -325,7 +326,7 @@ def viewpoint_coordinates(
         tmp.close()
 
 
-def dump_cooler(path: str, viewpoint: str, resolution: int = None):
+def dump_cooler(path: str, viewpoint: str, resolution: int | None = None):
     import cooler.api as cooler
 
     if resolution:
@@ -337,7 +338,7 @@ def dump_cooler(path: str, viewpoint: str, resolution: int = None):
     return pixels
 
 
-def dump_capcruncher_parquet(path: str, viewpoint: str = None):
+def dump_capcruncher_parquet(path: str, viewpoint: str | None = None):
     import polars as pl
 
     parquet_path = path
@@ -352,21 +353,22 @@ def dump_capcruncher_parquet(path: str, viewpoint: str = None):
     return tbl.collect().to_pandas()
 
 
-@cli.command()
-@click.argument("path")
-@click.option("-v", "--viewpoint", help="Viewpoint to extract")
-@click.option(
-    "-r",
-    "--resolution",
-    help="Resolution to extract. Only used for cooler (hdf5) files",
-)
-@click.option("-o", "--output", help="Output file name", default="capcruncher_dump.tsv")
+@utilities_app.command()
 def dump(
-    path: str,
-    viewpoint: str = None,
-    resolution: int = None,
-    output: str = "capcruncher_dump.tsv",
-):
+    path: str = typer.Argument(...),
+    viewpoint: str | None = typer.Option(
+        None, "-v", "--viewpoint", help="Viewpoint to extract."
+    ),
+    resolution: int | None = typer.Option(
+        None,
+        "-r",
+        "--resolution",
+        help="Resolution to extract. Only used for cooler (hdf5) files.",
+    ),
+    output: str = typer.Option(
+        "capcruncher_dump.tsv", "-o", "--output", help="Output file name."
+    ),
+) -> None:
     """
     Dumps the contents of a cooler or capcruncher parquet file to a TSV file
 
@@ -389,24 +391,20 @@ def dump(
     df.to_csv(output, sep="\t", index=False)
 
 
-@cli.command()
-@click.option("-1", "--fastq1", help="Path to FASTQ file 1", required=True)
-@click.option("-2", "--fastq2", help="Path to FASTQ file 2", required=True)
-@click.option(
-    "-p",
-    "--parquet-file",
-    help="Path to parquet file from which to extract the required reads",
-    required=True,
-)
-@click.option(
-    "-o", "--output-prefix", help="Output file prefix", default="regenerated_"
-)
+@utilities_app.command()
 def regenerate_fastq(
-    fastq1: str,
-    fastq2: str,
-    parquet_file: str = None,
-    output_prefix: str = "regenerated_",
-):
+    fastq1: str = typer.Option(..., "-1", "--fastq1", help="Path to FASTQ file 1."),
+    fastq2: str = typer.Option(..., "-2", "--fastq2", help="Path to FASTQ file 2."),
+    parquet_file: str = typer.Option(
+        ...,
+        "-p",
+        "--parquet-file",
+        help="Path to parquet file from which to extract the required reads.",
+    ),
+    output_prefix: str = typer.Option(
+        "regenerated_", "-o", "--output-prefix", help="Output file prefix."
+    ),
+) -> None:
     """
     Regenerates a FASTQ file from a parquet file containing the required reads
 
@@ -459,17 +457,18 @@ def regenerate_fastq(
     logger.info("Done")
 
 
-@cli.command()
-@click.option(
-    "--fragments",
-    help="Path to fragments file (default: capcruncher_output/resources/restriction_fragments/genome.digest.bed.gz)",
-    default="capcruncher_output/resources/restriction_fragments/genome.digest.bed.gz",
-)
-@click.option(
-    "--viewpoints", help="Path to viewpoints file used for capcruncher", required=True
-)
-@click.option("-o", "--outputdir", help="Path to output directory", required=True)
-def make_chicago_maps(fragments: str, viewpoints: str, outputdir: str):
+@utilities_app.command()
+def make_chicago_maps(
+    fragments: str = typer.Option(
+        "capcruncher_output/resources/restriction_fragments/genome.digest.bed.gz",
+        "--fragments",
+        help="Path to fragments file.",
+    ),
+    viewpoints: str = typer.Option(
+        ..., "--viewpoints", help="Path to viewpoints file used for capcruncher."
+    ),
+    outputdir: str = typer.Option(..., "-o", "--outputdir", help="Path to output directory."),
+) -> None:
     """
     Restriction map file (.rmap) - a bed file containing coordinates of the restriction fragments. By default, 4 columns: chr, start, end, fragmentID.
     Bait map file (.baitmap) - a bed file containing coordinates of the baited restriction fragments, and their associated annotations. By default, 5 columns: chr, start, end, fragmentID, baitAnnotation. The regions specified in this file, including their fragmentIDs, must be an exact subset of those in the .rmap file. The baitAnnotation is a text field that is used only to annotate the output and plots.
@@ -515,3 +514,6 @@ def make_chicago_maps(fragments: str, viewpoints: str, outputdir: str):
         index=False,
         header=False,
     )
+
+
+cli = typer.main.get_command(utilities_app)

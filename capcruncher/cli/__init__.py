@@ -1,5 +1,6 @@
-import click
 from importlib import metadata
+
+import typer
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
@@ -11,41 +12,56 @@ def get_capcruncher_version() -> str:
         return "0+unknown"
 
 
-class UnsortedGroup(click.Group):
-    def list_commands(self, ctx):
-        return list(self.commands)
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(get_capcruncher_version())
+        raise typer.Exit()
 
 
-@click.group(cls=UnsortedGroup)
-@click.version_option(get_capcruncher_version())
-def cli():
-    """
-    An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.
-    """
+app = typer.Typer(
+    help="An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.",
+    context_settings=CONTEXT_SETTINGS,
+    no_args_is_help=True,
+)
 
 
-from capcruncher.cli.cli_alignments import cli as alignments_cli  # noqa: E402
-from capcruncher.cli.cli_fastq import cli as fastq_cli  # noqa: E402
-from capcruncher.cli.cli_genome import cli as genome_cli  # noqa: E402
-from capcruncher.cli.cli_interactions import cli as interactions_cli  # noqa: E402
-from capcruncher.cli.cli_plot import cli as plot_cli  # noqa: E402
-from capcruncher.cli.cli_utilities import cli as utilities_cli  # noqa: E402
-
-cli.add_command(fastq_cli, "fastq")
-cli.add_command(genome_cli, "genome")
-cli.add_command(alignments_cli, "alignments")
-cli.add_command(interactions_cli, "interactions")
-cli.add_command(plot_cli, "plot")
-cli.add_command(utilities_cli, "utilities")
+@app.callback()
+def capcruncher(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        callback=_version_callback,
+        is_eager=True,
+        help="Show the version and exit.",
+    ),
+) -> None:
+    """An end to end solution for processing: Capture-C, Tri-C and Tiled-C data."""
 
 
-# Finally, import the pipeline command from the pipeline module
-import capcruncher.cli.cli_pipeline  # noqa: E402,F401
+from capcruncher.cli.alignments import alignments_app  # noqa: E402
+from capcruncher.cli.fastq import fastq_app  # noqa: E402
+from capcruncher.cli.genome import genome_app  # noqa: E402
+from capcruncher.cli.interactions import interactions_app  # noqa: E402
+from capcruncher.cli.pipeline import pipeline_app, pipeline_config, pipeline_init  # noqa: E402
+from capcruncher.cli.plot import plot_app  # noqa: E402
+from capcruncher.cli.utilities import utilities_app  # noqa: E402
+
+app.add_typer(fastq_app, name="fastq")
+app.add_typer(genome_app, name="genome")
+app.add_typer(alignments_app, name="alignments")
+app.add_typer(interactions_app, name="interactions")
+app.add_typer(pipeline_app, name="pipeline")
+app.command(name="pipeline-init")(pipeline_init)
+app.command(name="pipeline-config")(pipeline_config)
+app.add_typer(plot_app, name="plot")
+app.add_typer(utilities_app, name="utilities")
+
+cli = typer.main.get_command(app)
 
 
 __all__ = [
     "CONTEXT_SETTINGS",
-    "UnsortedGroup",
+    "app",
     "cli",
     "get_capcruncher_version",
 ]
