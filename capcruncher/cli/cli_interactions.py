@@ -1,4 +1,13 @@
+from importlib import import_module
+from typing import Any
+
 import click
+
+
+def _run_command(import_path: str, *args: Any, **kwargs: Any) -> None:
+    module_name, function_name = import_path.rsplit(":", 1)
+    module = import_module(module_name)
+    getattr(module, function_name)(*args, **kwargs)
 
 
 @click.group()
@@ -41,9 +50,9 @@ def deduplicate(*args, **kwargs):
 
     """
 
-    from capcruncher.api.interactions_deduplicate import deduplicate
-
-    deduplicate(*args, **kwargs)
+    _run_command(
+        "capcruncher.api.interactions_deduplicate:deduplicate", *args, **kwargs
+    )
 
 
 @cli.command()
@@ -102,9 +111,7 @@ def pileup(*args, **kwargs):
     inter experiment comparisons and/or extract pilups binned into even genomic windows.
     """
 
-    from capcruncher.cli.interactions_pileup import pileup
-
-    pileup(*args, **kwargs)
+    _run_command("capcruncher.cli.interactions_pileup:pileup", *args, **kwargs)
 
 
 @cli.command()
@@ -169,9 +176,7 @@ def count(*args, **kwargs):
 
     """
 
-    from capcruncher.cli.interactions_count import count
-
-    count(*args, **kwargs)
+    _run_command("capcruncher.cli.interactions_count:count", *args, **kwargs)
 
 
 @cli.command(name="counts-to-cooler")
@@ -217,9 +222,7 @@ def store_fragments(*args, **kwargs):
     "capcruncher reporters count" and gerates a cooler formatted group in an HDF5 File.
     See `https://cooler.readthedocs.io/en/latest/` for further details.
     """
-    from capcruncher.cli.interactions_store import fragments
-
-    fragments(*args, **kwargs)
+    _run_command("capcruncher.cli.interactions_store:fragments", *args, **kwargs)
 
 
 @cli.command(name="fragments-to-bins")
@@ -277,9 +280,7 @@ def store_bins(*args, **kwargs):
     genomic bins of a specified size. If the normalise option is selected,
     columns containing normalised counts are added to the pixels table of the output
     """
-    from capcruncher.cli.interactions_store import bins
-
-    bins(*args, **kwargs)
+    _run_command("capcruncher.cli.interactions_store:bins", *args, **kwargs)
 
 
 cli.add_command(store_bins, name="bin")
@@ -295,9 +296,7 @@ def store_merge(*args, **kwargs):
     Produces a unified cooler with both restriction fragment and genomic bins whilst
     reducing the storage space required by hard linking the "bins" tables to prevent duplication.
     """
-    from capcruncher.api.storage import merge_coolers
-
-    merge_coolers(*args, **kwargs)
+    _run_command("capcruncher.api.storage:merge_coolers", *args, **kwargs)
 
 
 @cli.group()
@@ -356,9 +355,7 @@ def compare():
 )
 def bedgraphs_concat(*args, **kwargs):
 
-    from capcruncher.cli.interactions_compare import concat
-
-    concat(*args, **kwargs)
+    _run_command("capcruncher.cli.interactions_compare:concat", *args, **kwargs)
 
 
 @compare.command(name="summarise")
@@ -391,15 +388,13 @@ def bedgraphs_concat(*args, **kwargs):
 @click.option("--suffix", help="Add a suffix before the file extension")
 def bedgraphs_summarise(*args, **kwargs):
 
-    from capcruncher.cli.interactions_compare import summarise
-
-    summarise(*args, **kwargs)
+    _run_command("capcruncher.cli.interactions_compare:summarise", *args, **kwargs)
 
 
 def _run_differential(*args, **kwargs):
-    from capcruncher.cli.interactions_differential import differential
-
-    differential(*args, **kwargs)
+    _run_command(
+        "capcruncher.cli.interactions_differential:differential", *args, **kwargs
+    )
 
 
 @compare.command(name="differential")
