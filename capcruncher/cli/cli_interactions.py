@@ -41,7 +41,7 @@ def deduplicate(*args, **kwargs):
 
     """
 
-    from capcruncher.cli.interactions_deduplicate import deduplicate
+    from capcruncher.api.interactions_deduplicate import deduplicate
 
     deduplicate(*args, **kwargs)
 
