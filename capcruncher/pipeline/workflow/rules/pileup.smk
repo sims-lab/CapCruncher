@@ -59,7 +59,7 @@ rule bin_counts:
         """
         capcruncher \
         interactions \
-        fragments-to-bins \
+        bin \
         {input} \
         -o {output} \
         {params.bin_size} \

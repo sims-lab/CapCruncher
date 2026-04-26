@@ -282,6 +282,9 @@ def store_bins(*args, **kwargs):
     bins(*args, **kwargs)
 
 
+cli.add_command(store_bins, name="bin")
+
+
 @cli.command(name="merge")
 @click.argument("coolers", required=True, nargs=-1)
 @click.option("-o", "--output", help="Output file name")
@@ -393,6 +396,12 @@ def bedgraphs_summarise(*args, **kwargs):
     summarise(*args, **kwargs)
 
 
+def _run_differential(*args, **kwargs):
+    from capcruncher.cli.interactions_differential import differential
+
+    differential(*args, **kwargs)
+
+
 @compare.command(name="differential")
 @click.argument("interaction_files", required=True, nargs=-1)
 @click.option(
@@ -431,6 +440,8 @@ def bedgraphs_differential(*args, **kwargs):
     containing the sample names and the remaining columns containing the conditions. The contrast
     should specify the name of the column in the design matrix to test. The output is a tab separated bedgraph.
     """
-    from capcruncher.cli.interactions_differential import differential
 
-    differential(*args, **kwargs)
+    _run_differential(*args, **kwargs)
+
+
+cli.add_command(bedgraphs_differential, name="differential")

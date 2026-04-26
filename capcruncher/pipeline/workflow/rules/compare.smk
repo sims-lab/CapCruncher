@@ -129,7 +129,6 @@ rule differential_interactions:
         """
         capcruncher \
         interactions \
-        compare \
         differential \
         {input.counts} \
         --design-matrix \

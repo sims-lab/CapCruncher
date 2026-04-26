@@ -93,7 +93,16 @@ def test_cli_runs(cli_runner):
     assert "pipeline-init" in result.output
 
 
-def test_differential_help_does_not_import_pydeseq2(cli_runner, monkeypatch):
+@pytest.mark.parametrize(
+    "command",
+    [
+        ["interactions", "differential", "--help"],
+        ["interactions", "compare", "differential", "--help"],
+    ],
+)
+def test_differential_help_does_not_import_pydeseq2(
+    cli_runner, monkeypatch, command
+):
     real_import = __import__
 
     def guarded_import(name, *args, **kwargs):
@@ -103,9 +112,7 @@ def test_differential_help_does_not_import_pydeseq2(cli_runner, monkeypatch):
 
     monkeypatch.setattr("builtins.__import__", guarded_import)
 
-    result = cli_runner.invoke(
-        cli, ["interactions", "compare", "differential", "--help"]
-    )
+    result = cli_runner.invoke(cli, command)
 
     assert result.exit_code == 0
 
@@ -794,15 +801,23 @@ def test_reporters_count_fixture_matches_viewpoint_file(
 
 
 @pytest.mark.parametrize(
-    "cooler_fn,bin_size,output,flags",
+    "command,cooler_fn,bin_size,output,flags",
     [
-        ("SAMPLE-A_REP1.hdf5", int(1e5), "binned.hdf5", []),
+        ("bin", "SAMPLE-A_REP1.hdf5", int(1e5), "binned.hdf5", []),
+        (
+            "fragments-to-bins",
+            "SAMPLE-A_REP1.hdf5",
+            int(1e5),
+            "binned_legacy.hdf5",
+            [],
+        ),
     ],
 )
 def test_reporters_store_binned(
     cli_runner,
     data_reporters_store,
     tmpdir,
+    command,
     cooler_fn,
     bin_size,
     output,
@@ -815,7 +830,7 @@ def test_reporters_store_binned(
         cli,
         [
             "interactions",
-            "fragments-to-bins",
+            command,
             clr,
             "-o",
             output,
