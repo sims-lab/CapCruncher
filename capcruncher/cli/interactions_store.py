@@ -1,9 +1,9 @@
+from concurrent.futures import ProcessPoolExecutor
 from loguru import logger
 import os
 import tempfile
 from typing import Tuple, Literal
 import pandas as pd
-import ray
 from capcruncher.api.storage import (
     CoolerBinner,
     create_cooler_cc,
@@ -87,7 +87,6 @@ def fragments(
         )
 
 
-@ray.remote(num_cpus=1)
 def _bin_cooler(clr_in: os.PathLike, clr_out: os.PathLike, binsize: int, **kwargs):
 
     clr_binner = CoolerBinner(
@@ -97,6 +96,13 @@ def _bin_cooler(clr_in: os.PathLike, clr_out: os.PathLike, binsize: int, **kwarg
     )
     clr_binner.to_cooler(clr_out)
     return clr_out
+
+
+def _bin_coolers_local(tasks: list[tuple[str, str, int, dict]]) -> list[str]:
+    return [
+        _bin_cooler(clr_in, clr_out, binsize, **kwargs)
+        for clr_in, clr_out, binsize, kwargs in tasks
+    ]
 
 
 def bins(
@@ -135,14 +141,13 @@ def bins(
     assert clr_groups, "No cooler groups found in file"
     assert binsizes, "No binsizes provided"
 
-    ray.init(num_cpus=n_cores, ignore_reinit_error=True)
-    clr_tempfiles = []
+    binning_tasks = []
 
     for binsize in binsizes:
         for clr_group in clr_groups:
 
             logger.info(f"Processing {clr_group}")
-            clr_in = cooler.Cooler(f"{cooler_path}::{clr_group}")
+            clr_in = f"{cooler_path}::{clr_group}"
             clr_out = tempfile.NamedTemporaryFile().name
 
             # TODO: Integrate these ino the CLI
@@ -155,10 +160,23 @@ def bins(
                 assay=assay,
             )
 
-            clr_tempfiles.append(
-                _bin_cooler.remote(clr_in, clr_out, binsize, **default_kwargs)
-            )
+            binning_tasks.append((clr_in, clr_out, binsize, default_kwargs))
 
     # Final cooler output
-    clr_tempfiles = ray.get(clr_tempfiles)
+    if n_cores > 1 and len(binning_tasks) > 1:
+        try:
+            with ProcessPoolExecutor(max_workers=n_cores) as executor:
+                futures = [
+                    executor.submit(_bin_cooler, clr_in, clr_out, binsize, **kwargs)
+                    for clr_in, clr_out, binsize, kwargs in binning_tasks
+                ]
+                clr_tempfiles = [future.result() for future in futures]
+        except OSError as exc:
+            logger.warning(
+                f"Process executor unavailable ({exc}); falling back to local binning."
+            )
+            clr_tempfiles = _bin_coolers_local(binning_tasks)
+    else:
+        clr_tempfiles = _bin_coolers_local(binning_tasks)
+
     merge_coolers(clr_tempfiles, output)

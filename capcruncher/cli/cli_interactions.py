@@ -148,6 +148,13 @@ def pileup(*args, **kwargs):
 @click.option(
     "--assay", type=click.Choice(["capture", "tri", "tiled"]), default="capture"
 )
+@click.option(
+    "--executor",
+    type=click.Choice(["local", "process", "ray"]),
+    default="local",
+    show_default=True,
+    help="Runtime used for per-viewpoint counting.",
+)
 def count(*args, **kwargs):
     """
     Determines the number of captured restriction fragment interactions genome wide.

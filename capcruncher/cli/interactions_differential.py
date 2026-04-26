@@ -4,7 +4,6 @@ import itertools
 import os
 
 import pandas as pd
-import ray
 from loguru import logger
 from pydeseq2.dds import DeseqDataSet
 from pydeseq2.default_inference import DefaultInference
@@ -13,7 +12,6 @@ from pydeseq2.ds import DeseqStats
 from capcruncher.api.pileup import cooler_to_bedgraph
 
 
-@ray.remote
 def get_differential_interactions(
     counts: pd.DataFrame,
     design: pd.DataFrame,
@@ -127,18 +125,14 @@ def differential(
             f"Using distance from viewpoint of {viewpoint_distance} to restrict analysis"
         )
 
-    bedgraph_futures = dict()
+    bedgraphs = dict()
     for interaction_file in interaction_files:
         file_name = os.path.basename(interaction_file.replace(".hdf5", ""))
-        future = cooler_to_bedgraph.remote(
+        bedgraphs[file_name] = cooler_to_bedgraph(
             clr=f"{interaction_file}::{viewpoint}",
             regions_of_interest=regions_of_interest,
             viewpoint_distance=viewpoint_distance,
         )
-        bedgraph_futures[file_name] = future
-
-    # Execute tasks
-    bedgraphs = {k: ray.get(v) for k, v in bedgraph_futures.items()}
 
     logger.info("Concatenating interactions.")
     # Concatenate bedgraphs
@@ -171,7 +165,6 @@ def differential(
     comparisons = list(itertools.combinations(possible_contrasts, 2))
 
     # Run comparisons
-    comparison_futures = dict()
     for group_a, group_b in comparisons:
         # Filter design matrix
         df_design_sub = df_design.loc[lambda df: df[contrast].isin([group_a, group_b])]
@@ -180,7 +173,8 @@ def differential(
         df_counts_sub = df_counts.loc[:, df_design_sub.index]
 
         # Get differential interactions
-        result = get_differential_interactions.remote(
+        logger.info(f"Running comparison: {group_a} vs {group_b}")
+        df_results = get_differential_interactions(
             df_counts_sub,
             df_design_sub,
             contrast,
@@ -188,13 +182,6 @@ def differential(
             group_a=group_a,
             group_b=group_b,
         )
-
-        comparison_futures[(group_a, group_b)] = result
-
-    # Execute tasks
-    for (group_a, group_b), future in comparison_futures.items():
-        logger.info(f"Running comparison: {group_a} vs {group_b}")
-        df_results = ray.get(future)
 
         # Write result
         df_results.to_csv(

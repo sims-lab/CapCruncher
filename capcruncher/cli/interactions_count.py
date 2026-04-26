@@ -68,6 +68,7 @@ def count(
     viewpoint_path: os.PathLike = None,
     n_cores: int = 1,
     assay: Literal["capture", "tri", "tiled"] = "capture",
+    executor: Literal["local", "process", "ray"] = "local",
     **kwargs,
 ) -> os.PathLike:
     """
@@ -83,6 +84,7 @@ def count(
         viewpoint_path: Path to viewpoint file.
         n_cores: Number of cores.
         assay: Assay type.
+        executor: Runtime used for per-viewpoint counting.
         **kwargs: Additional arguments.
     Returns:
         Path to the generated cooler file.
@@ -107,6 +109,7 @@ def count(
             viewpoint_path=viewpoint_path,
             n_cores=n_cores,
             assay=assay,
+            executor=executor,
             **kwargs,
         )
 

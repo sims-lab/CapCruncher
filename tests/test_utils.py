@@ -1,4 +1,6 @@
 import os
+import builtins
+import importlib
 
 import pandas as pd
 import pytest
@@ -135,6 +137,24 @@ def test_bed_validation_and_formatting(data_path_alignment_annotation):
 
     named = format_coordinates(slices)
     assert convert_bed_to_dataframe(named).shape[0] == 4
+
+
+def test_interval_helpers_import_without_ray(monkeypatch):
+    real_import = builtins.__import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "ray" or name.startswith("ray."):
+            raise ModuleNotFoundError("No module named 'ray'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+
+    for module in (
+        "capcruncher.api.pileup",
+        "capcruncher.cli.interactions_store",
+        "capcruncher.utils",
+    ):
+        importlib.reload(importlib.import_module(module))
 
 
 def test_read_dataframes_skips_empty_files(tmp_path):

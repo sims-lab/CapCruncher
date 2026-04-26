@@ -5,7 +5,6 @@ from typing import Literal
 from capcruncher.api.storage import CoolerBinner
 from capcruncher.utils import is_valid_bed
 from loguru import logger
-import ray
 import re
 import pyranges1 as pr
 
@@ -435,7 +434,6 @@ class CCBedgraph(object):
             return NotImplementedError()
 
 
-@ray.remote
 def cooler_to_bedgraph(
     clr: str, regions_of_interest: str = None, viewpoint_distance: int = None, **kwargs
 ) -> pd.DataFrame:

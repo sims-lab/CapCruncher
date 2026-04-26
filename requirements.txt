@@ -10,7 +10,7 @@ snakemake-executor-plugin-slurm
 snakemake>=9.19.0,<10.0.0
 
 # Essential for CLI
-capcruncher-tools>=0.2.4,<0.3.0
+capcruncher-tools>=0.2.5,<0.3.0
 cooler>=0.10.4,<0.11.0
 h5py
 multiqc
@@ -23,7 +23,6 @@ pyarrow>=24.0.0,<25.0.0
 pydantic>=2.13.3,<3.0.0
 pydeseq2>=0.5.4,<0.6.0
 pysam>=0.23.0,<0.24.0
-ray>=2.8.0
 seaborn>=0.13.2,<0.14.0
 tracknado>=0.3.1,<0.4.0
 ujson>=5.8.0,<6.0.0

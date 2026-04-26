@@ -483,14 +483,12 @@ def convert_bed_to_pr(
 
 def convert_bed_to_dataframe(
     bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges],
-    ignore_ray_objrefs=False,
 ) -> pd.DataFrame:
     """Converts a BED-like object to a DataFrame-style interval table.
 
     PyRanges1 frames are pandas DataFrame subclasses, so in-memory PyRanges
     inputs are copied directly and manipulated with pandas methods.
     """
-    import ray
     from loguru import logger
 
     if isinstance(bed, (str, os.PathLike)):
@@ -509,13 +507,8 @@ def convert_bed_to_dataframe(
     elif isinstance(bed, pd.DataFrame):
         bed_conv = bed.copy()
 
-    elif isinstance(bed, ray.ObjectRef):
-        if ignore_ray_objrefs:
-            logger.warning("Assuming ObjectRef is a PyRanges")
-            return bed
-        else:
-            bed = ray.get(bed)
-            bed_conv = convert_bed_to_dataframe(bed)
+    else:
+        raise TypeError(f"Unsupported BED input type: {type(bed)!r}")
 
     bed_conv = _standardize_bed_columns(bed_conv, capitalized=False)
 
