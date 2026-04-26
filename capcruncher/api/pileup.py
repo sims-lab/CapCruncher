@@ -1,12 +1,95 @@
-import pandas as pd
-import numpy as np
 import cooler
+import numpy as np
+import os
+import pandas as pd
+import subprocess
+import tempfile
 from typing import Literal
 from capcruncher.api.storage import CoolerBinner
 from capcruncher.utils import is_valid_bed
 from loguru import logger
 import re
 import pyranges1 as pr
+
+type FilePath = str | os.PathLike[str]
+
+
+def pileup(
+    uri: FilePath,
+    viewpoint_names: list[str] | None = None,
+    output_prefix: FilePath = "",
+    format: Literal["bedgraph", "bigwig"] = "bedgraph",
+    normalisation: Literal["raw", "n_cis", "region"] = "raw",
+    normalisation_regions: FilePath | None = None,
+    binsize: int = 0,
+    gzip: bool = True,
+    scale_factor: float = 1e6,
+    sparse: bool = True,
+) -> None:
+    """
+    Extract reporters from a capture experiment and generate bedgraph or bigWig files.
+
+    Identifies reporters for one viewpoint, if supplied, or all capture probes present
+    in a CapCruncher HDF5 file.
+    """
+
+    uri = os.fspath(uri)
+    output_prefix = os.fspath(output_prefix)
+    normalisation_regions = (
+        os.fspath(normalisation_regions) if normalisation_regions is not None else None
+    )
+    viewpoint_names = viewpoint_names or [
+        v.strip("/") for v in cooler.fileops.list_coolers(uri) if "resolutions" not in v
+    ]
+
+    logger.info(f"Performing pileup for {viewpoint_names}")
+
+    bin_bedgraph = binsize > 0
+
+    for viewpoint_name in viewpoint_names:
+        cooler_group = f"{uri}::{viewpoint_name}"
+
+        if bin_bedgraph:
+            cooler_group = f"{cooler_group}/resolutions/{binsize}"
+
+        try:
+            cooler.fileops.is_cooler(cooler_group)
+        except Exception as exc:
+            logger.info(f"Exception {exc} occured while looking for: {viewpoint_name}")
+            raise RuntimeError(f"Cannot find {viewpoint_name} in cooler file") from exc
+
+        bedgraph = CoolerBedGraph(uri=cooler_group, sparse=sparse).extract_bedgraph(
+            normalisation=normalisation,
+            region=normalisation_regions,
+            scale_factor=scale_factor,
+        )
+
+        logger.info(f"Generated bedgraph for {viewpoint_name}")
+
+        if format == "bedgraph":
+            bedgraph.to_csv(
+                f'{output_prefix}_{viewpoint_name}.bedgraph{".gz" if gzip else ""}',
+                sep="\t",
+                header=False,
+                index=False,
+            )
+        elif format == "bigwig":
+            clr = cooler.Cooler(cooler_group)
+
+            with tempfile.NamedTemporaryFile() as chromsizes_tmp:
+                with tempfile.NamedTemporaryFile() as bedgraph_tmp:
+                    clr.chromsizes.to_csv(chromsizes_tmp, sep="\t", header=False)
+                    bedgraph.to_csv(bedgraph_tmp, sep="\t", index=False, header=False)
+
+                    subprocess.run(
+                        [
+                            "bedGraphToBigWig",
+                            bedgraph_tmp.name,
+                            chromsizes_tmp.name,
+                            f"{output_prefix}_{viewpoint_name}.bigWig",
+                        ],
+                        check=True,
+                    )
 
 
 def _bedgraph_to_pyranges(bedgraph: pd.DataFrame) -> pr.PyRanges:

@@ -111,7 +111,7 @@ def pileup(*args, **kwargs):
     inter experiment comparisons and/or extract pilups binned into even genomic windows.
     """
 
-    _run_command("capcruncher.cli.interactions_pileup:pileup", *args, **kwargs)
+    _run_command("capcruncher.api.pileup:pileup", *args, **kwargs)
 
 
 @cli.command()
