@@ -6,6 +6,7 @@ import subprocess
 import sys
 import pathlib
 import shutil
+import typer
 
 
 PIPELINE_PRESET_SOURCES = {
@@ -23,6 +24,18 @@ BUILTIN_PIPELINE_PRESETS = tuple(PIPELINE_PRESET_SOURCES)
 PIPELINE_PRESET_CHOICES = (
     *BUILTIN_PIPELINE_PRESETS,
     *LEGACY_PIPELINE_PRESET_ALIASES,
+)
+PIPELINE_SUBCOMMANDS = {"run", "init", "config"}
+PIPELINE_FORWARD_CONTEXT = dict(
+    ignore_unknown_options=True,
+    allow_extra_args=True,
+    allow_interspersed_args=False,
+)
+
+pipeline_app = typer.Typer(
+    help="Run and configure CapCruncher Snakemake workflows.",
+    context_settings={"help_option_names": ["-h", "--help"]},
+    no_args_is_help=True,
 )
 
 
@@ -102,28 +115,7 @@ def install_pipeline_preset(
     return destination_dir
 
 
-@cli.command(context_settings=dict(ignore_unknown_options=True), name="pipeline")
-@click.option("-h", "--help", "show_help", is_flag=True)
-@click.option(
-    "--logo/--no-logo",
-    default=True,
-    help="Show the capcruncher logo",
-    show_default=True,
-)
-@click.option(
-    "--preset",
-    type=str,
-    help="CapCruncher-managed execution preset name or a profile directory path.",
-)
-@click.option(
-    "--scale-resources",
-    type=float,
-    default=None,
-    help="Scale workflow memory and runtime requests for retries and constrained clusters.",
-)
-@click.version_option(get_capcruncher_version())
-@click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
-def pipeline(
+def run_pipeline(
     pipeline_options,
     show_help=False,
     logo=True,
@@ -204,6 +196,158 @@ def pipeline(
         )
 
 
+def install_pipeline_presets(output_dir=None, preset_names=(), force=False):
+    destination_root = output_dir or get_pipeline_preset_dir()
+    destination_root.mkdir(parents=True, exist_ok=True)
+
+    presets_to_install = preset_names or BUILTIN_PIPELINE_PRESETS
+    installed = []
+    for preset_name in presets_to_install:
+        installed.append(install_pipeline_preset(preset_name, destination_root, force))
+
+    click.echo(f"Installed {len(installed)} pipeline preset(s) to {destination_root}")
+    for installed_preset in installed:
+        click.echo(f"- {installed_preset.name}: {installed_preset}")
+
+
+def configure_pipeline():
+    from cookiecutter.main import cookiecutter
+    import pathlib
+
+    fn = pathlib.Path(__file__).resolve()
+    dir_cli = fn.parent
+    dir_package = dir_cli.parent
+
+    cookiecutter(str(dir_package / "pipeline" / "config"))
+
+
+@pipeline_app.command("run", context_settings=PIPELINE_FORWARD_CONTEXT)
+def pipeline_run(
+    ctx: typer.Context,
+    logo: bool = typer.Option(
+        True,
+        "--logo/--no-logo",
+        help="Show the capcruncher logo.",
+        show_default=True,
+    ),
+    preset: str | None = typer.Option(
+        None,
+        "--preset",
+        help="CapCruncher-managed execution preset name or a profile directory path.",
+    ),
+    scale_resources: float | None = typer.Option(
+        None,
+        "--scale-resources",
+        help="Scale workflow memory and runtime requests.",
+    ),
+):
+    """Run the CapCruncher Snakemake pipeline."""
+
+    run_pipeline(
+        tuple(ctx.args),
+        logo=logo,
+        preset=preset,
+        scale_resources=scale_resources,
+    )
+
+
+@pipeline_app.command("init")
+def pipeline_init_typer(
+    output_dir: pathlib.Path | None = typer.Option(
+        None,
+        "--output-dir",
+        file_okay=False,
+        dir_okay=True,
+        help="Directory where CapCruncher-managed pipeline presets should be installed.",
+    ),
+    preset_names: list[str] = typer.Option(
+        None,
+        "--preset",
+        help="Install only the selected preset. Repeat to install multiple presets.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Overwrite existing preset directories if they already exist.",
+    ),
+):
+    """Install CapCruncher-managed Snakemake presets."""
+
+    invalid_presets = [
+        preset_name
+        for preset_name in (preset_names or [])
+        if preset_name not in PIPELINE_PRESET_CHOICES
+    ]
+    if invalid_presets:
+        raise click.ClickException(
+            f"Unknown pipeline preset(s): {', '.join(invalid_presets)}"
+        )
+
+    install_pipeline_presets(output_dir, tuple(preset_names or ()), force)
+
+
+@pipeline_app.command("config")
+def pipeline_config_typer():
+    """Create a CapCruncher pipeline configuration directory."""
+
+    configure_pipeline()
+
+
+def dispatch_pipeline_subcommand(pipeline_options) -> bool:
+    if not pipeline_options or pipeline_options[0] not in PIPELINE_SUBCOMMANDS:
+        return False
+
+    pipeline_command = typer.main.get_command(pipeline_app)
+    pipeline_command.main(
+        args=list(pipeline_options),
+        prog_name="capcruncher pipeline",
+        standalone_mode=False,
+    )
+    return True
+
+
+@cli.command(context_settings=PIPELINE_FORWARD_CONTEXT, name="pipeline")
+@click.option("-h", "--help", "show_help", is_flag=True)
+@click.option(
+    "--logo/--no-logo",
+    default=True,
+    help="Show the capcruncher logo",
+    show_default=True,
+)
+@click.option(
+    "--preset",
+    type=str,
+    help="CapCruncher-managed execution preset name or a profile directory path.",
+)
+@click.option(
+    "--scale-resources",
+    type=float,
+    default=None,
+    help="Scale workflow memory and runtime requests for retries and constrained clusters.",
+)
+@click.version_option(get_capcruncher_version())
+@click.argument("pipeline_options", nargs=-1, type=click.UNPROCESSED)
+def pipeline(
+    pipeline_options,
+    show_help=False,
+    logo=True,
+    preset=None,
+    scale_resources=None,
+):
+    """Runs the data processing pipeline"""
+
+    if dispatch_pipeline_subcommand(pipeline_options):
+        return
+
+    run_pipeline(
+        pipeline_options,
+        show_help=show_help,
+        logo=logo,
+        preset=preset,
+        scale_resources=scale_resources,
+    )
+
+
 @cli.command(name="pipeline-init")
 @click.option(
     "--output-dir",
@@ -226,17 +370,7 @@ def pipeline(
 def pipeline_init(output_dir=None, preset_names=(), force=False):
     """Installs CapCruncher-managed Snakemake presets."""
 
-    destination_root = output_dir or get_pipeline_preset_dir()
-    destination_root.mkdir(parents=True, exist_ok=True)
-
-    presets_to_install = preset_names or BUILTIN_PIPELINE_PRESETS
-    installed = []
-    for preset_name in presets_to_install:
-        installed.append(install_pipeline_preset(preset_name, destination_root, force))
-
-    click.echo(f"Installed {len(installed)} pipeline preset(s) to {destination_root}")
-    for installed_preset in installed:
-        click.echo(f"- {installed_preset.name}: {installed_preset}")
+    install_pipeline_presets(output_dir, preset_names, force)
 
 
 @cli.command(name="pipeline-config")
@@ -249,11 +383,4 @@ def pipeline_init(output_dir=None, preset_names=(), force=False):
 def pipeline_config(*args, **kwargs):
     """Configures the data processing pipeline"""
 
-    from cookiecutter.main import cookiecutter
-    import pathlib
-
-    fn = pathlib.Path(__file__).resolve()
-    dir_cli = fn.parent
-    dir_package = dir_cli.parent
-
-    cookiecutter(str(dir_package / "pipeline" / "config"))
+    configure_pipeline()

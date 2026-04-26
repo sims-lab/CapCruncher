@@ -135,6 +135,15 @@ def test_pipeline_init_installs_presets(cli_runner, tmp_path, monkeypatch):
     assert "mem_mb:" not in slurm_apptainer_profile
 
 
+def test_pipeline_init_subcommand_installs_presets(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+
+    result = cli_runner.invoke(cli, ["pipeline", "init"])
+
+    assert result.exit_code == 0
+    assert (tmp_path / "snakemake" / "capcruncher-local" / "profile.v9+.yaml").exists()
+
+
 def test_pipeline_uses_installed_preset(cli_runner, tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     init_result = cli_runner.invoke(cli, ["pipeline-init"])
@@ -163,6 +172,39 @@ def test_pipeline_uses_installed_preset(cli_runner, tmp_path, monkeypatch):
     expected_profile = tmp_path / "snakemake" / "capcruncher-local"
     assert "--profile" in first_call
     assert str(expected_profile) in first_call
+    assert "--cores" in first_call
+    assert "1" in first_call
+
+
+def test_pipeline_run_subcommand_uses_installed_preset(
+    cli_runner, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline", "init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli, ["pipeline", "run", "--preset", "capcruncher-local", "--no-logo", "-n"]
+    )
+
+    assert result.exit_code == 0
+    assert len(recorded_calls) == 1
+    first_call = recorded_calls[0]
+    expected_profile = tmp_path / "snakemake" / "capcruncher-local"
+    assert first_call[first_call.index("--profile") + 1] == str(expected_profile)
     assert "--cores" in first_call
     assert "1" in first_call
 
