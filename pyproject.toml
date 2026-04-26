@@ -60,8 +60,6 @@ repo = "https://github.com/sims-lab/CapCruncher.git"
 
 [tool.ruff]
 line-length = 88
-select = ["E", "F"]
-ignore = ["E501"]
 exclude = [
     ".bzr",
     ".direnv",
@@ -87,14 +85,17 @@ exclude = [
     "old/",
 ]
 
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["E501"]
 dummy-variable-rgx = "_[a-z0-9]+(\\s+|:|$)"
 
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 # Unlike Flake8, default to a complexity level of 10.
 max-complexity = 10
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "capcruncher/__init__.py" = ["F401", "E402"]
 "capcruncher/pipeline/rules/scripts/make_ucsc_hub.py" = ["F821"]
 "capcruncher/pipeline/rules/scripts/combine_stats_read_level.py" = ["F821"]
@@ -112,7 +113,7 @@ max-complexity = 10
     "F821",
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.snakefmt]
