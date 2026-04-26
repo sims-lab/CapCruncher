@@ -219,7 +219,7 @@ def viewpoint_coordinates(
         ValueError: If no bowtie2 indices are supplied
     """
 
-    from capcruncher.api.io import digest_genome
+    from capcruncher.api.genome import digest_genome
     import pandas as pd
     import pyranges1 as pr
     import pysam

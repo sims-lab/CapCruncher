@@ -95,7 +95,7 @@ def split(*args, **kwargs):
 
     """
 
-    from capcruncher.api.io import split_fastq
+    from capcruncher.api.fastq import split_fastq
 
     split_fastq(*args, **kwargs)
 
@@ -127,7 +127,7 @@ def digest(*args, **kwargs):
     """
     Performs in silico digestion of one or a pair of fastq files.
     """
-    from capcruncher.api.io import digest_fastq
+    from capcruncher.api.fastq import digest_fastq
 
     kwargs["restriction_site"] = kwargs.pop("restriction_enzyme")
     digest_fastq(*args, **kwargs)
@@ -167,7 +167,7 @@ def deduplicate(*args, **kwargs):
     from fastq file(s) to speed up downstream analysis.
 
     """
-    from capcruncher.api.io import deduplicate_fastq
+    from capcruncher.api.fastq import deduplicate_fastq
 
     fq1 = [pathlib.Path(f) for f in ast.literal_eval(kwargs["fastq1"])]
     fq2 = [pathlib.Path(f) for f in ast.literal_eval(kwargs["fastq2"])]
