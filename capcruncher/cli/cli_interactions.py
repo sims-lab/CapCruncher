@@ -222,7 +222,7 @@ def store_fragments(*args, **kwargs):
     "capcruncher reporters count" and gerates a cooler formatted group in an HDF5 File.
     See `https://cooler.readthedocs.io/en/latest/` for further details.
     """
-    _run_command("capcruncher.cli.interactions_store:fragments", *args, **kwargs)
+    _run_command("capcruncher.api.storage:fragments", *args, **kwargs)
 
 
 @cli.command(name="fragments-to-bins")
@@ -280,7 +280,7 @@ def store_bins(*args, **kwargs):
     genomic bins of a specified size. If the normalise option is selected,
     columns containing normalised counts are added to the pixels table of the output
     """
-    _run_command("capcruncher.cli.interactions_store:bins", *args, **kwargs)
+    _run_command("capcruncher.api.storage:bins", *args, **kwargs)
 
 
 cli.add_command(store_bins, name="bin")

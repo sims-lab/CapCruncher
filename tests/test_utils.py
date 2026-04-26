@@ -152,7 +152,7 @@ def test_interval_helpers_import_without_ray(monkeypatch):
 
     for module in (
         "capcruncher.api.pileup",
-        "capcruncher.cli.interactions_store",
+        "capcruncher.api.storage",
         "capcruncher.utils",
     ):
         importlib.reload(importlib.import_module(module))

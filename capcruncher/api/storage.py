@@ -1,3 +1,4 @@
+from concurrent.futures import ProcessPoolExecutor
 import os
 import tempfile
 import pandas as pd
@@ -9,6 +10,8 @@ import json
 from typing import Iterable, Tuple, Union, List, Dict, Literal
 import pyranges1 as pr
 import re
+
+type FilePath = str | os.PathLike[str]
 
 
 class Viewpoint:
@@ -444,6 +447,136 @@ class CoolerBinner:
         )
 
         return cooler_fn
+
+
+def fragments(
+    counts: FilePath,
+    fragment_map: FilePath,
+    output: FilePath,
+    viewpoint_path: FilePath,
+    viewpoint_name: str = "",
+    genome: str = "",
+    suffix: str = "",
+) -> None:
+    """
+    Store restriction-fragment interaction combinations in a cooler group.
+
+    Parses reporter interaction counts and creates CapCruncher cooler output at
+    restriction fragment resolution.
+    """
+    counts = os.fspath(counts)
+
+    df_restriction_fragment_map = pd.read_csv(
+        fragment_map,
+        sep="\t",
+        header=None,
+        names=["chrom", "start", "end", "name"],
+    )
+
+    if counts.endswith(".hdf5"):
+        with pd.HDFStore(counts) as store:
+            if not viewpoint_name:
+                viewpoints = {k.split("/")[1] for k in store.keys()}
+            else:
+                viewpoints = {viewpoint_name}
+
+            for viewpoint in viewpoints:
+                create_cooler_cc(
+                    output,
+                    bins=df_restriction_fragment_map,
+                    pixels=store[viewpoint],
+                    viewpoint_name=viewpoint,
+                    viewpoint_path=viewpoint_path,
+                    assembly=genome,
+                    suffix=suffix,
+                )
+    else:
+        create_cooler_cc(
+            output,
+            bins=df_restriction_fragment_map,
+            pixels=pd.read_csv(counts, sep="\t"),
+            viewpoint_name=viewpoint_name,
+            viewpoint_path=viewpoint_path,
+            assembly=genome,
+            suffix=suffix,
+        )
+
+
+def _bin_cooler(clr_in: str, clr_out: str, binsize: int, **kwargs) -> str:
+    clr_binner = CoolerBinner(
+        cooler_group=clr_in,
+        binsize=binsize,
+        **kwargs,
+    )
+    clr_binner.to_cooler(clr_out)
+    return clr_out
+
+
+def _bin_coolers_local(tasks: list[tuple[str, str, int, dict]]) -> list[str]:
+    return [
+        _bin_cooler(clr_in, clr_out, binsize, **kwargs)
+        for clr_in, clr_out, binsize, kwargs in tasks
+    ]
+
+
+def bins(
+    cooler_path: FilePath,
+    output: FilePath,
+    binsizes: tuple[int, ...] | None = None,
+    normalise: bool = True,
+    scale_factor: float = 1e6,
+    overlap_fraction: float = 1e-9,
+    conversion_tables: FilePath | None = None,
+    n_cores: int = 1,
+    assay: Literal["capture", "tri", "tiled"] = "capture",
+    **kwargs,
+) -> None:
+    """
+    Convert restriction-fragment cooler groups to constant genomic windows.
+    """
+    cooler_path = os.fspath(cooler_path)
+
+    clr_groups = cooler.api.list_coolers(cooler_path)
+
+    assert clr_groups, "No cooler groups found in file"
+    assert binsizes, "No binsizes provided"
+
+    binning_tasks = []
+
+    for binsize in binsizes:
+        for clr_group in clr_groups:
+            logger.info(f"Processing {clr_group}")
+            clr_in = f"{cooler_path}::{clr_group}"
+            clr_out = tempfile.NamedTemporaryFile().name
+
+            default_kwargs = dict(
+                method="midpoint",
+                minimum_overlap=overlap_fraction,
+                n_cis_interaction_correction=normalise,
+                n_rf_per_bin_correction=normalise,
+                scale_factor=scale_factor,
+                assay=assay,
+            )
+
+            binning_tasks.append((clr_in, clr_out, binsize, default_kwargs | kwargs))
+
+    if n_cores > 1 and len(binning_tasks) > 1:
+        try:
+            with ProcessPoolExecutor(max_workers=n_cores) as executor:
+                futures = [
+                    executor.submit(_bin_cooler, clr_in, clr_out, binsize, **kwargs)
+                    for clr_in, clr_out, binsize, kwargs in binning_tasks
+                ]
+                clr_tempfiles = [future.result() for future in futures]
+        except OSError as exc:
+            logger.warning(
+                f"Process executor unavailable ({exc}); falling back to local binning."
+            )
+            clr_tempfiles = _bin_coolers_local(binning_tasks)
+    else:
+        clr_tempfiles = _bin_coolers_local(binning_tasks)
+
+    merge_coolers(clr_tempfiles, output)
 
 
 def link_common_cooler_tables(clr: os.PathLike):
