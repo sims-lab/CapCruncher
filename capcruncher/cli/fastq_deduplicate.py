@@ -4,14 +4,11 @@
 Created on Fri Oct  4 13:47:20 2019
 @author: asmith
 """
-from typing import List, Tuple, Union
+from typing import List, Union
 from loguru import logger as logging
-import tabulate
 import pathlib
 from capcruncher.api.statistics import FastqDeduplicationStatistics
 from capcruncher_tools.api import deduplicate_fastq
-import pandas as pd
-import pathlib
 
 
 
@@ -50,4 +47,4 @@ def deduplicate(
     df_vis["stat_type"] = df_vis["stat_type"].str.replace("_", " ").str.title()
     df_vis = df_vis[["stat_type", "stat"]]
     df_vis.columns = ["Stat Type", "Number of Reads"]
-    print(tabulate.tabulate(df_vis, headers="keys", tablefmt="psql", showindex=False))
+    print(df_vis.to_string(index=False))
