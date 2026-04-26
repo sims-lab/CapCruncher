@@ -117,6 +117,29 @@ def test_differential_help_does_not_import_pydeseq2(
     assert result.exit_code == 0
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        ["plot", "-r", "chr1:1-100", "-t", "template.toml", "-o", "plot.png"],
+        ["plot", "render", "-r", "chr1:1-100", "-t", "template.toml", "-o", "plot.png"],
+    ],
+)
+def test_plot_render_commands(cli_runner, monkeypatch, command):
+    import capcruncher.cli as cli_module
+
+    calls = []
+
+    def fake_render_plot(region, template, output):
+        calls.append((region, template, output))
+
+    monkeypatch.setattr(cli_module, "_render_plot", fake_render_plot)
+
+    result = cli_runner.invoke(cli, command)
+
+    assert result.exit_code == 0
+    assert calls == [("chr1:1-100", "template.toml", "plot.png")]
+
+
 def test_pipeline_init_installs_presets(cli_runner, tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
 

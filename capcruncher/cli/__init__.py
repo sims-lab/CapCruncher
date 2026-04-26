@@ -1,7 +1,6 @@
 import click
 from functools import cached_property
 from importlib import import_module, metadata
-from loguru import logger
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
@@ -83,9 +82,47 @@ def interactions():
     """Reporter counting, storing, comparison and pileups"""
 
 
-@cli.command()
+def _render_plot(region, template, output):
+    from plotnado import GenomicFigure
+
+    GenomicFigure.from_toml(template).save(output, region=region)
+
+
+@cli.group(invoke_without_command=True)
+@click.pass_context
 @click.option(
-    "-r", "--region", required=True, help="Genomic coordinates of the region to plot"
+    "-r", "--region", help="Genomic coordinates of the region to plot"
+)
+@click.option(
+    "-t",
+    "--template",
+    help="TOML file containing the template for the plot",
+)
+@click.option(
+    "-o",
+    "--output",
+    default="capcruncher_plot.png",
+    help="Output file path. The file extension determines the output format.",
+)
+def plot(ctx, region=None, template=None, output="capcruncher_plot.png"):
+    """
+    Generates plots for the outputs produced by CapCruncher
+    """
+    if ctx.invoked_subcommand is not None:
+        return
+
+    if region is None or template is None:
+        raise click.UsageError("Missing option '-r' / '--region' or '-t' / '--template'.")
+
+    _render_plot(region=region, template=template, output=output)
+
+
+@plot.command(name="render")
+@click.option(
+    "-r",
+    "--region",
+    required=True,
+    help="Genomic coordinates of the region to plot",
 )
 @click.option(
     "-t",
@@ -99,15 +136,10 @@ def interactions():
     default="capcruncher_plot.png",
     help="Output file path. The file extension determines the output format.",
 )
-def plot(*args, **kwargs):
-    """
-    Generates plots for the outputs produced by CapCruncher
-    """
-    from plotnado import GenomicFigure
+def plot_render(region, template, output):
+    """Render a PlotNado TOML template."""
 
-    GenomicFigure.from_toml(kwargs["template"]).save(
-        kwargs["output"], region=kwargs["region"]
-    )
+    _render_plot(region=region, template=template, output=output)
 
 
 @cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_utilities:cli")
@@ -116,7 +148,7 @@ def utilities():
 
 
 # Finally, import the pipeline command from the pipeline module
-import capcruncher.cli.cli_pipeline
+import capcruncher.cli.cli_pipeline  # noqa: E402,F401
 
 
 __all__ = [
