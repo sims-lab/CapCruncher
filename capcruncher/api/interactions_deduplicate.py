@@ -1,15 +1,19 @@
 import os
+import shutil
+from typing import Literal
+
+import polars as pl
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
-import shutil
-import polars as pl
 from loguru import logger
 
 from capcruncher.api.statistics import AlignmentDeduplicationStats
 
+type FilePath = str | os.PathLike[str]
 
-def read_parquet(path: os.PathLike):
+
+def read_parquet(path: FilePath) -> pl.LazyFrame:
     parquet_path = str(path)
     if os.path.isdir(parquet_path):
         parquet_path = os.path.join(parquet_path, "*.parquet")
@@ -26,12 +30,12 @@ def remove_unused_dictionary_values(table: pa.Table) -> pa.Table:
 
 
 def deduplicate(
-    slices: os.PathLike,
-    output: os.PathLike,
-    read_type: str = "flashed",
+    slices: FilePath,
+    output: FilePath,
+    read_type: Literal["flashed", "pe"] = "flashed",
     sample_name: str = "sampleX",
-    statistics: os.PathLike = "deduplication_stats.json",
-):
+    statistics: FilePath = "deduplication_stats.json",
+) -> None:
     logger.info("Loading parquet input")
     slices_tbl_raw = read_parquet(slices)
 
