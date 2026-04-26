@@ -140,6 +140,21 @@ def test_plot_render_commands(cli_runner, monkeypatch, command):
     assert calls == [("chr1:1-100", "template.toml", "plot.png")]
 
 
+def test_plot_help_does_not_import_plotnado(cli_runner, monkeypatch):
+    real_import = __import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "plotnado" or name.startswith("plotnado."):
+            raise ModuleNotFoundError("No module named 'plotnado'", name="plotnado")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", guarded_import)
+
+    result = cli_runner.invoke(cli, ["plot", "render", "--help"])
+
+    assert result.exit_code == 0
+
+
 def test_pipeline_init_installs_presets(cli_runner, tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
 

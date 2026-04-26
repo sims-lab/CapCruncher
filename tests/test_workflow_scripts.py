@@ -1,4 +1,5 @@
 import importlib.util
+import builtins
 import json
 import os
 import subprocess
@@ -111,6 +112,30 @@ def capture_pipeline_run(tmp_path_factory, capcruncher_subprocess_env):
     ],
 )
 def test_workflow_scripts_import_without_snakemake(script_name):
+    load_workflow_script(script_name)
+
+
+@pytest.mark.parametrize(
+    "blocked_import,script_name",
+    [
+        ("plotnado", "plot.py"),
+        ("tracknado", "make_ucsc_hub.py"),
+    ],
+)
+def test_optional_workflow_scripts_import_without_optional_deps(
+    monkeypatch, blocked_import, script_name
+):
+    real_import = builtins.__import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == blocked_import or name.startswith(f"{blocked_import}."):
+            raise ModuleNotFoundError(
+                f"No module named '{blocked_import}'", name=blocked_import
+            )
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+
     load_workflow_script(script_name)
 
 

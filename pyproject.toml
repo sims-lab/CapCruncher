@@ -46,6 +46,8 @@ write_to = "capcruncher/_version.py"
 full = { file = ["requirements.txt"] }
 ray = { file = ["requirements-ray.txt"] }
 differential = { file = ["requirements-differential.txt"] }
+plot = { file = ["requirements-plot.txt"] }
+hub = { file = ["requirements-hub.txt"] }
 
 [project.scripts]
 capcruncher = "capcruncher.cli:cli"

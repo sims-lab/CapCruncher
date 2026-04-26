@@ -1,5 +1,4 @@
 import os
-from plotnado import GenomicFigure
 
 
 def plot(
@@ -15,6 +14,7 @@ def plot(
         output (str): Path to output file.
 
     """
+    from plotnado import GenomicFigure
 
     fig = GenomicFigure.from_toml(str(template))
     fig.save(output, region=region)

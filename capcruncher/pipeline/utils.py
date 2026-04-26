@@ -2,7 +2,6 @@ import os
 import pathlib
 import re
 from typing import Dict, List, Union, Literal
-from collections import defaultdict
 import json
 import itertools
 import pandas as pd
@@ -12,7 +11,7 @@ from capcruncher import utils
 
 from loguru import logger
 import snakemake
-from snakemake.io import expand, glob_wildcards
+from snakemake.io import expand
 
 
 def is_on(param: str) -> bool:
@@ -141,7 +140,7 @@ def can_perform_plotting(config):
         import plotnado  # noqa: F401
     except ImportError:
         logger.warning(
-            "Plotting capabilities not installed. For plotting please run: pip install capcruncher[full]"
+            "Plotting capabilities not installed. For plotting please run: pip install capcruncher[plot]"
         )
         return False
 

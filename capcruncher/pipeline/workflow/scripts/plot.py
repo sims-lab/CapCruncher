@@ -2,7 +2,6 @@ import pathlib
 
 import pandas as pd
 from loguru import logger
-from plotnado import GenomicFigure
 
 
 def can_group_tracks_by_condition(design: pd.DataFrame) -> bool:
@@ -120,6 +119,8 @@ def build_figure(
     binsize,
     normalization_method,
 ):
+    from plotnado import GenomicFigure
+
     logger.info("Checking if we can group tracks by condition")
     can_group_tracks = can_group_tracks_by_condition(design)
 
