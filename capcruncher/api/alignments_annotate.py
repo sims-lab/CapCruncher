@@ -1,7 +1,8 @@
 import os
 import sys
 import warnings
-from typing import Tuple
+from collections.abc import Sequence
+from typing import Any, Literal
 
 import pandas as pd
 import pyranges1 as pr
@@ -16,8 +17,10 @@ from capcruncher.utils import (
 
 warnings.simplefilter("ignore")
 
+type FilePath = str | os.PathLike[str]
 
-def _bam_to_bed_dataframe(bam_path: os.PathLike) -> pd.DataFrame:
+
+def _bam_to_bed_dataframe(bam_path: FilePath) -> pd.DataFrame:
     import pysam
 
     rows = []
@@ -43,19 +46,19 @@ def _bam_to_bed_dataframe(bam_path: os.PathLike) -> pd.DataFrame:
 
 
 def annotate(
-    slices: os.PathLike,
-    actions: Tuple = None,
-    bed_files: Tuple = None,
-    names: Tuple = None,
-    overlap_fractions: Tuple = None,
-    output: os.PathLike = None,
+    slices: FilePath,
+    actions: Sequence[Literal["get", "count"]] | None = None,
+    bed_files: Sequence[FilePath] | None = None,
+    names: Sequence[str] | None = None,
+    overlap_fractions: Sequence[float] | None = None,
+    output: FilePath | None = None,
     duplicates: str = "remove",
     n_cores: int = 1,
     blacklist: str = "",
     prioritize_cis_slices: bool = False,
     priority_chroms: str = "",
-    **kwargs,
-):
+    **kwargs: Any,
+) -> None:
     """
     Annotates a BED-like input with other BED files using PyRanges overlaps.
 
@@ -86,6 +89,11 @@ def annotate(
 
     with logger.catch():
         logger.info("Validating commandline arguments")
+        actions = tuple(actions or ())
+        bed_files = tuple(bed_files or ())
+        names = tuple(names or ())
+        overlap_fractions = tuple(overlap_fractions or (1e-9,))
+
         len_bed_files = len(bed_files)
         if not all([len(arg) == len_bed_files for arg in [actions, names]]):
             raise ValueError(

@@ -1,6 +1,7 @@
 import os
 import pathlib
 import tempfile
+from typing import Literal
 
 import pandas as pd
 import polars as pl
@@ -15,6 +16,7 @@ SLICE_FILTERS = {
     "tri": TriCSliceFilter,
     "tiled": TiledCSliceFilter,
 }
+type FilePath = str | os.PathLike[str]
 
 
 def remove_unused_categories(df: pd.DataFrame) -> pd.DataFrame:
@@ -24,7 +26,7 @@ def remove_unused_categories(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def merge_annotations(slices: os.PathLike, annotations: os.PathLike) -> pd.DataFrame:
+def merge_annotations(slices: FilePath, annotations: FilePath) -> pd.DataFrame:
     """
     Merges a parquet file containing slice information with a parquet file containing
     annotation information.
@@ -64,16 +66,16 @@ def merge_annotations(slices: os.PathLike, annotations: os.PathLike) -> pd.DataF
 
 
 def filter(
-    bam: os.PathLike,
-    annotations: os.PathLike,
-    custom_filtering: os.PathLike = None,
-    output_prefix: os.PathLike = "reporters",
-    statistics: os.PathLike = "",
-    method: str = "capture",
+    bam: FilePath,
+    annotations: FilePath,
+    custom_filtering: FilePath | None = None,
+    output_prefix: FilePath = "reporters",
+    statistics: FilePath = "",
+    method: Literal["capture", "tri", "tiled"] = "capture",
     sample_name: str = "",
     read_type: str = "",
     fragments: bool = True,
-):
+) -> None:
     """
     Removes unwanted aligned slices and identifies reporters.
 
