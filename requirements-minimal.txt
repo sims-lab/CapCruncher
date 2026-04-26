@@ -4,8 +4,10 @@ cookiecutter<=2.1.1
 loguru<=0.7.2
 numpy>=2.4.4,<3.0.0
 pandas>=2.2.3,<3.0.0
+plotly>=6.7.0,<7.0.0
 polars>=1.34.0,<1.35.0
 pyarrow>=24.0.0,<25.0.0
 pyranges1
+pyyaml
 snakemake-executor-plugin-slurm
 snakemake>=9.19.0,<10.0.0

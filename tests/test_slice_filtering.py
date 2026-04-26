@@ -3,10 +3,11 @@ import os
 import pathlib
 from typing import Union
 
+import pandas as pd
 import polars as pl
 
 from capcruncher.api.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
-from capcruncher.cli.alignments_filter import merge_annotations
+from capcruncher.cli.alignments_filter import merge_annotations, remove_unused_categories
 from capcruncher.api.io import parse_bam
 
 
@@ -66,6 +67,21 @@ def test_merge_annotations_normalises_join_key_dtypes(tmp_path):
             "capture": "vp1",
         }
     ]
+
+
+def test_remove_unused_categories_prunes_viewpoint_labels():
+    df = pd.DataFrame(
+        {
+            "viewpoint": pd.Categorical(
+                ["Slc25A37", "Slc25A37"],
+                categories=["Slc25A37", "reporters_pe_80", "duplicate_coords_1"],
+            )
+        }
+    )
+
+    cleaned = remove_unused_categories(df)
+
+    assert cleaned["viewpoint"].cat.categories.to_list() == ["Slc25A37"]
 
 
 @pytest.mark.parametrize(

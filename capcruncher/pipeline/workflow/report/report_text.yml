@@ -4,9 +4,9 @@ FASTQ PCR Duplicate Removal:
   <p>This is only the first pass of PCR duplicate removal as single base changes will be ignored. The aim here is to remove as many duplicate fragments as possible to reduce the amount of downstream processing required.</p>
   <p>Approximately 5-20% of fragments are typically removed by this step.</p>
 
-# Trimming:
-#   <p>Following initial PCR duplicate removal fastq files are trimmed to remove sequencing adapters.</p>
-#   <p>These plots provide a brief summary of the number of adapters identified and removed.</p>
+Trimming:
+  <p>Following initial PCR duplicate removal fastq files are trimmed to remove sequencing adapters.</p>
+  <p>These tables provide a brief summary of the number of adapters identified and removed.</p>
 
 Read pair combination statistics (FLASh):
   After the removal of adapters read pairs are combined (if any overlap exists) using FLASh to generate combined fragments (refered to as flashed). Non-combined read pairs that do not have a sufficient overlap  (refered to as paired-end or pe) are maintained as read pairs in separate fastq files.

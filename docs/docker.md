@@ -1,6 +1,6 @@
 # Docker Usage
 
-CapCruncher publishes a Docker/OCI image containing the CLI, Snakemake workflow, native command-line tools, Python dependencies, Apptainer, and the Quarto report runtime.
+CapCruncher publishes a Docker/OCI image containing the CLI, Snakemake workflow, native command-line tools, Python dependencies, and Apptainer.
 
 ```bash
 docker pull ghcr.io/sims-lab/capcruncher:latest
@@ -90,7 +90,7 @@ For development or local validation:
 ```bash
 docker build -t capcruncher:dev .
 docker run --rm capcruncher:dev --help
-docker run --rm --entrypoint quarto capcruncher:dev --version
+docker run --rm --entrypoint apptainer capcruncher:dev --version
 ```
 
 Build a specific platform when testing macOS compatibility:

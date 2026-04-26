@@ -1,4 +1,6 @@
 import os
+import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import shutil
 import polars as pl
@@ -13,6 +15,14 @@ def read_parquet(path: os.PathLike):
         parquet_path = os.path.join(parquet_path, "*.parquet")
 
     return pl.scan_parquet(parquet_path)
+
+
+def remove_unused_dictionary_values(table: pa.Table) -> pa.Table:
+    for index, field in enumerate(table.schema):
+        if pa.types.is_dictionary(field.type):
+            column = pc.dictionary_encode(pc.cast(table.column(field.name), pa.string()))
+            table = table.set_column(index, field.name, column)
+    return table
 
 
 def deduplicate(
@@ -86,8 +96,10 @@ def deduplicate(
     if os.path.exists(output):
         shutil.rmtree(output)
 
+    deduplicated_slices = remove_unused_dictionary_values(scanner.to_table())
+
     ds.write_dataset(
-        scanner,
+        deduplicated_slices,
         output,
         format="parquet",
         partitioning_flavor="hive",
@@ -98,7 +110,7 @@ def deduplicate(
     # If the output directory is empty, create a dummy file to prevent downstream errors
     if not os.path.exists(output):
         os.makedirs(output)
-        df_dummy = scanner.to_table().to_pandas()
+        df_dummy = deduplicated_slices.to_pandas()
         df_dummy.to_parquet(f"{output}/dummy.parquet")
 
     logger.info("Calculating deduplication stats")

@@ -29,7 +29,7 @@ capcruncher = [
     "pipeline/workflow/Snakefile",
     "pipeline/workflow/data/*.json",
     "pipeline/workflow/envs/*.yml",
-    "pipeline/workflow/report/*.qmd",
+    "pipeline/workflow/report/*.py",
     "pipeline/workflow/report/*.yml",
     "pipeline/workflow/rules/*.smk",
     "pipeline/workflow/scripts/*.py",
@@ -90,7 +90,6 @@ max-complexity = 10
 
 [tool.ruff.per-file-ignores]
 "capcruncher/__init__.py" = ["F401", "E402"]
-"capcruncher/pipeline/rules/scripts/make_report.py" = ["F821"]
 "capcruncher/pipeline/rules/scripts/make_ucsc_hub.py" = ["F821"]
 "capcruncher/pipeline/rules/scripts/combine_stats_read_level.py" = ["F821"]
 "capcruncher/pipeline/rules/scripts/combine_alignment_deduplication_stats.py" = [

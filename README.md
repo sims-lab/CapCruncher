@@ -1,106 +1,121 @@
-# CapCruncher
+<p align="center">
+  <img src="docs/img/capcruncher_logo.png" alt="CapCruncher" width="760">
+</p>
 
-[![Documentation](https://github.com/sims-lab/CapCruncher/actions/workflows/docs.yml/badge.svg?branch=master)](https://sims-lab.github.io/CapCruncher/)
-[![Codecov](https://codecov.io/gh/sims-lab/CapCruncher/branch/master/graph/badge.svg?token=RHIGNMGX09)](https://codecov.io/gh/sims-lab/CapCruncher)
-[![Anaconda-Server Badge](https://anaconda.org/bioconda/capcruncher/badges/version.svg)](https://anaconda.org/bioconda/capcruncher)
-[![Anaconda-Server Badge License](https://anaconda.org/bioconda/capcruncher/badges/license.svg)](https://anaconda.org/bioconda/capcruncher)
-[![DOI](https://zenodo.org/badge/224631087.svg)](https://zenodo.org/badge/latestdoi/224631087)
-[![Downloads](https://pepy.tech/badge/capcruncher)](https://pepy.tech/project/capcruncher)
+<p align="center">
+  <a href="https://sims-lab.github.io/CapCruncher/"><img alt="Documentation" src="https://github.com/sims-lab/CapCruncher/actions/workflows/docs.yml/badge.svg"></a>
+  <a href="https://codecov.io/gh/sims-lab/CapCruncher"><img alt="Codecov" src="https://codecov.io/gh/sims-lab/CapCruncher/graph/badge.svg?token=RHIGNMGX09"></a>
+  <a href="https://anaconda.org/bioconda/capcruncher"><img alt="Bioconda" src="https://anaconda.org/bioconda/capcruncher/badges/version.svg"></a>
+  <a href="https://anaconda.org/bioconda/capcruncher"><img alt="License" src="https://anaconda.org/bioconda/capcruncher/badges/license.svg"></a>
+  <a href="https://zenodo.org/badge/latestdoi/224631087"><img alt="DOI" src="https://zenodo.org/badge/224631087.svg"></a>
+  <a href="https://pepy.tech/project/capcruncher"><img alt="Downloads" src="https://pepy.tech/badge/capcruncher"></a>
+</p>
 
-![CapCruncher Logo](https://raw.githubusercontent.com/sims-lab/CapCruncher/master/docs/img/capcruncher_logo.png)
+CapCruncher is a command-line toolkit and Snakemake workflow for processing
+Capture-C, Tri-C and Tiled-C sequencing data. It provides capture-aware
+filtering, contact matrix generation, plotting, and UCSC track hub output for
+workstation, container, and HPC runs.
 
-The CapCruncher package is designed to process Capture-C, Tri-C and Tiled-C data. Unlike other pipelines that are designed to process Hi-C or Capture-HiC data, the filtering steps in CapCruncher are specifically optimized for these datasets. The package consists of a configurable data processing pipeline and a supporting command line interface to enable fine-grained control over the analysis. The pipeline is fast, robust and scales from a single workstation to a large HPC cluster. It is designed to be run on an HPC cluster and can be configured to use conda environments or container-backed Snakemake presets. For more information, see the [documentation](https://sims-lab.github.io/CapCruncher/).
+See the [documentation](https://sims-lab.github.io/CapCruncher/) for the full
+installation, configuration, and pipeline guides.
 
-> **Note:**
-> The current version of CapCruncher is in beta. Please report any issues you encounter to the [issue tracker](https://github.com/sims-lab/CapCruncher/issues/new/choose)
+## What It Does
 
-## Quick Start
+- Processes raw Capture-C, Tri-C and Tiled-C FASTQs into filtered contacts.
+- Builds contact matrices and viewpoint-centric outputs for downstream analysis.
+- Generates PlotNado-compatible plot templates and rendered figures.
+- Produces UCSC genome browser track hubs.
+- Runs locally, in Docker, or on HPC systems through Snakemake 9 presets.
 
-### Installation
+## Installation
 
-> **Warning:**
->
-> CapCruncher is currently only available for Linux with MacOS support planned in the future.
+Install the current release from Bioconda:
 
-CapCruncher is available on conda and PyPI. To install the latest version, run:
-
-``` bash
-pip install capcruncher
-```
-
-or
-
-``` bash
+```bash
 mamba install -c bioconda capcruncher
 ```
 
-or run the Docker image:
+CapCruncher is also published to PyPI:
 
-``` bash
-docker pull ghcr.io/sims-lab/capcruncher:latest
+```bash
+pip install capcruncher
+```
+
+You can run the packaged Docker image without installing Python dependencies on
+the host:
+
+```bash
 docker run --rm ghcr.io/sims-lab/capcruncher:latest --help
 ```
 
-Please note that it is highly recommended to install CapCruncher in a conda environment. If you do not have conda installed, please follow the instructions [here](https://github.com/conda-forge/miniforge#mambaforge) to install mambaforge.
+CapCruncher targets Linux execution. macOS users can run the Linux container via
+Docker Desktop or Colima. For Apptainer, editable Snakemake profiles, and
+development installs, see the [installation guide](docs/installation.md).
 
-See the [installation guide](installation.md) for more detailed instructions.
+## Quick Start
 
-### Usage
+Create a pipeline configuration:
 
-CapCruncher commands are run using the `capcruncher` command. To see a list of available commands, run:
-
-``` bash
-capcruncher --help
-```
-
-To see a list of available options for a command, run:
-
-``` bash
-capcruncher <command> --help
-```
-
-See the [CLI Reference](https://sims-lab.github.io/CapCruncher/cli/) for more detailed information regarding the various subcommands.
-
-### Pipeline
-
-The CapCruncher pipeline handles the processing of raw data from the sequencer to the generation of a contact matrix, generation of plots and production of a UCSC genome browser track hub. See the [pipeline guide](https://sims-lab.github.io/CapCruncher/pipeline/) for more detailed instructions including how to configure the pipeline to run on [HPC clusters](https://sims-lab.github.io/CapCruncher/pipeline/#hpc-cluster-usage-recommended-if-available) and use conda or Apptainer-backed Snakemake presets.
-
-#### Pipeline Configuration
-
-The pipeline is configured using a YAML file but it is strongly recommended to use the `capcruncher pipeline-config` command to generate a tailored config file. To use the command, run:
-
-``` bash
+```bash
 capcruncher pipeline-config
 ```
 
-Simply follow the prompts to generate a config file. See the [pipeline configuration guide](https://sims-lab.github.io/CapCruncher/pipeline/#configuration-file) for more detailed instructions.
+Install the bundled Snakemake profiles:
 
-#### Running the pipeline
-
-The pipeline is run using the `capcruncher pipeline` command. Ensure that you have a configuration file and the fastq files to process are in the current working directory.
-
-``` bash
-# Basic usage
-capcruncher pipeline --cores <NUMBER OF CORES TO USE>
-
-# Real example running the pipeline with 8 cores, using the bundled SLURM Apptainer preset
-capcruncher pipeline --cores 8 --preset capcruncher-slurm-apptainer
-
-# Docker example from the directory containing capcruncher_config.yml
-docker run --rm -it -v "$PWD":/work -w /work ghcr.io/sims-lab/capcruncher:latest pipeline --cores 8
+```bash
+capcruncher pipeline-init
 ```
 
-> **Note:**
-> In order to avoid disconnecting from the cluster, it is recommended to run the pipeline in a [tmux](https://linuxize.com/post/getting-started-with-tmux/)
-> session. Alternatively, [nohup](https://linuxize.com/post/linux-nohup-command/) can be used to run the pipeline in the background. For example:
->
-> ``` bash
-> # tmux example
->tmux new -s capcruncher
-> capcruncher pipeline --cores 8 --preset capcruncher-slurm-apptainer
->
-># nohup example
->nohup capcruncher pipeline --cores 8 --preset capcruncher-slurm-apptainer &
->```
+Run from the directory containing `capcruncher_config.yml` and your FASTQ files:
 
-See the [pipeline guide](https://sims-lab.github.io/CapCruncher/pipeline/) for more detailed instructions.
+```bash
+capcruncher pipeline --cores 8 --preset capcruncher-local
+```
+
+For an HPC run with Apptainer-backed jobs:
+
+```bash
+capcruncher pipeline --jobs 50 --preset capcruncher-slurm-apptainer
+```
+
+For Docker-based workstation usage:
+
+```bash
+docker run --rm -it -v "$PWD":/work -w /work \
+  ghcr.io/sims-lab/capcruncher:latest \
+  pipeline --cores 8
+```
+
+Long cluster runs should be launched inside `tmux`, `screen`, or your scheduler's
+normal job submission wrapper so they survive terminal disconnects.
+
+## CLI
+
+List available commands:
+
+```bash
+capcruncher --help
+```
+
+Inspect a command:
+
+```bash
+capcruncher <command> --help
+```
+
+See the [CLI reference](https://sims-lab.github.io/CapCruncher/cli/) and
+[pipeline guide](https://sims-lab.github.io/CapCruncher/pipeline/) for detailed
+usage.
+
+## Development
+
+This repository currently targets Python 3.12+ and Snakemake 9. The local
+validation environment used by maintainers is the `cc` conda environment:
+
+```bash
+conda run -n cc pytest tests/test_cli.py -q
+conda run -n cc pytest tests/test_workflow_scripts.py tests/test_plotting.py -q
+```
+
+Please report bugs and feature requests through the
+[issue tracker](https://github.com/sims-lab/CapCruncher/issues/new/choose).

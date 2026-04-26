@@ -10,10 +10,7 @@ from capcruncher.api.storage import (
     merge_coolers,
 )
 import cooler
-import warnings
 
-# warnings.filterwarnings("ignore", category=DeprecationWarning)
-# warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 def fragments(

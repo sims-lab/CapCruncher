@@ -17,6 +17,13 @@ SLICE_FILTERS = {
 }
 
 
+def remove_unused_categories(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    for column in df.select_dtypes(include="category").columns:
+        df[column] = df[column].cat.remove_unused_categories()
+    return df
+
+
 def merge_annotations(slices: os.PathLike, annotations: os.PathLike) -> pd.DataFrame:
     """
     Merges a parquet file containing slice information with a parquet file containing
@@ -175,6 +182,7 @@ def filter(
                     }
                 )
             )
+            df_fragments = remove_unused_categories(df_fragments)
 
             df_fragments.to_parquet(
                 f"{output_prefix}.fragments.parquet",
@@ -194,6 +202,7 @@ def filter(
         df_slices_with_viewpoint[to_convert] = df_slices_with_viewpoint[
             to_convert
         ].astype("category")
+        df_slices_with_viewpoint = remove_unused_categories(df_slices_with_viewpoint)
 
         df_slices_with_viewpoint.to_parquet(
             f"{output_prefix}.slices.parquet",

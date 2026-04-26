@@ -120,9 +120,17 @@ data_dir.mkdir(exist_ok=True)
 
 @pytest.fixture(scope="session")
 def capcruncher_subprocess_env(capcruncher_test_bin):
+    repo_root = os.path.dirname(__file__)
+    pythonpath = os.environ.get("PYTHONPATH")
+    if pythonpath:
+        pythonpath = f"{repo_root}{os.pathsep}{pythonpath}"
+    else:
+        pythonpath = repo_root
+
     return {
         **os.environ,
         "PATH": f"{capcruncher_test_bin}{os.pathsep}{os.environ['PATH']}",
+        "PYTHONPATH": pythonpath,
     }
 
 

@@ -13,7 +13,8 @@ dependencies:
   - multiqc
   - pip
   - pigz
-  - quarto
+  - plotly
+  - pyyaml
   - samtools<=1.15.1
   - trim-galore<=0.6.10
   - ucsc-bedgraphtobigwig

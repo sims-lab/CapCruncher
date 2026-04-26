@@ -1,5 +1,6 @@
 import json
 
+import pandas as pd
 import polars as pl
 
 from capcruncher.cli.interactions_deduplicate import deduplicate
@@ -47,3 +48,34 @@ def test_deduplicate_flashed_accepts_categorical_coordinates(tmp_path):
         "n_total_slices": 4,
         "n_unique_slices": 2,
     }
+
+
+def test_deduplicate_prunes_unused_viewpoint_categories(tmp_path):
+    slices = tmp_path / "slices.parquet"
+    output = tmp_path / "deduplicated"
+    statistics = tmp_path / "deduplication.json"
+
+    pd.DataFrame(
+        {
+            "slice_id": [1, 2],
+            "parent_id": [10, 10],
+            "coordinates": pd.Categorical(["chr1:1-10", "chr1:20-30"]),
+            "viewpoint": pd.Categorical(
+                ["Slc25A37", "Slc25A37"],
+                categories=["Slc25A37", "reporters_pe_80", "duplicate_coords_1"],
+            ),
+        }
+    ).to_parquet(slices)
+
+    deduplicate(
+        slices=slices,
+        output=output,
+        read_type="flashed",
+        sample_name="sample-a",
+        statistics=statistics,
+    )
+
+    parquet_files = list(output.rglob("*.parquet"))
+    assert parquet_files
+    deduplicated = pd.read_parquet(parquet_files[0], columns=["viewpoint"])
+    assert deduplicated["viewpoint"].cat.categories.to_list() == ["Slc25A37"]

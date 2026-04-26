@@ -1,4 +1,5 @@
 from loguru import logger
+import pandas as pd
 import pytest
 import os
 import pathlib
@@ -9,6 +10,7 @@ from types import SimpleNamespace
 
 from capcruncher.cli import cli
 from capcruncher.cli import cli_pipeline
+from capcruncher.cli.interactions_count import _write_countable_reporters
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -709,6 +711,29 @@ def test_reporters_count(
     assert os.path.exists(output)
 
 
+def test_reporters_count_fixture_matches_viewpoint_file(
+    data_reporters_count, data_pipeline
+):
+    reporters = os.path.join(
+        os.path.dirname(data_reporters_count),
+        "reporter_count",
+        "SAMPLE-A_REP1.parquet",
+    )
+    viewpoints = os.path.join(data_pipeline, "mm9_capture_viewpoints_Slc25A37.bed")
+    viewpoint_names = pd.read_csv(viewpoints, sep="\t", header=None)[3].to_list()
+
+    assert viewpoint_names == ["Slc25A37"]
+
+    for parquet_file in sorted(pathlib.Path(reporters).glob("*.parquet")):
+        reporter_viewpoints = pd.read_parquet(parquet_file, columns=["viewpoint"])[
+            "viewpoint"
+        ]
+        assert reporter_viewpoints.cat.categories.to_list() == viewpoint_names
+        assert reporter_viewpoints.value_counts(dropna=False).to_dict() == {
+            "Slc25A37": len(reporter_viewpoints)
+        }
+
+
 @pytest.mark.parametrize(
     "cooler_fn,bin_size,output,flags",
     [
@@ -742,6 +767,48 @@ def test_reporters_store_binned(
     )
     assert result.exit_code == 0
     assert os.path.exists(output)
+
+
+def test_countable_reporters_only_include_bed_viewpoint_categories(tmp_path):
+    viewpoints = tmp_path / "viewpoints.bed"
+    reporters = tmp_path / "reporters.parquet"
+    output = tmp_path / "countable"
+
+    viewpoints.write_text("chr14\t69902454\t69903469\tSlc25A37\n")
+    pd.DataFrame(
+        {
+            "viewpoint": pd.Categorical(
+                ["Slc25A37", "Slc25A37", "Slc25A37"],
+                categories=["Slc25A37", "reporters_pe_80", "duplicate_coords_1"],
+            ),
+            "parent_id": [1, 2, 3],
+            "restriction_fragment": [10, 20, 30],
+        }
+    ).to_parquet(reporters)
+
+    cleaned = _write_countable_reporters(reporters, viewpoints, output)
+    cleaned_df = pd.read_parquet(cleaned)
+
+    assert cleaned_df["viewpoint"].cat.categories.to_list() == ["Slc25A37"]
+    assert cleaned_df["viewpoint"].to_list() == ["Slc25A37"] * 3
+
+
+def test_countable_reporters_reject_actual_non_viewpoint_values(tmp_path):
+    viewpoints = tmp_path / "viewpoints.bed"
+    reporters = tmp_path / "reporters.parquet"
+    output = tmp_path / "countable"
+
+    viewpoints.write_text("chr14\t69902454\t69903469\tSlc25A37\n")
+    pd.DataFrame(
+        {
+            "viewpoint": ["Slc25A37", "reporters_pe_80"],
+            "parent_id": [1, 2],
+            "restriction_fragment": [10, 20],
+        }
+    ).to_parquet(reporters)
+
+    with pytest.raises(ValueError, match="reporters_pe_80"):
+        _write_countable_reporters(reporters, viewpoints, output)
 
 
 @pytest.mark.parametrize(
