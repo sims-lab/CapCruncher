@@ -1,12 +1,14 @@
 import os
-import tempfile
 import pathlib
+import tempfile
 from typing import Literal
 
 import pandas as pd
 
+type FilePath = str | os.PathLike[str]
 
-def _valid_viewpoint_names(viewpoint_path: os.PathLike) -> list[str]:
+
+def _valid_viewpoint_names(viewpoint_path: FilePath) -> list[str]:
     viewpoints = pd.read_csv(
         viewpoint_path,
         sep="\t",
@@ -17,7 +19,7 @@ def _valid_viewpoint_names(viewpoint_path: os.PathLike) -> list[str]:
     return viewpoints["name"].dropna().astype(str).drop_duplicates().tolist()
 
 
-def _parquet_files(path: os.PathLike) -> list[pathlib.Path]:
+def _parquet_files(path: FilePath) -> list[pathlib.Path]:
     path = pathlib.Path(path)
     if path.is_dir():
         return sorted(path.glob("*.parquet"))
@@ -25,7 +27,7 @@ def _parquet_files(path: os.PathLike) -> list[pathlib.Path]:
 
 
 def _write_countable_reporters(
-    reporters: os.PathLike, viewpoint_path: os.PathLike, output_dir: os.PathLike
+    reporters: FilePath, viewpoint_path: FilePath, output_dir: FilePath
 ) -> pathlib.Path:
     valid_viewpoints = _valid_viewpoint_names(viewpoint_path)
     if not valid_viewpoints:
@@ -59,18 +61,18 @@ def _write_countable_reporters(
 
 
 def count(
-    reporters: os.PathLike,
-    output: os.PathLike = "CC_cooler.hdf5",
+    reporters: FilePath,
+    output: FilePath = "CC_cooler.hdf5",
     remove_exclusions: bool = False,
     remove_viewpoint: bool = False,
     subsample: float = 0,
-    fragment_map: os.PathLike = None,
-    viewpoint_path: os.PathLike = None,
+    fragment_map: FilePath | None = None,
+    viewpoint_path: FilePath | None = None,
     n_cores: int = 1,
     assay: Literal["capture", "tri", "tiled"] = "capture",
     executor: Literal["local", "process", "ray"] = "local",
     **kwargs,
-) -> os.PathLike:
+) -> FilePath:
     """
     Counts interactions between the viewpoint and the rest of the genome.
 
