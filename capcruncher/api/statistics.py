@@ -1,8 +1,8 @@
-from pydantic import BaseModel, computed_field
-from typing import List, Optional, Union, Dict, TypeVar, Generic
-import pandas as pd
 from enum import Enum
-from typing import Literal
+from typing import Generic, Literal, TypeVar
+
+import pandas as pd
+from pydantic import BaseModel, computed_field
 
 
 class ReadType(Enum):
@@ -32,7 +32,7 @@ class FastqTrimmingStatistics(BaseModel):
     """Statistics for Fastq trimming"""
 
     sample: str = "unknown_sample"
-    read_number: Union[int, float]
+    read_number: int | float
     reads_input: int
     reads_output: int
     reads_with_adapter_identified: int
@@ -60,6 +60,7 @@ class FastqTrimmingStatistics(BaseModel):
     def __add__(self, other: "FastqTrimmingStatistics"):
         return FastqTrimmingStatistics(
             sample=self.sample,
+            read_number=self.read_number,
             reads_input=self.reads_input + other.reads_input,
             reads_output=self.reads_output + other.reads_output,
             reads_with_adapter_identified=self.reads_with_adapter_identified
@@ -67,7 +68,7 @@ class FastqTrimmingStatistics(BaseModel):
         )
 
 
-V = TypeVar('V')
+V = TypeVar("V")
 
 
 class SliceNumberStats(BaseModel):
@@ -83,11 +84,9 @@ class SliceNumberStats(BaseModel):
 
 class Histogram(BaseModel):
     name: str
-    hist: Dict[int, int]
+    hist: dict[int, int]
 
-    def to_dataframe(
-        self, name: Optional[str] = "value", read_number: Optional[str] = None
-    ):
+    def to_dataframe(self, name: str = "value", read_number: str | None = None):
         return (
             pd.DataFrame(self.hist.items(), columns=[name, "count"])
             .assign(**{"read_number": read_number})
@@ -105,8 +104,8 @@ class Histogram(BaseModel):
 
 
 class ReadPairStat(BaseModel, Generic[V]):
-    read1: Union[Histogram, SliceNumberStats, int]
-    read2: Optional[Union[Histogram, SliceNumberStats, int]] = None
+    read1: Histogram | SliceNumberStats | int
+    read2: Histogram | SliceNumberStats | int | None = None
 
     def to_dataframe(self) -> pd.DataFrame:
         frames = []
@@ -122,20 +121,12 @@ class ReadPairStat(BaseModel, Generic[V]):
 
     def __add__(
         self,
-        other: Union[
-            'ReadPairStat[int]',
-            'ReadPairStat[Histogram]',
-            'ReadPairStat[SliceNumberStats]',
-        ],
-    ):
+        other: "ReadPairStat[int] | ReadPairStat[Histogram] | ReadPairStat[SliceNumberStats]",
+    ) -> "ReadPairStat":
         read_1 = self.read1 + other.read1
         read_2 = self.read2 + other.read2 if self.read2 is not None else None
 
-        instance_type = type(self.read1)
-
-        rps = ReadPairStat[instance_type](read1=read_1, read2=read_2)
-
-        return rps
+        return ReadPairStat(read1=read_1, read2=read_2)
 
 
 class DigestionReadPairStats(BaseModel):
@@ -196,10 +187,10 @@ class FlashStats(BaseModel):
 
 
 class FlashOverallStats(BaseModel):
-    samples: List[FlashStats]
+    samples: list[FlashStats]
 
     @classmethod
-    def from_multiqc(cls, multiqc_data: Union[str, pd.DataFrame]):
+    def from_multiqc(cls, multiqc_data: str | pd.DataFrame):
         if isinstance(multiqc_data, str):
             multiqc_data = pd.read_csv(multiqc_data, sep="\t")
 
@@ -244,10 +235,10 @@ class SliceFilterStats(BaseModel):
 
 
 class SliceFilterStatsList(BaseModel):
-    stats: List[SliceFilterStats]
+    stats: list[SliceFilterStats]
 
     @classmethod
-    def from_list(cls, stats: List[SliceFilterStats]):
+    def from_list(cls, stats: list[SliceFilterStats]):
         return cls(stats=stats)
     
     
@@ -290,7 +281,7 @@ class CisOrTransStat(BaseModel):
 
 
 class CisOrTransStats(BaseModel):
-    stats: List[CisOrTransStat]
+    stats: list[CisOrTransStat]
 
     @classmethod
     def from_dataframe(cls, df: pd.DataFrame):
