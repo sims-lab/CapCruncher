@@ -1,19 +1,21 @@
+from collections import defaultdict
+from collections.abc import Callable, Sequence
 import itertools
-from loguru import logger
 import os
 import re
-from typing import Literal, Tuple, List, Union, Dict
+from typing import Literal
+
 import cooler
+from loguru import logger
 
 import pandas as pd
 import polars as pl
 
+type FilePath = str | os.PathLike[str]
+type SummaryFunction = Callable[[pd.Series], float]
 
-from collections import defaultdict
 
-
-def get_bedgraph_name_from_cooler(cooler_filename):
-
+def get_bedgraph_name_from_cooler(cooler_filename: str) -> str:
     filename = os.path.basename(cooler_filename.split(".hdf5")[0])
     viewpoint = cooler_filename.split("::/")[1]
     return f"{filename}_{viewpoint}"
@@ -32,20 +34,20 @@ def remove_duplicate_entries(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def concat(
-    infiles: Tuple[os.PathLike],
-    viewpoint: str = None,
-    resolution: int = None,
+    infiles: Sequence[FilePath],
+    viewpoint: str | None = None,
+    resolution: int | None = None,
     format: Literal["auto", "cooler", "bedgraph"] = "auto",
-    region: str = None,
-    output: os.PathLike = None,
+    region: str | None = None,
+    output: FilePath | None = None,
     normalisation: Literal["raw", "n_cis", "region"] = "raw",
     n_cores: int = 1,
     scale_factor: int = int(1e6),
-    normalisation_regions: os.PathLike = None,
-):
-
+    normalisation_regions: FilePath | None = None,
+) -> dict[str, pd.DataFrame]:
     input_format = format
     norm_kwargs = {"scale_factor": scale_factor, "region": normalisation_regions}
+    infiles = [os.fspath(infile) for infile in infiles]
 
     if not viewpoint:
         viewpoints = [vp.strip("/") for vp in cooler.fileops.list_coolers(infiles[0])]
@@ -119,7 +121,7 @@ def concat(
     return union_by_viewpoint
 
 
-def get_summary_functions(methods):
+def get_summary_functions(methods: Sequence[str] | None) -> dict[str, SummaryFunction]:
     import numpy as np
     import scipy.stats
 
@@ -140,10 +142,10 @@ def get_summary_functions(methods):
 
 
 def get_groups(
-    columns: Union[pd.Index, list],
-    group_names: List[str],
-    group_columns: List[Union[str, int]],
-) -> Dict[str, str]:
+    columns: pd.Index | list[str],
+    group_names: Sequence[str],
+    group_columns: Sequence[str | int],
+) -> dict[str, str]:
     """Extracts groups from group_columns and returns a dictionary of column names to group names."""
 
     groups = dict()
@@ -163,17 +165,16 @@ def get_groups(
 
 
 def summarise(
-    infile: os.PathLike,
-    design_matrix: os.PathLike = None,
-    output_prefix: os.PathLike = None,
+    infile: FilePath,
+    design_matrix: FilePath | None = None,
+    output_prefix: FilePath | None = None,
     output_format: Literal["bedgraph", "tsv"] = "bedgraph",
-    summary_methods: Tuple[Literal['mean']] = ("mean",),
-    group_names: Tuple[str] = None,
-    group_columns: Tuple[int, str] = None,  # Need to ensure these are 0 based
+    summary_methods: tuple[Literal["mean"], ...] = ("mean",),
+    group_names: tuple[str, ...] | None = None,
+    group_columns: tuple[str | int, ...] | None = None,
     suffix: str = "",
     perform_subtractions: bool = False,
-):
-
+) -> None:
     logger.info(f"Reading {infile}")
     df_union = pd.read_csv(infile, sep="\t")
     df_counts = df_union.iloc[:, 3:]
@@ -192,31 +193,33 @@ def summarise(
         groups = df_design.set_index("sample").to_dict()["condition"]
     else:
         logger.warning("No groups provided, using all columns")
+        groups = {col: "summary" for col in df_counts.columns}
 
     logger.info(f"Extracted groups: {groups}")
     aggregation = defaultdict(list)
-    subtraction = list()
 
     # Invert the groups so conditions are keys
-    groups_inverted = defaultdict(list) 
+    groups_inverted = defaultdict(list)
     for k, v in groups.items():
         groups_inverted[v].append(k)
 
     # Convert to polars
     counts = pl.DataFrame(df_counts)
     coordinates = pl.DataFrame(df_union.iloc[:, :3])
-    summary_methods = ['mean', ] if not summary_methods else summary_methods
+    summary_methods = ("mean",) if not summary_methods else summary_methods
 
     for aggregation_method in summary_methods:
-        assert aggregation_method in ["mean"], f"Invalid aggregation method {aggregation_method}"
+        assert aggregation_method in [
+            "mean"
+        ], f"Invalid aggregation method {aggregation_method}"
         logger.info(f"Performing aggregation: {aggregation_method}")
-
 
         # Apply aggregation method to each group
         for group_name, group in groups_inverted.items():
-
-            colname = f'{group_name}_{aggregation_method}'
-            group_counts = getattr(counts.select(group), f'{aggregation_method}_horizontal')().alias(colname)
+            colname = f"{group_name}_{aggregation_method}"
+            group_counts = getattr(
+                counts.select(group), f"{aggregation_method}_horizontal"
+            )().alias(colname)
             coordinates = coordinates.with_columns(group_counts)
             aggregation[aggregation_method].append(colname)
 
@@ -224,33 +227,39 @@ def summarise(
         subtraction = list()
         if perform_subtractions:
             for group_a, group_b in itertools.permutations(groups_inverted, 2):
-
-                group_a_col = f'{group_a}_{aggregation_method}'
-                group_b_col = f'{group_b}_{aggregation_method}'
+                group_a_col = f"{group_a}_{aggregation_method}"
+                group_b_col = f"{group_b}_{aggregation_method}"
 
                 a = coordinates.select(group_a_col)
                 b = coordinates.select(group_b_col)
                 diff = a.mean_horizontal() - b.mean_horizontal()
-                coordinates = coordinates.with_columns(diff.alias(f"{group_a}-{group_b}"))
+                coordinates = coordinates.with_columns(
+                    diff.alias(f"{group_a}-{group_b}")
+                )
                 subtraction.append(f"{group_a}-{group_b}")
 
         # Export aggregations
         if output_format == "bedgraph":
-            
             # Check that there are no duplicate chrom, start, end coordinates
-            coordinates =  coordinates.unique(subset=["chrom", "start", "end"])
+            coordinates = coordinates.unique(subset=["chrom", "start", "end"])
 
             # Write the output
             for aggregation_method, group_names in aggregation.items():
                 for group_name in group_names:
-                    df_output = coordinates.select(["chrom", "start", "end", group_name])
-                    
-                    group_name_cleaned = re.sub('|'.join([*summary_methods, '_']), '', group_name) # Remove the aggregation method from the group name
+                    df_output = coordinates.select(
+                        ["chrom", "start", "end", group_name]
+                    )
+
+                    group_name_cleaned = re.sub(
+                        "|".join([*summary_methods, "_"]), "", group_name
+                    )
                     outfile = f"{output_prefix}{group_name_cleaned}.{aggregation_method}-summary{suffix}.bedgraph"
-                    
-                    logger.info(f"Writing {group_name} {aggregation_method} to {outfile}")
+
+                    logger.info(
+                        f"Writing {group_name} {aggregation_method} to {outfile}"
+                    )
                     df_output.write_csv(outfile, separator="\t", include_header=False)
-            
+
             for sub in subtraction:
                 df_output = coordinates.select(["chrom", "start", "end", sub])
                 outfile = f"{output_prefix}{sub}.{aggregation_method}-subtraction{suffix}.bedgraph"
@@ -258,4 +267,6 @@ def summarise(
                 df_output.write_csv(outfile, separator="\t", include_header=False)
         elif output_format == "tsv":
             df_output = coordinates
-            df_output.write_csv(f"{output_prefix}{suffix}.tsv", separator="\t", include_header=True)
+            df_output.write_csv(
+                f"{output_prefix}{suffix}.tsv", separator="\t", include_header=True
+            )

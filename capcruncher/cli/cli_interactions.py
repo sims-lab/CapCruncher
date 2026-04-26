@@ -355,7 +355,7 @@ def compare():
 )
 def bedgraphs_concat(*args, **kwargs):
 
-    _run_command("capcruncher.cli.interactions_compare:concat", *args, **kwargs)
+    _run_command("capcruncher.api.interactions_compare:concat", *args, **kwargs)
 
 
 @compare.command(name="summarise")
@@ -388,7 +388,7 @@ def bedgraphs_concat(*args, **kwargs):
 @click.option("--suffix", help="Add a suffix before the file extension")
 def bedgraphs_summarise(*args, **kwargs):
 
-    _run_command("capcruncher.cli.interactions_compare:summarise", *args, **kwargs)
+    _run_command("capcruncher.api.interactions_compare:summarise", *args, **kwargs)
 
 
 def _run_differential(*args, **kwargs):
