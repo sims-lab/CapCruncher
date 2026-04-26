@@ -29,6 +29,23 @@ def load_workflow_script(script_name):
     return module
 
 
+def test_workflow_environment_tracks_runtime_dependency_split():
+    env_path = (
+        Path(__file__).resolve().parents[1]
+        / "capcruncher"
+        / "pipeline"
+        / "workflow"
+        / "envs"
+        / "environment.yml"
+    )
+    env_text = env_path.read_text(encoding="utf-8")
+
+    assert "capcruncher-tools>=0.2.5,<0.3.0" in env_text
+    assert "typer>=0.24.2,<0.25.0" in env_text
+    assert "cookiecutter" not in env_text
+    assert "seaborn" not in env_text
+
+
 @pytest.fixture(scope="module")
 def capture_pipeline_run(tmp_path_factory, capcruncher_subprocess_env):
     repo_root = Path(__file__).resolve().parents[1]

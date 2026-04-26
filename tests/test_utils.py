@@ -158,6 +158,19 @@ def test_interval_helpers_import_without_ray(monkeypatch):
         importlib.reload(importlib.import_module(module))
 
 
+def test_api_package_import_does_not_import_submodules(monkeypatch):
+    for module in list(sys.modules):
+        if module == "capcruncher.api" or module.startswith("capcruncher.api."):
+            monkeypatch.delitem(sys.modules, module, raising=False)
+
+    api = importlib.import_module("capcruncher.api")
+
+    assert api.__name__ == "capcruncher.api"
+    assert not any(
+        module.startswith("capcruncher.api.") for module in sys.modules
+    )
+
+
 def test_differential_module_imports_without_pydeseq2(monkeypatch):
     real_import = builtins.__import__
 

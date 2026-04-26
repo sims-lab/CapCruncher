@@ -125,14 +125,14 @@ def test_differential_help_does_not_import_pydeseq2(
     ],
 )
 def test_plot_render_commands(cli_runner, monkeypatch, command):
-    import capcruncher.cli as cli_module
+    import capcruncher.cli.cli_plot as cli_plot
 
     calls = []
 
     def fake_render_plot(region, template, output):
         calls.append((region, template, output))
 
-    monkeypatch.setattr(cli_module, "_render_plot", fake_render_plot)
+    monkeypatch.setattr(cli_plot, "render_plot", fake_render_plot)
 
     result = cli_runner.invoke(cli, command)
 
@@ -153,6 +153,61 @@ def test_plot_help_does_not_import_plotnado(cli_runner, monkeypatch):
     result = cli_runner.invoke(cli, ["plot", "render", "--help"])
 
     assert result.exit_code == 0
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        [
+            "genome",
+            "digest",
+            "genome.fa",
+            "--recognition-site",
+            "dpnii",
+            "--output-file",
+            "digest.bed",
+            "--sort",
+        ],
+        [
+            "genome",
+            "digest",
+            "genome.fa",
+            "--recognition_site",
+            "dpnii",
+            "--output_file",
+            "digest.bed",
+            "--sort",
+        ],
+    ],
+)
+def test_genome_digest_option_aliases(cli_runner, monkeypatch, command):
+    import capcruncher.cli.genome_digest as genome_digest
+    import capcruncher.utils as utils
+
+    calls = []
+
+    def fake_get_restriction_site(restriction_enzyme):
+        return f"site:{restriction_enzyme}"
+
+    def fake_digest(**kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setattr(utils, "get_restriction_site", fake_get_restriction_site)
+    monkeypatch.setattr(genome_digest, "digest", fake_digest)
+
+    result = cli_runner.invoke(cli, command)
+
+    assert result.exit_code == 0
+    assert calls == [
+        {
+            "input_fasta": "genome.fa",
+            "recognition_site": "site:dpnii",
+            "output_file": "digest.bed",
+            "logfile": "genome_digest.log",
+            "remove_cutsite": True,
+            "sort": True,
+        }
+    ]
 
 
 @pytest.mark.parametrize(
