@@ -393,7 +393,7 @@ def bedgraphs_summarise(*args, **kwargs):
 
 def _run_differential(*args, **kwargs):
     _run_command(
-        "capcruncher.cli.interactions_differential:differential", *args, **kwargs
+        "capcruncher.api.interactions_differential:differential", *args, **kwargs
     )
 
 

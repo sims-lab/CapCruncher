@@ -2,14 +2,18 @@
 
 import itertools
 import os
+from collections.abc import Sequence
+from typing import Any
 
 import pandas as pd
 from loguru import logger
 
 from capcruncher.api.pileup import cooler_to_bedgraph
 
+type FilePath = str | os.PathLike[str]
 
-def _load_pydeseq2():
+
+def _load_pydeseq2() -> tuple[Any, Any, Any]:
     try:
         from pydeseq2.dds import DeseqDataSet
         from pydeseq2.default_inference import DefaultInference
@@ -33,7 +37,7 @@ def get_differential_interactions(
     group_b: str,
     threshold_q: float = 0.05,
     lfc_shrink: bool = False,
-):
+) -> pd.DataFrame:
     """Runs DESeq2 on interaction counts."""
     DeseqDataSet, DefaultInference, DeseqStats = _load_pydeseq2()
 
@@ -83,16 +87,16 @@ def get_differential_interactions(
 
 
 def differential(
-    interaction_files: list,
+    interaction_files: Sequence[FilePath],
     viewpoint: str,
-    design_matrix: os.PathLike,
-    output_prefix: os.PathLike = "differential_interactions",
+    design_matrix: FilePath,
+    output_prefix: FilePath = "differential_interactions",
     contrast: str = "condition",
-    regions_of_interest: os.PathLike = None,
-    viewpoint_distance: int = None,
+    regions_of_interest: FilePath | None = None,
+    viewpoint_distance: int | None = None,
     threshold_count: float = 20,
     threshold_q: float = 0.05,
-):
+) -> None:
     """Identifies differential interactions between conditions.
 
     Parses a list of cooler files containg reporter counts from at least two conditions with
@@ -116,6 +120,11 @@ def differential(
         threshold_q (float, optional): Maximum q-value for output. Defaults to 0.05.
         threshold_mean (float, optional): Minimum mean value for output. Defaults to 0.
     """
+    output_prefix = os.fspath(output_prefix)
+    regions_of_interest = (
+        os.fspath(regions_of_interest) if regions_of_interest is not None else None
+    )
+
     # Load design matrix
     logger.info("Loading design matrix.")
     df_design = pd.read_table(
@@ -142,6 +151,7 @@ def differential(
 
     bedgraphs = dict()
     for interaction_file in interaction_files:
+        interaction_file = os.fspath(interaction_file)
         file_name = os.path.basename(interaction_file.replace(".hdf5", ""))
         bedgraphs[file_name] = cooler_to_bedgraph(
             clr=f"{interaction_file}::{viewpoint}",
