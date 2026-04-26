@@ -9,9 +9,9 @@ import yaml
 
 
 REPORT_TITLE = "CapCruncher Run Report"
-COLORWAY = ["#2f6f7e", "#d3843f", "#6f5b9a", "#7a9b4e", "#b65f6a"]
-READ_TYPE_COLORS = ["#2f6f7e", "#d3843f"]
-DEDUP_COLORS = ["#2f6f7e", "#8b8f92"]
+COLORWAY = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9"]
+READ_TYPE_COLORS = ["#0072B2", "#E69F00"]
+DEDUP_COLORS = ["#009E73", "#6C757D"]
 COMMON_LABELS = {
     "count": "Count",
     "filter_status": "Digestion Status",
