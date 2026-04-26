@@ -1,5 +1,6 @@
+import json
+
 import pandas as pd
-import ujson
 
 from capcruncher.api.statistics import FastqTrimmingStatistics
 
@@ -21,7 +22,7 @@ def write_trimming_stats(trimming_summary_path, output_path):
         stat.model_dump_json() for stat in extract_trimming_stats(trimming_summary_path)
     ]
     with open(output_path, "w") as f:
-        f.write(ujson.dumps(stats_json, indent=4))
+        f.write(json.dumps(stats_json, indent=4))
 
 
 if "snakemake" in globals():

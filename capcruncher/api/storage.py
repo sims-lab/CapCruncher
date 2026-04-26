@@ -5,7 +5,7 @@ import cooler
 import h5py
 import functools
 from loguru import logger
-import ujson
+import json
 from typing import Iterable, Tuple, Union, List, Dict, Literal
 import pyranges1 as pr
 import re
@@ -507,7 +507,7 @@ def get_merged_cooler_metadata(coolers: Iterable[os.PathLike]):
         filepath, group = cooler_uri.split("::")
 
         with h5py.File(filepath, mode="r") as src:
-            metadata_src = ujson.decode(src[group].attrs["metadata"])
+            metadata_src = json.loads(src[group].attrs["metadata"])
 
             for metadata_key, metadata_value in metadata_src.items():
                 if isinstance(metadata_value, str):
@@ -605,7 +605,7 @@ def merge_coolers(coolers: Tuple, output: os.PathLike):
         with h5py.File(output, mode="a") as dest:
             dest[viewpoint.replace("::", "/resolutions/")].attrs[
                 "metadata"
-            ] = ujson.encode(metadata)
+            ] = json.dumps(metadata)
 
     # Reduce space by linking common tables (bins, chroms)
     link_common_cooler_tables(output)

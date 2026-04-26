@@ -359,12 +359,12 @@ def load_dict(fn, format: str, dtype: str = "int") -> dict:
 
     import itertools
 
-    import ujson
+    import json
     from xopen import xopen
 
     if format == "json":
         with xopen(fn) as r:
-            d = ujson.load(r)
+            d = json.load(r)
     elif format == "pickle":
         with xopen(fn, "rb") as r:
             d = pickle.load(r)
@@ -386,7 +386,7 @@ def save_dict(obj: Union[dict, set], fn: os.PathLike, format: str) -> dict:
     """Convinence function to save [gziped] json/pickle file using xopen."""
 
     from xopen import xopen
-    import ujson
+    import json
 
     if format == "json":
         with xopen(fn, "w") as w:
@@ -394,7 +394,7 @@ def save_dict(obj: Union[dict, set], fn: os.PathLike, format: str) -> dict:
                 d = dict.fromkeys(obj)
             else:
                 d = obj
-            ujson.dump(d, w)
+            json.dump(d, w)
     elif format == "pickle":
         with xopen(fn, "wb") as w:
             pickle.dump(obj, w)

@@ -1,6 +1,7 @@
-import cooler
-import ujson as json
+import json
 import pathlib
+
+import cooler
 
 
 def viewpoints_with_interactions(cooler_path):
