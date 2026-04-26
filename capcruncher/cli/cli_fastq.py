@@ -95,47 +95,9 @@ def split(*args, **kwargs):
 
     """
 
-    from capcruncher.cli.fastq_split import split
+    from capcruncher.api.fastq import split_fastq
 
-    split(*args, **kwargs)
-
-
-def digest_fastq(
-    fastqs: tuple,
-    restriction_site: str,
-    mode: str = "pe",
-    output_file: pathlib.Path | str = "out.fastq.gz",
-    minimum_slice_length: int = 18,
-    statistics: pathlib.Path | str = "digest.json",
-    sample_name: str = "sampleX",
-    **kwargs,
-):
-    """Digest FASTQ files and write digestion statistics."""
-
-    from capcruncher_tools.api import digest_fastq as digest_fastq_records
-    from loguru import logger
-
-    from capcruncher.utils import get_restriction_site
-
-    logger.info("Digesting FASTQ files")
-
-    if len(fastqs) > 1 and mode == "flashed":
-        raise ValueError("Flashed mode can only be used with a single FASTQ file")
-
-    stats = digest_fastq_records(
-        fastqs=fastqs,
-        restriction_site=get_restriction_site(restriction_site),
-        output=output_file,
-        read_type=mode.title(),
-        sample_name=sample_name,
-        minimum_slice_length=minimum_slice_length,
-    )
-
-    logger.info("Digestion complete. Generating statistics")
-    with open(statistics, "w") as f:
-        f.write(stats.model_dump_json())
-
-    return stats
+    split_fastq(*args, **kwargs)
 
 
 @cli.command()
@@ -165,49 +127,10 @@ def digest(*args, **kwargs):
     """
     Performs in silico digestion of one or a pair of fastq files.
     """
+    from capcruncher.api.fastq import digest_fastq
+
     kwargs["restriction_site"] = kwargs.pop("restriction_enzyme")
     digest_fastq(*args, **kwargs)
-
-
-def deduplicate_fastq(
-    fastq_1: list[str],
-    fastq_2: list[str],
-    output_prefix: str | pathlib.Path = "deduplicated_",
-    statistics: str = "deduplication_statistics.json",
-    sample_name: str = "sampleX",
-    shuffle: bool = False,
-    **kwargs,
-):
-    """Deduplicate paired FASTQ files and write deduplication statistics."""
-
-    from capcruncher.api.statistics import FastqDeduplicationStatistics
-    from capcruncher_tools.api import deduplicate_fastq as deduplicate_fastq_records
-    from loguru import logger
-
-    df_stats = deduplicate_fastq_records(
-        fastq1=fastq_1,
-        fastq2=fastq_2,
-        output_prefix=output_prefix,
-        sample_name=sample_name,
-        shuffle=shuffle,
-    )
-
-    dedup_stats = FastqDeduplicationStatistics(
-        sample=sample_name,
-        total=df_stats.query("stat_type == 'read_pairs_total'")["stat"].values[0],
-        duplicates=df_stats.query("stat_type == 'read_pairs_duplicated'")[
-            "stat"
-        ].values[0],
-    )
-    with open(statistics, "w") as f:
-        f.write(dedup_stats.model_dump_json())
-
-    logger.info("Printing deduplication statistics to stdout")
-    df_vis = df_stats.copy()
-    df_vis["stat_type"] = df_vis["stat_type"].str.replace("_", " ").str.title()
-    df_vis = df_vis[["stat_type", "stat"]]
-    df_vis.columns = ["Stat Type", "Number of Reads"]
-    print(df_vis.to_string(index=False))
 
 
 @cli.command()
@@ -244,6 +167,8 @@ def deduplicate(*args, **kwargs):
     from fastq file(s) to speed up downstream analysis.
 
     """
+    from capcruncher.api.fastq import deduplicate_fastq
+
     fq1 = [pathlib.Path(f) for f in ast.literal_eval(kwargs["fastq1"])]
     fq2 = [pathlib.Path(f) for f in ast.literal_eval(kwargs["fastq2"])]
 

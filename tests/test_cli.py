@@ -200,19 +200,14 @@ def test_plot_help_does_not_import_plotnado(cli_runner, monkeypatch):
     ],
 )
 def test_genome_digest_option_aliases(cli_runner, monkeypatch, command):
-    import capcruncher.cli.genome_digest as genome_digest
-    import capcruncher.utils as utils
+    import capcruncher.api.genome as genome_api
 
     calls = []
-
-    def fake_get_restriction_site(restriction_enzyme):
-        return f"site:{restriction_enzyme}"
 
     def fake_digest(**kwargs):
         calls.append(kwargs)
 
-    monkeypatch.setattr(utils, "get_restriction_site", fake_get_restriction_site)
-    monkeypatch.setattr(genome_digest, "digest", fake_digest)
+    monkeypatch.setattr(genome_api, "digest_genome", fake_digest)
 
     result = cli_runner.invoke(cli, command)
 
@@ -220,7 +215,7 @@ def test_genome_digest_option_aliases(cli_runner, monkeypatch, command):
     assert calls == [
         {
             "input_fasta": "genome.fa",
-            "recognition_site": "site:dpnii",
+            "recognition_site": "dpnii",
             "output_file": "digest.bed",
             "logfile": "genome_digest.log",
             "remove_cutsite": True,

@@ -57,12 +57,11 @@ def digest(
     A log file recording the number of restriction fragments for the suplied genome is also
     generated.
     """
-    from capcruncher.cli.genome_digest import digest as digest_genome
-    from capcruncher.utils import get_restriction_site
+    from capcruncher.api.genome import digest_genome
 
     digest_genome(
         input_fasta=input_fasta,
-        recognition_site=get_restriction_site(recognition_site),
+        recognition_site=recognition_site,
         output_file=output_file,
         logfile=logfile,
         remove_cutsite=remove_cutsite,

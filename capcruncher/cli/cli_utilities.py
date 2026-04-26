@@ -219,7 +219,7 @@ def viewpoint_coordinates(
         ValueError: If no bowtie2 indices are supplied
     """
 
-    from capcruncher.cli import genome_digest
+    from capcruncher.api.genome import digest_genome
     import pandas as pd
     import pyranges1 as pr
     import pysam
@@ -248,7 +248,7 @@ def viewpoint_coordinates(
     viewpoints_fasta = NamedTemporaryFile("r+")
     viewpoints_aligned_bam = NamedTemporaryFile("r+")
 
-    genome_digest.digest(
+    digest_genome(
         input_fasta=genome,
         recognition_site=recognition_site,
         output_file=digested_genome.name,
