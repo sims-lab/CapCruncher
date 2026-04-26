@@ -7,7 +7,7 @@ import pandas as pd
 import polars as pl
 
 from capcruncher.api.filter import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
-from capcruncher.cli.alignments_filter import merge_annotations, remove_unused_categories
+from capcruncher.api.alignments_filter import merge_annotations, remove_unused_categories
 from capcruncher.api.io import parse_bam
 
 

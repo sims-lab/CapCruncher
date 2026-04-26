@@ -90,7 +90,7 @@ def annotate(
 ):
     """Annotate a bed file with other bed files."""
 
-    from capcruncher.cli.alignments_annotate import annotate as annotate_alignments
+    from capcruncher.api.alignments_annotate import annotate as annotate_alignments
 
     annotate_alignments(
         slices=slices,
@@ -165,7 +165,7 @@ def filter_alignments(
     if read_type.lower() not in {"flashed", "pe"}:
         raise typer.BadParameter("read-type must be one of: flashed, pe")
 
-    from capcruncher.cli.alignments_filter import filter as filter_slices
+    from capcruncher.api.alignments_filter import filter as filter_slices
 
     filter_slices(
         method=method,
