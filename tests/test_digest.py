@@ -50,7 +50,7 @@ def count_fragments(fq):
 def test_digest_fastq(
     data_path, tmpdir, fastq_files, enzyme, mode, n_reads_raw, n_reads_filt
 ):
-    from capcruncher.api.fastq import digest_fastq
+    from capcruncher.api.io import digest_fastq
 
     infiles = [os.path.join(data_path, fn) for fn in fastq_files]
     outfile = os.path.join(tmpdir, "out.fq")
@@ -87,7 +87,7 @@ def fasta():
     ],
 )
 def test_digest_genome(fasta, tmpdir, enzyme, n_records_expected):
-    from capcruncher.api.genome import digest_genome
+    from capcruncher.api.io import digest_genome
 
     infile = fasta
     outfile = os.path.join(tmpdir, "digested.bed")

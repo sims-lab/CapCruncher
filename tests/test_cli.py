@@ -200,14 +200,14 @@ def test_plot_help_does_not_import_plotnado(cli_runner, monkeypatch):
     ],
 )
 def test_genome_digest_option_aliases(cli_runner, monkeypatch, command):
-    import capcruncher.api.genome as genome_api
+    import capcruncher.api.io as io_api
 
     calls = []
 
     def fake_digest(**kwargs):
         calls.append(kwargs)
 
-    monkeypatch.setattr(genome_api, "digest_genome", fake_digest)
+    monkeypatch.setattr(io_api, "digest_genome", fake_digest)
 
     result = cli_runner.invoke(cli, command)
 
