@@ -1,5 +1,5 @@
 import os
-from capcruncher.cli import cli, get_capcruncher_version
+from capcruncher.cli import CONTEXT_SETTINGS, cli, get_capcruncher_version
 import click
 from importlib import resources
 import subprocess
@@ -210,10 +210,24 @@ def install_pipeline_presets(output_dir=None, preset_names=(), force=False):
         click.echo(f"- {installed_preset.name}: {installed_preset}")
 
 
+def _load_cookiecutter():
+    try:
+        from cookiecutter.main import cookiecutter
+    except ModuleNotFoundError as exc:
+        if exc.name and exc.name.startswith("cookiecutter"):
+            raise ModuleNotFoundError(
+                "Cookiecutter is required to generate pipeline configuration. "
+                "Install CapCruncher with the 'config' extra."
+            ) from exc
+        raise
+
+    return cookiecutter
+
+
 def configure_pipeline():
-    from cookiecutter.main import cookiecutter
     import pathlib
 
+    cookiecutter = _load_cookiecutter()
     fn = pathlib.Path(__file__).resolve()
     dir_cli = fn.parent
     dir_package = dir_cli.parent
@@ -373,8 +387,7 @@ def pipeline_init(output_dir=None, preset_names=(), force=False):
     install_pipeline_presets(output_dir, preset_names, force)
 
 
-@cli.command(name="pipeline-config")
-@click.option("-h", "--help", "show_help", is_flag=True)
+@cli.command(name="pipeline-config", context_settings=CONTEXT_SETTINGS)
 @click.version_option(get_capcruncher_version())
 @click.option(
     "-i", "--input", "input_files", type=click.Path(exists=True), multiple=True

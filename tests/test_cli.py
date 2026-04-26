@@ -155,6 +155,32 @@ def test_plot_help_does_not_import_plotnado(cli_runner, monkeypatch):
     assert result.exit_code == 0
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        ["pipeline", "config", "--help"],
+        ["pipeline-config", "--help"],
+    ],
+)
+def test_pipeline_config_help_does_not_import_cookiecutter(
+    cli_runner, monkeypatch, command
+):
+    real_import = __import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "cookiecutter" or name.startswith("cookiecutter."):
+            raise ModuleNotFoundError(
+                "No module named 'cookiecutter'", name="cookiecutter"
+            )
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", guarded_import)
+
+    result = cli_runner.invoke(cli, command)
+
+    assert result.exit_code == 0
+
+
 def test_pipeline_init_installs_presets(cli_runner, tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
 
