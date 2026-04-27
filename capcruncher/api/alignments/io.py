@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from loguru import logger
-import pandas as pd
+import polars as pl
 import pysam
 import xxhash
 
@@ -93,7 +93,7 @@ def parse_alignment(aln: pysam.AlignedSegment) -> CCAlignment:
     )
 
 
-def parse_bam(bam: Path | str) -> pd.DataFrame:
+def parse_bam(bam: Path | str) -> pl.DataFrame:
     """Uses parse_alignment function convert bam file to a dataframe.
 
     Extracts:
@@ -112,38 +112,34 @@ def parse_bam(bam: Path | str) -> pd.DataFrame:
         bam: Path to bam file.
 
     Returns:
-     pd.Dataframe: DataFrame with the columns listed above.
+     pl.DataFrame: DataFrame with the columns listed above.
 
     """
-
-    import numpy as np
-
     bam = os.fspath(bam)
 
     # Load reads into dataframe
     logger.info("Parsing BAM file")
-    df_bam = pd.DataFrame(
-        [
-            parse_alignment(aln)
-            for aln in pysam.AlignmentFile(bam, "rb").fetch(until_eof=True)
-        ],
+    df_bam = pl.DataFrame(
+        parse_alignment(aln)
+        for aln in pysam.AlignmentFile(bam, "rb").fetch(until_eof=True)
     )
-    df_bam["bam"] = os.path.basename(bam)
+    df_bam = df_bam.with_columns(pl.lit(os.path.basename(bam)).alias("bam"))
 
     # Perform dtype conversions
     logger.info("Converting dtypes")
-    df_bam["chrom"] = df_bam["chrom"].astype("category")
-    pe_category = pd.CategoricalDtype(["flashed", "pe"])
-    df_bam["pe"] = df_bam["pe"].astype(
-        pe_category
-    )  # Only the one type present so need to include both
-    df_bam["coordinates"] = df_bam["coordinates"].astype("category")
-    df_bam["parent_read"] = df_bam["parent_read"].astype("category")
-    df_bam["slice"] = df_bam["slice"].astype(np.int8)
-    df_bam["uid"] = df_bam["uid"].astype(np.int8)
-    df_bam["multimapped"] = df_bam["multimapped"].astype(bool)
-    df_bam["mapped"] = df_bam["mapped"].astype(bool)
-    df_bam["bam"] = df_bam["bam"].astype("category")
+    df_bam = df_bam.with_columns(
+        pl.col("slice_id").cast(pl.UInt64),
+        pl.col("parent_id").cast(pl.UInt64),
+        pl.col("chrom").cast(pl.Categorical),
+        pl.col("pe").cast(pl.Enum(["flashed", "pe"])),
+        pl.col("coordinates").cast(pl.Categorical),
+        pl.col("parent_read").cast(pl.Categorical),
+        pl.col("slice").cast(pl.Int8),
+        pl.col("uid").cast(pl.Int8),
+        pl.col("multimapped").cast(pl.Boolean),
+        pl.col("mapped").cast(pl.Boolean),
+        pl.col("bam").cast(pl.Categorical),
+    )
 
     logger.info("Finished parsing BAM file")
     return df_bam
@@ -160,6 +156,6 @@ def bam_to_parquet(
 
     """
     df_bam = parse_bam(bam)
-    df_bam.to_parquet(output)
+    df_bam.write_parquet(output)
 
     return output

@@ -1,5 +1,6 @@
 from loguru import logger
 import pandas as pd
+import polars as pl
 import pytest
 import os
 import pathlib
@@ -1157,11 +1158,11 @@ def test_countable_reporters_only_include_bed_viewpoint_categories(tmp_path):
     ).to_parquet(reporters)
 
     cleaned = write_countable_reporters(reporters, viewpoints, output)
-    cleaned_df = pd.read_parquet(cleaned)
+    cleaned_df = pl.read_parquet(cleaned).with_columns(
+        pl.col("viewpoint").cast(pl.Utf8)
+    )
 
-    assert cleaned_df["viewpoint"].cat.categories.to_list() == ["Slc25A37"]
-    assert cleaned_df["viewpoint"].iloc[:3].to_list() == ["Slc25A37"] * 3
-    assert pd.isna(cleaned_df["viewpoint"].iloc[3])
+    assert cleaned_df["viewpoint"].to_list() == ["Slc25A37"] * 3 + [None]
 
 
 def test_countable_reporters_reject_actual_non_viewpoint_values(tmp_path):

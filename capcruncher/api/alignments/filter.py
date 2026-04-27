@@ -63,14 +63,16 @@ class AlignmentFilterOptions(BaseModel):
         return validate_choice(value, VALID_READ_TYPES, "read_type")
 
 
-def remove_unused_categories(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    for column in df.select_dtypes(include="category").columns:
-        df[column] = df[column].cat.remove_unused_categories()
+def remove_unused_categories(df: pd.DataFrame | pl.DataFrame) -> pd.DataFrame | pl.DataFrame:
+    """Prune unused pandas categories; Polars categorical columns are already compact."""
+    if isinstance(df, pd.DataFrame):
+        df = df.copy()
+        for column in df.select_dtypes(include="category").columns:
+            df[column] = df[column].cat.remove_unused_categories()
     return df
 
 
-def merge_annotations(slices: Path | str, annotations: Path | str) -> pd.DataFrame:
+def merge_annotations(slices: Path | str, annotations: Path | str) -> pl.DataFrame:
     """
     Merges a parquet file containing slice information with a parquet file containing
     annotation information.
@@ -80,7 +82,7 @@ def merge_annotations(slices: Path | str, annotations: Path | str) -> pd.DataFra
         annotations (os.PathLike): Path to parquet file containing annotation information
 
     Returns:
-        pd.DataFrame: Merged dataframe
+        pl.DataFrame: Merged dataframe
     """
 
     logger.info("Opening annotations")
@@ -106,7 +108,7 @@ def merge_annotations(slices: Path | str, annotations: Path | str) -> pd.DataFra
         )
         df_slices = df_slices.unique(subset=["slice_name"])
 
-        return df_slices.collect().to_pandas()
+        return df_slices.collect()
 
 
 def filter(
@@ -186,8 +188,7 @@ def filter(
             tmp = pathlib.Path(tmpdir) / "tmp.parquet"
 
             logger.info("Loading bam file")
-            # Its faster to write to parquet and then read it back than to join both dataframes with pandas
-            parse_bam(options.bam).to_parquet(tmp)
+            parse_bam(options.bam).write_parquet(tmp)
 
             # Join bam file with annotations
             logger.info("Merging bam file with annotations")
@@ -195,7 +196,7 @@ def filter(
 
             # Make sure that the blacklist column is present
             if "blacklist" not in df_alignment.columns:
-                df_alignment["blacklist"] = 0
+                df_alignment = df_alignment.with_columns(pl.lit(0).alias("blacklist"))
 
         # Initialise SliceFilter
         # If no custom filtering, will use the class default.
@@ -226,44 +227,28 @@ def filter(
 
         if fragments:
             logger.info("Writing reporters at the fragment level")
-            df_fragments = (
-                slice_filter_class(df_slices)
-                .fragments.join(
-                    df_capture["capture"], lsuffix="_slices", rsuffix="_capture"
-                )
-                .rename(
-                    columns={
-                        "capture_slices": "capture",
-                        "capture_capture": "viewpoint",
-                    }
-                )
+            df_fragments = slice_filter_class(df_slices).fragments.join(
+                df_capture.select("parent_read", "capture").unique("parent_read"),
+                on="parent_read",
+                how="left",
             )
             df_fragments = remove_unused_categories(df_fragments)
 
-            df_fragments.to_parquet(
+            df_fragments.write_parquet(
                 f"{options.output_prefix}.fragments.parquet",
                 compression="snappy",
-                engine="pyarrow",
             )
 
         logger.info("Writing reporters slices")
 
-        # Enforce dtype for parent_id
-        df_slices_with_viewpoint = df_slices_with_viewpoint.assign(
-            parent_id=lambda df: df["parent_id"].astype("int64")
-        ).drop_duplicates("slice_id")
-
-        # Convert objects to category
-        to_convert = df_slices_with_viewpoint.select_dtypes(include="object").columns
-        df_slices_with_viewpoint[to_convert] = df_slices_with_viewpoint[
-            to_convert
-        ].astype("category")
+        df_slices_with_viewpoint = df_slices_with_viewpoint.unique(
+            "slice_id", maintain_order=True
+        )
         df_slices_with_viewpoint = remove_unused_categories(df_slices_with_viewpoint)
 
-        df_slices_with_viewpoint.to_parquet(
+        df_slices_with_viewpoint.write_parquet(
             f"{options.output_prefix}.slices.parquet",
             compression="snappy",
-            engine="pyarrow",
         )
 
         logger.info("Completed analysis of BAM file")

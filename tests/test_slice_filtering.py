@@ -26,7 +26,8 @@ def parquet_file(tmpdir):
 
 def get_slices(bam: str, annotations: str, parquet_file: str | pathlib.Path):
     df_alignment = parse_bam(bam)
-    df_alignment.to_parquet(parquet_file)
+    assert isinstance(df_alignment, pl.DataFrame)
+    df_alignment.write_parquet(parquet_file)
     df_alignment = merge_annotations(parquet_file, annotations)
     return df_alignment
 
@@ -56,9 +57,8 @@ def test_merge_annotations_normalises_join_key_dtypes(tmp_path):
 
     df_alignment = merge_annotations(slices, annotations)
 
-    assert df_alignment[["slice_name", "chrom", "start", "capture"]].to_dict(
-        "records"
-    ) == [
+    assert isinstance(df_alignment, pl.DataFrame)
+    assert df_alignment[["slice_name", "chrom", "start", "capture"]].to_dicts() == [
         {
             "slice_name": "slice-a",
             "chrom": "chr1",

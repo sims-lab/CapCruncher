@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 import itertools
 import os
 import re
@@ -10,7 +10,6 @@ import cooler
 from loguru import logger
 from pydantic import BaseModel, PositiveFloat, PositiveInt, field_validator, model_validator
 
-import pandas as pd
 import polars as pl
 from capcruncher.types import (
     CompareFormat,
@@ -21,8 +20,6 @@ from capcruncher.types import (
     existing_path,
     validate_choices,
 )
-
-type SummaryFunction = Callable[[pd.Series], float]
 
 
 class CompareConcatOptions(BaseModel):
@@ -118,15 +115,19 @@ def get_bedgraph_name_from_cooler(cooler_filename: str) -> str:
     return f"{filename}_{viewpoint}"
 
 
-def remove_duplicate_entries(df: pd.DataFrame) -> pd.DataFrame:
+def _to_polars(df) -> pl.DataFrame:
+    return df if isinstance(df, pl.DataFrame) else pl.from_pandas(df)
+
+
+def remove_duplicate_entries(df) -> pl.DataFrame:
     """Removes duplicate coordinates by aggregating values."""
     coordinate_columns = ["chrom", "start", "end"]
 
     return (
-        df.groupby(coordinate_columns)
-        .agg("sum")
-        .reset_index()
-        .sort_values(coordinate_columns)
+        _to_polars(df)
+        .group_by(coordinate_columns)
+        .agg(pl.exclude(coordinate_columns).sum())
+        .sort(coordinate_columns)
     )
 
 
@@ -141,7 +142,7 @@ def concat(
     n_cores: int = 1,
     scale_factor: int = int(1e6),
     normalisation_regions: Path | str | None = None,
-) -> dict[str, pd.DataFrame]:
+) -> dict[str, pl.DataFrame]:
     """Concatenate bedgraphs or cooler-derived bedgraphs by viewpoint."""
     options = CompareConcatOptions(
         infiles=tuple(infiles),
@@ -175,9 +176,14 @@ def concat(
     for viewpoint in viewpoints:
         coordinate_columns = ["chrom", "start", "end"]
 
-        def _prepare_bedgraph(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
+        def _prepare_bedgraph(df, column_name: str) -> pl.DataFrame:
             df = remove_duplicate_entries(df)
-            return df.rename(columns={"score": column_name})
+            rename_map = {
+                column: column_name
+                for column in ("score", "count")
+                if column in df.columns
+            }
+            return df.rename(rename_map)
 
         if input_format == CompareFormat.COOLER:
             from capcruncher.api.interactions.bedgraph import CoolerBedGraph
@@ -202,11 +208,11 @@ def concat(
 
             bedgraphs = {
                 os.path.basename(fn): _prepare_bedgraph(
-                    pd.read_csv(
+                    pl.read_csv(
                         fn,
-                        sep="\t",
-                        header=None,
-                        names=["chrom", "start", "end", "score"],
+                        separator="\t",
+                        has_header=False,
+                        new_columns=["chrom", "start", "end", "score"],
                     ),
                     os.path.basename(fn),
                 )
@@ -218,52 +224,29 @@ def concat(
 
         union = None
         for name, df in bedgraphs.items():
-            df = df.rename(columns={"score": name})
             if union is None:
                 union = df
             else:
-                union = union.merge(df, on=coordinate_columns, how="outer")
+                union = union.join(df, on=coordinate_columns, how="full", coalesce=True)
 
         if union is None:
-            union = pd.DataFrame(columns=coordinate_columns)
+            union = pl.DataFrame(schema={column: pl.String for column in coordinate_columns})
 
         value_columns = [col for col in union.columns if col not in coordinate_columns]
         if value_columns:
-            union[value_columns] = union[value_columns].fillna(0)
-        union = union.sort_values(coordinate_columns).reset_index(drop=True)
+            union = union.with_columns(pl.col(value_columns).fill_null(0))
+        union = union.sort(coordinate_columns)
 
         if options.output:
-            union.to_csv(options.output, sep="\t", index=False)
+            union.write_csv(options.output, separator="\t")
 
         union_by_viewpoint[viewpoint] = union
 
     return union_by_viewpoint
 
 
-def get_summary_functions(
-    methods: Sequence[str | SummaryMethod] | None,
-) -> dict[str, SummaryFunction]:
-    import numpy as np
-    import scipy.stats
-
-    if methods:
-        summary_functions = dict()
-        for method in methods:
-            for package in [np, scipy.stats]:
-
-                if not summary_functions.get(method):
-                    try:
-                        summary_functions[method] = getattr(package, method)
-                    except AttributeError:
-                        pass
-    else:
-        summary_functions = {"mean": getattr(np, "mean")}
-
-    return summary_functions
-
-
 def get_groups(
-    columns: pd.Index | list[str],
+    columns: list[str],
     group_names: Sequence[str],
     group_columns: Sequence[str | int],
 ) -> dict[str, str]:
@@ -283,6 +266,15 @@ def get_groups(
             groups[col_name] = group_name
 
     return groups
+
+
+def _read_design_matrix(path: Path) -> pl.DataFrame:
+    lines = path.read_text().splitlines()
+    rows = [re.split(r"\s+|,|\t", line.strip()) for line in lines if line.strip()]
+    if not rows:
+        return pl.DataFrame()
+    header, *body = rows
+    return pl.DataFrame([dict(zip(header, row, strict=False)) for row in body])
 
 
 def summarise(
@@ -313,24 +305,30 @@ def summarise(
         perform_subtractions=perform_subtractions,
     )
     logger.info(f"Reading {options.infile}")
-    df_union = pd.read_csv(options.infile, sep="\t")
-    df_counts = df_union.iloc[:, 3:]
+    df_union = pl.read_csv(options.infile, separator="\t")
+    count_columns = df_union.columns[3:]
 
     logger.info("Identifying groups")
     if options.group_columns and options.group_names:
         groups = (
-            get_groups(df_counts.columns, options.group_names, options.group_columns)
+            get_groups(count_columns, options.group_names, options.group_columns)
             if options.group_names
-            else {col: "summary" for col in df_counts.columns}
+            else {col: "summary" for col in count_columns}
         )  # Use all columns if no groups provided
     
     elif options.design_matrix:
-        df_design = pd.read_csv(options.design_matrix, sep=r"\s+|,|\t", engine="python")
+        df_design = _read_design_matrix(options.design_matrix)
         # This design file should look like: sample, condition
-        groups = df_design.set_index("sample").to_dict()["condition"]
+        groups = dict(
+            zip(
+                df_design.get_column("sample").to_list(),
+                df_design.get_column("condition").to_list(),
+                strict=False,
+            )
+        )
     else:
         logger.warning("No groups provided, using all columns")
-        groups = {col: "summary" for col in df_counts.columns}
+        groups = {col: "summary" for col in count_columns}
 
     logger.info(f"Extracted groups: {groups}")
     aggregation = defaultdict(list)
@@ -340,9 +338,8 @@ def summarise(
     for k, v in groups.items():
         groups_inverted[v].append(k)
 
-    # Convert to polars
-    counts = pl.DataFrame(df_counts)
-    coordinates = pl.DataFrame(df_union.iloc[:, :3])
+    counts = df_union.select(count_columns)
+    coordinates = df_union.select(df_union.columns[:3])
     summary_methods = options.summary_methods
 
     for aggregation_method in summary_methods:
@@ -351,9 +348,9 @@ def summarise(
         # Apply aggregation method to each group
         for group_name, group in groups_inverted.items():
             colname = f"{group_name}_{aggregation_method}"
-            group_counts = getattr(
-                counts.select(group), f"{aggregation_method}_horizontal"
-            )().alias(colname)
+            group_counts = counts.select(
+                pl.mean_horizontal(group).alias(colname)
+            ).get_column(colname)
             coordinates = coordinates.with_columns(group_counts)
             aggregation[aggregation_method].append(colname)
 
@@ -364,18 +361,19 @@ def summarise(
                 group_a_col = f"{group_a}_{aggregation_method}"
                 group_b_col = f"{group_b}_{aggregation_method}"
 
-                a = coordinates.select(group_a_col)
-                b = coordinates.select(group_b_col)
-                diff = a.mean_horizontal() - b.mean_horizontal()
                 coordinates = coordinates.with_columns(
-                    diff.alias(f"{group_a}-{group_b}")
+                    (pl.col(group_a_col) - pl.col(group_b_col)).alias(
+                        f"{group_a}-{group_b}"
+                    )
                 )
                 subtraction.append(f"{group_a}-{group_b}")
 
         # Export aggregations
         if options.output_format == OutputFormat.BEDGRAPH:
             # Check that there are no duplicate chrom, start, end coordinates
-            coordinates = coordinates.unique(subset=["chrom", "start", "end"])
+            coordinates = coordinates.unique(
+                subset=["chrom", "start", "end"], maintain_order=True
+            ).sort(["chrom", "start", "end"])
 
             # Write the output
             for aggregation_method, group_names in aggregation.items():

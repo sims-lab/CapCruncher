@@ -4,7 +4,6 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-import numpy as np
 import pandas as pd
 import polars as pl
 from loguru import logger
@@ -120,7 +119,6 @@ class SliceFilter:
             read_type=self.read_type,
         )
         self.filtering_stats: list[SliceFilterStats] = []
-        self._filter_stats = pd.DataFrame()
 
     def _resolve_filter_plan(
         self,
@@ -160,8 +158,8 @@ class SliceFilter:
         self.pipeline.slices = slices
 
     @property
-    def slices(self) -> pd.DataFrame:
-        return self.pipeline.slices.to_pandas()
+    def slices(self) -> pl.DataFrame:
+        return self.pipeline.slices
 
     @slices.setter
     def slices(self, slices: pd.DataFrame | pl.DataFrame) -> None:
@@ -180,34 +178,35 @@ class SliceFilter:
         return self.pipeline.slice_stats(self.current_stage)
 
     @property
-    def filter_stats(self) -> pd.DataFrame:
+    def filter_stats(self) -> pl.DataFrame:
         return (
-            pd.DataFrame(stat.model_dump() for stat in self.filtering_stats)
-            .rename(columns={"n_fragments": "unique_fragments", "n_slices": "unique_slices"})
+            pl.DataFrame(stat.model_dump() for stat in self.filtering_stats)
+            .rename({"n_fragments": "unique_fragments", "n_slices": "unique_slices"})
             if self.filtering_stats
-            else pd.DataFrame()
+            else pl.DataFrame()
         )
 
     @property
-    def read_stats(self) -> pd.DataFrame:
-        if self.filter_stats.empty:
-            return pd.DataFrame()
-        return self.filter_stats.rename(
-            columns={"stage": "stat_type", "unique_fragments": "stat"}
-        )[["stat_type", "stat"]].assign(
-            stage="ccanalysis",
-            read_type=self.read_type,
-            sample=self.sample_name,
-            read_number=0,
+    def read_stats(self) -> pl.DataFrame:
+        filter_stats = self.filter_stats
+        if filter_stats.is_empty():
+            return pl.DataFrame()
+        return filter_stats.rename(
+            {"stage": "stat_type", "unique_fragments": "stat"}
+        ).select("stat_type", "stat").with_columns(
+            pl.lit("ccanalysis").alias("stage"),
+            pl.lit(self.read_type).alias("read_type"),
+            pl.lit(self.sample_name).alias("sample"),
+            pl.lit(0).alias("read_number"),
         )
 
     @property
-    def captures(self) -> pd.DataFrame:
-        return _captures(self.pipeline.slices).to_pandas()
+    def captures(self) -> pl.DataFrame:
+        return _captures(self.pipeline.slices)
 
     @property
-    def slices_with_viewpoint(self) -> pd.DataFrame:
-        return _slices_with_viewpoint(self.pipeline.slices).to_pandas()
+    def slices_with_viewpoint(self) -> pl.DataFrame:
+        return _slices_with_viewpoint(self.pipeline.slices)
 
     def filter_slices(self, output_slices: bool | str = False, output_location: Path | str = ".") -> None:
         self.pipeline.run(output_slices=output_slices, output_location=output_location)
@@ -247,41 +246,54 @@ class CCSliceFilter(SliceFilter):
     assay = Assay.CAPTURE
 
     @property
-    def fragments(self) -> pd.DataFrame:
-        return _capture_fragments(self.pipeline.slices).to_pandas()
+    def fragments(self) -> pl.DataFrame:
+        return _capture_fragments(self.pipeline.slices)
 
     @property
-    def reporters(self) -> pd.DataFrame:
-        return self.pipeline.slices.filter(pl.col("capture_count") < 1).to_pandas()
+    def reporters(self) -> pl.DataFrame:
+        return self.pipeline.slices.filter(pl.col("capture_count") < 1)
 
     @property
-    def capture_site_stats(self) -> pd.Series:
+    def capture_site_stats(self) -> pl.DataFrame:
         return self.captures["capture"].value_counts()
 
     @property
-    def merged_captures_and_reporters(self) -> pd.DataFrame:
+    def merged_captures_and_reporters(self) -> pl.DataFrame:
         captures = (
-            self.captures.set_index("parent_read")
-            .add_prefix("capture_")
-            .rename(columns={"capture_capture": "capture"})
+            self.captures.rename(
+                {
+                    column: f"capture_{column}"
+                    for column in self.captures.columns
+                    if column != "parent_read"
+                }
+            )
+            .rename({"capture_capture": "capture"})
         )
-        reporters = self.reporters.set_index("parent_read").add_prefix("reporter_")
-        return captures.join(reporters).reset_index()
+        reporters = self.reporters.rename(
+            {
+                column: f"reporter_{column}"
+                for column in self.reporters.columns
+                if column != "parent_read"
+            }
+        )
+        return captures.join(reporters, on="parent_read", how="left")
 
     @property
-    def cis_or_trans_stats(self) -> pd.DataFrame:
-        cap_and_rep = self.merged_captures_and_reporters.copy()
-        cap_and_rep["cis/trans"] = np.where(
-            cap_and_rep["capture_chrom"] == cap_and_rep["reporter_chrom"],
-            "cis",
-            "trans",
-        )
+    def cis_or_trans_stats(self) -> pl.DataFrame:
         return (
-            cap_and_rep.groupby(["capture", "cis/trans"])
-            .size()
-            .reset_index()
-            .rename(columns={"capture": "viewpoint", 0: "count"})
-            .assign(sample=self.sample_name, read_type=self.read_type)
+            self.merged_captures_and_reporters.with_columns(
+                pl.when(pl.col("capture_chrom") == pl.col("reporter_chrom"))
+                .then(pl.lit("cis"))
+                .otherwise(pl.lit("trans"))
+                .alias("cis/trans")
+            )
+            .group_by("capture", "cis/trans")
+            .len(name="count")
+            .rename({"capture": "viewpoint"})
+            .with_columns(
+                pl.lit(self.sample_name).alias("sample"),
+                pl.lit(self.read_type).alias("read_type"),
+            )
         )
 
     def remove_excluded_slices(self) -> None:
@@ -310,48 +322,84 @@ class TiledCSliceFilter(SliceFilter):
     assay = Assay.TILED
 
     @property
-    def captures(self) -> pd.DataFrame:
-        return _captures(self.pipeline.slices).to_pandas()
+    def captures(self) -> pl.DataFrame:
+        return _captures(self.pipeline.slices)
 
     @property
-    def fragments(self) -> pd.DataFrame:
-        return _tiled_fragments(self.pipeline.slices).to_pandas()
+    def fragments(self) -> pl.DataFrame:
+        return _tiled_fragments(self.pipeline.slices)
 
     @property
-    def cis_or_trans_stats(self) -> pd.DataFrame:
-        interactions_by_capture = {}
-        for capture_site, df_cap in self.slices.query("capture_count == 1").groupby(
-            "capture", observed=False
-        ):
-            capture_chrom = df_cap.iloc[0]["chrom"]
-            df_primary_capture = df_cap.groupby("parent_read").first()
-            df_not_primary_capture = df_cap.loc[
-                ~(df_cap["slice_name"].isin(df_primary_capture["slice_name"]))
-            ]
-            df_outside_capture = self.slices.query("capture_count == 0").loc[
-                lambda df_rep: df_rep["parent_read"].isin(df_cap["parent_read"])
-            ]
-            df_pseudo_reporters = pd.concat(
-                [df_not_primary_capture, df_outside_capture]
+    def cis_or_trans_stats(self) -> pl.DataFrame:
+        rows = []
+        slices = self.pipeline.slices
+        capture_sites = (
+            slices.filter(pl.col("capture_count") == 1)
+            .select("capture")
+            .drop_nulls()
+            .unique(maintain_order=True)
+            .get_column("capture")
+            .to_list()
+        )
+        for capture_site in capture_sites:
+            df_cap = slices.filter(
+                (pl.col("capture_count") == 1) & (pl.col("capture") == capture_site)
             )
-            n_cis_interactions = df_pseudo_reporters.query(
-                f'chrom == "{capture_chrom}"'
-            ).shape[0]
-            n_trans_interactions = df_pseudo_reporters.shape[0] - n_cis_interactions
-            interactions_by_capture[capture_site] = {
-                "cis": n_cis_interactions,
-                "trans": n_trans_interactions,
-            }
+            if df_cap.is_empty():
+                continue
+            capture_chrom = df_cap.get_column("chrom").item(0)
+            primary_slice_names = (
+                df_cap.group_by("parent_read", maintain_order=True)
+                .agg(pl.col("slice_name").first())
+                .get_column("slice_name")
+            )
+            parent_reads = df_cap.select("parent_read").unique()
+            df_not_primary_capture = df_cap.filter(
+                ~pl.col("slice_name").is_in(primary_slice_names)
+            )
+            df_outside_capture = slices.filter(pl.col("capture_count") == 0).join(
+                parent_reads, on="parent_read", how="semi"
+            )
+            df_pseudo_reporters = pl.concat(
+                [df_not_primary_capture, df_outside_capture], how="vertical_relaxed"
+            )
+            n_cis_interactions = df_pseudo_reporters.filter(
+                pl.col("chrom") == capture_chrom
+            ).height
+            n_trans_interactions = df_pseudo_reporters.height - n_cis_interactions
+            rows.extend(
+                [
+                    {
+                        "viewpoint": capture_site,
+                        "cis/trans": "cis",
+                        "count": n_cis_interactions,
+                    },
+                    {
+                        "viewpoint": capture_site,
+                        "cis/trans": "trans",
+                        "count": n_trans_interactions,
+                    },
+                ]
+            )
+
+        if not rows:
+            return pl.DataFrame(
+                schema={
+                    "viewpoint": pl.String,
+                    "cis/trans": pl.String,
+                    "count": pl.Int64,
+                    "sample": pl.String,
+                    "read_type": pl.String,
+                }
+            )
 
         return (
-            pd.DataFrame(interactions_by_capture)
-            .transpose()
-            .reset_index()
-            .rename(columns={"index": "capture"})
-            .melt(id_vars="capture", var_name="cis/trans", value_name="count")
-            .sort_values("capture")
-            .assign(sample=self.sample_name, read_type=self.read_type)
-            .rename(columns={"capture": "viewpoint"})
+            pl.DataFrame(rows)
+            .sort("viewpoint")
+            .with_columns(
+                pl.lit(self.sample_name).alias("sample"),
+                pl.lit(self.read_type).alias("read_type"),
+            )
         )
 
     def remove_slices_outside_capture(self) -> None:

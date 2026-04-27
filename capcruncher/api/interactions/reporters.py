@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-import pandas as pd
+import polars as pl
 from loguru import logger
 
 
@@ -11,21 +11,25 @@ from loguru import logger
 class ReporterViewpointSummary:
     viewpoints: list[str]
     viewpoint_sizes: dict[str, int]
-    viewpoint_sizes_table: pd.DataFrame
+    viewpoint_sizes_table: pl.DataFrame
     low_memory: bool
     partitions: list[str] | None
 
 
 def valid_viewpoint_names(viewpoint_path: Path | str) -> list[str]:
     """Return unique viewpoint names from a BED-like viewpoint file."""
-    viewpoints = pd.read_csv(
+    viewpoints = pl.read_csv(
         viewpoint_path,
-        sep="\t",
-        header=None,
-        usecols=[3],
-        names=["name"],
+        separator="\t",
+        has_header=False,
+        columns=[3],
+        new_columns=["name"],
     )
-    return viewpoints["name"].dropna().astype(str).drop_duplicates().tolist()
+    return (
+        viewpoints.select(pl.col("name").drop_nulls().cast(pl.Utf8).unique())
+        .get_column("name")
+        .to_list()
+    )
 
 
 def parquet_files(path: Path | str) -> list[Path]:
@@ -36,13 +40,17 @@ def parquet_files(path: Path | str) -> list[Path]:
     return [path]
 
 
-def _normalise_nullable_viewpoints(reporters_df: pd.DataFrame) -> pd.Series:
-    return reporters_df["viewpoint"].astype("string").replace(
-        {"": pd.NA, "None": pd.NA, "nan": pd.NA, "<NA>": pd.NA}
+def _normalise_nullable_viewpoints(reporters_df: pl.DataFrame) -> pl.DataFrame:
+    viewpoint = pl.col("viewpoint").cast(pl.Utf8)
+    return reporters_df.with_columns(
+        pl.when(viewpoint.is_in(["", "None", "nan", "<NA>"]))
+        .then(None)
+        .otherwise(viewpoint)
+        .alias("viewpoint")
     )
 
 
-def _validate_reporter_columns(reporters_df: pd.DataFrame, parquet_file: Path) -> None:
+def _validate_reporter_columns(reporters_df: pl.DataFrame, parquet_file: Path) -> None:
     required_columns = {"viewpoint"}
     missing_columns = required_columns - set(reporters_df.columns)
     if missing_columns:
@@ -50,6 +58,13 @@ def _validate_reporter_columns(reporters_df: pd.DataFrame, parquet_file: Path) -
             f"Reporter file {parquet_file} is missing required column(s): "
             f"{', '.join(sorted(missing_columns))}"
         )
+
+
+def _read_reporter_columns(reporters: Path | str, columns: list[str]) -> pl.DataFrame:
+    frames = [pl.read_parquet(path, columns=columns) for path in parquet_files(reporters)]
+    if not frames:
+        return pl.DataFrame()
+    return pl.concat(frames, how="diagonal_relaxed")
 
 
 def write_countable_reporters(
@@ -70,11 +85,18 @@ def write_countable_reporters(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for index, parquet_file in enumerate(parquet_files(reporters)):
-        reporters_df = pd.read_parquet(parquet_file)
+        reporters_df = pl.read_parquet(parquet_file)
         _validate_reporter_columns(reporters_df, parquet_file)
-        reporters_df["viewpoint"] = _normalise_nullable_viewpoints(reporters_df)
+        reporters_df = _normalise_nullable_viewpoints(reporters_df)
         invalid_viewpoints = sorted(
-            set(reporters_df["viewpoint"].dropna().astype(str)) - set(valid_viewpoints)
+            set(
+                reporters_df.select(
+                    pl.col("viewpoint").drop_nulls().cast(pl.Utf8).unique()
+                )
+                .get_column("viewpoint")
+                .to_list()
+            )
+            - set(valid_viewpoints)
         )
         if invalid_viewpoints:
             raise ValueError(
@@ -82,14 +104,10 @@ def write_countable_reporters(
                 f"{viewpoint_path}: {invalid_viewpoints}"
             )
 
-        for column in reporters_df.select_dtypes(include="category").columns:
-            reporters_df[column] = reporters_df[column].cat.remove_unused_categories()
-
-        reporters_df["viewpoint"] = pd.Categorical(
-            reporters_df["viewpoint"],
-            categories=valid_viewpoints,
+        reporters_df = reporters_df.with_columns(
+            pl.col("viewpoint").cast(pl.Enum(valid_viewpoints))
         )
-        reporters_df.to_parquet(output_dir / f"part-{index}.parquet", index=False)
+        reporters_df.write_parquet(output_dir / f"part-{index}.parquet")
 
     return output_dir
 
@@ -97,21 +115,26 @@ def write_countable_reporters(
 def summarise_reporter_viewpoints(reporters: Path | str) -> ReporterViewpointSummary:
     logger.info("Extracting viewpoint names and sizes")
 
-    viewpoint_df = pd.read_parquet(reporters, engine="pyarrow", columns=["viewpoint"])
-    if hasattr(viewpoint_df["viewpoint"], "cat") and hasattr(
-        viewpoint_df["viewpoint"].cat, "categories"
-    ):
-        viewpoints = viewpoint_df["viewpoint"].cat.categories.to_list()
+    viewpoint_df = _read_reporter_columns(reporters, columns=["viewpoint"])
+    viewpoint_dtype = viewpoint_df.schema["viewpoint"]
+    if hasattr(viewpoint_dtype, "categories"):
+        viewpoints = viewpoint_dtype.categories.to_list()
     else:
         viewpoints = (
-            viewpoint_df["viewpoint"].dropna().drop_duplicates().astype(str).to_list()
+            viewpoint_df.select(pl.col("viewpoint").drop_nulls().cast(pl.Utf8).unique())
+            .get_column("viewpoint")
+            .to_list()
         )
 
-    viewpoint_sizes = viewpoint_df["viewpoint"].value_counts()
-    viewpoint_sizes_dict = viewpoint_sizes.to_dict()
-    viewpoint_sizes_table = pd.DataFrame.from_dict(
-        viewpoint_sizes_dict, orient="index", columns=["n_slices"]
+    viewpoint_sizes_table = (
+        viewpoint_df.drop_nulls("viewpoint")
+        .group_by("viewpoint")
+        .len(name="n_slices")
+        .sort("viewpoint")
     )
+    viewpoint_sizes_dict = {
+        row["viewpoint"]: row["n_slices"] for row in viewpoint_sizes_table.to_dicts()
+    }
 
     logger.info(f"Number of viewpoints: {len(viewpoints)}")
     logger.info(f"Number of slices per viewpoint:\n{viewpoint_sizes_table}")
@@ -120,8 +143,12 @@ def summarise_reporter_viewpoints(reporters: Path | str) -> ReporterViewpointSum
         logger.warning(
             "High number of slices per viewpoint detected. Switching to low memory mode"
         )
-        partition_df = pd.read_parquet(reporters, engine="pyarrow", columns=["bam"])
-        partitions = partition_df["bam"].cat.categories.to_list()
+        partition_df = _read_reporter_columns(reporters, columns=["bam"])
+        partitions = (
+            partition_df.select(pl.col("bam").drop_nulls().cast(pl.Utf8).unique())
+            .get_column("bam")
+            .to_list()
+        )
         low_memory = True
     else:
         partitions = None

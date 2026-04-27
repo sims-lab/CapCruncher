@@ -1,18 +1,22 @@
 import json
 
-import pandas as pd
+import polars as pl
 
 from capcruncher.api.statistics import FlashStats
 
 
 def extract_flash_stats(flash_summary_path):
-    df_stats = pd.read_csv(flash_summary_path, sep="\t")
-    df_stats["sample"] = df_stats["Sample"].str.split("_part").str[0]
+    df_stats = pl.read_csv(flash_summary_path, separator="\t")
     df_stats = (
-        df_stats[["sample", "combopairs", "uncombopairs"]]
-        .groupby("sample")
-        .sum()
-        .reset_index()
+        df_stats.with_columns(
+            pl.col("Sample").str.split("_part").list.first().alias("sample")
+        )
+        .group_by("sample")
+        .agg(
+            pl.col("combopairs").sum(),
+            pl.col("uncombopairs").sum(),
+        )
+        .sort("sample")
     )
 
     return [
@@ -21,7 +25,7 @@ def extract_flash_stats(flash_summary_path):
             n_combined=row["combopairs"],
             n_uncombined=row["uncombopairs"],
         )
-        for _, row in df_stats.iterrows()
+        for row in df_stats.iter_rows(named=True)
     ]
 
 

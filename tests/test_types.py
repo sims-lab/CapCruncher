@@ -2,12 +2,13 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import polars as pl
 import pytest
 from click.testing import CliRunner
 
 from capcruncher.api.alignments.annotate import AlignmentAnnotateOptions, annotate
 from capcruncher.api.alignments.filter import AlignmentFilterOptions
-from capcruncher.api.interactions.compare import summarise
+from capcruncher.api.interactions.compare import concat, summarise
 from capcruncher.cli import cli
 from capcruncher.types import AnnotationAction, Assay, DuplicateAction, ReadType
 from capcruncher.utils import load_dict, save_dict
@@ -116,6 +117,49 @@ def test_summarise_rejects_unsupported_method(tmp_path):
 
     with pytest.raises(ValueError, match="summary_methods must be one of: mean"):
         summarise(infile=infile, summary_methods=("median",))
+
+
+def test_compare_concat_and_summarise_use_polars_outputs(tmp_path):
+    bedgraph_a = tmp_path / "a.bedgraph"
+    bedgraph_b = tmp_path / "b.bedgraph"
+    union_path = tmp_path / "union.tsv"
+
+    bedgraph_a.write_text("chr1\t0\t10\t2\nchr1\t0\t10\t3\nchr1\t10\t20\t4\n")
+    bedgraph_b.write_text("chr1\t0\t10\t7\nchr1\t20\t30\t5\n")
+
+    union_by_viewpoint = concat(
+        [bedgraph_a, bedgraph_b],
+        viewpoint="vp1",
+        format="bedgraph",
+        output=union_path,
+    )
+
+    union = union_by_viewpoint["vp1"]
+    assert isinstance(union, pl.DataFrame)
+    assert union.to_dicts() == [
+        {"chrom": "chr1", "start": 0, "end": 10, "a.bedgraph": 5, "b.bedgraph": 7},
+        {"chrom": "chr1", "start": 10, "end": 20, "a.bedgraph": 4, "b.bedgraph": 0},
+        {"chrom": "chr1", "start": 20, "end": 30, "a.bedgraph": 0, "b.bedgraph": 5},
+    ]
+
+    summarise(
+        infile=union_path,
+        output_prefix=tmp_path / "summary.",
+        group_names=("grp",),
+        group_columns=("0,1",),
+    )
+
+    summary = pl.read_csv(
+        tmp_path / "summary.grp.mean-summary.bedgraph",
+        separator="\t",
+        has_header=False,
+        new_columns=["chrom", "start", "end", "score"],
+    )
+    assert summary.to_dicts() == [
+        {"chrom": "chr1", "start": 0, "end": 10, "score": 6.0},
+        {"chrom": "chr1", "start": 10, "end": 20, "score": 2.0},
+        {"chrom": "chr1", "start": 20, "end": 30, "score": 2.5},
+    ]
 
 
 def test_dict_serialisation_rejects_invalid_format_and_dtype(tmp_path):

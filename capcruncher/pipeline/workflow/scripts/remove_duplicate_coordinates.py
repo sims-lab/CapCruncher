@@ -1,5 +1,4 @@
 import os
-import pandas as pd
 import subprocess
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
@@ -47,7 +46,7 @@ def remove_duplicate_coordinates(
         pq.write_table(dataset.to_table().slice(0, 0), outdir / "empty.parquet")
 
         logger.warning(f"Creating empty stats file: {output_statistics}")
-        pd.DataFrame().to_csv(output_statistics)
+        pathlib.Path(output_statistics).write_text("\n")
 
 
 def main(snakemake):
