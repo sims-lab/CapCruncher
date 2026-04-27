@@ -492,8 +492,8 @@ def make_chicago_maps(
         fragments_new.symlink_to(pathlib.Path(fragments).resolve())
 
     # Baitmap file
-    viewpoints = pr.read_bed(viewpoints)
-    fragments = pr.read_bed(fragments)
+    viewpoints = pr.read_bed(Path(viewpoints))
+    fragments = pr.read_bed(Path(fragments))
 
     intersections = fragments.join_overlaps(
         viewpoints, suffix="_vp", strand_behavior="ignore"

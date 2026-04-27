@@ -166,12 +166,8 @@ align:
 
 analysis_optional:
 
-    # Path to a YAML file containing the filter order to be applied to slices.
-    # See https://github.com/sims-lab/CapCruncher/blob/master/capcruncher/data/test/ccslicefilter_test.yml
-    # for an example and the filter module of the documentation
-    # https://capcruncher.readthedocs.io/en/latest/capcruncher_module_documentation/capcruncher.tools.html#capcruncher-tools-filter-module
-    # for further details.
-    custom_filtering: PATH_TO_CUSTOM_FILTERING_CONFIG
+    # Path to a TOML file containing the filter profile to apply to slices.
+    filter_profile: PATH_TO_FILTER_PROFILE_TOML
 
     # Path to blacklisted regions bed file. Must be a four column named bed file.
     # Can supply any regions to be removed.

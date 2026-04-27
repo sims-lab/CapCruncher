@@ -26,7 +26,7 @@ def validate_viewpoints_present(slices, viewpoints, output_counts, output_sentin
     df_counts = count_annotated_viewpoints(slices)
     df_counts.to_csv(output_counts, sep="\t", index=True)
 
-    gr_viewpoints = pr.read_bed(viewpoints)
+    gr_viewpoints = pr.read_bed(pathlib.Path(viewpoints))
     if not gr_viewpoints.Name.isin(df_counts.capture).all():
         missing = gr_viewpoints.Name[~gr_viewpoints.Name.isin(df_counts.capture)]
         raise ValueError(f"Not all viewpoints are present in the annotation: {missing}")

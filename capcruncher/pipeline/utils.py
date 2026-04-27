@@ -131,7 +131,7 @@ def get_blacklist(config):
 
 
 def has_high_viewpoint_number(viewpoints: str, config: dict) -> bool | None:
-    n_viewpoints = pr.read_bed(viewpoints).shape[0]
+    n_viewpoints = pr.read_bed(pathlib.Path(viewpoints)).shape[0]
     if n_viewpoints > 500:
         if not config["analysis_optional"].get("force_bigwig_generation", False):
             return True
@@ -319,7 +319,7 @@ def format_priority_chromosome_list(config: dict):
     elif "," in priority_chroms:
         chromosomes = priority_chroms
     elif "viewpoints" in priority_chroms:
-        pr_viewpoints = pr.read_bed(config["analysis"]["viewpoints"])
+        pr_viewpoints = pr.read_bed(pathlib.Path(config["analysis"]["viewpoints"]))
         chromosomes = ",".join(pr_viewpoints.Chromosome)
 
     return f"--priority-chroms {chromosomes}" if chromosomes else ""
@@ -340,14 +340,14 @@ def identify_columns_based_on_condition(design: pd.DataFrame):
     return condition_args_str
 
 
-def validate_custom_filtering(config: dict):
-    custom_filter_stages = config["analysis"].get("custom_filtering", "")
-    if not custom_filter_stages:
+def validate_filter_profile(config: dict):
+    filter_profile = config["analysis"].get("filter_profile", "")
+    if not filter_profile:
         cf = ""
-    elif not os.path.exists(custom_filter_stages):
+    elif not os.path.exists(filter_profile):
         cf = ""
     else:
-        cf = f"--custom-filtering {custom_filter_stages}"
+        cf = f"--filter-profile {filter_profile}"
 
     return cf
 

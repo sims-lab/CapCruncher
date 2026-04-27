@@ -50,7 +50,7 @@ rule filter_alignments:
             ".slices.parquet", ""
         ),
         read_type=lambda wildcards, output: wildcards.combined,
-        custom_filtering=capcruncher.pipeline.utils.validate_custom_filtering(config),
+        filter_profile=capcruncher.pipeline.utils.validate_filter_profile(config),
     resources:
         mem=lambda wildcards, attempt: scale_memory(5, attempt),
     log:
@@ -68,7 +68,7 @@ rule filter_alignments:
         --sample-name {params.sample_name} \
         --read-type {params.read_type} \
         --no-fragments \
-        {params.custom_filtering} > {log} 2>&1
+        {params.filter_profile} > {log} 2>&1
         """
 
 
