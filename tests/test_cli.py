@@ -13,6 +13,8 @@ from capcruncher.cli import cli
 from capcruncher.cli import pipeline as cli_pipeline
 from capcruncher.api.interactions.count import (
     InteractionCountOptions,
+)
+from capcruncher.api.interactions.reporters import (
     write_countable_reporters,
 )
 from capcruncher.api.fastq import (
