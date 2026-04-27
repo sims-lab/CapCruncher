@@ -4,7 +4,8 @@ import os
 import pandas as pd
 import subprocess
 import tempfile
-from typing import Literal
+from types import NotImplementedType
+from typing import Literal, Self
 from capcruncher.api.storage import CoolerBinner
 from capcruncher.utils import is_valid_bed
 from loguru import logger
@@ -143,7 +144,7 @@ class CoolerBedGraph:
         uri: str,
         sparse: bool = True,
         only_cis: bool = False,
-        region_to_limit: str = None,
+        region_to_limit: str | None = None,
     ):
         """
         Args:
@@ -208,7 +209,7 @@ class CoolerBedGraph:
         )
         self._reporters = None
 
-    def _get_reporters(self):
+    def _get_reporters(self) -> pd.DataFrame:
         logger.info("Extracting reporters")
         concat_ids = pd.concat([self._pixels["bin1_id"], self._pixels["bin2_id"]])
         concat_ids_filt = concat_ids.loc[lambda ser: ser.isin(self._viewpoint_bins)]
@@ -272,8 +273,12 @@ class CoolerBedGraph:
             return self._reporters
 
     def _normalise_bedgraph(
-        self, bedgraph, scale_factor=1e6, method: str = "n_cis", region: str = None
-    ) -> pd.DataFrame:
+        self,
+        bedgraph: pd.DataFrame,
+        scale_factor: float = 1e6,
+        method: Literal["raw", "n_cis", "region"] = "n_cis",
+        region: FilePath | None = None,
+    ) -> None:
         """Normalises the bedgraph (in place).
 
         Uses the number of cis interactions to normalise the bedgraph counts.
@@ -292,10 +297,14 @@ class CoolerBedGraph:
         elif method == "region":
             self._normalise_by_regions(bedgraph, scale_factor, region)
 
-    def _normalise_by_n_cis(self, bedgraph, scale_factor: float):
+    def _normalise_by_n_cis(
+        self, bedgraph: pd.DataFrame, scale_factor: float
+    ) -> None:
         bedgraph["count"] = (bedgraph["count"] / self.n_cis_interactions) * scale_factor
 
-    def _normalise_by_regions(self, bedgraph, scale_factor: float, regions: str):
+    def _normalise_by_regions(
+        self, bedgraph: pd.DataFrame, scale_factor: float, regions: FilePath
+    ) -> None:
         if not is_valid_bed(regions):
             raise ValueError(
                 "A valid bed file is required for region based normalisation"
@@ -323,7 +332,7 @@ class CoolerBedGraph:
 
     def to_pyranges(
         self, normalisation: Literal["raw", "n_cis", "region"] = "raw", **norm_kwargs
-    ):
+    ) -> pr.PyRanges:
         return pr.PyRanges(
             self.extract_bedgraph(
                 normalisation=normalisation, **norm_kwargs
@@ -335,11 +344,11 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
     def __init__(
         self,
         cooler_fn: str,
-        binsize: int = 5e3,
-        binner: CoolerBinner = None,
-        sparse=True,
+        binsize: int = 5_000,
+        binner: CoolerBinner | None = None,
+        sparse: bool = True,
     ):
-        super(CoolerBedGraphWindowed, self).__init__(cooler_fn, sparse=sparse)
+        super().__init__(cooler_fn, sparse=sparse)
 
         self.cooler = cooler.Cooler(cooler_fn)
         self.binner = binner if binner else CoolerBinner(cooler_fn, binsize=binsize)
@@ -429,16 +438,16 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
         return reporters_binned
 
 
-class CCBedgraph(object):
+class CCBedgraph:
     def __init__(
         self,
-        path=None,
-        df=None,
-        capture_name="",
-        capture_chrom="",
-        capture_start="",
-        capture_end="",
-    ):
+        path: FilePath | None = None,
+        df: pd.DataFrame | None = None,
+        capture_name: str = "",
+        capture_chrom: str = "",
+        capture_start: str = "",
+        capture_end: str = "",
+    ) -> None:
         self.fn = path
         self.df = df
 
@@ -453,22 +462,22 @@ class CCBedgraph(object):
         self.capture_end = capture_end
 
     @property
-    def score(self):
+    def score(self) -> pd.Series:
         return self.df.rename(columns={"score": self.fn})[self.fn]
 
     @property
-    def coordinates(self):
+    def coordinates(self) -> pd.DataFrame:
         return self.df.loc[:, "chrom":"end"]
 
-    def to_pyranges(self):
+    def to_pyranges(self) -> pr.PyRanges:
         return self.df.rename(
             columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
         ).pipe(pr.PyRanges)
 
-    def to_file(self, path):
+    def to_file(self, path: FilePath) -> None:
         self.df.to_csv(path, sep="\t", header=None, index=None)
 
-    def __add__(self, other):
+    def __add__(self, other: object) -> Self | NotImplementedType:
         if isinstance(other, CCBedgraph):
             self.df["score"] = self.df["score"] + other.df["score"]
             return self
@@ -478,9 +487,9 @@ class CCBedgraph(object):
             return self
 
         else:
-            return NotImplementedError()
+            return NotImplemented
 
-    def __sub__(self, other):
+    def __sub__(self, other: object) -> Self | NotImplementedType:
         if isinstance(other, CCBedgraph):
             self.df["score"] = self.df["score"] - other.df["score"]
             return self
@@ -490,9 +499,9 @@ class CCBedgraph(object):
             return self
 
         else:
-            return NotImplementedError()
+            return NotImplemented
 
-    def __mul__(self, other):
+    def __mul__(self, other: object) -> Self | NotImplementedType:
         if isinstance(other, CCBedgraph):
             self.df["score"] = self.df["score"] * other.df["score"]
             return self
@@ -502,9 +511,9 @@ class CCBedgraph(object):
             return self
 
         else:
-            return NotImplementedError()
+            return NotImplemented
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: object) -> Self | NotImplementedType:
         if isinstance(other, CCBedgraph):
             self.df["score"] = self.df["score"] / other.df["score"]
             return self
@@ -514,11 +523,14 @@ class CCBedgraph(object):
             return self
 
         else:
-            return NotImplementedError()
+            return NotImplemented
 
 
 def cooler_to_bedgraph(
-    clr: str, regions_of_interest: str = None, viewpoint_distance: int = None, **kwargs
+    clr: str,
+    regions_of_interest: FilePath | None = None,
+    viewpoint_distance: int | None = None,
+    **kwargs,
 ) -> pd.DataFrame:
     if viewpoint_distance:
         viewpoint_coords = cooler.Cooler(clr).info["metadata"]["viewpoint_coords"][0]
