@@ -93,8 +93,11 @@ def deduplicate(
 
     logger.info("Writing deduplicated slices to disk")
     slices_unfiltered_ds = ds.dataset(slices, format="parquet")
+    parent_id_type = slices_unfiltered_ds.schema.field("parent_id").type
     scanner = slices_unfiltered_ds.scanner(
-        filter=ds.field("parent_id").isin(parent_ids_unique)
+        filter=ds.field("parent_id").isin(
+            pa.array(parent_ids_unique, type=parent_id_type)
+        )
     )
 
     if os.path.exists(output):

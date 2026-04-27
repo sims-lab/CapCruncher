@@ -1,5 +1,7 @@
 # Essential to run pipeline
+biopython
 click>=8.3.3,<9.0.0
+capcruncher-tools>=0.2.4,<0.3.0
 loguru<=0.7.2
 numpy>=2.4.4,<3.0.0
 pandas>=2.2.3,<3.0.0

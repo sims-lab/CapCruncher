@@ -1,9 +1,10 @@
 import os
-import subprocess
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 import pathlib
 from loguru import logger
+
+from capcruncher.api.interactions.deduplicate import deduplicate
 
 
 def remove_duplicate_coordinates(
@@ -18,23 +19,18 @@ def remove_duplicate_coordinates(
     n_rows = dataset.count_rows()
 
     if n_rows != 0:
-        cmd = [
-            "capcruncher",
-            "interactions",
-            "deduplicate",
-            slices_directory,
-            "-o",
-            output_slices,
-            "--read-type",
-            read_type,
-            "--sample-name",
-            sample_name,
-            "--statistics",
-            output_statistics,
-        ]
-
         with open(log_path, "w") as f:
-            subprocess.run(cmd, check=True, stdout=f, stderr=f)
+            try:
+                deduplicate(
+                    slices=slices_directory,
+                    output=output_slices,
+                    read_type=read_type,
+                    sample_name=sample_name,
+                    statistics=output_statistics,
+                )
+            except Exception as exc:
+                print(exc, file=f)
+                raise
 
     else:
         logger.warning("The input dataset is empty, skipping deduplication step.")
