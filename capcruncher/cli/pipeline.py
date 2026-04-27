@@ -1,10 +1,13 @@
 import os
 from importlib import resources
-import subprocess
-import sys
 import pathlib
 import shutil
+import subprocess
+from collections.abc import Sequence
+
 import typer
+
+type PipelineOptions = Sequence[str]
 
 
 PIPELINE_PRESET_SOURCES = {
@@ -23,7 +26,6 @@ PIPELINE_PRESET_CHOICES = (
     *BUILTIN_PIPELINE_PRESETS,
     *LEGACY_PIPELINE_PRESET_ALIASES,
 )
-PIPELINE_SUBCOMMANDS = {"run", "init", "config"}
 PIPELINE_FORWARD_CONTEXT = dict(
     ignore_unknown_options=True,
     allow_extra_args=True,
@@ -40,7 +42,9 @@ pipeline_app = typer.Typer(
 )
 
 
-def has_snakemake_option(options, long_name, short_name=None):
+def has_snakemake_option(
+    options: PipelineOptions, long_name: str, short_name: str | None = None
+) -> bool:
     option_names = [long_name]
     if short_name:
         option_names.append(short_name)
@@ -117,12 +121,12 @@ def install_pipeline_preset(
 
 
 def run_pipeline(
-    pipeline_options,
-    show_help=False,
-    logo=True,
-    preset=None,
-    scale_resources=None,
-):
+    pipeline_options: PipelineOptions,
+    show_help: bool = False,
+    logo: bool = True,
+    preset: str | None = None,
+    scale_resources: float | None = None,
+) -> None:
     """Runs the data processing pipeline"""
 
     fn = pathlib.Path(__file__).resolve()
@@ -140,8 +144,8 @@ def run_pipeline(
         # Capture the output and replace usage: snakemake with usage: capcruncher pipeline
         # Print the output
         cmd.append("--help")
-        _completed = subprocess.run(cmd, capture_output=True, shell=False)
-        output = _completed.stdout.decode("utf-8")
+        _completed = subprocess.run(cmd, capture_output=True, shell=False, text=True)
+        output = _completed.stdout
         output = output.replace("usage: snakemake", "usage: capcruncher pipeline")
         typer.echo(f"\n{output}")
         raise typer.Exit()
@@ -167,7 +171,7 @@ def run_pipeline(
         cmd.append("--show-failed-logs")
 
     if logo:
-        with open(dir_package / "data" / "logo.txt", "r") as f:
+        with open(dir_package / "data" / "logo.txt", "r", encoding="utf-8") as f:
             typer.echo(f.read())
 
     env = os.environ.copy()
@@ -179,8 +183,9 @@ def run_pipeline(
 
     # If the pipeline fails, exit with the return code
     if _completed.returncode != 0:
-        sys.exit(_completed.returncode)
-    elif should_touch_pipeline_outputs(pipeline_options):
+        raise typer.Exit(_completed.returncode)
+
+    if should_touch_pipeline_outputs(pipeline_options):
         # Touch all files to correct timestamps
         subprocess.run(
             [
@@ -197,7 +202,11 @@ def run_pipeline(
         )
 
 
-def install_pipeline_presets(output_dir=None, preset_names=(), force=False):
+def install_pipeline_presets(
+    output_dir: pathlib.Path | None = None,
+    preset_names: Sequence[str] = (),
+    force: bool = False,
+) -> None:
     destination_root = output_dir or get_pipeline_preset_dir()
     destination_root.mkdir(parents=True, exist_ok=True)
 
@@ -226,8 +235,6 @@ def _load_cookiecutter():
 
 
 def configure_pipeline():
-    import pathlib
-
     cookiecutter = _load_cookiecutter()
     fn = pathlib.Path(__file__).resolve()
     dir_cli = fn.parent
@@ -236,8 +243,23 @@ def configure_pipeline():
     cookiecutter(str(dir_package / "pipeline" / "config"))
 
 
-def _parse_pipeline_run_options(options: tuple[str, ...]):
-    remaining = []
+def _option_value(options: PipelineOptions, index: int, option: str) -> tuple[str, int]:
+    if index + 1 >= len(options):
+        raise typer.BadParameter(f"Option '{option}' requires a value.")
+    return options[index + 1], index + 1
+
+
+def _float_option_value(value: str, option: str) -> float:
+    try:
+        return float(value)
+    except ValueError as exc:
+        raise typer.BadParameter(f"Option '{option}' requires a numeric value.") from exc
+
+
+def _parse_pipeline_run_options(
+    options: PipelineOptions,
+) -> tuple[tuple[str, ...], bool, bool, str | None, float | None]:
+    remaining: list[str] = []
     logo = True
     preset = None
     scale_resources = None
@@ -254,15 +276,16 @@ def _parse_pipeline_run_options(options: tuple[str, ...]):
         elif option == "--no-logo":
             logo = False
         elif option == "--preset":
-            index += 1
-            preset = options[index]
+            preset, index = _option_value(options, index, option)
         elif option.startswith("--preset="):
             preset = option.split("=", 1)[1]
         elif option == "--scale-resources":
-            index += 1
-            scale_resources = float(options[index])
+            value, index = _option_value(options, index, option)
+            scale_resources = _float_option_value(value, option)
         elif option.startswith("--scale-resources="):
-            scale_resources = float(option.split("=", 1)[1])
+            scale_resources = _float_option_value(
+                option.split("=", 1)[1], "--scale-resources"
+            )
         else:
             remaining.append(option)
 
@@ -271,9 +294,11 @@ def _parse_pipeline_run_options(options: tuple[str, ...]):
     return tuple(remaining), show_help, logo, preset, scale_resources
 
 
-def _parse_pipeline_init_options(options: tuple[str, ...]):
+def _parse_pipeline_init_options(
+    options: PipelineOptions,
+) -> tuple[pathlib.Path | None, list[str], bool]:
     output_dir = None
-    preset_names = []
+    preset_names: list[str] = []
     force = False
     index = 0
 
@@ -284,13 +309,13 @@ def _parse_pipeline_init_options(options: tuple[str, ...]):
             typer.echo("Usage: capcruncher pipeline init [OPTIONS]")
             raise typer.Exit()
         if option == "--output-dir":
-            index += 1
-            output_dir = pathlib.Path(options[index])
+            value, index = _option_value(options, index, option)
+            output_dir = pathlib.Path(value)
         elif option.startswith("--output-dir="):
             output_dir = pathlib.Path(option.split("=", 1)[1])
         elif option == "--preset":
-            index += 1
-            preset_names.append(options[index])
+            value, index = _option_value(options, index, option)
+            preset_names.append(value)
         elif option.startswith("--preset="):
             preset_names.append(option.split("=", 1)[1])
         elif option == "--force":
