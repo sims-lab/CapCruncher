@@ -1,26 +1,18 @@
-import tempfile
 import os
-import sys
-from types import ModuleType
+import tempfile
+from collections.abc import Iterable
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, cast
+from uuid import uuid4
 
+import pandas as pd
+from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
+from tqdm import tqdm
+
 from capcruncher.types import Assay, Executor, VALID_ASSAYS, VALID_EXECUTORS, validate_choice
-
-
-def _install_capcruncher_tools_storage_alias() -> None:
-    """Expose the cooler helpers expected by the external capcruncher-tools API."""
-    if "capcruncher.api.storage" in sys.modules:
-        return
-
-    from capcruncher.api.interactions.cooler.create import create_cooler_cc
-    from capcruncher.api.interactions.cooler.merge import merge_coolers
-
-    storage = ModuleType("capcruncher.api.storage")
-    storage.create_cooler_cc = create_cooler_cc
-    storage.merge_coolers = merge_coolers
-    sys.modules["capcruncher.api.storage"] = storage
 
 
 class InteractionCountOptions(BaseModel):
@@ -157,9 +149,11 @@ def count_interactions(
     executor: Executor | str = Executor.LOCAL,
     **kwargs: Any,
 ) -> Path | str:
-    """Count reporter interactions using the external ``capcruncher-tools`` API."""
-    _install_capcruncher_tools_storage_alias()
-    from capcruncher_tools.api import count_interactions as count_interactions_records
+    """Count reporter interactions and write CapCruncher cooler output."""
+    import pyranges1 as pr
+
+    from capcruncher.api.interactions.cooler.create import create_cooler_cc
+    from capcruncher.api.interactions.cooler.merge import merge_coolers
 
     if viewpoint_path is None:
         raise ValueError("viewpoint_path is required.")
@@ -186,32 +180,143 @@ def count_interactions(
 
         assay_value = cast(Assay, options.assay).value
         executor_value = cast(Executor, options.executor).value
-        if options.fragment_map is not None:
-            clr = count_interactions_records(
-                reporters=countable_reporters,
-                output=Path(options.output),
-                remove_exclusions=options.remove_exclusions,
-                remove_viewpoint=options.remove_viewpoint,
-                subsample=options.subsample,
-                viewpoint_path=Path(options.viewpoint_path),
-                n_cores=options.n_cores,
-                assay=assay_value,
-                executor=executor_value,
-                fragment_map=Path(options.fragment_map),
-                **kwargs,
-            )
-        else:
-            clr = count_interactions_records(
-                reporters=countable_reporters,
-                output=Path(options.output),
-                remove_exclusions=options.remove_exclusions,
-                remove_viewpoint=options.remove_viewpoint,
-                subsample=options.subsample,
-                viewpoint_path=Path(options.viewpoint_path),
-                n_cores=options.n_cores,
-                assay=assay_value,
-                executor=executor_value,
-                **kwargs,
-            )
 
-    return os.fspath(clr)
+        logger.info("Extracting viewpoint names and sizes")
+        reporters_for_counting = Path(countable_reporters)
+        viewpoint_df = pd.read_parquet(
+            reporters_for_counting, engine="pyarrow", columns=["viewpoint"]
+        )
+        if hasattr(viewpoint_df["viewpoint"], "cat") and hasattr(
+            viewpoint_df["viewpoint"].cat, "categories"
+        ):
+            viewpoints = viewpoint_df["viewpoint"].cat.categories.to_list()
+        else:
+            viewpoints = (
+                viewpoint_df["viewpoint"].dropna().drop_duplicates().astype(str).to_list()
+            )
+        viewpoint_sizes = viewpoint_df["viewpoint"].value_counts()
+        viewpoint_sizes_dict = viewpoint_sizes.to_dict()
+        viewpoint_sizes_df = pd.DataFrame.from_dict(
+            viewpoint_sizes_dict, orient="index", columns=["n_slices"]
+        )
+
+        logger.info(f"Number of viewpoints: {len(viewpoints)}")
+        logger.info(f"Number of slices per viewpoint:\n{viewpoint_sizes_df}")
+
+        if any(size > 2e6 for size in viewpoint_sizes_dict.values()):
+            logger.warning(
+                "High number of slices per viewpoint detected. Switching to low memory mode"
+            )
+            low_memory = True
+            partition_df = pd.read_parquet(
+                reporters_for_counting, engine="pyarrow", columns=["bam"]
+            )
+            partitions = partition_df["bam"].cat.categories.to_list()
+        else:
+            low_memory = False
+            partitions = None
+
+        if options.fragment_map is None:
+            raise ValueError("fragment_map is required.")
+
+        bins = pr.read_bed(Path(options.fragment_map)).rename(
+            columns={
+                "Chromosome": "chrom",
+                "Start": "start",
+                "End": "end",
+                "Name": "name",
+            }
+        )
+        bins["chrom"] = bins["chrom"].astype("string").astype("category")
+
+        count_kwargs = {
+            "parquet": os.fspath(reporters_for_counting / "*.parquet"),
+            "remove_exclusions": options.remove_exclusions,
+            "remove_viewpoint": options.remove_viewpoint,
+            "subsample": options.subsample,
+            "low_memory": low_memory,
+            "partitions": partitions,
+        }
+
+        coolers = []
+        for viewpoint, counts in tqdm(
+            _iter_count_results(
+                viewpoints, count_kwargs, executor_value, options.n_cores
+            ),
+            total=len(viewpoints),
+        ):
+            cooler_uri = create_cooler_cc(
+                output_prefix=os.fspath(Path(tmpdir) / f"{uuid4().hex}.hdf5"),
+                pixels=counts,
+                bins=bins,
+                viewpoint_name=viewpoint,
+                viewpoint_path=Path(options.viewpoint_path),
+                assay=assay_value,
+                **kwargs,
+            )
+            coolers.append(cooler_uri.split("::")[0])
+
+        logger.info(f"Making final cooler at {options.output}")
+        merge_coolers(coolers, output=Path(options.output))
+
+    return os.fspath(options.output)
+
+
+def _iter_count_results(
+    viewpoints: Iterable[str],
+    count_kwargs: dict[str, Any],
+    executor: str,
+    n_cores: int,
+) -> Iterable[tuple[str, pd.DataFrame]]:
+    from capcruncher_tools.count import count_viewpoint_pixels
+
+    if executor == Executor.LOCAL.value:
+        for viewpoint in viewpoints:
+            yield count_viewpoint_pixels(viewpoint=viewpoint, **count_kwargs)
+        return
+
+    if executor == Executor.PROCESS.value:
+        process_kwargs: dict[str, Any] = {"max_workers": n_cores}
+        try:
+            process_kwargs["mp_context"] = get_context("fork")
+        except ValueError:
+            pass
+        try:
+            with ProcessPoolExecutor(**process_kwargs) as pool:
+                futures = [
+                    pool.submit(
+                        count_viewpoint_pixels, viewpoint=viewpoint, **count_kwargs
+                    )
+                    for viewpoint in viewpoints
+                ]
+                for future in as_completed(futures):
+                    yield future.result()
+        except PermissionError:
+            logger.warning(
+                "Process executor is unavailable in this environment; falling back to local execution"
+            )
+            for viewpoint in viewpoints:
+                yield count_viewpoint_pixels(viewpoint=viewpoint, **count_kwargs)
+        return
+
+    if executor == Executor.RAY.value:
+        try:
+            import ray
+        except ImportError as exc:
+            raise RuntimeError(
+                "Ray executor requested but ray is not installed. Install capcruncher-tools[ray]."
+            ) from exc
+
+        ray.init(num_cpus=n_cores, ignore_reinit_error=True)
+        remote_count = ray.remote(count_viewpoint_pixels)
+        futures = [
+            remote_count.remote(viewpoint=viewpoint, **count_kwargs)
+            for viewpoint in viewpoints
+        ]
+        while futures:
+            completed, futures = ray.wait(futures)
+            for future in completed:
+                yield ray.get(future)
+        return
+
+    raise ValueError(f"Unknown executor: {executor}")
