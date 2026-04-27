@@ -3,6 +3,7 @@ from collections.abc import Callable, Sequence
 import itertools
 import os
 import re
+from pathlib import Path
 from typing import Literal
 
 import cooler
@@ -11,7 +12,6 @@ from loguru import logger
 import pandas as pd
 import polars as pl
 
-type FilePath = str | os.PathLike[str]
 type SummaryFunction = Callable[[pd.Series], float]
 
 
@@ -34,16 +34,16 @@ def remove_duplicate_entries(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def concat(
-    infiles: Sequence[FilePath],
+    infiles: Sequence[Path | str],
     viewpoint: str | None = None,
     resolution: int | None = None,
     format: Literal["auto", "cooler", "bedgraph"] = "auto",
     region: str | None = None,
-    output: FilePath | None = None,
+    output: Path | str | None = None,
     normalisation: Literal["raw", "n_cis", "region"] = "raw",
     n_cores: int = 1,
     scale_factor: int = int(1e6),
-    normalisation_regions: FilePath | None = None,
+    normalisation_regions: Path | str | None = None,
 ) -> dict[str, pd.DataFrame]:
     input_format = format
     norm_kwargs = {"scale_factor": scale_factor, "region": normalisation_regions}
@@ -165,9 +165,9 @@ def get_groups(
 
 
 def summarise(
-    infile: FilePath,
-    design_matrix: FilePath | None = None,
-    output_prefix: FilePath | None = None,
+    infile: Path | str,
+    design_matrix: Path | str | None = None,
+    output_prefix: Path | str | None = None,
     output_format: Literal["bedgraph", "tsv"] = "bedgraph",
     summary_methods: tuple[Literal["mean"], ...] = ("mean",),
     group_names: tuple[str, ...] | None = None,

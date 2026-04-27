@@ -2,6 +2,7 @@ from collections import namedtuple
 from collections.abc import Callable, Sequence
 import multiprocessing
 import os
+from pathlib import Path
 import traceback
 
 from loguru import logger
@@ -12,7 +13,6 @@ from pysam import FastxFile
 from xopen import xopen
 import xxhash
 
-type FilePath = str | os.PathLike[str]
 type FastqFormatFunction = Callable[[object], object]
 
 
@@ -31,7 +31,7 @@ class FastqReaderProcess(multiprocessing.Process):
 
     def __init__(
         self,
-        input_files: FilePath | Sequence[FilePath],
+        input_files: Path | str | Sequence[Path | str],
         outq: multiprocessing.Queue,
         read_buffer: int = 100000,
     ) -> None:
@@ -48,7 +48,7 @@ class FastqReaderProcess(multiprocessing.Process):
         super().__init__()
 
     def _normalise_input_files(
-        self, input_files: FilePath | Sequence[FilePath]
+        self, input_files: Path | str | Sequence[Path | str]
     ) -> list[str]:
         if isinstance(input_files, str | os.PathLike):
             return [os.fspath(input_files)]
@@ -136,7 +136,7 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
     def __init__(
         self,
         inq: multiprocessing.Queue,
-        output_prefix: FilePath,
+        output_prefix: Path | str,
         paired_output: bool = False,
         gzip: bool = False,
         compression_level: int = 3,
@@ -296,7 +296,7 @@ def parse_alignment(aln: pysam.AlignedSegment) -> CCAlignment:
     )
 
 
-def parse_bam(bam: FilePath) -> pd.DataFrame:
+def parse_bam(bam: Path | str) -> pd.DataFrame:
     """Uses parse_alignment function convert bam file to a dataframe.
 
     Extracts:
@@ -353,8 +353,8 @@ def parse_bam(bam: FilePath) -> pd.DataFrame:
 
 
 def bam_to_parquet(
-    bam: FilePath, output: FilePath
-) -> FilePath:
+    bam: Path | str, output: Path | str
+) -> Path | str:
     """Converts bam file to parquet file.
 
     Args:

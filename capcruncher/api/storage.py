@@ -2,6 +2,7 @@ from concurrent.futures import ProcessPoolExecutor
 from collections.abc import Iterable
 import os
 import tempfile
+from pathlib import Path
 import pandas as pd
 import cooler
 import h5py
@@ -11,8 +12,6 @@ import json
 from typing import Literal, Self
 import pyranges1 as pr
 import re
-
-type FilePath = str | os.PathLike[str]
 
 
 class Viewpoint:
@@ -24,7 +23,7 @@ class Viewpoint:
 
     @classmethod
     def from_bed(
-        cls, bed: FilePath, viewpoint: str, assay: Literal["capture", "tri", "tiled"]
+        cls, bed: Path | str, viewpoint: str, assay: Literal["capture", "tri", "tiled"]
     ) -> Self:
         """
         Creates a viewpoint object from a bed file.
@@ -115,11 +114,11 @@ class Viewpoint:
 
 
 def create_cooler_cc(
-    output_prefix: FilePath,
+    output_prefix: Path | str,
     bins: pd.DataFrame,
     pixels: pd.DataFrame,
     viewpoint_name: str,
-    viewpoint_path: FilePath,
+    viewpoint_path: Path | str,
     assay: Literal["capture", "tri", "tiled"] = "capture",
     suffix: str | None = None,
     **cooler_kwargs,
@@ -202,7 +201,7 @@ def create_cooler_cc(
 class CoolerBinner:
     def __init__(
         self,
-        cooler_group: FilePath | cooler.Cooler,
+        cooler_group: Path | str | cooler.Cooler,
         binsize: int = None,
         method: Literal["overlap", "midpoint"] = "midpoint",
         minimum_overlap: float = 0.51,
@@ -402,7 +401,7 @@ class CoolerBinner:
             self.genomic_bins, strand_behavior="ignore"
         )["genomic_bin_id"].to_list()
 
-    def to_cooler(self, store: FilePath) -> str:
+    def to_cooler(self, store: Path | str) -> str:
         store = os.fspath(store)
         metadata = {**self.cooler.info["metadata"]}
         metadata["viewpoint_bins"] = [int(x) for x in self.viewpoint_bins]
@@ -453,10 +452,10 @@ class CoolerBinner:
 
 
 def fragments(
-    counts: FilePath,
-    fragment_map: FilePath,
-    output: FilePath,
-    viewpoint_path: FilePath,
+    counts: Path | str,
+    fragment_map: Path | str,
+    output: Path | str,
+    viewpoint_path: Path | str,
     viewpoint_name: str = "",
     genome: str = "",
     suffix: str = "",
@@ -523,13 +522,13 @@ def _bin_coolers_local(tasks: list[tuple[str, str, int, dict]]) -> list[str]:
 
 
 def bins(
-    cooler_path: FilePath,
-    output: FilePath,
+    cooler_path: Path | str,
+    output: Path | str,
     binsizes: tuple[int, ...] | None = None,
     normalise: bool = True,
     scale_factor: float = 1e6,
     overlap_fraction: float = 1e-9,
-    conversion_tables: FilePath | None = None,
+    conversion_tables: Path | str | None = None,
     n_cores: int = 1,
     assay: Literal["capture", "tri", "tiled"] = "capture",
     **kwargs,
@@ -582,7 +581,7 @@ def bins(
     merge_coolers(clr_tempfiles, output)
 
 
-def link_common_cooler_tables(clr: FilePath) -> None:
+def link_common_cooler_tables(clr: Path | str) -> None:
     """Reduces cooler storage space by linking "bins" table.
 
      All of the cooler "bins" tables containing the genomic coordinates of each bin
@@ -633,7 +632,7 @@ def link_common_cooler_tables(clr: FilePath) -> None:
                     ]["resolutions"][resolution]["chroms"]
 
 
-def get_merged_cooler_metadata(coolers: Iterable[FilePath]) -> dict:
+def get_merged_cooler_metadata(coolers: Iterable[Path | str]) -> dict:
     """
     Merges metadata from multiple coolers.
     """
@@ -671,7 +670,7 @@ def get_merged_cooler_metadata(coolers: Iterable[FilePath]) -> dict:
     return metadata
 
 
-def merge_coolers(coolers: tuple[FilePath, ...] | list[FilePath], output: FilePath):
+def merge_coolers(coolers: tuple[Path | str, ...] | list[Path | str], output: Path | str):
     """
     Merges capcruncher cooler files together.
 

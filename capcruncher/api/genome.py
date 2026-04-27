@@ -1,15 +1,13 @@
-import os
+from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
-type FilePath = str | os.PathLike[str]
-
 
 def digest_genome(
-    input_fasta: FilePath,
+    input_fasta: Path | str,
     recognition_site: str,
-    output_file: FilePath = "genome_digest.bed",
+    output_file: Path | str = "genome_digest.bed",
     sort: bool = False,
     remove_cutsite: bool = True,
     **kwargs: Any,

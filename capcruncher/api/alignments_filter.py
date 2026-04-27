@@ -1,6 +1,6 @@
-import os
 import pathlib
 import tempfile
+from pathlib import Path
 from typing import Literal
 
 import pandas as pd
@@ -16,8 +16,6 @@ SLICE_FILTERS = {
     "tri": TriCSliceFilter,
     "tiled": TiledCSliceFilter,
 }
-type FilePath = str | os.PathLike[str]
-
 
 def remove_unused_categories(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
@@ -26,7 +24,7 @@ def remove_unused_categories(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def merge_annotations(slices: FilePath, annotations: FilePath) -> pd.DataFrame:
+def merge_annotations(slices: Path | str, annotations: Path | str) -> pd.DataFrame:
     """
     Merges a parquet file containing slice information with a parquet file containing
     annotation information.
@@ -66,11 +64,11 @@ def merge_annotations(slices: FilePath, annotations: FilePath) -> pd.DataFrame:
 
 
 def filter(
-    bam: FilePath,
-    annotations: FilePath,
-    custom_filtering: FilePath | None = None,
-    output_prefix: FilePath = "reporters",
-    statistics: FilePath = "",
+    bam: Path | str,
+    annotations: Path | str,
+    custom_filtering: Path | str | None = None,
+    output_prefix: Path | str = "reporters",
+    statistics: Path | str = "",
     method: Literal["capture", "tri", "tiled"] = "capture",
     sample_name: str = "",
     read_type: str = "",

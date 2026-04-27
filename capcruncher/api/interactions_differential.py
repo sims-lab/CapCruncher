@@ -3,14 +3,13 @@
 import itertools
 import os
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
 from loguru import logger
 
 from capcruncher.api.pileup import cooler_to_bedgraph
-
-type FilePath = str | os.PathLike[str]
 
 
 def _load_pydeseq2() -> tuple[Any, Any, Any]:
@@ -87,12 +86,12 @@ def get_differential_interactions(
 
 
 def differential(
-    interaction_files: Sequence[FilePath],
+    interaction_files: Sequence[Path | str],
     viewpoint: str,
-    design_matrix: FilePath,
-    output_prefix: FilePath = "differential_interactions",
+    design_matrix: Path | str,
+    output_prefix: Path | str = "differential_interactions",
     contrast: str = "condition",
-    regions_of_interest: FilePath | None = None,
+    regions_of_interest: Path | str | None = None,
     viewpoint_distance: int | None = None,
     threshold_count: float = 20,
     threshold_q: float = 0.05,

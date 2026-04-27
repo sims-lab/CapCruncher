@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import subprocess
 import tempfile
+from pathlib import Path
 from types import NotImplementedType
 from typing import Literal, Self
 from capcruncher.api.storage import CoolerBinner
@@ -12,16 +13,14 @@ from loguru import logger
 import re
 import pyranges1 as pr
 
-type FilePath = str | os.PathLike[str]
-
 
 def pileup(
-    uri: FilePath,
+    uri: Path | str,
     viewpoint_names: list[str] | None = None,
-    output_prefix: FilePath = "",
+    output_prefix: Path | str = "",
     format: Literal["bedgraph", "bigwig"] = "bedgraph",
     normalisation: Literal["raw", "n_cis", "region"] = "raw",
-    normalisation_regions: FilePath | None = None,
+    normalisation_regions: Path | str | None = None,
     binsize: int = 0,
     gzip: bool = True,
     scale_factor: float = 1e6,
@@ -277,7 +276,7 @@ class CoolerBedGraph:
         bedgraph: pd.DataFrame,
         scale_factor: float = 1e6,
         method: Literal["raw", "n_cis", "region"] = "n_cis",
-        region: FilePath | None = None,
+        region: Path | str | None = None,
     ) -> None:
         """Normalises the bedgraph (in place).
 
@@ -303,7 +302,7 @@ class CoolerBedGraph:
         bedgraph["count"] = (bedgraph["count"] / self.n_cis_interactions) * scale_factor
 
     def _normalise_by_regions(
-        self, bedgraph: pd.DataFrame, scale_factor: float, regions: FilePath
+        self, bedgraph: pd.DataFrame, scale_factor: float, regions: Path | str
     ) -> None:
         if not is_valid_bed(regions):
             raise ValueError(
@@ -441,7 +440,7 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
 class CCBedgraph:
     def __init__(
         self,
-        path: FilePath | None = None,
+        path: Path | str | None = None,
         df: pd.DataFrame | None = None,
         capture_name: str = "",
         capture_chrom: str = "",
@@ -474,7 +473,7 @@ class CCBedgraph:
             columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
         ).pipe(pr.PyRanges)
 
-    def to_file(self, path: FilePath) -> None:
+    def to_file(self, path: Path | str) -> None:
         self.df.to_csv(path, sep="\t", header=None, index=None)
 
     def __add__(self, other: object) -> Self | NotImplementedType:
@@ -528,7 +527,7 @@ class CCBedgraph:
 
 def cooler_to_bedgraph(
     clr: str,
-    regions_of_interest: FilePath | None = None,
+    regions_of_interest: Path | str | None = None,
     viewpoint_distance: int | None = None,
     **kwargs,
 ) -> pd.DataFrame:

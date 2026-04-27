@@ -1,7 +1,7 @@
-import os
 import sys
 import warnings
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any, Literal
 
 import pandas as pd
@@ -17,10 +17,8 @@ from capcruncher.utils import (
 
 warnings.simplefilter("ignore")
 
-type FilePath = str | os.PathLike[str]
 
-
-def _bam_to_bed_dataframe(bam_path: FilePath) -> pd.DataFrame:
+def _bam_to_bed_dataframe(bam_path: Path | str) -> pd.DataFrame:
     import pysam
 
     rows = []
@@ -46,17 +44,17 @@ def _bam_to_bed_dataframe(bam_path: FilePath) -> pd.DataFrame:
 
 
 def annotate(
-    slices: FilePath,
+    slices: Path | str,
     actions: Sequence[Literal["get", "count"]] | None = None,
-    bed_files: Sequence[FilePath] | None = None,
+    bed_files: Sequence[Path | str] | None = None,
     names: Sequence[str] | None = None,
     overlap_fractions: Sequence[float] | None = None,
-    output: FilePath | None = None,
+    output: Path | str | None = None,
     duplicates: str = "remove",
     n_cores: int = 1,
-    blacklist: str = "",
+    blacklist: Path | None = None,
     prioritize_cis_slices: bool = False,
-    priority_chroms: str = "",
+    priority_chroms: list[str] = None,
     **kwargs: Any,
 ) -> None:
     """
@@ -126,7 +124,7 @@ def annotate(
         logger.info("Dealing with duplicates in the bed file")
 
         if duplicates == "remove":
-            slices = remove_duplicates_from_bed(
+            slices: pr.PyRanges = remove_duplicates_from_bed(
                 slices,
                 prioritize_cis_slices=prioritize_cis_slices,
                 chroms_to_prioritize=priority_chroms.split(",")
