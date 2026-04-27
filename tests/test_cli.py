@@ -752,7 +752,7 @@ def test_fastq_options_validate_paths_and_pairing(tmp_path):
         n_cores=2,
         compression_level=6,
     )
-    assert split_options.input_files == (str(fastq_1), str(fastq_2))
+    assert split_options.input_files == (fastq_1, fastq_2)
 
     FastqDigestOptions(
         fastqs=[fastq_1, fastq_2],

@@ -1,12 +1,12 @@
 import glob
 import os
-import pathlib
 import re
 import shutil
 import subprocess
 import sys
 from collections.abc import Sequence
 from multiprocessing import SimpleQueue
+from pathlib import Path
 from typing import Any, Literal
 
 from joblib import Parallel, delayed
@@ -14,24 +14,24 @@ from loguru import logger
 from pydantic import BaseModel, Field, PositiveInt, field_validator, model_validator
 
 PLATFORM = sys.platform
-type FilePath = str | os.PathLike[str]
 
 
-def _as_existing_paths(paths: Sequence[FilePath]) -> tuple[str, ...]:
-    normalised_paths = tuple(os.fspath(path) for path in paths)
-    missing_paths = [path for path in normalised_paths if not pathlib.Path(path).exists()]
+def _as_existing_paths(paths: Sequence[Path | str]) -> tuple[Path, ...]:
+    normalised_paths = tuple(Path(path) for path in paths)
+    missing_paths = [path for path in normalised_paths if not path.exists()]
     if missing_paths:
-        raise ValueError(f"Input path(s) do not exist: {', '.join(missing_paths)}")
+        missing = ", ".join(str(path) for path in missing_paths)
+        raise ValueError(f"Input path(s) do not exist: {missing}")
     return normalised_paths
 
 
 class FastqSplitOptions(BaseModel):
     """Validated options for FASTQ splitting."""
 
-    input_files: tuple[str, ...]
+    input_files: tuple[Path, ...]
     method: Literal["python", "unix", "seqkit"] = "unix"
     split_type: Literal["n-reads", "n-parts"] = "n-reads"
-    output_prefix: str = "split"
+    output_prefix: Path = Path("split")
     compression_level: int = Field(default=5, ge=0, le=9)
     n_reads: PositiveInt = 1_000_000
     n_parts: PositiveInt = 1
@@ -41,12 +41,12 @@ class FastqSplitOptions(BaseModel):
 
     @field_validator("input_files", mode="before")
     @classmethod
-    def validate_input_files(cls, value: Sequence[FilePath]) -> tuple[str, ...]:
+    def validate_input_files(cls, value: Sequence[Path | str]) -> tuple[Path, ...]:
         return _as_existing_paths(value)
 
     @field_validator("input_files")
     @classmethod
-    def validate_fastq_count(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+    def validate_fastq_count(cls, value: tuple[Path, ...]) -> tuple[Path, ...]:
         if not value:
             raise ValueError("At least one FASTQ file is required.")
         if len(value) > 2:
@@ -57,17 +57,17 @@ class FastqSplitOptions(BaseModel):
 class FastqDigestOptions(BaseModel):
     """Validated options for FASTQ digestion."""
 
-    fastqs: tuple[str, ...]
+    fastqs: tuple[Path, ...]
     restriction_site: str = Field(min_length=1)
     mode: Literal["flashed", "pe"] = "pe"
-    output_file: str = "out.fastq.gz"
+    output_file: Path = Path("out.fastq.gz")
     minimum_slice_length: PositiveInt = 18
-    statistics: str = "digest.json"
+    statistics: Path = Path("digest.json")
     sample_name: str = Field(default="sampleX", min_length=1)
 
     @field_validator("fastqs", mode="before")
     @classmethod
-    def validate_fastqs(cls, value: Sequence[FilePath]) -> tuple[str, ...]:
+    def validate_fastqs(cls, value: Sequence[Path | str]) -> tuple[Path, ...]:
         return _as_existing_paths(value)
 
     @model_validator(mode="after")
@@ -82,16 +82,16 @@ class FastqDigestOptions(BaseModel):
 class FastqDeduplicationOptions(BaseModel):
     """Validated options for paired FASTQ deduplication."""
 
-    fastq_1: tuple[str, ...]
-    fastq_2: tuple[str, ...]
-    output_prefix: str = "deduplicated_"
-    statistics: str = "deduplication_statistics.json"
+    fastq_1: tuple[Path, ...]
+    fastq_2: tuple[Path, ...]
+    output_prefix: Path = Path("deduplicated_")
+    statistics: Path = Path("deduplication_statistics.json")
     sample_name: str = Field(default="sampleX", min_length=1)
     shuffle: bool = False
 
     @field_validator("fastq_1", "fastq_2", mode="before")
     @classmethod
-    def validate_fastqs(cls, value: Sequence[FilePath]) -> tuple[str, ...]:
+    def validate_fastqs(cls, value: Sequence[Path | str]) -> tuple[Path, ...]:
         return _as_existing_paths(value)
 
     @model_validator(mode="after")
@@ -104,10 +104,10 @@ class FastqDeduplicationOptions(BaseModel):
 
 
 def run_unix_split(
-    fn: FilePath,
+    fn: Path,
     n_reads: int,
     read_number: int,
-    output_prefix: FilePath = "",
+    output_prefix: Path = Path(),
     gzip: bool = False,
     n_cores: int = 1,
     suffix: str = "",
@@ -122,7 +122,7 @@ def run_unix_split(
     else:
         split_suffix = f"_{read_number}.fastq"
 
-    if ".gz" not in fn:
+    if ".gz" not in str(fn):
         cat_executable = "cat"
 
     if PLATFORM == "darwin":
@@ -152,10 +152,10 @@ def run_unix_split(
 
 
 def split_fastq(
-    input_files: Sequence[FilePath],
+    input_files: Sequence[Path | str],
     method: Literal["python", "unix", "seqkit"] = "unix",
     split_type: Literal["n-reads", "n-parts"] = "n-reads",
-    output_prefix: FilePath = "split",
+    output_prefix: Path | str = Path("split"),
     compression_level: int = 5,
     n_reads: int = 1000000,
     n_parts: int = 1,
@@ -175,7 +175,7 @@ def split_fastq(
         input_files=input_files,
         method=method,
         split_type=split_type,
-        output_prefix=os.fspath(output_prefix),
+        output_prefix=Path(output_prefix),
         compression_level=compression_level,
         n_reads=n_reads,
         n_parts=n_parts,
@@ -226,8 +226,10 @@ def split_fastq(
         tasks = []
         n_cores_per_task = (n_cores // 2) if (n_cores // 2) > 1 else 1
 
-        if "," in input_files[0]:
-            input_files = [str(fnames).replace(",", " ") for fnames in input_files]
+        if "," in str(input_files[0]):
+            input_files = tuple(
+                Path(str(fnames).replace(",", " ")) for fnames in input_files
+            )
 
         for read_number, fn in enumerate(input_files, start=1):
             tasks.append(
@@ -255,12 +257,12 @@ def split_fastq(
 
 
 def digest_fastq(
-    fastqs: Sequence[FilePath],
+    fastqs: Sequence[Path | str],
     restriction_site: str,
     mode: str = "pe",
-    output_file: FilePath = "out.fastq.gz",
+    output_file: Path | str = Path("out.fastq.gz"),
     minimum_slice_length: int = 18,
-    statistics: FilePath = "digest.json",
+    statistics: Path | str = Path("digest.json"),
     sample_name: str = "sampleX",
     **kwargs: Any,
 ) -> Any:
@@ -274,18 +276,18 @@ def digest_fastq(
         fastqs=fastqs,
         restriction_site=restriction_site,
         mode=mode,
-        output_file=os.fspath(output_file),
+        output_file=Path(output_file),
         minimum_slice_length=minimum_slice_length,
-        statistics=os.fspath(statistics),
+        statistics=Path(statistics),
         sample_name=sample_name,
     )
 
     logger.info("Digesting FASTQ files")
 
     stats = digest_fastq_records(
-        fastqs=options.fastqs,
+        fastqs=tuple(str(fastq) for fastq in options.fastqs),
         restriction_site=get_restriction_site(options.restriction_site),
-        output=options.output_file,
+        output=str(options.output_file),
         read_type=options.mode.title(),
         sample_name=options.sample_name,
         minimum_slice_length=options.minimum_slice_length,
@@ -299,10 +301,10 @@ def digest_fastq(
 
 
 def deduplicate_fastq(
-    fastq_1: Sequence[FilePath],
-    fastq_2: Sequence[FilePath],
-    output_prefix: FilePath = "deduplicated_",
-    statistics: FilePath = "deduplication_statistics.json",
+    fastq_1: Sequence[Path | str],
+    fastq_2: Sequence[Path | str],
+    output_prefix: Path | str = Path("deduplicated_"),
+    statistics: Path | str = Path("deduplication_statistics.json"),
     sample_name: str = "sampleX",
     shuffle: bool = False,
     **kwargs: Any,
@@ -312,19 +314,20 @@ def deduplicate_fastq(
     from capcruncher.api.statistics import FastqDeduplicationStatistics
     from capcruncher_tools.api import deduplicate_fastq as deduplicate_fastq_records
 
+    output_prefix_for_tools = os.fspath(output_prefix)
     options = FastqDeduplicationOptions(
         fastq_1=fastq_1,
         fastq_2=fastq_2,
-        output_prefix=os.fspath(output_prefix),
-        statistics=os.fspath(statistics),
+        output_prefix=Path(output_prefix),
+        statistics=Path(statistics),
         sample_name=sample_name,
         shuffle=shuffle,
     )
 
     df_stats = deduplicate_fastq_records(
-        fastq1=options.fastq_1,
-        fastq2=options.fastq_2,
-        output_prefix=options.output_prefix,
+        fastq1=tuple(str(fastq) for fastq in options.fastq_1),
+        fastq2=tuple(str(fastq) for fastq in options.fastq_2),
+        output_prefix=output_prefix_for_tools,
         sample_name=options.sample_name,
         shuffle=options.shuffle,
     )

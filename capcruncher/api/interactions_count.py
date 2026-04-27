@@ -1,11 +1,8 @@
-import os
-import pathlib
 import tempfile
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
-
-type FilePath = str | os.PathLike[str]
 
 
 class InteractionCountOptions(BaseModel):
@@ -13,26 +10,26 @@ class InteractionCountOptions(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    reporters: FilePath
-    output: FilePath = "CC_cooler.hdf5"
+    reporters: Path
+    output: Path = Path("CC_cooler.hdf5")
     remove_exclusions: bool = False
     remove_viewpoint: bool = False
     subsample: float = Field(default=0, ge=0, le=1)
-    fragment_map: FilePath | None = None
-    viewpoint_path: FilePath
+    fragment_map: Path | None = None
+    viewpoint_path: Path
     n_cores: PositiveInt = 1
     assay: Literal["capture", "tri", "tiled"] = "capture"
     executor: Literal["local", "process", "ray"] = "local"
 
     @field_validator("reporters", "fragment_map", "viewpoint_path")
     @classmethod
-    def existing_input_path(cls, value: FilePath | None) -> FilePath | None:
-        if value is not None and not pathlib.Path(value).exists():
+    def existing_input_path(cls, value: Path | None) -> Path | None:
+        if value is not None and not value.exists():
             raise ValueError(f"Input path does not exist: {value}")
         return value
 
 
-def valid_viewpoint_names(viewpoint_path: FilePath) -> list[str]:
+def valid_viewpoint_names(viewpoint_path: Path | str) -> list[str]:
     """Return unique viewpoint names from a BED-like viewpoint file."""
     import pandas as pd
 
@@ -46,9 +43,9 @@ def valid_viewpoint_names(viewpoint_path: FilePath) -> list[str]:
     return viewpoints["name"].dropna().astype(str).drop_duplicates().tolist()
 
 
-def parquet_files(path: FilePath) -> list[pathlib.Path]:
+def parquet_files(path: Path | str) -> list[Path]:
     """Return parquet files represented by a file path or directory path."""
-    path = pathlib.Path(path)
+    path = Path(path)
     if path.is_dir():
         return sorted(path.glob("*.parquet"))
     return [path]
@@ -62,7 +59,7 @@ def _normalise_nullable_viewpoints(reporters_df):
     )
 
 
-def _validate_reporter_columns(reporters_df, parquet_file: pathlib.Path) -> None:
+def _validate_reporter_columns(reporters_df, parquet_file: Path) -> None:
     required_columns = {"viewpoint"}
     missing_columns = required_columns - set(reporters_df.columns)
     if missing_columns:
@@ -73,8 +70,8 @@ def _validate_reporter_columns(reporters_df, parquet_file: pathlib.Path) -> None
 
 
 def write_countable_reporters(
-    reporters: FilePath, viewpoint_path: FilePath, output_dir: FilePath
-) -> pathlib.Path:
+    reporters: Path | str, viewpoint_path: Path | str, output_dir: Path | str
+) -> Path:
     """Write reporter parquet files with viewpoint categories limited to real baits.
 
     ``capcruncher-tools`` expects the reporter ``viewpoint`` category set to contain
@@ -88,7 +85,7 @@ def write_countable_reporters(
     if not valid_viewpoints:
         raise ValueError(f"No viewpoints found in {viewpoint_path}")
 
-    output_dir = pathlib.Path(output_dir)
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for index, parquet_file in enumerate(parquet_files(reporters)):
@@ -117,18 +114,18 @@ def write_countable_reporters(
 
 
 def count_interactions(
-    reporters: FilePath,
-    output: FilePath = "CC_cooler.hdf5",
+    reporters: Path | str,
+    output: Path | str = Path("CC_cooler.hdf5"),
     remove_exclusions: bool = False,
     remove_viewpoint: bool = False,
     subsample: float = 0,
-    fragment_map: FilePath | None = None,
-    viewpoint_path: FilePath | None = None,
+    fragment_map: Path | str | None = None,
+    viewpoint_path: Path | str | None = None,
     n_cores: int = 1,
     assay: Literal["capture", "tri", "tiled"] = "capture",
     executor: Literal["local", "process", "ray"] = "local",
     **kwargs: Any,
-) -> FilePath:
+) -> Path | str:
     """Count reporter interactions using the external ``capcruncher-tools`` API."""
     from capcruncher_tools.api import count_interactions as count_interactions_records
 
@@ -153,13 +150,13 @@ def count_interactions(
         )
 
         clr = count_interactions_records(
-            reporters=countable_reporters,
-            output=options.output,
+            reporters=str(countable_reporters),
+            output=str(options.output),
             remove_exclusions=options.remove_exclusions,
             remove_viewpoint=options.remove_viewpoint,
             subsample=options.subsample,
-            fragment_map=options.fragment_map,
-            viewpoint_path=options.viewpoint_path,
+            fragment_map=str(options.fragment_map) if options.fragment_map else None,
+            viewpoint_path=str(options.viewpoint_path),
             n_cores=options.n_cores,
             assay=options.assay,
             executor=options.executor,
