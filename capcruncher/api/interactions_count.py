@@ -49,9 +49,11 @@ def write_countable_reporters(
 
     for index, parquet_file in enumerate(parquet_files(reporters)):
         reporters_df = pd.read_parquet(parquet_file)
-        reporters_df["viewpoint"] = reporters_df["viewpoint"].astype(str)
+        reporters_df["viewpoint"] = reporters_df["viewpoint"].replace(
+            {"": pd.NA, "None": pd.NA, "nan": pd.NA}
+        )
         invalid_viewpoints = sorted(
-            set(reporters_df["viewpoint"].dropna()) - set(valid_viewpoints)
+            set(reporters_df["viewpoint"].dropna().astype(str)) - set(valid_viewpoints)
         )
         if invalid_viewpoints:
             raise ValueError(
@@ -63,7 +65,7 @@ def write_countable_reporters(
             reporters_df[column] = reporters_df[column].cat.remove_unused_categories()
 
         reporters_df["viewpoint"] = pd.Categorical(
-            reporters_df["viewpoint"],
+            reporters_df["viewpoint"].astype("string"),
             categories=valid_viewpoints,
         )
         reporters_df.to_parquet(output_dir / f"part-{index}.parquet", index=False)

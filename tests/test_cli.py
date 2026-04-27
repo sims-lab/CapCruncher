@@ -1103,11 +1103,11 @@ def test_countable_reporters_only_include_bed_viewpoint_categories(tmp_path):
     pd.DataFrame(
         {
             "viewpoint": pd.Categorical(
-                ["Slc25A37", "Slc25A37", "Slc25A37"],
+                ["Slc25A37", "Slc25A37", "Slc25A37", "None"],
                 categories=["Slc25A37", "reporters_pe_80", "duplicate_coords_1"],
             ),
-            "parent_id": [1, 2, 3],
-            "restriction_fragment": [10, 20, 30],
+            "parent_id": [1, 2, 3, 4],
+            "restriction_fragment": [10, 20, 30, 40],
         }
     ).to_parquet(reporters)
 
@@ -1115,7 +1115,8 @@ def test_countable_reporters_only_include_bed_viewpoint_categories(tmp_path):
     cleaned_df = pd.read_parquet(cleaned)
 
     assert cleaned_df["viewpoint"].cat.categories.to_list() == ["Slc25A37"]
-    assert cleaned_df["viewpoint"].to_list() == ["Slc25A37"] * 3
+    assert cleaned_df["viewpoint"].iloc[:3].to_list() == ["Slc25A37"] * 3
+    assert pd.isna(cleaned_df["viewpoint"].iloc[3])
 
 
 def test_countable_reporters_reject_actual_non_viewpoint_values(tmp_path):
