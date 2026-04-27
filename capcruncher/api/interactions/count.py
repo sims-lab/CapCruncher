@@ -1,10 +1,26 @@
 import tempfile
 import os
+import sys
+from types import ModuleType
 from pathlib import Path
 from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
 from capcruncher.types import Assay, Executor, VALID_ASSAYS, VALID_EXECUTORS, validate_choice
+
+
+def _install_capcruncher_tools_storage_alias() -> None:
+    """Expose the cooler helpers expected by the external capcruncher-tools API."""
+    if "capcruncher.api.storage" in sys.modules:
+        return
+
+    from capcruncher.api.interactions.cooler.create import create_cooler_cc
+    from capcruncher.api.interactions.cooler.merge import merge_coolers
+
+    storage = ModuleType("capcruncher.api.storage")
+    storage.create_cooler_cc = create_cooler_cc
+    storage.merge_coolers = merge_coolers
+    sys.modules["capcruncher.api.storage"] = storage
 
 
 class InteractionCountOptions(BaseModel):
@@ -142,6 +158,7 @@ def count_interactions(
     **kwargs: Any,
 ) -> Path | str:
     """Count reporter interactions using the external ``capcruncher-tools`` API."""
+    _install_capcruncher_tools_storage_alias()
     from capcruncher_tools.api import count_interactions as count_interactions_records
 
     if viewpoint_path is None:

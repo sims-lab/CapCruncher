@@ -189,7 +189,7 @@ def split_fastq(
 ) -> None:
     """Split FASTQ file(s) into chunks."""
 
-    from capcruncher.api.io import (
+    from capcruncher.api.fastq_io import (
         FastqReaderProcess,
         FastqReadFormatterProcess,
         FastqWriterSplitterProcess,

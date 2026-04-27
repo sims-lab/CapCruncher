@@ -3,7 +3,7 @@
 import pathlib
 from loguru import logger
 
-from capcruncher.api.annotate import annotate_intervals
+from capcruncher.api.intervals.annotate import annotate_intervals
 
 
 def check_n_bins_per_viewpoint(

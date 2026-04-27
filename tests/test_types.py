@@ -5,9 +5,9 @@ import pandas as pd
 import pytest
 from click.testing import CliRunner
 
-from capcruncher.api.alignments_annotate import AlignmentAnnotateOptions, annotate
-from capcruncher.api.alignments_filter import AlignmentFilterOptions
-from capcruncher.api.interactions_compare import summarise
+from capcruncher.api.alignments.annotate import AlignmentAnnotateOptions, annotate
+from capcruncher.api.alignments.filter import AlignmentFilterOptions
+from capcruncher.api.interactions.compare import summarise
 from capcruncher.cli import cli
 from capcruncher.types import AnnotationAction, Assay, DuplicateAction, ReadType
 from capcruncher.utils import load_dict, save_dict
@@ -52,14 +52,14 @@ def test_annotate_accepts_path_input_for_bam(monkeypatch, tmp_path):
         return pd.DataFrame({"Name": ["read1"]})
 
     monkeypatch.setattr(
-        "capcruncher.api.alignments_annotate._bam_to_bed_dataframe",
+        "capcruncher.api.alignments.annotate._bam_to_bed_dataframe",
         fake_bam_to_bed_dataframe,
     )
     monkeypatch.setattr(
-        "capcruncher.api.alignments_annotate.convert_bed_to_pr", lambda bed: bed
+        "capcruncher.api.alignments.annotate.convert_bed_to_pr", lambda bed: bed
     )
     monkeypatch.setattr(
-        "capcruncher.api.alignments_annotate.remove_duplicates_from_bed",
+        "capcruncher.api.alignments.annotate.remove_duplicates_from_bed",
         lambda slices, **kwargs: slices,
     )
 

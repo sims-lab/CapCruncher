@@ -9,7 +9,7 @@ import pyranges1 as pr
 from loguru import logger
 from pydantic import BaseModel, PositiveFloat, PositiveInt, field_validator, model_validator
 
-from capcruncher.api.annotate import annotate_intervals, remove_duplicates_from_bed
+from capcruncher.api.intervals.annotate import annotate_intervals, remove_duplicates_from_bed
 from capcruncher.types import (
     AnnotationAction,
     DuplicateAction,
@@ -66,7 +66,7 @@ class AlignmentAnnotateOptions(BaseModel):
     duplicates: DuplicateAction | str = DuplicateAction.REMOVE
     invalid_bed_action: InvalidBedAction | str = InvalidBedAction.ERROR
     n_cores: PositiveInt = 1
-    blacklist: Path | str | None = None
+    blacklist: Path | None = None
     prioritize_cis_slices: bool = False
     priority_chroms: Sequence[str] | str | None = ()
 
@@ -202,7 +202,7 @@ def annotate(
         output=Path(output) if output is not None else Path("annotated.slices.parquet"),
         duplicates=duplicates,
         n_cores=n_cores,
-        blacklist=blacklist,
+        blacklist=Path(blacklist) if blacklist not in (None, "") else None,
         prioritize_cis_slices=prioritize_cis_slices,
         priority_chroms=priority_chroms,
         invalid_bed_action=invalid_bed_action,
@@ -214,14 +214,18 @@ def annotate(
 
         if slices_input == "-":
             logger.info("Reading slices from stdin")
-            slices = convert_bed_to_pr(pd.read_csv(sys.stdin, sep="\t", header=None))
+            slice_intervals = convert_bed_to_pr(
+                pd.read_csv(sys.stdin, sep="\t", header=None)
+            )
 
         elif str(slices_input).endswith(".bam"):
             logger.info("Converting bam to bed")
-            slices = _bam_to_bed_dataframe(slices_input).pipe(convert_bed_to_pr)
+            slice_intervals = _bam_to_bed_dataframe(slices_input).pipe(
+                convert_bed_to_pr
+            )
 
         else:
-            slices = convert_bed_to_pr(slices_input)
+            slice_intervals = convert_bed_to_pr(slices_input)
 
         logger.info("Validating input bed file before annotation")
 
@@ -229,7 +233,9 @@ def annotate(
             try:
                 logger.info("Removing blacklisted regions from the bed file")
                 gr_blacklist = pr.read_bed(options.blacklist)
-                slices = slices.subtract_overlaps(gr_blacklist, strand_behavior="ignore")
+                slice_intervals = slice_intervals.subtract_overlaps(
+                    gr_blacklist, strand_behavior="ignore"
+                )
             except Exception as e:
                 logger.warning(
                     f"Failed to remove blacklisted regions from the bed file. {e}"
@@ -237,8 +243,8 @@ def annotate(
 
         logger.info("Dealing with duplicates in the bed file")
 
-        slices = remove_duplicates_from_bed(
-            slices,
+        slice_intervals = remove_duplicates_from_bed(
+            slice_intervals,
             prioritize_cis_slices=options.prioritize_cis_slices,
             chroms_to_prioritize=list(options.priority_chroms or ()) or None,
         )
@@ -254,20 +260,19 @@ def annotate(
             cycle_argument(overlap_fractions),
         ):
             logger.info(
-                f"Performing {name} intersection with {bed_file} using {action} method with {fraction} overlap fraction. {len(slices)} slices to intersect."
+                f"Performing {name} intersection with {bed_file} using {action} method with {fraction} overlap fraction. {len(slice_intervals)} slices to intersect."
             )
-            
-            slices = annotate_intervals(
-                query=slices,
+
+            slice_intervals = annotate_intervals(
+                query=slice_intervals,
                 annotations=bed_file,
                 name=name,
                 method=action,
                 fraction=fraction,
             )
-            
 
         logger.info("Writing annotations to file.")
-        df_annotation = slices.rename(columns={"Name": "slice_name"}).assign(
+        df_annotation = slice_intervals.rename(columns={"Name": "slice_name"}).assign(
             slice_id=lambda df: hash_column(df.slice_name)
         )
         df_annotation.to_parquet(options.output, compression="snappy")

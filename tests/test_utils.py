@@ -151,8 +151,8 @@ def test_interval_helpers_import_without_ray(monkeypatch):
     monkeypatch.setattr(builtins, "__import__", guarded_import)
 
     for module in (
-        "capcruncher.api.pileup",
-        "capcruncher.api.storage",
+        "capcruncher.api.interactions.pileup",
+        "capcruncher.api.interactions.cooler",
         "capcruncher.utils",
     ):
         importlib.reload(importlib.import_module(module))
@@ -181,12 +181,12 @@ def test_differential_module_imports_without_pydeseq2(monkeypatch):
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
     for module in list(sys.modules):
-        if module == "capcruncher.api.interactions_differential" or module.startswith(
+        if module == "capcruncher.api.interactions.differential" or module.startswith(
             "pydeseq2"
         ):
             monkeypatch.delitem(sys.modules, module, raising=False)
 
-    differential = importlib.import_module("capcruncher.api.interactions_differential")
+    differential = importlib.import_module("capcruncher.api.interactions.differential")
 
     with pytest.raises(ModuleNotFoundError, match="differential"):
         differential._load_pydeseq2()

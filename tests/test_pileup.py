@@ -4,7 +4,7 @@ import pandas as pd
 import pyranges1 as pr
 import pytest
 
-from capcruncher.api.pileup import CCBedgraph, CoolerBedGraph
+from capcruncher.api.interactions.bedgraph import CCBedgraph, CoolerBedGraph
 
 
 @pytest.fixture(scope="module")

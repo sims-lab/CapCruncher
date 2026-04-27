@@ -180,7 +180,7 @@ def concat(
             return df.rename(columns={"score": column_name})
 
         if input_format == CompareFormat.COOLER:
-            from capcruncher.api.pileup import CoolerBedGraph
+            from capcruncher.api.interactions.bedgraph import CoolerBedGraph
             from capcruncher.utils import get_cooler_uri
 
             cooler_uris = [

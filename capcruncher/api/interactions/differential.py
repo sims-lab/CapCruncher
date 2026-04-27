@@ -9,7 +9,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from capcruncher.api.pileup import cooler_to_bedgraph
+from capcruncher.api.interactions.bedgraph import cooler_to_bedgraph
 
 
 def _load_pydeseq2() -> tuple[Any, Any, Any]:

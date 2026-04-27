@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 from capcruncher.cli import cli
 from capcruncher.cli import pipeline as cli_pipeline
-from capcruncher.api.interactions_count import (
+from capcruncher.api.interactions.count import (
     InteractionCountOptions,
     write_countable_reporters,
 )
@@ -233,8 +233,8 @@ def test_genome_digest_option_aliases(cli_runner, monkeypatch, command):
 
 
 def test_alignments_typer_option_aliases(cli_runner, monkeypatch):
-    import capcruncher.api.alignments_annotate as alignments_annotate
-    import capcruncher.api.alignments_filter as alignments_filter
+    import capcruncher.api.alignments.annotate as alignments_annotate
+    import capcruncher.api.alignments.filter as alignments_filter
 
     annotate_calls = []
     filter_calls = []
@@ -308,7 +308,7 @@ def test_alignments_typer_option_aliases(cli_runner, monkeypatch):
             "method": "capture",
             "bam": "reads.bam",
             "annotations": "annotations.parquet",
-            "custom_filtering": None,
+            "filter_profile": None,
             "output_prefix": "filtered",
             "statistics": "filtering_stats.json",
             "sample_name": None,

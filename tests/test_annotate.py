@@ -2,7 +2,7 @@ import os
 
 import pandas as pd
 import pytest
-from capcruncher.api.annotate import annotate_intervals
+from capcruncher.api.intervals.annotate import annotate_intervals
 
 # @pytest.fixture(scope="session")
 # def ray_cluster():

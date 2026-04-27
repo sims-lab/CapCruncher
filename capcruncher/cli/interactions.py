@@ -64,7 +64,7 @@ def deduplicate(
     Identifies and removes duplicated aligned fragments.
     """
     run_imported(
-        "capcruncher.api.interactions_deduplicate:deduplicate",
+        "capcruncher.api.interactions.deduplicate:deduplicate",
         slices=slices,
         output=output,
         statistics=statistics,
@@ -131,7 +131,7 @@ def pileup(
     Extract reporters from a capture experiment and generate a bedgraph or bigWig file.
     """
     run_imported(
-        "capcruncher.api.pileup:pileup",
+        "capcruncher.api.interactions.pileup:pileup",
         uri=uri,
         viewpoint_names=viewpoint_names,
         output_prefix=output_prefix,
@@ -193,7 +193,7 @@ def count(
     """
     Determines the number of captured restriction fragment interactions genome wide.
     """
-    from capcruncher.api.interactions_count import count_interactions
+    from capcruncher.api.interactions.count import count_interactions
 
     count_interactions(
         reporters=reporters,
@@ -251,7 +251,7 @@ def store_fragments(
     Stores restriction fragment interaction combinations at the restriction fragment level.
     """
     run_imported(
-        "capcruncher.api.storage:fragments",
+        "capcruncher.api.interactions.cooler.create:fragments",
         counts=counts,
         fragment_map=fragment_map,
         output=output,
@@ -308,7 +308,7 @@ def store_bins(
     Convert a cooler group containing restriction fragments to constant genomic windows.
     """
     run_imported(
-        "capcruncher.api.storage:bins",
+        "capcruncher.api.interactions.cooler.binning:bins",
         cooler_path=cooler_path,
         output=output,
         binsizes=tuple(binsizes),
@@ -335,7 +335,7 @@ def store_merge(
     Merges CapCruncher HDF5 files together.
     """
     run_imported(
-        "capcruncher.api.storage:merge_coolers",
+        "capcruncher.api.interactions.cooler.merge:merge_coolers",
         coolers=tuple(coolers),
         output=output,
     )
@@ -397,7 +397,7 @@ def bedgraphs_concat(
     n_cores: NCoresOption = 1,
 ) -> None:
     run_imported(
-        "capcruncher.api.interactions_compare:concat",
+        "capcruncher.api.interactions.compare:concat",
         infiles=tuple(infiles),
         format=format,
         output=output,
@@ -462,7 +462,7 @@ def bedgraphs_summarise(
     ),
 ) -> None:
     run_imported(
-        "capcruncher.api.interactions_compare:summarise",
+        "capcruncher.api.interactions.compare:summarise",
         infile=infile,
         design_matrix=design_matrix,
         output_prefix=output_prefix,
@@ -487,7 +487,7 @@ def _run_differential(
     threshold_q: float,
 ) -> None:
     run_imported(
-        "capcruncher.api.interactions_differential:differential",
+        "capcruncher.api.interactions.differential:differential",
         interaction_files=tuple(interaction_files),
         output_prefix=output_prefix,
         viewpoint=viewpoint,

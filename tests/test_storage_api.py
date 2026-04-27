@@ -1,7 +1,8 @@
 import pyranges1 as pr
 import pandas as pd
 
-from capcruncher.api.storage import CoolerBinner, Viewpoint
+from capcruncher.api.interactions.cooler.binning import CoolerBinner
+from capcruncher.api.interactions.cooler.viewpoints import Viewpoint
 
 
 def test_viewpoint_from_bed_returns_pyranges(tmp_path):

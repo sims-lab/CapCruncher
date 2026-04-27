@@ -96,7 +96,7 @@ def annotate(
 ):
     """Annotate a bed file with other bed files."""
 
-    from capcruncher.api.alignments_annotate import annotate as annotate_alignments
+    from capcruncher.api.alignments.annotate import annotate as annotate_alignments
 
     annotate_alignments(
         slices=slices,
@@ -130,10 +130,10 @@ def filter_alignments(
         "--annotations",
         help="Annotations for the bam file.",
     ),
-    custom_filtering: str | None = typer.Option(
+    filter_profile: str | None = typer.Option(
         None,
-        "--custom-filtering",
-        help="Custom filtering yaml file.",
+        "--filter-profile",
+        help="Custom TOML filter profile.",
     ),
     output_prefix: str = typer.Option(
         "",
@@ -171,13 +171,13 @@ def filter_alignments(
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
-    from capcruncher.api.alignments_filter import filter as filter_slices
+    from capcruncher.api.alignments.filter import filter as filter_slices
 
     filter_slices(
         method=method.value,
         bam=bam,
         annotations=annotations,
-        custom_filtering=custom_filtering,
+        filter_profile=filter_profile,
         output_prefix=output_prefix,
         statistics=statistics,
         sample_name=sample_name,

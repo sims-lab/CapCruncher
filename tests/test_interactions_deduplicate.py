@@ -3,7 +3,7 @@ import json
 import pandas as pd
 import polars as pl
 
-from capcruncher.api.interactions_deduplicate import deduplicate
+from capcruncher.api.interactions.deduplicate import deduplicate
 
 
 def test_deduplicate_flashed_accepts_categorical_coordinates(tmp_path):
