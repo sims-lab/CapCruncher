@@ -4,10 +4,11 @@ import itertools
 import os
 import re
 from pathlib import Path
+from typing import cast
 
 import cooler
 from loguru import logger
-from pydantic import BaseModel, Field, PositiveFloat, PositiveInt, field_validator, model_validator
+from pydantic import BaseModel, PositiveFloat, PositiveInt, field_validator, model_validator
 
 import pandas as pd
 import polars as pl
@@ -30,10 +31,10 @@ class CompareConcatOptions(BaseModel):
     infiles: tuple[Path | str, ...]
     viewpoint: str | None = None
     resolution: int | None = None
-    format: CompareFormat = CompareFormat.AUTO
+    format: CompareFormat | str = CompareFormat.AUTO
     region: str | None = None
     output: Path | str | None = None
-    normalisation: Normalisation = Normalisation.RAW
+    normalisation: Normalisation | str = Normalisation.RAW
     n_cores: PositiveInt = 1
     scale_factor: PositiveFloat = 1e6
     normalisation_regions: Path | str | None = None
@@ -70,8 +71,8 @@ class CompareSummariseOptions(BaseModel):
     infile: Path
     design_matrix: Path | None = None
     output_prefix: Path | str | None = None
-    output_format: OutputFormat = OutputFormat.BEDGRAPH
-    summary_methods: tuple[SummaryMethod, ...] = (SummaryMethod.MEAN,)
+    output_format: OutputFormat | str = OutputFormat.BEDGRAPH
+    summary_methods: tuple[SummaryMethod | str, ...] = (SummaryMethod.MEAN,)
     group_names: tuple[str, ...] = ()
     group_columns: tuple[str | int, ...] = ()
     suffix: str = ""
@@ -133,10 +134,10 @@ def concat(
     infiles: Sequence[Path | str],
     viewpoint: str | None = None,
     resolution: int | None = None,
-    format: CompareFormat = CompareFormat.AUTO,
+    format: CompareFormat | str = CompareFormat.AUTO,
     region: str | None = None,
     output: Path | str | None = None,
-    normalisation: Normalisation = Normalisation.RAW,
+    normalisation: Normalisation | str = Normalisation.RAW,
     n_cores: int = 1,
     scale_factor: int = int(1e6),
     normalisation_regions: Path | str | None = None,
@@ -154,7 +155,8 @@ def concat(
         scale_factor=scale_factor,
         normalisation_regions=normalisation_regions,
     )
-    input_format = options.format
+    input_format = cast(CompareFormat, options.format)
+    normalisation = cast(Normalisation, options.normalisation)
     norm_kwargs = {
         "scale_factor": options.scale_factor,
         "region": options.normalisation_regions,
@@ -189,7 +191,7 @@ def concat(
                     CoolerBedGraph(
                         uri, region_to_limit=options.region if options.region else None
                     ).extract_bedgraph(
-                        normalisation=options.normalisation, **norm_kwargs
+                        normalisation=normalisation, **norm_kwargs
                     ),
                     get_bedgraph_name_from_cooler(uri),
                 )
@@ -238,7 +240,9 @@ def concat(
     return union_by_viewpoint
 
 
-def get_summary_functions(methods: Sequence[str] | None) -> dict[str, SummaryFunction]:
+def get_summary_functions(
+    methods: Sequence[str | SummaryMethod] | None,
+) -> dict[str, SummaryFunction]:
     import numpy as np
     import scipy.stats
 
@@ -268,7 +272,7 @@ def get_groups(
     groups = dict()
 
     for group_name, group_col in zip(group_names, group_columns):
-        for col in re.split(r"[,;\s+]", group_col):
+        for col in re.split(r"[,;\s+]", str(group_col)):
 
             try:
                 col = int(col)
@@ -285,8 +289,8 @@ def summarise(
     infile: Path | str,
     design_matrix: Path | str | None = None,
     output_prefix: Path | str | None = None,
-    output_format: OutputFormat = OutputFormat.BEDGRAPH,
-    summary_methods: tuple[SummaryMethod, ...] = (SummaryMethod.MEAN,),
+    output_format: OutputFormat | str = OutputFormat.BEDGRAPH,
+    summary_methods: Sequence[SummaryMethod | str] = (SummaryMethod.MEAN,),
     group_names: tuple[str, ...] | None = None,
     group_columns: tuple[str | int, ...] | None = None,
     suffix: str = "",
@@ -298,13 +302,13 @@ def summarise(
     ``ValueError`` before data processing.
     """
     options = CompareSummariseOptions(
-        infile=infile,
-        design_matrix=design_matrix,
+        infile=Path(infile),
+        design_matrix=Path(design_matrix) if design_matrix is not None else None,
         output_prefix=output_prefix,
         output_format=output_format,
-        summary_methods=summary_methods,
-        group_names=group_names,
-        group_columns=group_columns,
+        summary_methods=tuple(summary_methods),
+        group_names=tuple(group_names or ()),
+        group_columns=tuple(group_columns or ()),
         suffix=suffix,
         perform_subtractions=perform_subtractions,
     )

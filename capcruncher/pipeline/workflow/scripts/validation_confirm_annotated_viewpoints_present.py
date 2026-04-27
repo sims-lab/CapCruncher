@@ -35,6 +35,7 @@ def validate_viewpoints_present(slices, viewpoints, output_counts, output_sentin
 
 
 if "snakemake" in globals():
+    snakemake = globals()["snakemake"]
     validate_viewpoints_present(
         snakemake.input.slices,
         snakemake.input.viewpoints,

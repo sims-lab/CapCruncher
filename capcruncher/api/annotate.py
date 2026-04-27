@@ -7,7 +7,11 @@ import pandas as pd
 import pyranges1 as pr
 from pandas.api.types import is_numeric_dtype
 
-from capcruncher.types import AnnotationAction
+from capcruncher.types import (
+    AnnotationAction,
+    VALID_ANNOTATION_ACTIONS,
+    validate_choice,
+)
 from capcruncher.utils import convert_bed_to_dataframe, convert_bed_to_pr
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -195,7 +199,7 @@ def annotate_intervals(
     query: IntervalInput,
     annotations: IntervalInput,
     name: str,
-    method: AnnotationAction = AnnotationAction.GET,
+    method: AnnotationAction | str = AnnotationAction.GET,
     fraction: float = 0,
     tolerate_errors: bool = True,
 ) -> pr.PyRanges:
@@ -206,6 +210,7 @@ def annotate_intervals(
     or annotation counts (`count`) in ``name``.
     """
 
+    method = validate_choice(method, VALID_ANNOTATION_ACTIONS, "method")
     prepared_query, original_names, metadata = _split_query_metadata(
         _as_pyranges(query)
     )

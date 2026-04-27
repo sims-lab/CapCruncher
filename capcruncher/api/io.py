@@ -4,6 +4,7 @@ import multiprocessing
 import os
 from pathlib import Path
 import traceback
+from typing import Any, cast
 
 from loguru import logger
 
@@ -94,8 +95,8 @@ class FastqReaderProcess(multiprocessing.Process):
 class FastqReadFormatterProcess(multiprocessing.Process):
     def __init__(
         self,
-        inq: multiprocessing.SimpleQueue,
-        outq: multiprocessing.SimpleQueue,
+        inq: multiprocessing.Queue,
+        outq: multiprocessing.Queue,
         formatting: Sequence[FastqFormatFunction] | None = None,
     ) -> None:
         self.inq = inq
@@ -110,7 +111,7 @@ class FastqReadFormatterProcess(multiprocessing.Process):
 
         super().__init__()
 
-    def _format_as_str(self, reads: object) -> list[str]:
+    def _format_as_str(self, reads: Sequence[Sequence[object]]) -> list[str]:
         # [(r1, r2), (r1, r2)] -> [r1 combined string, r2 combined string]
         return ["\n".join([str(rn) for rn in r]) for r in zip(*reads)]
 
@@ -120,7 +121,9 @@ class FastqReadFormatterProcess(multiprocessing.Process):
 
             while not reads == "END":
                 for formatting_to_apply in self.formatting:
-                    reads = formatting_to_apply(reads)
+                    reads = formatting_to_apply(
+                        cast(Sequence[Sequence[object]], reads)
+                    )
 
                 self.outq.put(reads)
                 reads = self.inq.get()
@@ -159,7 +162,7 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
 
         super().__init__()
 
-    def _get_file_handles(self) -> list[object]:
+    def _get_file_handles(self) -> list[Any]:
         if not self.paired_output:
             fnames = [
                 f'{self.output_prefix}_part{self.n_files_written}.fastq{".gz" if self.gzip else ""}',

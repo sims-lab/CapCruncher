@@ -9,7 +9,7 @@ import pyarrow.dataset as ds
 from loguru import logger
 
 from capcruncher.api.statistics import AlignmentDeduplicationStats
-from capcruncher.types import ReadType
+from capcruncher.types import ReadType, VALID_READ_TYPES, validate_choice
 
 
 def read_parquet(path: Path | str) -> pl.LazyFrame:
@@ -31,11 +31,12 @@ def remove_unused_dictionary_values(table: pa.Table) -> pa.Table:
 def deduplicate(
     slices: Path | str,
     output: Path | str,
-    read_type: ReadType = ReadType.FLASHED,
+    read_type: ReadType | str = ReadType.FLASHED,
     sample_name: str = "sampleX",
     statistics: Path | str = "deduplication_stats.json",
 ) -> None:
     logger.info("Loading parquet input")
+    read_type = validate_choice(read_type, VALID_READ_TYPES, "read_type")
     slices_tbl_raw = read_parquet(slices)
 
     n_slices_raw = (

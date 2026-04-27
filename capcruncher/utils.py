@@ -146,13 +146,10 @@ def get_human_readable_number_of_bp(bp: int) -> str:
     """Converts integer into human readable basepair number"""
 
     if bp < 1000:
-        bp = f"{bp}bp"
-    elif (bp / 1e3) < 1000:
-        bp = f"{bp / 1e3}kb"
-    elif (bp / 1e6) < 1000:
-        bp = f"{bp / 1e6}mb"
-
-    return bp
+        return f"{bp}bp"
+    if (bp / 1e3) < 1000:
+        return f"{bp / 1e3}kb"
+    return f"{bp / 1e6}mb"
 
 
 def _read_bed_dataframe(bed: BedInput, nrows=None) -> pd.DataFrame:
@@ -274,6 +271,8 @@ def hash_column(col: Iterable, hash_type=64) -> list:
     }
 
     hash_func = hash_dict.get(hash_type)
+    if hash_func is None:
+        raise ValueError(f"Unsupported hash type: {hash_type}")
 
     return [hash_func(v) for v in col]
 
@@ -354,7 +353,9 @@ def intersect_bins(
 
 
 def load_dict(
-    fn: os.PathLike, format: DictFormat = DictFormat.JSON, dtype: DictDType = DictDType.INT
+    fn: os.PathLike,
+    format: DictFormat | str = DictFormat.JSON,
+    dtype: DictDType | str = DictDType.INT,
 ) -> dict | set:
     """Load a gzipped JSON or pickle mapping with validated key/value dtype conversion."""
 
@@ -366,12 +367,15 @@ def load_dict(
     format = validate_choice(format, VALID_DICT_FORMATS, "format")
     dtype = validate_choice(dtype, VALID_DICT_DTYPES, "dtype")
 
+    d: dict | set
     if format == DictFormat.JSON:
         with xopen(fn) as r:
             d = json.load(r)
     elif format == DictFormat.PICKLE:
         with xopen(fn, "rb") as r:
             d = pickle.load(r)
+    else:
+        raise ValueError(f"Unsupported dictionary format: {format}")
 
     key_sample = list(itertools.islice(d, 50))
     dtype_converters = {
@@ -392,7 +396,7 @@ def load_dict(
 
 
 def save_dict(
-    obj: dict | set, fn: os.PathLike, format: DictFormat = DictFormat.JSON
+    obj: dict | set, fn: os.PathLike, format: DictFormat | str = DictFormat.JSON
 ) -> os.PathLike:
     """Save a dictionary or set as gzipped JSON or pickle."""
 
@@ -411,6 +415,8 @@ def save_dict(
     elif format == DictFormat.PICKLE:
         with xopen(fn, "wb") as w:
             pickle.dump(obj, w)
+    else:
+        raise ValueError(f"Unsupported dictionary format: {format}")
 
     return fn
 
@@ -680,7 +686,10 @@ def get_file_type(fn: os.PathLike) -> str:
         raise e
 
 
-def get_cooler_uri(store: os.PathLike, viewpoint: str, resolution: str | int):
+def get_cooler_uri(
+    store: os.PathLike | str, viewpoint: str, resolution: str | int | None
+):
+    store = os.fspath(store)
     cooler_fragment = r"(?P<store>.*?).hdf5::/(?!.*/resolutions/)(?P<viewpoint>.*?)$"
     cooler_binned = (
         r"(?P<store>.*?).hdf5::/(?P<viewpoint>.*?)/resolutions/(?P<binsize>\d+)$"

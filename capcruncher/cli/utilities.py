@@ -1,5 +1,6 @@
 import os
 import subprocess
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, Iterable
 
@@ -285,7 +286,8 @@ def viewpoint_coordinates(
         stdout=viewpoints_aligned_bam,
         stdin=p_alignment.stdout,
     )
-    p_alignment.stdout.close()
+    if p_alignment.stdout is not None:
+        p_alignment.stdout.close()
     aligned_res = p_bam.communicate()
 
     # Intersect digested genome with viewpoints
@@ -297,7 +299,7 @@ def viewpoint_coordinates(
             names=["Chromosome", "Start", "End", "Name"],
         )
     )
-    gr_viewpoints = pr.PyRanges(bam_to_bed_df(viewpoints_aligned_bam.name))
+    gr_viewpoints = pr.PyRanges(bam_to_bed_df(Path(viewpoints_aligned_bam.name)))
     intersections = gr_genome.join_overlaps(
         gr_viewpoints, suffix="_vp", strand_behavior="ignore"
     )
@@ -331,6 +333,9 @@ def viewpoint_coordinates(
 
 def dump_cooler(path: str, viewpoint: str, resolution: int | None = None):
     import cooler.api as cooler
+
+    if viewpoint is None:
+        raise ValueError("A viewpoint is required when dumping cooler files.")
 
     if resolution:
         path = cooler.Cooler(f"{path}::{viewpoint}/resolutions/{resolution}")
@@ -385,6 +390,8 @@ def dump(
     assert os.path.exists(path), "File does not exist"
 
     if ".hdf5" in path:
+        if viewpoint is None:
+            raise typer.BadParameter("A viewpoint is required for cooler files.")
         df = dump_cooler(path, viewpoint, resolution)
     elif ".parquet" in path:
         df = dump_capcruncher_parquet(path, viewpoint)

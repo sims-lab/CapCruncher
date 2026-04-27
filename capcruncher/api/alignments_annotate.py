@@ -2,12 +2,12 @@ import sys
 import warnings
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import pyranges1 as pr
 from loguru import logger
-from pydantic import BaseModel, Field, PositiveFloat, PositiveInt, field_validator, model_validator
+from pydantic import BaseModel, PositiveFloat, PositiveInt, field_validator, model_validator
 
 from capcruncher.api.annotate import annotate_intervals, remove_duplicates_from_bed
 from capcruncher.types import (
@@ -58,32 +58,29 @@ class AlignmentAnnotateOptions(BaseModel):
     """Validated options for alignment annotation."""
 
     slices: Path | str
-    actions: tuple[AnnotationAction, ...] = ()
-    bed_files: tuple[Path, ...] = ()
-    names: tuple[str, ...] = ()
-    overlap_fractions: tuple[PositiveFloat, ...] = (1e-9,)
+    actions: Sequence[AnnotationAction | str] | None = ()
+    bed_files: Sequence[Path | str] | None = ()
+    names: Sequence[str] | None = ()
+    overlap_fractions: Sequence[PositiveFloat | float] | None = (1e-9,)
     output: Path = Path("annotated.slices.parquet")
-    duplicates: DuplicateAction = DuplicateAction.REMOVE
-    invalid_bed_action: InvalidBedAction = InvalidBedAction.ERROR
+    duplicates: DuplicateAction | str = DuplicateAction.REMOVE
+    invalid_bed_action: InvalidBedAction | str = InvalidBedAction.ERROR
     n_cores: PositiveInt = 1
-    blacklist: Path | None = None
+    blacklist: Path | str | None = None
     prioritize_cis_slices: bool = False
-    priority_chroms: tuple[str, ...] = ()
+    priority_chroms: Sequence[str] | str | None = ()
 
     @field_validator("actions", mode="before")
     @classmethod
-    def validate_actions(cls, value: Sequence[str] | None) -> tuple[AnnotationAction, ...]:
+    def validate_actions(
+        cls, value: Sequence[str | AnnotationAction] | None
+    ) -> tuple[AnnotationAction, ...]:
         return validate_choices(tuple(value or ()), VALID_ANNOTATION_ACTIONS, "actions")
 
     @field_validator("bed_files", mode="before")
     @classmethod
     def validate_bed_files(cls, value: Sequence[Path | str] | None) -> tuple[Path, ...]:
-        paths = tuple(Path(path) for path in (value or ()))
-        missing_paths = [path for path in paths if not path.exists()]
-        if missing_paths:
-            missing = ", ".join(str(path) for path in missing_paths)
-            raise ValueError(f"bed_files do not exist: {missing}")
-        return paths
+        return tuple(Path(path) for path in (value or ()))
 
     @field_validator("names", mode="before")
     @classmethod
@@ -116,12 +113,14 @@ class AlignmentAnnotateOptions(BaseModel):
 
     @field_validator("duplicates", mode="before")
     @classmethod
-    def validate_duplicates(cls, value: str) -> DuplicateAction:
+    def validate_duplicates(cls, value: str | DuplicateAction) -> DuplicateAction:
         return validate_choice(value, VALID_DUPLICATE_ACTIONS, "duplicates")
 
     @field_validator("invalid_bed_action", mode="before")
     @classmethod
-    def validate_invalid_bed_action(cls, value: str) -> InvalidBedAction:
+    def validate_invalid_bed_action(
+        cls, value: str | InvalidBedAction
+    ) -> InvalidBedAction:
         return validate_choice(value, VALID_INVALID_BED_ACTIONS, "invalid_bed_action")
 
     @field_validator("blacklist", mode="before")
@@ -144,26 +143,34 @@ class AlignmentAnnotateOptions(BaseModel):
 
     @model_validator(mode="after")
     def validate_annotation_lengths(self) -> "AlignmentAnnotateOptions":
-        if len(self.actions) != len(self.bed_files) or len(self.names) != len(self.bed_files):
+        actions = tuple(self.actions or ())
+        bed_files = tuple(self.bed_files or ())
+        names = tuple(self.names or ())
+        if len(actions) != len(bed_files) or len(names) != len(bed_files):
             raise ValueError(
                 "The lengths of the supplied bed files, actions, and names do not match."
             )
+        self.actions = actions
+        self.bed_files = bed_files
+        self.names = names
+        self.overlap_fractions = tuple(self.overlap_fractions or (1e-9,))
+        self.priority_chroms = tuple(self.priority_chroms or ())
         return self
 
 
 def annotate(
     slices: Path | str,
-    actions: Sequence[AnnotationAction] | None = None,
+    actions: Sequence[AnnotationAction | str] | None = None,
     bed_files: Sequence[Path | str] | None = None,
     names: Sequence[str] | None = None,
     overlap_fractions: Sequence[float] | None = None,
     output: Path | str | None = None,
-    duplicates: DuplicateAction = DuplicateAction.REMOVE,
+    duplicates: DuplicateAction | str = DuplicateAction.REMOVE,
     n_cores: int = 1,
     blacklist: Path | str | None = None,
     prioritize_cis_slices: bool = False,
     priority_chroms: Sequence[str] | str | None = None,
-    invalid_bed_action: InvalidBedAction = InvalidBedAction.ERROR,
+    invalid_bed_action: InvalidBedAction | str = InvalidBedAction.ERROR,
     **kwargs: Any,
 ) -> None:
     """Annotate a BED-like input with one or more BED files.
@@ -233,14 +240,18 @@ def annotate(
         slices = remove_duplicates_from_bed(
             slices,
             prioritize_cis_slices=options.prioritize_cis_slices,
-            chroms_to_prioritize=list(options.priority_chroms) or None,
+            chroms_to_prioritize=list(options.priority_chroms or ()) or None,
         )
 
+        actions = cast(tuple[AnnotationAction, ...], options.actions or ())
+        bed_files = tuple(options.bed_files or ())
+        names = tuple(options.names or ())
+        overlap_fractions = tuple(options.overlap_fractions or (1e-9,))
         for action, bed_file, name, fraction in zip(
-            options.actions,
-            options.bed_files,
-            options.names,
-            cycle_argument(options.overlap_fractions),
+            actions,
+            bed_files,
+            names,
+            cycle_argument(overlap_fractions),
         ):
             logger.info(
                 f"Performing {name} intersection with {bed_file} using {action} method with {fraction} overlap fraction. {len(slices)} slices to intersect."

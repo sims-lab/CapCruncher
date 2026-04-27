@@ -112,23 +112,47 @@ class ReadPairStat(BaseModel, Generic[V]):
     read2: Histogram | SliceNumberStats | int | None = None
 
     def to_dataframe(self) -> pd.DataFrame:
+        if not isinstance(self.read1, Histogram):
+            raise TypeError("Only histogram read pair stats can be converted to a dataframe.")
+
         frames = []
         frames.append(
             self.read1.to_dataframe(read_number="read1", name=self.read1.name)
         )
         if self.read2 is not None:
+            if not isinstance(self.read2, Histogram):
+                raise TypeError(
+                    "Only histogram read pair stats can be converted to a dataframe."
+                )
             frames.append(
                 self.read2.to_dataframe(read_number="read2", name=self.read2.name)
             )
 
         return pd.concat(frames)
 
+    @staticmethod
+    def _add_values(
+        left: Histogram | SliceNumberStats | int,
+        right: Histogram | SliceNumberStats | int,
+    ) -> Histogram | SliceNumberStats | int:
+        if isinstance(left, Histogram) and isinstance(right, Histogram):
+            return left + right
+        if isinstance(left, SliceNumberStats) and isinstance(right, SliceNumberStats):
+            return left + right
+        if isinstance(left, int) and isinstance(right, int):
+            return left + right
+        raise TypeError(f"Cannot add {type(left)!r} and {type(right)!r}")
+
     def __add__(
         self,
         other: "ReadPairStat[int] | ReadPairStat[Histogram] | ReadPairStat[SliceNumberStats]",
     ) -> "ReadPairStat":
-        read_1 = self.read1 + other.read1
-        read_2 = self.read2 + other.read2 if self.read2 is not None else None
+        read_1 = self._add_values(self.read1, other.read1)
+        read_2 = (
+            self._add_values(self.read2, other.read2)
+            if self.read2 is not None and other.read2 is not None
+            else None
+        )
 
         return ReadPairStat(read1=read_1, read2=read_2)
 
@@ -228,7 +252,7 @@ class SliceFilterStats(BaseModel):
     stage: str
     n_fragments: int
     n_slices: int
-    read_type: ReadType
+    read_type: ReadType | str
 
     @field_validator("read_type", mode="before")
     @classmethod
@@ -237,7 +261,7 @@ class SliceFilterStats(BaseModel):
 
     @classmethod
     def from_slice_stats_dataframe(
-        cls, df: pd.DataFrame, stage: str, sample: str, read_type: ReadType
+        cls, df: pd.DataFrame, stage: str, sample: str, read_type: ReadType | str
     ) -> "SliceFilterStats":
         return cls(
             sample=sample,

@@ -8,7 +8,7 @@ from capcruncher.cli.common import (
 )
 from capcruncher.types import (
     Assay,
-    BedgraphFormat,
+    PileupFormat,
     CompareFormat,
     Executor,
     Normalisation,
@@ -120,8 +120,8 @@ def pileup(
         "--sparse/--dense",
         help="Produce bedgraph containing just positive bins (sparse) or all bins (dense).",
     ),
-    format: BedgraphFormat = typer.Option(
-        BedgraphFormat.BEDGRAPH,
+    format: PileupFormat = typer.Option(
+        PileupFormat.BEDGRAPH,
         "-f",
         "--format",
         help="Output file format.",

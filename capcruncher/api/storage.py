@@ -12,19 +12,17 @@ import json
 from typing import Self
 import pyranges1 as pr
 import re
-from capcruncher.types import Assay, BinningMethod
+from capcruncher.types import Assay, BinningMethod, VALID_ASSAYS, validate_choice
 
 
 class Viewpoint:
-    def __init__(
-        self, coordinates: pr.PyRanges, assay: Assay
-    ) -> None:
+    def __init__(self, coordinates: pr.PyRanges, assay: Assay | str) -> None:
         self.coordinates = coordinates
-        self.assay = assay
+        self.assay = validate_choice(assay, VALID_ASSAYS, "assay")
 
     @classmethod
     def from_bed(
-        cls, bed: Path | str, viewpoint: str, assay: Assay
+        cls, bed: Path | str, viewpoint: str, assay: Assay | str
     ) -> Self:
         """
         Creates a viewpoint object from a bed file.
@@ -51,7 +49,7 @@ class Viewpoint:
                 f"Oligo name cannot be found within viewpoints: {viewpoint}"
             )
 
-        return Viewpoint(pr.PyRanges(df_viewpoints), assay=assay)
+        return cls(pr.PyRanges(df_viewpoints), assay=assay)
 
     def bins(self, bins: pr.PyRanges):
         """
@@ -120,7 +118,7 @@ def create_cooler_cc(
     pixels: pd.DataFrame,
     viewpoint_name: str,
     viewpoint_path: Path | str,
-    assay: Assay = Assay.CAPTURE,
+    assay: Assay | str = Assay.CAPTURE,
     suffix: str | None = None,
     **cooler_kwargs,
 ) -> str:
@@ -203,13 +201,13 @@ class CoolerBinner:
     def __init__(
         self,
         cooler_group: Path | str | cooler.Cooler,
-        binsize: int = None,
-        method: BinningMethod = BinningMethod.MIDPOINT,
+        binsize: int | None = None,
+        method: BinningMethod | str = BinningMethod.MIDPOINT,
         minimum_overlap: float = 0.51,
         n_cis_interaction_correction: bool = True,
         n_rf_per_bin_correction: bool = True,
         scale_factor: int = 1_000_000,
-        assay: Assay = Assay.CAPTURE,
+        assay: Assay | str = Assay.CAPTURE,
     ) -> None:
         self.cooler_group = cooler_group
         self.binsize = binsize
@@ -304,6 +302,37 @@ class CoolerBinner:
         )
 
         return pr.PyRanges(df_fragment_to_bins)
+
+    @functools.cached_property
+    def bins(self) -> pd.DataFrame:
+        """Return genomic bins in bedgraph-style column naming."""
+        return (
+            pd.DataFrame(self.genomic_bins)
+            .rename(
+                columns={
+                    "Chromosome": "chrom",
+                    "Start": "start",
+                    "End": "end",
+                    "genomic_bin_id": "name",
+                }
+            )[["chrom", "start", "end", "name"]]
+            .copy()
+        )
+
+    @functools.cached_property
+    def bin_conversion_table(self) -> pd.DataFrame:
+        """Return fragment-to-genomic-bin mappings using legacy column names."""
+        table = pd.DataFrame(self.fragment_to_genomic_table).rename(
+            columns={
+                "genomic_bin_id": "name_bin",
+                "fragment_id": "name_fragment",
+                "Overlap": "overlap",
+            }
+        )
+        table["overlap_fraction"] = table["overlap"] / (
+            table["End"] - table["Start"]
+        )
+        return table
 
     @functools.cached_property
     def fragment_to_genomic_mapping(self) -> dict[int, int]:
@@ -579,7 +608,7 @@ def bins(
     else:
         clr_tempfiles = _bin_coolers_local(binning_tasks)
 
-    merge_coolers(clr_tempfiles, output)
+    merge_coolers([Path(clr_tempfile) for clr_tempfile in clr_tempfiles], output)
 
 
 def link_common_cooler_tables(clr: Path | str) -> None:
@@ -640,7 +669,7 @@ def get_merged_cooler_metadata(coolers: Iterable[Path | str]) -> dict:
     # Get metadata from all coolers and copy to the merged file
     metadata = {}
     for cooler_uri in coolers:
-        filepath, group = cooler_uri.split("::")
+        filepath, group = os.fspath(cooler_uri).split("::")
 
         with h5py.File(filepath, mode="r") as src:
             metadata_src = json.loads(src[group].attrs["metadata"])

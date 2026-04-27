@@ -174,14 +174,14 @@ def filter_alignments(
     from capcruncher.api.alignments_filter import filter as filter_slices
 
     filter_slices(
-        method=method,
+        method=method.value,
         bam=bam,
         annotations=annotations,
         custom_filtering=custom_filtering,
         output_prefix=output_prefix,
         statistics=statistics,
         sample_name=sample_name,
-        read_type=read_type,
+        read_type=read_type.value,
         fragments=fragments,
     )
 

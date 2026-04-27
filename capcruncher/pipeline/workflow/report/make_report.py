@@ -36,12 +36,12 @@ STAGE_LABELS = {
 }
 
 
-def load_json(path: pathlib.Path):
+def load_json(path: str | pathlib.Path):
     with pathlib.Path(path).open() as handle:
         return json.load(handle)
 
 
-def load_json_strings(path: pathlib.Path) -> list[dict]:
+def load_json_strings(path: str | pathlib.Path) -> list[dict]:
     entries = load_json(path)
     return [json.loads(entry) if isinstance(entry, str) else entry for entry in entries]
 

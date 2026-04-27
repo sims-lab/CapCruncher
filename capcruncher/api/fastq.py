@@ -5,14 +5,22 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Sequence
-from multiprocessing import SimpleQueue
+from multiprocessing import Queue
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from joblib import Parallel, delayed
 from loguru import logger
 from pydantic import BaseModel, Field, PositiveInt, field_validator, model_validator
-from capcruncher.types import FastqSplitMethod, FastqSplitType, ReadType
+from capcruncher.types import (
+    FastqSplitMethod,
+    FastqSplitType,
+    ReadType,
+    VALID_FASTQ_SPLIT_METHODS,
+    VALID_FASTQ_SPLIT_TYPES,
+    VALID_READ_TYPES,
+    validate_choice,
+)
 
 PLATFORM = sys.platform
 
@@ -29,9 +37,9 @@ def _as_existing_paths(paths: Sequence[Path | str]) -> tuple[Path, ...]:
 class FastqSplitOptions(BaseModel):
     """Validated options for FASTQ splitting."""
 
-    input_files: tuple[Path, ...]
-    method: FastqSplitMethod = FastqSplitMethod.UNIX
-    split_type: FastqSplitType = FastqSplitType.N_READS
+    input_files: Sequence[Path | str]
+    method: FastqSplitMethod | str = FastqSplitMethod.UNIX
+    split_type: FastqSplitType | str = FastqSplitType.N_READS
     output_prefix: Path = Path("split")
     compression_level: int = Field(default=5, ge=0, le=9)
     n_reads: PositiveInt = 1_000_000
@@ -54,13 +62,23 @@ class FastqSplitOptions(BaseModel):
             raise ValueError("FASTQ splitting accepts one file or one read pair.")
         return value
 
+    @field_validator("method", mode="before")
+    @classmethod
+    def validate_method(cls, value: FastqSplitMethod | str) -> FastqSplitMethod:
+        return validate_choice(value, VALID_FASTQ_SPLIT_METHODS, "method")
+
+    @field_validator("split_type", mode="before")
+    @classmethod
+    def validate_split_type(cls, value: FastqSplitType | str) -> FastqSplitType:
+        return validate_choice(value, VALID_FASTQ_SPLIT_TYPES, "split_type")
+
 
 class FastqDigestOptions(BaseModel):
     """Validated options for FASTQ digestion."""
 
-    fastqs: tuple[Path, ...]
+    fastqs: Sequence[Path | str]
     restriction_site: str = Field(min_length=1)
-    mode: ReadType = ReadType.PE
+    mode: ReadType | str = ReadType.PE
     output_file: Path = Path("out.fastq.gz")
     minimum_slice_length: PositiveInt = 18
     statistics: Path = Path("digest.json")
@@ -70,6 +88,11 @@ class FastqDigestOptions(BaseModel):
     @classmethod
     def validate_fastqs(cls, value: Sequence[Path | str]) -> tuple[Path, ...]:
         return _as_existing_paths(value)
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def validate_mode(cls, value: ReadType | str) -> ReadType:
+        return validate_choice(value, VALID_READ_TYPES, "mode")
 
     @model_validator(mode="after")
     def validate_mode_file_count(self) -> "FastqDigestOptions":
@@ -83,8 +106,8 @@ class FastqDigestOptions(BaseModel):
 class FastqDeduplicationOptions(BaseModel):
     """Validated options for paired FASTQ deduplication."""
 
-    fastq_1: tuple[Path, ...]
-    fastq_2: tuple[Path, ...]
+    fastq_1: Sequence[Path | str]
+    fastq_2: Sequence[Path | str]
     output_prefix: Path = Path("deduplicated_")
     statistics: Path = Path("deduplication_statistics.json")
     sample_name: str = Field(default="sampleX", min_length=1)
@@ -154,8 +177,8 @@ def run_unix_split(
 
 def split_fastq(
     input_files: Sequence[Path | str],
-    method: FastqSplitMethod = FastqSplitMethod.UNIX,
-    split_type: FastqSplitType = FastqSplitType.N_READS,
+    method: FastqSplitMethod | str = FastqSplitMethod.UNIX,
+    split_type: FastqSplitType | str = FastqSplitType.N_READS,
     output_prefix: Path | str = Path("split"),
     compression_level: int = 5,
     n_reads: int = 1000000,
@@ -184,9 +207,9 @@ def split_fastq(
         gzip=gzip,
         n_cores=n_cores,
     )
-    input_files = options.input_files
-    method = options.method
-    split_type = options.split_type
+    input_files = tuple(options.input_files)
+    method = cast(FastqSplitMethod, options.method)
+    split_type = cast(FastqSplitType, options.split_type)
     output_prefix = options.output_prefix
     compression_level = options.compression_level
     n_reads = options.n_reads
@@ -195,8 +218,8 @@ def split_fastq(
     suffix = options.suffix
 
     if split_type == FastqSplitType.N_READS and method == FastqSplitMethod.PYTHON:
-        readq = SimpleQueue()
-        writeq = SimpleQueue()
+        readq = Queue()
+        writeq = Queue()
 
         reader = FastqReaderProcess(
             input_files=input_files,
@@ -250,9 +273,10 @@ def split_fastq(
 
         for fn in glob.glob(f"{output_prefix}_part*"):
             src = fn
-            part_no = int(
-                re.match(r"(?:.*)_part(\d+)_.*([1|2])?.fastq(.gz)?", fn).group(1)
-            )
+            match = re.match(r"(?:.*)_part(\d+)_.*([1|2])?.fastq(.gz)?", fn)
+            if match is None:
+                raise ValueError(f"Unable to parse split FASTQ part number from {fn}")
+            part_no = int(match.group(1))
             dest = re.sub(r"_part\d+_", f"_part{part_no}_", src)
             os.rename(src, dest)
 
@@ -260,7 +284,7 @@ def split_fastq(
 def digest_fastq(
     fastqs: Sequence[Path | str],
     restriction_site: str,
-    mode: ReadType = ReadType.PE,
+    mode: ReadType | str = ReadType.PE,
     output_file: Path | str = Path("out.fastq.gz"),
     minimum_slice_length: int = 18,
     statistics: Path | str = Path("digest.json"),
@@ -284,12 +308,13 @@ def digest_fastq(
     )
 
     logger.info("Digesting FASTQ files")
+    mode = cast(ReadType, options.mode)
 
     stats = digest_fastq_records(
-        fastqs=tuple(str(fastq) for fastq in options.fastqs),
+        fastqs=[str(fastq) for fastq in options.fastqs],
         restriction_site=get_restriction_site(options.restriction_site),
         output=str(options.output_file),
-        read_type=options.mode.value.title(),
+        read_type=mode.value,
         sample_name=options.sample_name,
         minimum_slice_length=options.minimum_slice_length,
     )
@@ -326,8 +351,8 @@ def deduplicate_fastq(
     )
 
     df_stats = deduplicate_fastq_records(
-        fastq1=tuple(str(fastq) for fastq in options.fastq_1),
-        fastq2=tuple(str(fastq) for fastq in options.fastq_2),
+        fastq1=[str(fastq) for fastq in options.fastq_1],
+        fastq2=[str(fastq) for fastq in options.fastq_2],
         output_prefix=output_prefix_for_tools,
         sample_name=options.sample_name,
         shuffle=options.shuffle,

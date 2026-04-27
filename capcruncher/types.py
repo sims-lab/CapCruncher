@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 from enum import StrEnum
 from pathlib import Path
-from typing import TypeVar
+from typing import TypeVar, cast
 
 
 class Assay(StrEnum):
@@ -35,9 +35,12 @@ class Normalisation(StrEnum):
     REGION = "region"
 
 
-class BedgraphFormat(StrEnum):
+class PileupFormat(StrEnum):
     BEDGRAPH = "bedgraph"
     BIGWIG = "bigwig"
+
+
+BedgraphFormat = PileupFormat
 
 
 class CompareFormat(StrEnum):
@@ -98,7 +101,8 @@ VALID_ANNOTATION_ACTIONS: tuple[AnnotationAction, ...] = tuple(AnnotationAction)
 VALID_DUPLICATE_ACTIONS: tuple[DuplicateAction, ...] = tuple(DuplicateAction)
 VALID_INVALID_BED_ACTIONS: tuple[InvalidBedAction, ...] = tuple(InvalidBedAction)
 VALID_NORMALISATIONS: tuple[Normalisation, ...] = tuple(Normalisation)
-VALID_BEDGRAPH_FORMATS: tuple[BedgraphFormat, ...] = tuple(BedgraphFormat)
+VALID_PILEUP_FORMATS: tuple[PileupFormat, ...] = tuple(PileupFormat)
+VALID_BEDGRAPH_FORMATS = VALID_PILEUP_FORMATS
 VALID_COMPARE_FORMATS: tuple[CompareFormat, ...] = tuple(CompareFormat)
 VALID_OUTPUT_FORMATS: tuple[OutputFormat, ...] = tuple(OutputFormat)
 VALID_SUMMARY_METHODS: tuple[SummaryMethod, ...] = tuple(SummaryMethod)
@@ -126,7 +130,7 @@ def validate_choice(
 ) -> Choice:
     """Return a string enum option value or raise a clear validation error."""
     if isinstance(value, StrEnum) and value in valid:
-        return value
+        return cast(Choice, value)
 
     value_str = str(value)
     try:

@@ -1,9 +1,10 @@
 import tempfile
+import os
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
-from capcruncher.types import Assay, Executor
+from capcruncher.types import Assay, Executor, VALID_ASSAYS, VALID_EXECUTORS, validate_choice
 
 
 class InteractionCountOptions(BaseModel):
@@ -11,23 +12,36 @@ class InteractionCountOptions(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    reporters: Path
-    output: Path = Path("CC_cooler.hdf5")
+    reporters: Path | str
+    output: Path | str = Path("CC_cooler.hdf5")
     remove_exclusions: bool = False
     remove_viewpoint: bool = False
     subsample: float = Field(default=0, ge=0, le=1)
-    fragment_map: Path | None = None
-    viewpoint_path: Path
+    fragment_map: Path | str | None = None
+    viewpoint_path: Path | str
     n_cores: PositiveInt = 1
-    assay: Assay = Assay.CAPTURE
-    executor: Executor = Executor.LOCAL
+    assay: Assay | str = Assay.CAPTURE
+    executor: Executor | str = Executor.LOCAL
 
-    @field_validator("reporters", "fragment_map", "viewpoint_path")
+    @field_validator("reporters", "fragment_map", "viewpoint_path", mode="before")
     @classmethod
-    def existing_input_path(cls, value: Path | None) -> Path | None:
-        if value is not None and not value.exists():
-            raise ValueError(f"Input path does not exist: {value}")
-        return value
+    def existing_input_path(cls, value: Path | str | None) -> Path | None:
+        if value is None:
+            return None
+        path = Path(value)
+        if not path.exists():
+            raise ValueError(f"Input path does not exist: {path}")
+        return path
+
+    @field_validator("assay", mode="before")
+    @classmethod
+    def validate_assay(cls, value: Assay | str) -> Assay:
+        return validate_choice(value, VALID_ASSAYS, "assay")
+
+    @field_validator("executor", mode="before")
+    @classmethod
+    def validate_executor(cls, value: Executor | str) -> Executor:
+        return validate_choice(value, VALID_EXECUTORS, "executor")
 
 
 def valid_viewpoint_names(viewpoint_path: Path | str) -> list[str]:
@@ -123,12 +137,15 @@ def count_interactions(
     fragment_map: Path | str | None = None,
     viewpoint_path: Path | str | None = None,
     n_cores: int = 1,
-    assay: Assay = Assay.CAPTURE,
-    executor: Executor = Executor.LOCAL,
+    assay: Assay | str = Assay.CAPTURE,
+    executor: Executor | str = Executor.LOCAL,
     **kwargs: Any,
 ) -> Path | str:
     """Count reporter interactions using the external ``capcruncher-tools`` API."""
     from capcruncher_tools.api import count_interactions as count_interactions_records
+
+    if viewpoint_path is None:
+        raise ValueError("viewpoint_path is required.")
 
     options = InteractionCountOptions(
         reporters=reporters,
@@ -150,18 +167,34 @@ def count_interactions(
             output_dir=tmpdir,
         )
 
-        clr = count_interactions_records(
-            reporters=str(countable_reporters),
-            output=str(options.output),
-            remove_exclusions=options.remove_exclusions,
-            remove_viewpoint=options.remove_viewpoint,
-            subsample=options.subsample,
-            fragment_map=str(options.fragment_map) if options.fragment_map else None,
-            viewpoint_path=str(options.viewpoint_path),
-            n_cores=options.n_cores,
-            assay=options.assay.value,
-            executor=options.executor.value,
-            **kwargs,
-        )
+        assay_value = cast(Assay, options.assay).value
+        executor_value = cast(Executor, options.executor).value
+        if options.fragment_map is not None:
+            clr = count_interactions_records(
+                reporters=countable_reporters,
+                output=Path(options.output),
+                remove_exclusions=options.remove_exclusions,
+                remove_viewpoint=options.remove_viewpoint,
+                subsample=options.subsample,
+                viewpoint_path=Path(options.viewpoint_path),
+                n_cores=options.n_cores,
+                assay=assay_value,
+                executor=executor_value,
+                fragment_map=Path(options.fragment_map),
+                **kwargs,
+            )
+        else:
+            clr = count_interactions_records(
+                reporters=countable_reporters,
+                output=Path(options.output),
+                remove_exclusions=options.remove_exclusions,
+                remove_viewpoint=options.remove_viewpoint,
+                subsample=options.subsample,
+                viewpoint_path=Path(options.viewpoint_path),
+                n_cores=options.n_cores,
+                assay=assay_value,
+                executor=executor_value,
+                **kwargs,
+            )
 
-    return clr
+    return os.fspath(clr)

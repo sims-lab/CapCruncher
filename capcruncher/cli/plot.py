@@ -13,7 +13,7 @@ plot_app = typer.Typer(
 
 def render_plot(
     region: str,
-    template: os.PathLike,
+    template: os.PathLike | str,
     output: str,
 ) -> None:
     """Plot a region using a template.
@@ -30,7 +30,9 @@ def render_plot(
     fig.save(output, region=region)
 
 
-def _render_or_raise(region: str | None, template: os.PathLike | None, output: str):
+def _render_or_raise(
+    region: str | None, template: os.PathLike | str | None, output: str
+):
     if region is None or template is None:
         raise typer.BadParameter(
             "Missing option '-r' / '--region' or '-t' / '--template'."

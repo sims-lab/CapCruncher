@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pandera.pandas as pandera
 from loguru import logger
-from pandera.typing import DataFrame, Series
+from pandera.typing.pandas import DataFrame, Series
 
 from capcruncher.api.statistics import SliceFilterStats
 
@@ -56,7 +56,7 @@ class SliceFilter:
     def __init__(
         self,
         slices: pd.DataFrame,
-        filter_stages: dict = None,
+        filter_stages: dict | None = None,
         sample_name: str = "",
         read_type: str = "",
     ):
@@ -125,6 +125,7 @@ class SliceFilter:
             raise ValueError("Filter stages not provided")
 
         self.filtering_stats = []
+        self._filter_stats = pd.DataFrame()
         self.sample_name = sample_name
         self.read_type = read_type
         self.current_filter = ""

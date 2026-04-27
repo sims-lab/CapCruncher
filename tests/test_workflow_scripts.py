@@ -24,6 +24,8 @@ def load_workflow_script(script_name):
         / script_name
     )
     spec = importlib.util.spec_from_file_location(script_name, script_path)
+    assert spec is not None
+    assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

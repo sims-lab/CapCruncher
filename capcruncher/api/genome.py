@@ -21,8 +21,8 @@ def digest_genome(
 
     logger.info("Digesting genome")
     digest_genome_records(
-        fasta=input_fasta,
-        output=output_file,
+        fasta=str(input_fasta),
+        output=str(output_file),
         restriction_enzyme=get_restriction_site(recognition_site),
         remove_recognition_site=remove_cutsite,
         minimum_slice_length=18,

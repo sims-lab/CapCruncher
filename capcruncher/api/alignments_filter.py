@@ -1,6 +1,7 @@
 import pathlib
 import tempfile
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 import polars as pl
@@ -29,14 +30,14 @@ SLICE_FILTERS = {
 class AlignmentFilterOptions(BaseModel):
     """Validated options for alignment filtering."""
 
-    bam: Path
-    annotations: Path
-    custom_filtering: Path | None = None
+    bam: Path | str
+    annotations: Path | str
+    custom_filtering: Path | str | None = None
     output_prefix: Path | str = "reporters"
     statistics: Path = Path("filtering_stats.json")
-    method: Assay = Assay.CAPTURE
-    sample_name: str = ""
-    read_type: ReadType = ReadType.FLASHED
+    method: Assay | str = Assay.CAPTURE
+    sample_name: str | None = ""
+    read_type: ReadType | str = ReadType.FLASHED
     fragments: bool = True
 
     @field_validator("bam", "annotations", mode="before")
@@ -53,12 +54,12 @@ class AlignmentFilterOptions(BaseModel):
 
     @field_validator("method", mode="before")
     @classmethod
-    def validate_method(cls, value: str) -> Assay:
+    def validate_method(cls, value: str | Assay) -> Assay:
         return validate_choice(value, VALID_ASSAYS, "method")
 
     @field_validator("read_type", mode="before")
     @classmethod
-    def validate_read_type(cls, value: str) -> ReadType:
+    def validate_read_type(cls, value: str | ReadType) -> ReadType:
         return validate_choice(value, VALID_READ_TYPES, "read_type")
 
 
@@ -114,9 +115,9 @@ def filter(
     custom_filtering: Path | str | None = None,
     output_prefix: Path | str = "reporters",
     statistics: Path | str = "",
-    method: Assay = Assay.CAPTURE,
-    sample_name: str = "",
-    read_type: ReadType = ReadType.FLASHED,
+    method: Assay | str = Assay.CAPTURE,
+    sample_name: str | None = "",
+    read_type: ReadType | str = ReadType.FLASHED,
     fragments: bool = True,
 ) -> None:
     """Remove unwanted aligned slices and identify reporters.
@@ -198,16 +199,18 @@ def filter(
 
         # Initialise SliceFilter
         # If no custom filtering, will use the class default.
-        slice_filter_class = SLICE_FILTERS[options.method.value]
+        method = cast(Assay, options.method)
+        read_type = cast(ReadType, options.read_type)
+        slice_filter_class = SLICE_FILTERS[method.value]
         slice_filter = slice_filter_class(
             slices=df_alignment,
             sample_name=options.sample_name,
-            read_type=options.read_type.value,
+            read_type=read_type.value,
             filter_stages=options.custom_filtering,
         )
 
         # Filter slices using the slice_filter
-        logger.info(f"Filtering slices with method: {options.method}")
+        logger.info(f"Filtering slices with method: {method}")
         slice_filter.filter_slices()
 
         # Extract statistics

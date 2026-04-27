@@ -139,11 +139,16 @@ def build_hub(
     genome_organism: str | None = None,
     genome_default_position: str | None = None,
 ):
-    if custom_genome and not genome_twobit:
-        raise ValueError(
-            "Custom UCSC hub genomes require a genome twoBit file. "
-            "Set genome.twobit in capcruncher_config.yml."
-        )
+    custom_genome_twobit: str | pathlib.Path = ""
+    custom_genome_organism = genome
+    if custom_genome:
+        if not genome_twobit:
+            raise ValueError(
+                "Custom UCSC hub genomes require a genome twoBit file. "
+                "Set genome.twobit in capcruncher_config.yml."
+            )
+        custom_genome_twobit = genome_twobit
+        custom_genome_organism = genome_organism or genome
 
     import tracknado as tn
 
@@ -160,8 +165,8 @@ def build_hub(
     if custom_genome:
         builder = builder.with_custom_genome(
             name=genome,
-            twobit_file=genome_twobit,
-            organism=genome_organism,
+            twobit_file=custom_genome_twobit,
+            organism=custom_genome_organism,
             default_position=genome_default_position or "chr1:10000-20000",
         )
 
@@ -202,4 +207,4 @@ def main(snakemake):
 
 
 if "snakemake" in globals():
-    main(snakemake)
+    main(globals()["snakemake"])

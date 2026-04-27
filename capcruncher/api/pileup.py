@@ -10,7 +10,7 @@ from typing import Self
 from pydantic import BaseModel, Field, PositiveFloat, field_validator, model_validator
 
 from capcruncher.api.storage import CoolerBinner
-from capcruncher.types import BedgraphFormat, Normalisation
+from capcruncher.types import PileupFormat, Normalisation
 from capcruncher.utils import is_valid_bed
 from loguru import logger
 import re
@@ -23,7 +23,7 @@ class PileupOptions(BaseModel):
     uri: Path | str
     viewpoint_names: list[str] | None = None
     output_prefix: Path | str = ""
-    format: BedgraphFormat = BedgraphFormat.BEDGRAPH
+    format: PileupFormat = PileupFormat.BEDGRAPH
     normalisation: Normalisation = Normalisation.RAW
     normalisation_regions: Path | str | None = None
     binsize: int = Field(default=0, ge=0)
@@ -53,7 +53,7 @@ def pileup(
     uri: Path | str,
     viewpoint_names: list[str] | None = None,
     output_prefix: Path | str = "",
-    format: BedgraphFormat = BedgraphFormat.BEDGRAPH,
+    format: PileupFormat = PileupFormat.BEDGRAPH,
     normalisation: Normalisation = Normalisation.RAW,
     normalisation_regions: Path | str | None = None,
     binsize: int = 0,
@@ -114,14 +114,14 @@ def pileup(
 
         logger.info(f"Generated bedgraph for {viewpoint_name}")
 
-        if options.format == BedgraphFormat.BEDGRAPH:
+        if options.format == PileupFormat.BEDGRAPH:
             bedgraph.to_csv(
                 f'{output_prefix}_{viewpoint_name}.bedgraph{".gz" if options.gzip else ""}',
                 sep="\t",
                 header=False,
                 index=False,
             )
-        elif options.format == BedgraphFormat.BIGWIG:
+        elif options.format == PileupFormat.BIGWIG:
             clr = cooler.Cooler(cooler_group)
 
             with tempfile.NamedTemporaryFile() as chromsizes_tmp:
@@ -342,6 +342,8 @@ class CoolerBedGraph:
         elif method == Normalisation.N_CIS:
             self._normalise_by_n_cis(bedgraph, scale_factor)
         elif method == Normalisation.REGION:
+            if region is None:
+                raise ValueError("Region based normalisation requires a BED file.")
             self._normalise_by_regions(bedgraph, scale_factor, region)
 
     def _normalise_by_n_cis(
@@ -428,7 +430,13 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
 
         return bedgraph_bins
 
-    def _normalise_bedgraph(self, bedgraph, scale_factor=1e6):
+    def _normalise_bedgraph(
+        self,
+        bedgraph: pd.DataFrame,
+        scale_factor: float = 1e6,
+        method: Normalisation = Normalisation.N_CIS,
+        region: Path | str | None = None,
+    ) -> None:
         bct = self.binner.bin_conversion_table
         reporters = self.reporters
 
@@ -441,7 +449,7 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
                     df["count_overfrac_norm"] / self.n_cis_interactions
                 )
                 * scale_factor,
-            ),
+            )
         )
 
         count_aggregated = (
@@ -461,7 +469,9 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
 
         bedgraph_bins.columns = ["chrom", "start", "end", "count"]
 
-        return bedgraph_bins
+        bedgraph[["chrom", "start", "end", "count"]] = bedgraph_bins[
+            ["chrom", "start", "end", "count"]
+        ]
 
     @property
     def reporters_binned(self):
@@ -509,28 +519,34 @@ class CCBedgraph:
         self.capture_end = capture_end
 
     @property
+    def _df(self) -> pd.DataFrame:
+        if self.df is None:
+            raise ValueError("CCBedgraph requires either a path or dataframe.")
+        return self.df
+
+    @property
     def score(self) -> pd.Series:
-        return self.df.rename(columns={"score": self.fn})[self.fn]
+        return self._df.rename(columns={"score": self.fn})[self.fn]
 
     @property
     def coordinates(self) -> pd.DataFrame:
-        return self.df.loc[:, "chrom":"end"]
+        return self._df.loc[:, "chrom":"end"]
 
     def to_pyranges(self) -> pr.PyRanges:
-        return self.df.rename(
+        return self._df.rename(
             columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
         ).pipe(pr.PyRanges)
 
     def to_file(self, path: Path | str) -> None:
-        self.df.to_csv(path, sep="\t", header=None, index=None)
+        self._df.to_csv(path, sep="\t", header=None, index=None)
 
     def __add__(self, other: object) -> Self | NotImplementedType:
         if isinstance(other, CCBedgraph):
-            self.df["score"] = self.df["score"] + other.df["score"]
+            self._df["score"] = self._df["score"] + other._df["score"]
             return self
 
         elif isinstance(other, (np.ndarray, pd.Series, int, float)):
-            self.df["score"] = self.df["score"] + other
+            self._df["score"] = self._df["score"] + other
             return self
 
         else:
@@ -538,11 +554,11 @@ class CCBedgraph:
 
     def __sub__(self, other: object) -> Self | NotImplementedType:
         if isinstance(other, CCBedgraph):
-            self.df["score"] = self.df["score"] - other.df["score"]
+            self._df["score"] = self._df["score"] - other._df["score"]
             return self
 
         elif isinstance(other, (np.ndarray, pd.Series, int, float)):
-            self.df["score"] = self.df["score"] - other
+            self._df["score"] = self._df["score"] - other
             return self
 
         else:
@@ -550,11 +566,11 @@ class CCBedgraph:
 
     def __mul__(self, other: object) -> Self | NotImplementedType:
         if isinstance(other, CCBedgraph):
-            self.df["score"] = self.df["score"] * other.df["score"]
+            self._df["score"] = self._df["score"] * other._df["score"]
             return self
 
         elif isinstance(other, (np.ndarray, pd.Series, int, float)):
-            self.df["score"] = self.df["score"] * other
+            self._df["score"] = self._df["score"] * other
             return self
 
         else:
@@ -562,11 +578,11 @@ class CCBedgraph:
 
     def __truediv__(self, other: object) -> Self | NotImplementedType:
         if isinstance(other, CCBedgraph):
-            self.df["score"] = self.df["score"] / other.df["score"]
+            self._df["score"] = self._df["score"] / other._df["score"]
             return self
 
         elif isinstance(other, (np.ndarray, pd.Series, int, float)):
-            self.df["score"] = self.df["score"] / other
+            self._df["score"] = self._df["score"] / other
             return self
 
         else:

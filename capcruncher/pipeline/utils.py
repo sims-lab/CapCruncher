@@ -312,6 +312,7 @@ def format_priority_chromosome_list(config: dict):
     """Format priority chromosome list for use in the shell script."""
 
     priority_chroms = config["analysis_optional"].get("priority_chromosomes", "")
+    chromosomes = None
 
     if not priority_chroms or priority_chroms == "None":
         chromosomes = None
