@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 from capcruncher.cli import cli
 from capcruncher.cli import pipeline as cli_pipeline
-from capcruncher.cli.interactions import _write_countable_reporters
+from capcruncher.api.interactions_count import write_countable_reporters
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -1111,7 +1111,7 @@ def test_countable_reporters_only_include_bed_viewpoint_categories(tmp_path):
         }
     ).to_parquet(reporters)
 
-    cleaned = _write_countable_reporters(reporters, viewpoints, output)
+    cleaned = write_countable_reporters(reporters, viewpoints, output)
     cleaned_df = pd.read_parquet(cleaned)
 
     assert cleaned_df["viewpoint"].cat.categories.to_list() == ["Slc25A37"]
@@ -1133,7 +1133,7 @@ def test_countable_reporters_reject_actual_non_viewpoint_values(tmp_path):
     ).to_parquet(reporters)
 
     with pytest.raises(ValueError, match="reporters_pe_80"):
-        _write_countable_reporters(reporters, viewpoints, output)
+        write_countable_reporters(reporters, viewpoints, output)
 
 
 @pytest.mark.parametrize(
