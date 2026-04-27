@@ -251,7 +251,7 @@ def store_fragments(
     Stores restriction fragment interaction combinations at the restriction fragment level.
     """
     run_imported(
-        "capcruncher.api.interactions.cooler.create:fragments",
+        "capcruncher.api.interactions.cooler.fragments:fragments",
         counts=counts,
         fragment_map=fragment_map,
         output=output,
