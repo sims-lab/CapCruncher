@@ -7,6 +7,8 @@ from collections.abc import Sequence
 
 import typer
 
+from capcruncher.cli.common import HELP_SETTINGS
+
 type PipelineOptions = Sequence[str]
 
 
@@ -35,7 +37,7 @@ PIPELINE_FORWARD_CONTEXT = dict(
 pipeline_app = typer.Typer(
     help="Run and configure CapCruncher Snakemake workflows.",
     context_settings={
-        "help_option_names": ["-h", "--help"],
+        **HELP_SETTINGS,
         **PIPELINE_FORWARD_CONTEXT,
     },
     invoke_without_command=True,

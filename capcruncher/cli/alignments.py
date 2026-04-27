@@ -1,9 +1,11 @@
 import typer
 
+from capcruncher.cli.common import HELP_SETTINGS
+
 
 alignments_app = typer.Typer(
     help="Contains methods for reporter annotating, identifying and deduplication.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings=HELP_SETTINGS,
     no_args_is_help=True,
 )
 

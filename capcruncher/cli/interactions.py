@@ -1,25 +1,20 @@
-from importlib import import_module
-from typing import Any, Literal
+from typing import Literal
 
 import typer
+
+from capcruncher.cli.common import HELP_SETTINGS, run_imported
 
 
 interactions_app = typer.Typer(
     help="Contains methods for interaction counting, storing, bedgraph generation, comparisons.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings=HELP_SETTINGS,
     no_args_is_help=True,
 )
 compare_app = typer.Typer(
     help="Compare bedgraphs and CapCruncher cooler files.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings=HELP_SETTINGS,
     no_args_is_help=True,
 )
-
-
-def _run_command(import_path: str, *args: Any, **kwargs: Any) -> None:
-    module_name, function_name = import_path.rsplit(":", 1)
-    module = import_module(module_name)
-    getattr(module, function_name)(*args, **kwargs)
 
 
 @interactions_app.callback()
@@ -55,7 +50,7 @@ def deduplicate(
     """
     Identifies and removes duplicated aligned fragments.
     """
-    _run_command(
+    run_imported(
         "capcruncher.api.interactions_deduplicate:deduplicate",
         slices=slices,
         output=output,
@@ -122,7 +117,7 @@ def pileup(
     """
     Extract reporters from a capture experiment and generate a bedgraph or bigWig file.
     """
-    _run_command(
+    run_imported(
         "capcruncher.api.pileup:pileup",
         uri=uri,
         viewpoint_names=viewpoint_names,
@@ -252,7 +247,7 @@ def store_fragments(
     """
     Stores restriction fragment interaction combinations at the restriction fragment level.
     """
-    _run_command(
+    run_imported(
         "capcruncher.api.storage:fragments",
         counts=counts,
         fragment_map=fragment_map,
@@ -315,7 +310,7 @@ def store_bins(
     """
     Convert a cooler group containing restriction fragments to constant genomic windows.
     """
-    _run_command(
+    run_imported(
         "capcruncher.api.storage:bins",
         cooler_path=cooler_path,
         output=output,
@@ -342,7 +337,7 @@ def store_merge(
     """
     Merges CapCruncher HDF5 files together.
     """
-    _run_command(
+    run_imported(
         "capcruncher.api.storage:merge_coolers",
         coolers=tuple(coolers),
         output=output,
@@ -410,7 +405,7 @@ def bedgraphs_concat(
         help="Number of cores to use for extracting bedgraphs.",
     ),
 ) -> None:
-    _run_command(
+    run_imported(
         "capcruncher.api.interactions_compare:concat",
         infiles=tuple(infiles),
         format=format,
@@ -475,7 +470,7 @@ def bedgraphs_summarise(
         help="Add a suffix before the file extension.",
     ),
 ) -> None:
-    _run_command(
+    run_imported(
         "capcruncher.api.interactions_compare:summarise",
         infile=infile,
         design_matrix=design_matrix,
@@ -500,7 +495,7 @@ def _run_differential(
     threshold_count: float,
     threshold_q: float,
 ) -> None:
-    _run_command(
+    run_imported(
         "capcruncher.api.interactions_differential:differential",
         interaction_files=tuple(interaction_files),
         output_prefix=output_prefix,

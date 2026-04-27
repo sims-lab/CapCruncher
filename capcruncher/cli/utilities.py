@@ -6,10 +6,12 @@ from typing import Any, Iterable, Literal
 from loguru import logger
 import typer
 
+from capcruncher.cli.common import HELP_SETTINGS
+
 
 utilities_app = typer.Typer(
     help="Contains miscellaneous functions.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings=HELP_SETTINGS,
     no_args_is_help=True,
 )
 

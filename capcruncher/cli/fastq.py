@@ -3,10 +3,12 @@ from typing import Literal
 
 import typer
 
+from capcruncher.cli.common import HELP_SETTINGS
+
 
 fastq_app = typer.Typer(
     help="Contains methods for fastq splitting, deduplicating and digestion.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings=HELP_SETTINGS,
     no_args_is_help=True,
 )
 

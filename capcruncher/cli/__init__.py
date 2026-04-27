@@ -2,7 +2,7 @@ from importlib import metadata
 
 import typer
 
-CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
+from capcruncher.cli.common import HELP_SETTINGS
 
 
 def get_capcruncher_version() -> str:
@@ -20,7 +20,7 @@ def _version_callback(value: bool) -> None:
 
 app = typer.Typer(
     help="An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.",
-    context_settings=CONTEXT_SETTINGS,
+    context_settings=HELP_SETTINGS,
     no_args_is_help=True,
 )
 
@@ -60,7 +60,7 @@ cli = typer.main.get_command(app)
 
 
 __all__ = [
-    "CONTEXT_SETTINGS",
+    "HELP_SETTINGS",
     "app",
     "cli",
     "get_capcruncher_version",

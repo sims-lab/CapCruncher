@@ -2,9 +2,11 @@ import os
 
 import typer
 
+from capcruncher.cli.common import HELP_SETTINGS
+
 plot_app = typer.Typer(
     help="Generate plots from CapCruncher outputs.",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings=HELP_SETTINGS,
     invoke_without_command=True,
 )
 
