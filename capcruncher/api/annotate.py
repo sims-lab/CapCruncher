@@ -1,13 +1,13 @@
 import os
 import warnings
 from collections.abc import Sequence
-from typing import Literal
 
 import numpy as np
 import pandas as pd
 import pyranges1 as pr
 from pandas.api.types import is_numeric_dtype
 
+from capcruncher.types import AnnotationAction
 from capcruncher.utils import convert_bed_to_dataframe, convert_bed_to_pr
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -195,7 +195,7 @@ def annotate_intervals(
     query: IntervalInput,
     annotations: IntervalInput,
     name: str,
-    method: Literal["get", "count"] = "get",
+    method: AnnotationAction = AnnotationAction.GET,
     fraction: float = 0,
     tolerate_errors: bool = True,
 ) -> pr.PyRanges:
@@ -214,11 +214,11 @@ def annotate_intervals(
         annotation_intervals = _prepare_annotation_intervals(
             annotations, fallback_name=name
         )
-        if method == "get":
+        if method == AnnotationAction.GET:
             annotated = _get_annotation(
                 prepared_query, annotation_intervals, name, fraction
             )
-        elif method == "count":
+        elif method == AnnotationAction.COUNT:
             annotated = _count_annotations(
                 prepared_query, annotation_intervals, name, fraction
             )

@@ -1,6 +1,16 @@
 import typer
 
 from capcruncher.cli.common import HELP_SETTINGS, NCoresOption
+from capcruncher.types import (
+    AnnotationAction,
+    Assay,
+    DuplicateAction,
+    InvalidBedAction,
+    ReadType,
+    VALID_ASSAYS,
+    VALID_READ_TYPES,
+    validate_choice,
+)
 
 
 alignments_app = typer.Typer(
@@ -18,7 +28,7 @@ def alignments():
 @alignments_app.command()
 def annotate(
     slices: str = typer.Argument(...),
-    actions: list[str] | None = typer.Option(
+    actions: list[AnnotationAction] | None = typer.Option(
         None,
         "-a",
         "--actions",
@@ -56,14 +66,14 @@ def annotate(
         "--output",
         help="Path for the annotated slices to be output.",
     ),
-    duplicates: str = typer.Option(
-        "remove",
+    duplicates: DuplicateAction = typer.Option(
+        DuplicateAction.REMOVE,
         "--duplicates",
         help="Method to use for reconciling duplicate slices.",
     ),
     n_cores: NCoresOption = 1,
-    invalid_bed_action: str = typer.Option(
-        "error",
+    invalid_bed_action: InvalidBedAction = typer.Option(
+        InvalidBedAction.ERROR,
         "--invalid-bed-action",
         "--invalid_bed_action",
         help="Method to deal with invalid bed files.",
@@ -107,7 +117,7 @@ def annotate(
 
 @alignments_app.command("filter")
 def filter_alignments(
-    method: str = typer.Argument(..., help="Filtering method: capture, tri, or tiled."),
+    method: Assay = typer.Argument(..., help="Filtering method: capture, tri, or tiled."),
     bam: str = typer.Option(
         ...,
         "-b",
@@ -142,8 +152,8 @@ def filter_alignments(
         "--sample-name",
         help="Name of sample e.g. DOX_treated_1.",
     ),
-    read_type: str = typer.Option(
-        "flashed",
+    read_type: ReadType = typer.Option(
+        ReadType.FLASHED,
         "--read-type",
         help="Type of read.",
     ),
@@ -155,11 +165,11 @@ def filter_alignments(
 ):
     """Remove unwanted aligned slices and identify reporters."""
 
-    if method not in {"capture", "tri", "tiled"}:
-        raise typer.BadParameter("method must be one of: capture, tri, tiled")
-
-    if read_type.lower() not in {"flashed", "pe"}:
-        raise typer.BadParameter("read-type must be one of: flashed, pe")
+    try:
+        method = validate_choice(method, VALID_ASSAYS, "method")
+        read_type = validate_choice(read_type, VALID_READ_TYPES, "read_type")
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
     from capcruncher.api.alignments_filter import filter as filter_slices
 

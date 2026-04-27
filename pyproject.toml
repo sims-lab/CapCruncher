@@ -57,6 +57,9 @@ capcruncher = "capcruncher.cli:cli"
 [project.urls]
 repo = "https://github.com/sims-lab/CapCruncher.git"
 
+[dependency-groups]
+dev = ["ty>=0.0.32"]
+
 
 [tool.ruff]
 line-length = 88
@@ -123,3 +126,48 @@ include = '\.smk$|^Snakefile|\.py$'
 # snakefmt passes these options on to black
 [tool.black]
 skip_string_normalization = true
+
+[tool.ty.environment]
+python-version = "3.12"
+root = ["."]
+
+[tool.ty.src]
+include = ["capcruncher", "tests"]
+
+[tool.ty.rules]
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-method-override = "ignore"
+invalid-parameter-default = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+not-subscriptable = "ignore"
+not-iterable = "ignore"
+call-non-callable = "ignore"
+unsupported-operator = "ignore"
+unresolved-attribute = "ignore"
+unresolved-reference = "ignore"
+
+[tool.ty.analysis]
+replace-imports-with-any = [
+    "Bio.**",
+    "cooler.**",
+    "h5py.**",
+    "joblib.**",
+    "loguru.**",
+    "numpy.**",
+    "pandas.**",
+    "polars.**",
+    "pyarrow.**",
+    "pyranges1.**",
+    "pysam.**",
+    "snakemake.**",
+]
+allowed-unresolved-imports = [
+    "capcruncher_tools.**",
+    "plotnado.**",
+    "pydeseq2.**",
+    "tracknado.**",
+    "xopen.**",
+    "xxhash.**",
+]

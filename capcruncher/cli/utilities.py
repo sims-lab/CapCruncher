@@ -1,12 +1,13 @@
 import os
 import subprocess
 from tempfile import NamedTemporaryFile
-from typing import Any, Iterable, Literal
+from typing import Any, Iterable
 
 from loguru import logger
 import typer
 
 from capcruncher.cli.common import HELP_SETTINGS
+from capcruncher.types import Assay
 
 
 utilities_app = typer.Typer(
@@ -89,8 +90,8 @@ def cis_and_trans_stats(
     sample_name: str = typer.Option(
         ..., "--sample-name", help="Name of sample e.g. DOX_treated_1."
     ),
-    assay: Literal["capture", "tri", "tiled"] = typer.Option(
-        "capture", "--assay", help="Assay used to generate slices."
+    assay: Assay = typer.Option(
+        Assay.CAPTURE, "--assay", help="Assay used to generate slices."
     ),
 ) -> None:
     import polars as pl
@@ -112,7 +113,7 @@ def cis_and_trans_stats(
         .select(["capture", "parent_id", "chrom", "viewpoint", "pe"])
     )
 
-    if assay in ["capture", "tri"]:
+    if assay in {Assay.CAPTURE, Assay.TRI}:
         tbl_reporter = tbl.filter(pl.col("capture") == "reporter").select(
             ["parent_id", "chrom"]
         )

@@ -4,10 +4,19 @@ import pickle
 import re
 from pathlib import Path
 from functools import wraps
-from typing import Callable, Iterable, Tuple, Union
+from typing import Callable, Iterable
 
 import pandas as pd
 import pyranges1 as pr
+from capcruncher.types import (
+    DictDType,
+    DictFormat,
+    VALID_DICT_DTYPES,
+    VALID_DICT_FORMATS,
+    validate_choice,
+)
+
+type BedInput = str | os.PathLike | pd.DataFrame | pr.PyRanges
 
 BED_COLUMN_NAMES = [
     "chrom",
@@ -146,9 +155,7 @@ def get_human_readable_number_of_bp(bp: int) -> str:
     return bp
 
 
-def _read_bed_dataframe(
-    bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges], nrows=None
-) -> pd.DataFrame:
+def _read_bed_dataframe(bed: BedInput, nrows=None) -> pd.DataFrame:
     if isinstance(bed, pr.PyRanges):
         return bed.copy()
 
@@ -184,7 +191,7 @@ def _standardize_bed_columns(
 
 
 def _prepare_intersection_frame(
-    df: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges], name_prefix: str
+    df: BedInput, name_prefix: str
 ) -> pd.DataFrame:
     frame = convert_bed_to_dataframe(df)
     if frame.empty:
@@ -208,9 +215,7 @@ def _prepare_intersection_frame(
     return frame
 
 
-def is_valid_bed(
-    bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges], verbose=True
-) -> bool:
+def is_valid_bed(bed: BedInput, verbose=True) -> bool:
     from loguru import logger
 
     """Return True when the first non-empty row has at least three BED columns."""
@@ -233,9 +238,7 @@ def is_valid_bed(
     return df.shape[1] >= 3
 
 
-def bed_has_name(
-    bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges]
-) -> bool:
+def bed_has_name(bed: BedInput) -> bool:
     """Return True when the first non-empty row has at least four BED columns."""
 
     try:
@@ -246,9 +249,7 @@ def bed_has_name(
     return df.shape[1] >= 4
 
 
-def bed_has_duplicate_names(
-    bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges]
-) -> bool:
+def bed_has_duplicate_names(bed: BedInput) -> bool:
     """Return True when a BED-like input has duplicate name values."""
 
     df = convert_bed_to_dataframe(bed)
@@ -277,9 +278,7 @@ def hash_column(col: Iterable, hash_type=64) -> list:
     return [hash_func(v) for v in col]
 
 
-def split_intervals_on_chrom(
-    intervals: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges]
-) -> dict:
+def split_intervals_on_chrom(intervals: BedInput) -> dict:
     """Creates dictionary from bed file with the chroms as keys"""
 
     intervals = convert_bed_to_dataframe(intervals)
@@ -354,48 +353,62 @@ def intersect_bins(
     )
 
 
-def load_dict(fn, format: str, dtype: str = "int") -> dict:
-    """Convinence function to load gziped json/pickle file using xopen."""
+def load_dict(
+    fn: os.PathLike, format: DictFormat = DictFormat.JSON, dtype: DictDType = DictDType.INT
+) -> dict | set:
+    """Load a gzipped JSON or pickle mapping with validated key/value dtype conversion."""
 
     import itertools
 
     import json
     from xopen import xopen
 
-    if format == "json":
+    format = validate_choice(format, VALID_DICT_FORMATS, "format")
+    dtype = validate_choice(dtype, VALID_DICT_DTYPES, "dtype")
+
+    if format == DictFormat.JSON:
         with xopen(fn) as r:
             d = json.load(r)
-    elif format == "pickle":
+    elif format == DictFormat.PICKLE:
         with xopen(fn, "rb") as r:
             d = pickle.load(r)
 
     key_sample = list(itertools.islice(d, 50))
-    required_dtype = eval(dtype)
+    dtype_converters = {
+        DictDType.INT: int,
+        DictDType.STR: str,
+    }
+    required_dtype = dtype_converters[dtype]
 
     if all(isinstance(k, required_dtype) for k in key_sample):
         return d
-    elif isinstance(d, set):
+    if isinstance(d, set):
         return {required_dtype(k) for k in d}
-    elif isinstance(d, dict):
+    if isinstance(d, dict):
         return {
             required_dtype(k): required_dtype(v) if v else None for k, v in d.items()
         }
+    raise TypeError(f"Unsupported serialized object type: {type(d)!r}")
 
 
-def save_dict(obj: Union[dict, set], fn: os.PathLike, format: str) -> dict:
-    """Convinence function to save [gziped] json/pickle file using xopen."""
+def save_dict(
+    obj: dict | set, fn: os.PathLike, format: DictFormat = DictFormat.JSON
+) -> os.PathLike:
+    """Save a dictionary or set as gzipped JSON or pickle."""
 
     from xopen import xopen
     import json
 
-    if format == "json":
+    format = validate_choice(format, VALID_DICT_FORMATS, "format")
+
+    if format == DictFormat.JSON:
         with xopen(fn, "w") as w:
             if isinstance(obj, set):
                 d = dict.fromkeys(obj)
             else:
                 d = obj
             json.dump(d, w)
-    elif format == "pickle":
+    elif format == DictFormat.PICKLE:
         with xopen(fn, "wb") as w:
             pickle.dump(obj, w)
 
@@ -452,19 +465,14 @@ def categorise_tracks(ser: pd.Series) -> list:
     return categories
 
 
-def convert_bed_to_pr(
-    bed: Union[
-        str,
-        os.PathLike,
-        pd.DataFrame,
-        pr.PyRanges,
-    ],
-) -> pr.PyRanges:
-    """Converts a bed file to a PyRanges object.
+def convert_bed_to_pr(bed: BedInput) -> pr.PyRanges:
+    """Convert a BED-like object to a PyRanges object.
+
     Args:
-        bed (Union[str, os.PathLike, pd.DataFrame, pr.PyRanges]): Bed file to convert.
+        bed: BED path, pandas DataFrame, or PyRanges object.
+
     Returns:
-        pr.PyRanges: PyRanges object.
+        PyRanges object.
     """
 
     df = convert_bed_to_dataframe(bed)
@@ -481,9 +489,7 @@ def convert_bed_to_pr(
     return pr.PyRanges(df)
 
 
-def convert_bed_to_dataframe(
-    bed: Union[str, os.PathLike, pd.DataFrame, pr.PyRanges],
-) -> pd.DataFrame:
+def convert_bed_to_dataframe(bed: BedInput) -> pd.DataFrame:
     """Converts a BED-like object to a DataFrame-style interval table.
 
     PyRanges1 frames are pandas DataFrame subclasses, so in-memory PyRanges
@@ -532,11 +538,11 @@ def is_tabix(file: str):
     return _is_tabix
 
 
-def format_coordinates(coordinates: Union[str, os.PathLike]) -> pr.PyRanges:
+def format_coordinates(coordinates: str | os.PathLike) -> pr.PyRanges:
     """Convert coordinates supplied in string format or a BED file to PyRanges.
 
     Args:
-        coordinates (Union[str, os.PathLike]): Coordinates in the form chr:start-end/path.
+        coordinates: Coordinates in the form chr:start-end or a BED path.
     Raises:
         ValueError: Inputs must be supplied in the correct format.
 
@@ -586,17 +592,17 @@ def format_coordinates(coordinates: Union[str, os.PathLike]) -> pr.PyRanges:
 
 
 def convert_interval_to_coords(
-    interval: Union[dict, pd.Series], named=False
-) -> Tuple[str, str]:
+    interval: dict | pd.Series, named: bool = False
+) -> tuple[str, str]:
     """Converts interval object to standard genomic coordinates.
 
     e.g. chr1:1000-2000
 
     Args:
-        interval (Union[dict, pd.Series]): Interval to convert.
+        interval: Interval to convert.
 
     Returns:
-        Tuple: Genomic coordinates in the format chr:start-end
+        Pair of name and genomic coordinates in the format chr:start-end.
     """
     chrom = interval.get("chrom", interval.get("Chromosome"))
     start = interval.get("start", interval.get("Start"))
@@ -674,7 +680,7 @@ def get_file_type(fn: os.PathLike) -> str:
         raise e
 
 
-def get_cooler_uri(store: os.PathLike, viewpoint: str, resolution: Union[str, int]):
+def get_cooler_uri(store: os.PathLike, viewpoint: str, resolution: str | int):
     cooler_fragment = r"(?P<store>.*?).hdf5::/(?!.*/resolutions/)(?P<viewpoint>.*?)$"
     cooler_binned = (
         r"(?P<store>.*?).hdf5::/(?P<viewpoint>.*?)/resolutions/(?P<binsize>\d+)$"

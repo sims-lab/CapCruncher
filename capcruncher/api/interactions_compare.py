@@ -4,15 +4,111 @@ import itertools
 import os
 import re
 from pathlib import Path
-from typing import Literal
 
 import cooler
 from loguru import logger
+from pydantic import BaseModel, Field, PositiveFloat, PositiveInt, field_validator, model_validator
 
 import pandas as pd
 import polars as pl
+from capcruncher.types import (
+    CompareFormat,
+    Normalisation,
+    OutputFormat,
+    SummaryMethod,
+    VALID_SUMMARY_METHODS,
+    existing_path,
+    validate_choices,
+)
 
 type SummaryFunction = Callable[[pd.Series], float]
+
+
+class CompareConcatOptions(BaseModel):
+    """Validated options for concatenating bedgraphs or cooler pileups."""
+
+    infiles: tuple[Path | str, ...]
+    viewpoint: str | None = None
+    resolution: int | None = None
+    format: CompareFormat = CompareFormat.AUTO
+    region: str | None = None
+    output: Path | str | None = None
+    normalisation: Normalisation = Normalisation.RAW
+    n_cores: PositiveInt = 1
+    scale_factor: PositiveFloat = 1e6
+    normalisation_regions: Path | str | None = None
+
+    @field_validator("infiles", mode="before")
+    @classmethod
+    def validate_infiles(cls, value: Sequence[Path | str]) -> tuple[Path | str, ...]:
+        values = tuple(value)
+        if not values:
+            raise ValueError("At least one input file is required.")
+        return values
+
+    @field_validator("normalisation_regions", mode="before")
+    @classmethod
+    def empty_region_to_none(cls, value: Path | str | None) -> Path | str | None:
+        return None if value == "" else value
+
+    @model_validator(mode="after")
+    def validate_normalisation_regions(self) -> "CompareConcatOptions":
+        if self.normalisation == Normalisation.REGION and self.normalisation_regions is None:
+            raise ValueError(
+                "normalisation_regions is required when normalisation is 'region'."
+            )
+        if self.normalisation != Normalisation.REGION and self.normalisation_regions is not None:
+            raise ValueError(
+                "normalisation_regions can only be used when normalisation is 'region'."
+            )
+        return self
+
+
+class CompareSummariseOptions(BaseModel):
+    """Validated options for summarising concatenated bedgraph tables."""
+
+    infile: Path
+    design_matrix: Path | None = None
+    output_prefix: Path | str | None = None
+    output_format: OutputFormat = OutputFormat.BEDGRAPH
+    summary_methods: tuple[SummaryMethod, ...] = (SummaryMethod.MEAN,)
+    group_names: tuple[str, ...] = ()
+    group_columns: tuple[str | int, ...] = ()
+    suffix: str = ""
+    perform_subtractions: bool = False
+
+    @field_validator("infile", mode="before")
+    @classmethod
+    def validate_infile(cls, value: Path | str) -> Path:
+        return existing_path(value, "infile")
+
+    @field_validator("design_matrix", mode="before")
+    @classmethod
+    def validate_design_matrix(cls, value: Path | str | None) -> Path | None:
+        if value in (None, ""):
+            return None
+        return existing_path(value, "design_matrix")
+
+    @field_validator("summary_methods", mode="before")
+    @classmethod
+    def validate_summary_methods(
+        cls, value: Sequence[str] | None
+    ) -> tuple[SummaryMethod, ...]:
+        return validate_choices(
+            tuple(value or (SummaryMethod.MEAN,)), VALID_SUMMARY_METHODS, "summary_methods"
+        )
+
+    @field_validator("group_names", mode="before")
+    @classmethod
+    def validate_group_names(cls, value: Sequence[str] | None) -> tuple[str, ...]:
+        return tuple(value or ())
+
+    @field_validator("group_columns", mode="before")
+    @classmethod
+    def validate_group_columns(
+        cls, value: Sequence[str | int] | None
+    ) -> tuple[str | int, ...]:
+        return tuple(value or ())
 
 
 def get_bedgraph_name_from_cooler(cooler_filename: str) -> str:
@@ -37,23 +133,39 @@ def concat(
     infiles: Sequence[Path | str],
     viewpoint: str | None = None,
     resolution: int | None = None,
-    format: Literal["auto", "cooler", "bedgraph"] = "auto",
+    format: CompareFormat = CompareFormat.AUTO,
     region: str | None = None,
     output: Path | str | None = None,
-    normalisation: Literal["raw", "n_cis", "region"] = "raw",
+    normalisation: Normalisation = Normalisation.RAW,
     n_cores: int = 1,
     scale_factor: int = int(1e6),
     normalisation_regions: Path | str | None = None,
 ) -> dict[str, pd.DataFrame]:
-    input_format = format
-    norm_kwargs = {"scale_factor": scale_factor, "region": normalisation_regions}
-    infiles = [os.fspath(infile) for infile in infiles]
+    """Concatenate bedgraphs or cooler-derived bedgraphs by viewpoint."""
+    options = CompareConcatOptions(
+        infiles=tuple(infiles),
+        viewpoint=viewpoint,
+        resolution=resolution,
+        format=format,
+        region=region,
+        output=output,
+        normalisation=normalisation,
+        n_cores=n_cores,
+        scale_factor=scale_factor,
+        normalisation_regions=normalisation_regions,
+    )
+    input_format = options.format
+    norm_kwargs = {
+        "scale_factor": options.scale_factor,
+        "region": options.normalisation_regions,
+    }
+    infiles = [os.fspath(infile) for infile in options.infiles]
 
-    if not viewpoint:
+    if not options.viewpoint:
         viewpoints = [vp.strip("/") for vp in cooler.fileops.list_coolers(infiles[0])]
     else:
         viewpoints = [
-            viewpoint,
+            options.viewpoint,
         ]
 
     union_by_viewpoint = dict()
@@ -65,21 +177,26 @@ def concat(
             df = remove_duplicate_entries(df)
             return df.rename(columns={"score": column_name})
 
-        if input_format == "cooler":
+        if input_format == CompareFormat.COOLER:
             from capcruncher.api.pileup import CoolerBedGraph
             from capcruncher.utils import get_cooler_uri
 
-            cooler_uris = [get_cooler_uri(fn, viewpoint, resolution) for fn in infiles]
+            cooler_uris = [
+                get_cooler_uri(fn, viewpoint, options.resolution) for fn in infiles
+            ]
             bedgraphs = {
                 get_bedgraph_name_from_cooler(uri): _prepare_bedgraph(
-                    CoolerBedGraph(uri, region_to_limit=region if region else None)
-                    .extract_bedgraph(normalisation=normalisation, **norm_kwargs),
+                    CoolerBedGraph(
+                        uri, region_to_limit=options.region if options.region else None
+                    ).extract_bedgraph(
+                        normalisation=options.normalisation, **norm_kwargs
+                    ),
                     get_bedgraph_name_from_cooler(uri),
                 )
                 for uri in cooler_uris
             }
 
-        elif input_format == "bedgraph":
+        elif input_format == CompareFormat.BEDGRAPH:
 
             bedgraphs = {
                 os.path.basename(fn): _prepare_bedgraph(
@@ -113,8 +230,8 @@ def concat(
             union[value_columns] = union[value_columns].fillna(0)
         union = union.sort_values(coordinate_columns).reset_index(drop=True)
 
-        if output:
-            union.to_csv(output, sep="\t", index=False)
+        if options.output:
+            union.to_csv(options.output, sep="\t", index=False)
 
         union_by_viewpoint[viewpoint] = union
 
@@ -168,27 +285,43 @@ def summarise(
     infile: Path | str,
     design_matrix: Path | str | None = None,
     output_prefix: Path | str | None = None,
-    output_format: Literal["bedgraph", "tsv"] = "bedgraph",
-    summary_methods: tuple[Literal["mean"], ...] = ("mean",),
+    output_format: OutputFormat = OutputFormat.BEDGRAPH,
+    summary_methods: tuple[SummaryMethod, ...] = (SummaryMethod.MEAN,),
     group_names: tuple[str, ...] | None = None,
     group_columns: tuple[str | int, ...] | None = None,
     suffix: str = "",
     perform_subtractions: bool = False,
 ) -> None:
-    logger.info(f"Reading {infile}")
-    df_union = pd.read_csv(infile, sep="\t")
+    """Summarise a concatenated bedgraph table by group.
+
+    Only ``mean`` summaries are currently supported. Unsupported methods raise
+    ``ValueError`` before data processing.
+    """
+    options = CompareSummariseOptions(
+        infile=infile,
+        design_matrix=design_matrix,
+        output_prefix=output_prefix,
+        output_format=output_format,
+        summary_methods=summary_methods,
+        group_names=group_names,
+        group_columns=group_columns,
+        suffix=suffix,
+        perform_subtractions=perform_subtractions,
+    )
+    logger.info(f"Reading {options.infile}")
+    df_union = pd.read_csv(options.infile, sep="\t")
     df_counts = df_union.iloc[:, 3:]
 
     logger.info("Identifying groups")
-    if group_columns and group_names:
+    if options.group_columns and options.group_names:
         groups = (
-            get_groups(df_counts.columns, group_names, group_columns)
-            if group_names
+            get_groups(df_counts.columns, options.group_names, options.group_columns)
+            if options.group_names
             else {col: "summary" for col in df_counts.columns}
         )  # Use all columns if no groups provided
     
-    elif design_matrix:
-        df_design = pd.read_csv(design_matrix, sep=r"\s+|,|\t", engine="python")
+    elif options.design_matrix:
+        df_design = pd.read_csv(options.design_matrix, sep=r"\s+|,|\t", engine="python")
         # This design file should look like: sample, condition
         groups = df_design.set_index("sample").to_dict()["condition"]
     else:
@@ -206,12 +339,9 @@ def summarise(
     # Convert to polars
     counts = pl.DataFrame(df_counts)
     coordinates = pl.DataFrame(df_union.iloc[:, :3])
-    summary_methods = ("mean",) if not summary_methods else summary_methods
+    summary_methods = options.summary_methods
 
     for aggregation_method in summary_methods:
-        assert aggregation_method in [
-            "mean"
-        ], f"Invalid aggregation method {aggregation_method}"
         logger.info(f"Performing aggregation: {aggregation_method}")
 
         # Apply aggregation method to each group
@@ -239,7 +369,7 @@ def summarise(
                 subtraction.append(f"{group_a}-{group_b}")
 
         # Export aggregations
-        if output_format == "bedgraph":
+        if options.output_format == OutputFormat.BEDGRAPH:
             # Check that there are no duplicate chrom, start, end coordinates
             coordinates = coordinates.unique(subset=["chrom", "start", "end"])
 
@@ -253,7 +383,7 @@ def summarise(
                     group_name_cleaned = re.sub(
                         "|".join([*summary_methods, "_"]), "", group_name
                     )
-                    outfile = f"{output_prefix}{group_name_cleaned}.{aggregation_method}-summary{suffix}.bedgraph"
+                    outfile = f"{options.output_prefix}{group_name_cleaned}.{aggregation_method}-summary{options.suffix}.bedgraph"
 
                     logger.info(
                         f"Writing {group_name} {aggregation_method} to {outfile}"
@@ -262,11 +392,13 @@ def summarise(
 
             for sub in subtraction:
                 df_output = coordinates.select(["chrom", "start", "end", sub])
-                outfile = f"{output_prefix}{sub}.{aggregation_method}-subtraction{suffix}.bedgraph"
+                outfile = f"{options.output_prefix}{sub}.{aggregation_method}-subtraction{options.suffix}.bedgraph"
                 logger.info(f"Writing {sub} {aggregation_method} to {outfile}")
                 df_output.write_csv(outfile, separator="\t", include_header=False)
-        elif output_format == "tsv":
+        elif options.output_format == OutputFormat.TSV:
             df_output = coordinates
             df_output.write_csv(
-                f"{output_prefix}{suffix}.tsv", separator="\t", include_header=True
+                f"{options.output_prefix}{options.suffix}.tsv",
+                separator="\t",
+                include_header=True,
             )

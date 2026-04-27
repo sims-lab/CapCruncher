@@ -1,8 +1,9 @@
 import tempfile
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
+from capcruncher.types import Assay, Executor
 
 
 class InteractionCountOptions(BaseModel):
@@ -18,8 +19,8 @@ class InteractionCountOptions(BaseModel):
     fragment_map: Path | None = None
     viewpoint_path: Path
     n_cores: PositiveInt = 1
-    assay: Literal["capture", "tri", "tiled"] = "capture"
-    executor: Literal["local", "process", "ray"] = "local"
+    assay: Assay = Assay.CAPTURE
+    executor: Executor = Executor.LOCAL
 
     @field_validator("reporters", "fragment_map", "viewpoint_path")
     @classmethod
@@ -122,8 +123,8 @@ def count_interactions(
     fragment_map: Path | str | None = None,
     viewpoint_path: Path | str | None = None,
     n_cores: int = 1,
-    assay: Literal["capture", "tri", "tiled"] = "capture",
-    executor: Literal["local", "process", "ray"] = "local",
+    assay: Assay = Assay.CAPTURE,
+    executor: Executor = Executor.LOCAL,
     **kwargs: Any,
 ) -> Path | str:
     """Count reporter interactions using the external ``capcruncher-tools`` API."""
@@ -158,8 +159,8 @@ def count_interactions(
             fragment_map=str(options.fragment_map) if options.fragment_map else None,
             viewpoint_path=str(options.viewpoint_path),
             n_cores=options.n_cores,
-            assay=options.assay,
-            executor=options.executor,
+            assay=options.assay.value,
+            executor=options.executor.value,
             **kwargs,
         )
 

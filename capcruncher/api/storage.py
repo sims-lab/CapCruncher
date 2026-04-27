@@ -9,21 +9,22 @@ import h5py
 import functools
 from loguru import logger
 import json
-from typing import Literal, Self
+from typing import Self
 import pyranges1 as pr
 import re
+from capcruncher.types import Assay, BinningMethod
 
 
 class Viewpoint:
     def __init__(
-        self, coordinates: pr.PyRanges, assay: Literal["capture", "tri", "tiled"]
+        self, coordinates: pr.PyRanges, assay: Assay
     ) -> None:
         self.coordinates = coordinates
         self.assay = assay
 
     @classmethod
     def from_bed(
-        cls, bed: Path | str, viewpoint: str, assay: Literal["capture", "tri", "tiled"]
+        cls, bed: Path | str, viewpoint: str, assay: Assay
     ) -> Self:
         """
         Creates a viewpoint object from a bed file.
@@ -87,7 +88,7 @@ class Viewpoint:
         ]
 
         # If capture or tri, remove viewpoint bins from cis bins
-        if self.assay == "capture" or self.assay == "tri":
+        if self.assay in {Assay.CAPTURE, Assay.TRI}:
             df_cis_bins = df_cis_bins.loc[
                 lambda df: ~df["Name"].isin(self.bin_names(bins))
             ]
@@ -119,7 +120,7 @@ def create_cooler_cc(
     pixels: pd.DataFrame,
     viewpoint_name: str,
     viewpoint_path: Path | str,
-    assay: Literal["capture", "tri", "tiled"] = "capture",
+    assay: Assay = Assay.CAPTURE,
     suffix: str | None = None,
     **cooler_kwargs,
 ) -> str:
@@ -203,12 +204,12 @@ class CoolerBinner:
         self,
         cooler_group: Path | str | cooler.Cooler,
         binsize: int = None,
-        method: Literal["overlap", "midpoint"] = "midpoint",
+        method: BinningMethod = BinningMethod.MIDPOINT,
         minimum_overlap: float = 0.51,
         n_cis_interaction_correction: bool = True,
         n_rf_per_bin_correction: bool = True,
         scale_factor: int = 1_000_000,
-        assay: Literal["capture", "tri", "tiled"] = "capture",
+        assay: Assay = Assay.CAPTURE,
     ) -> None:
         self.cooler_group = cooler_group
         self.binsize = binsize
@@ -267,7 +268,7 @@ class CoolerBinner:
 
         fragment_bins = self.fragment_bins
 
-        if self.method == "midpoint":
+        if self.method == BinningMethod.MIDPOINT:
             df_fragment_bins = fragment_bins.copy()
             midpoint = (
                 df_fragment_bins["Start"].astype(int)
@@ -290,7 +291,7 @@ class CoolerBinner:
             report_overlap_column="Overlap",
         )
 
-        if self.method == "overlap":
+        if self.method == BinningMethod.OVERLAP:
             df_fragment_to_bins = df_fragment_to_bins[
                 df_fragment_to_bins["Overlap"] >= self.minimum_overlap
             ]
@@ -530,7 +531,7 @@ def bins(
     overlap_fraction: float = 1e-9,
     conversion_tables: Path | str | None = None,
     n_cores: int = 1,
-    assay: Literal["capture", "tri", "tiled"] = "capture",
+    assay: Assay = Assay.CAPTURE,
     **kwargs,
 ) -> None:
     """

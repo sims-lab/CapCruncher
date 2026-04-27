@@ -2,13 +2,14 @@ import os
 import pathlib
 import re
 from collections.abc import Sequence
-from typing import Literal, Self
+from typing import Self
 import json
 import itertools
 import pandas as pd
 import pyranges1 as pr
 
 from capcruncher import utils
+from capcruncher.types import Assay
 
 from loguru import logger
 import snakemake
@@ -382,7 +383,7 @@ def get_fastq_basename(wildcards, fastq_samples: FastqSamples, **kwargs):
 def get_files_to_plot(
     wc,
     design: pd.DataFrame,
-    assay: Literal["capture", "tri", "tiled"],
+    assay: Assay,
     sample_names: list[str],
     summary_methods: list[str],
     compare_samples: bool = False,
@@ -394,7 +395,7 @@ def get_files_to_plot(
         "heatmaps": [],
     }
 
-    if assay == "tiled":
+    if assay == Assay.TILED:
         files["heatmaps"].extend(
             expand(
                 "capcruncher_output/results/{sample}/{sample}.hdf5",
@@ -447,7 +448,7 @@ def get_plotting_coordinates(wc, config: dict):
 
 
 def get_pileups(
-    assay: Literal["capture", "tri", "tiled"],
+    assay: Assay,
     design: pd.DataFrame,
     samples_aggregate: bool,
     samples_compare: bool,
@@ -456,7 +457,7 @@ def get_pileups(
     viewpoints: list[str],
 ) -> list[str]:
     bigwigs = []
-    if assay in ["capture", "tri"]:
+    if assay in {Assay.CAPTURE, Assay.TRI}:
         bigwigs.extend(
             expand(
                 "capcruncher_output/results/{sample}/bigwigs/{norm}/{sample}_{viewpoint}.bigWig",
@@ -491,7 +492,7 @@ def get_pileups(
                 ),
             )
 
-    elif assay == "tiled":
+    elif assay == Assay.TILED:
         pass
 
     return bigwigs

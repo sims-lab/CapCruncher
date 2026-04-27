@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Literal
 
 import typer
 
@@ -10,6 +9,7 @@ from capcruncher.cli.common import (
     NCoresOption,
     NReadsOption,
 )
+from capcruncher.types import FastqSplitMethod, ReadType
 
 
 fastq_app = typer.Typer(
@@ -27,8 +27,8 @@ def fastq() -> None:
 @fastq_app.command()
 def split(
     input_files: list[str] = typer.Argument(...),
-    method: Literal["python", "unix"] = typer.Option(
-        "unix",
+    method: FastqSplitMethod = typer.Option(
+        FastqSplitMethod.UNIX,
         "-m",
         "--method",
         help="Method to use for splitting.",
@@ -82,7 +82,7 @@ def digest(
         "--restriction_enzyme",
         help="Restriction enzyme name or sequence to use for in silico digestion.",
     ),
-    mode: Literal["flashed", "pe"] = typer.Option(
+    mode: ReadType = typer.Option(
         ...,
         "-m",
         "--mode",

@@ -6,51 +6,99 @@ import subprocess
 import tempfile
 from pathlib import Path
 from types import NotImplementedType
-from typing import Literal, Self
+from typing import Self
+from pydantic import BaseModel, Field, PositiveFloat, field_validator, model_validator
+
 from capcruncher.api.storage import CoolerBinner
+from capcruncher.types import BedgraphFormat, Normalisation
 from capcruncher.utils import is_valid_bed
 from loguru import logger
 import re
 import pyranges1 as pr
 
 
+class PileupOptions(BaseModel):
+    """Validated options for extracting bedgraph or bigWig pileups."""
+
+    uri: Path | str
+    viewpoint_names: list[str] | None = None
+    output_prefix: Path | str = ""
+    format: BedgraphFormat = BedgraphFormat.BEDGRAPH
+    normalisation: Normalisation = Normalisation.RAW
+    normalisation_regions: Path | str | None = None
+    binsize: int = Field(default=0, ge=0)
+    gzip: bool = True
+    scale_factor: PositiveFloat = 1e6
+    sparse: bool = True
+
+    @field_validator("normalisation_regions", mode="before")
+    @classmethod
+    def empty_region_to_none(cls, value: Path | str | None) -> Path | str | None:
+        return None if value == "" else value
+
+    @model_validator(mode="after")
+    def validate_normalisation_regions(self) -> "PileupOptions":
+        if self.normalisation == Normalisation.REGION and self.normalisation_regions is None:
+            raise ValueError(
+                "normalisation_regions is required when normalisation is 'region'."
+            )
+        if self.normalisation != Normalisation.REGION and self.normalisation_regions is not None:
+            raise ValueError(
+                "normalisation_regions can only be used when normalisation is 'region'."
+            )
+        return self
+
+
 def pileup(
     uri: Path | str,
     viewpoint_names: list[str] | None = None,
     output_prefix: Path | str = "",
-    format: Literal["bedgraph", "bigwig"] = "bedgraph",
-    normalisation: Literal["raw", "n_cis", "region"] = "raw",
+    format: BedgraphFormat = BedgraphFormat.BEDGRAPH,
+    normalisation: Normalisation = Normalisation.RAW,
     normalisation_regions: Path | str | None = None,
     binsize: int = 0,
     gzip: bool = True,
     scale_factor: float = 1e6,
     sparse: bool = True,
 ) -> None:
-    """
-    Extract reporters from a capture experiment and generate bedgraph or bigWig files.
+    """Extract reporters from a capture experiment as bedgraph or bigWig files.
 
     Identifies reporters for one viewpoint, if supplied, or all capture probes present
     in a CapCruncher HDF5 file.
     """
-
-    uri = os.fspath(uri)
-    output_prefix = os.fspath(output_prefix)
-    normalisation_regions = (
-        os.fspath(normalisation_regions) if normalisation_regions is not None else None
+    options = PileupOptions(
+        uri=uri,
+        viewpoint_names=viewpoint_names,
+        output_prefix=output_prefix,
+        format=format,
+        normalisation=normalisation,
+        normalisation_regions=normalisation_regions,
+        binsize=binsize,
+        gzip=gzip,
+        scale_factor=scale_factor,
+        sparse=sparse,
     )
-    viewpoint_names = viewpoint_names or [
+
+    uri = os.fspath(options.uri)
+    output_prefix = os.fspath(options.output_prefix)
+    normalisation_regions = (
+        os.fspath(options.normalisation_regions)
+        if options.normalisation_regions is not None
+        else None
+    )
+    viewpoint_names = options.viewpoint_names or [
         v.strip("/") for v in cooler.fileops.list_coolers(uri) if "resolutions" not in v
     ]
 
     logger.info(f"Performing pileup for {viewpoint_names}")
 
-    bin_bedgraph = binsize > 0
+    bin_bedgraph = options.binsize > 0
 
     for viewpoint_name in viewpoint_names:
         cooler_group = f"{uri}::{viewpoint_name}"
 
         if bin_bedgraph:
-            cooler_group = f"{cooler_group}/resolutions/{binsize}"
+            cooler_group = f"{cooler_group}/resolutions/{options.binsize}"
 
         try:
             cooler.fileops.is_cooler(cooler_group)
@@ -59,21 +107,21 @@ def pileup(
             raise RuntimeError(f"Cannot find {viewpoint_name} in cooler file") from exc
 
         bedgraph = CoolerBedGraph(uri=cooler_group, sparse=sparse).extract_bedgraph(
-            normalisation=normalisation,
+            normalisation=options.normalisation,
             region=normalisation_regions,
-            scale_factor=scale_factor,
+            scale_factor=options.scale_factor,
         )
 
         logger.info(f"Generated bedgraph for {viewpoint_name}")
 
-        if format == "bedgraph":
+        if options.format == BedgraphFormat.BEDGRAPH:
             bedgraph.to_csv(
-                f'{output_prefix}_{viewpoint_name}.bedgraph{".gz" if gzip else ""}',
+                f'{output_prefix}_{viewpoint_name}.bedgraph{".gz" if options.gzip else ""}',
                 sep="\t",
                 header=False,
                 index=False,
             )
-        elif format == "bigwig":
+        elif options.format == BedgraphFormat.BIGWIG:
             clr = cooler.Cooler(cooler_group)
 
             with tempfile.NamedTemporaryFile() as chromsizes_tmp:
@@ -234,7 +282,7 @@ class CoolerBedGraph:
         )
 
     def extract_bedgraph(
-        self, normalisation: Literal["raw", "n_cis", "region"] = "raw", **norm_kwargs
+        self, normalisation: Normalisation = Normalisation.RAW, **norm_kwargs
     ) -> pd.DataFrame:
         logger.info("Generating bedgraph")
         df_bdg = (
@@ -251,7 +299,7 @@ class CoolerBedGraph:
         if self.multiple_viewpoint_bins:
             df_bdg = _cluster_multi_viewpoint_bins_bedgraph(df_bdg)
 
-        if not normalisation == "raw":
+        if normalisation != Normalisation.RAW:
             logger.info("Normalising bedgraph")
             self._normalise_bedgraph(df_bdg, method=normalisation, **norm_kwargs)
 
@@ -275,7 +323,7 @@ class CoolerBedGraph:
         self,
         bedgraph: pd.DataFrame,
         scale_factor: float = 1e6,
-        method: Literal["raw", "n_cis", "region"] = "n_cis",
+        method: Normalisation = Normalisation.N_CIS,
         region: Path | str | None = None,
     ) -> None:
         """Normalises the bedgraph (in place).
@@ -289,11 +337,11 @@ class CoolerBedGraph:
          pd.DataFrame: Normalised bedgraph formatted DataFrame
         """
 
-        if method == "raw":
+        if method == Normalisation.RAW:
             pass
-        elif method == "n_cis":
+        elif method == Normalisation.N_CIS:
             self._normalise_by_n_cis(bedgraph, scale_factor)
-        elif method == "region":
+        elif method == Normalisation.REGION:
             self._normalise_by_regions(bedgraph, scale_factor, region)
 
     def _normalise_by_n_cis(
@@ -330,7 +378,7 @@ class CoolerBedGraph:
         bedgraph["count"] = (bedgraph["count"] / total_counts_in_region) * scale_factor
 
     def to_pyranges(
-        self, normalisation: Literal["raw", "n_cis", "region"] = "raw", **norm_kwargs
+        self, normalisation: Normalisation = Normalisation.RAW, **norm_kwargs
     ) -> pr.PyRanges:
         return pr.PyRanges(
             self.extract_bedgraph(

@@ -1,5 +1,3 @@
-from typing import Literal
-
 import typer
 
 from capcruncher.cli.common import (
@@ -7,6 +5,16 @@ from capcruncher.cli.common import (
     NCoresOption,
     SubsampleOption,
     run_imported,
+)
+from capcruncher.types import (
+    Assay,
+    BedgraphFormat,
+    CompareFormat,
+    Executor,
+    Normalisation,
+    OutputFormat,
+    ReadType,
+    SummaryMethod,
 )
 
 
@@ -46,8 +54,8 @@ def deduplicate(
         "--sample-name",
         help="Name of sample e.g. DOX_treated_1.",
     ),
-    read_type: Literal["flashed", "pe"] = typer.Option(
-        "flashed",
+    read_type: ReadType = typer.Option(
+        ReadType.FLASHED,
         "--read-type",
         help="Type of read.",
     ),
@@ -82,8 +90,8 @@ def pileup(
         "--output_prefix",
         help="Output prefix for bedgraphs.",
     ),
-    normalisation: Literal["raw", "n_cis", "region"] = typer.Option(
-        "raw",
+    normalisation: Normalisation = typer.Option(
+        Normalisation.RAW,
         "--normalisation",
         help="Method to use interaction normalisation.",
     ),
@@ -112,8 +120,8 @@ def pileup(
         "--sparse/--dense",
         help="Produce bedgraph containing just positive bins (sparse) or all bins (dense).",
     ),
-    format: Literal["bedgraph", "bigwig"] = typer.Option(
-        "bedgraph",
+    format: BedgraphFormat = typer.Option(
+        BedgraphFormat.BEDGRAPH,
         "-f",
         "--format",
         help="Output file format.",
@@ -172,12 +180,12 @@ def count(
         help="Path to viewpoints file.",
     ),
     n_cores: NCoresOption = 1,
-    assay: Literal["capture", "tri", "tiled"] = typer.Option(
-        "capture",
+    assay: Assay = typer.Option(
+        Assay.CAPTURE,
         "--assay",
     ),
-    executor: Literal["local", "process", "ray"] = typer.Option(
-        "local",
+    executor: Executor = typer.Option(
+        Executor.LOCAL,
         "--executor",
         help="Runtime used for per-viewpoint counting.",
     ),
@@ -291,8 +299,8 @@ def store_bins(
         "--output",
         help="Name of output file. (Cooler formatted hdf5 file).",
     ),
-    assay: Literal["capture", "tri", "tiled"] = typer.Option(
-        "capture",
+    assay: Assay = typer.Option(
+        Assay.CAPTURE,
         "--assay",
     ),
 ) -> None:
@@ -341,8 +349,8 @@ def compare() -> None:
 @compare_app.command(name="concat")
 def bedgraphs_concat(
     infiles: list[str] = typer.Argument(...),
-    format: Literal["auto", "bedgraph", "cooler"] = typer.Option(
-        "cooler",
+    format: CompareFormat = typer.Option(
+        CompareFormat.COOLER,
         "-f",
         "--format",
         help="Input file format.",
@@ -370,8 +378,8 @@ def bedgraphs_concat(
         "--region",
         help="Limit to specific coordinates in the format chrom:start-end.",
     ),
-    normalisation: Literal["raw", "n_cis", "region"] = typer.Option(
-        "raw",
+    normalisation: Normalisation = typer.Option(
+        Normalisation.RAW,
         "--normalisation",
         help="Method to use interaction normalisation.",
     ),
@@ -418,13 +426,13 @@ def bedgraphs_summarise(
         "--output-prefix",
         help="Output file prefix.",
     ),
-    output_format: Literal["bedgraph", "tsv"] = typer.Option(
-        "bedgraph",
+    output_format: OutputFormat = typer.Option(
+        OutputFormat.BEDGRAPH,
         "-f",
         "--output-format",
         help="Output file format.",
     ),
-    summary_methods: list[str] | None = typer.Option(
+    summary_methods: list[SummaryMethod] | None = typer.Option(
         None,
         "-m",
         "--summary-methods",

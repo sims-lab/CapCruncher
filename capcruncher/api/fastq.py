@@ -7,11 +7,12 @@ import sys
 from collections.abc import Sequence
 from multiprocessing import SimpleQueue
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from joblib import Parallel, delayed
 from loguru import logger
 from pydantic import BaseModel, Field, PositiveInt, field_validator, model_validator
+from capcruncher.types import FastqSplitMethod, FastqSplitType, ReadType
 
 PLATFORM = sys.platform
 
@@ -29,8 +30,8 @@ class FastqSplitOptions(BaseModel):
     """Validated options for FASTQ splitting."""
 
     input_files: tuple[Path, ...]
-    method: Literal["python", "unix", "seqkit"] = "unix"
-    split_type: Literal["n-reads", "n-parts"] = "n-reads"
+    method: FastqSplitMethod = FastqSplitMethod.UNIX
+    split_type: FastqSplitType = FastqSplitType.N_READS
     output_prefix: Path = Path("split")
     compression_level: int = Field(default=5, ge=0, le=9)
     n_reads: PositiveInt = 1_000_000
@@ -59,7 +60,7 @@ class FastqDigestOptions(BaseModel):
 
     fastqs: tuple[Path, ...]
     restriction_site: str = Field(min_length=1)
-    mode: Literal["flashed", "pe"] = "pe"
+    mode: ReadType = ReadType.PE
     output_file: Path = Path("out.fastq.gz")
     minimum_slice_length: PositiveInt = 18
     statistics: Path = Path("digest.json")
@@ -72,9 +73,9 @@ class FastqDigestOptions(BaseModel):
 
     @model_validator(mode="after")
     def validate_mode_file_count(self) -> "FastqDigestOptions":
-        if self.mode == "flashed" and len(self.fastqs) != 1:
+        if self.mode == ReadType.FLASHED and len(self.fastqs) != 1:
             raise ValueError("Flashed mode requires exactly one FASTQ file.")
-        if self.mode == "pe" and len(self.fastqs) != 2:
+        if self.mode == ReadType.PE and len(self.fastqs) != 2:
             raise ValueError("PE mode requires exactly two FASTQ files.")
         return self
 
@@ -153,8 +154,8 @@ def run_unix_split(
 
 def split_fastq(
     input_files: Sequence[Path | str],
-    method: Literal["python", "unix", "seqkit"] = "unix",
-    split_type: Literal["n-reads", "n-parts"] = "n-reads",
+    method: FastqSplitMethod = FastqSplitMethod.UNIX,
+    split_type: FastqSplitType = FastqSplitType.N_READS,
     output_prefix: Path | str = Path("split"),
     compression_level: int = 5,
     n_reads: int = 1000000,
@@ -193,7 +194,7 @@ def split_fastq(
     n_cores = options.n_cores
     suffix = options.suffix
 
-    if split_type == "n-reads" and method == "python":
+    if split_type == FastqSplitType.N_READS and method == FastqSplitMethod.PYTHON:
         readq = SimpleQueue()
         writeq = SimpleQueue()
 
@@ -222,7 +223,7 @@ def split_fastq(
             proc.join()
             proc.terminate()
 
-    elif split_type == "n-reads" and method == "unix":
+    elif split_type == FastqSplitType.N_READS and method == FastqSplitMethod.UNIX:
         tasks = []
         n_cores_per_task = (n_cores // 2) if (n_cores // 2) > 1 else 1
 
@@ -259,7 +260,7 @@ def split_fastq(
 def digest_fastq(
     fastqs: Sequence[Path | str],
     restriction_site: str,
-    mode: str = "pe",
+    mode: ReadType = ReadType.PE,
     output_file: Path | str = Path("out.fastq.gz"),
     minimum_slice_length: int = 18,
     statistics: Path | str = Path("digest.json"),
@@ -288,7 +289,7 @@ def digest_fastq(
         fastqs=tuple(str(fastq) for fastq in options.fastqs),
         restriction_site=get_restriction_site(options.restriction_site),
         output=str(options.output_file),
-        read_type=options.mode.title(),
+        read_type=options.mode.value.title(),
         sample_name=options.sample_name,
         minimum_slice_length=options.minimum_slice_length,
     )

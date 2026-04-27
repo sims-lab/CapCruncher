@@ -1,7 +1,6 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Literal
 
 import polars as pl
 import pyarrow as pa
@@ -10,6 +9,7 @@ import pyarrow.dataset as ds
 from loguru import logger
 
 from capcruncher.api.statistics import AlignmentDeduplicationStats
+from capcruncher.types import ReadType
 
 
 def read_parquet(path: Path | str) -> pl.LazyFrame:
@@ -31,7 +31,7 @@ def remove_unused_dictionary_values(table: pa.Table) -> pa.Table:
 def deduplicate(
     slices: Path | str,
     output: Path | str,
-    read_type: Literal["flashed", "pe"] = "flashed",
+    read_type: ReadType = ReadType.FLASHED,
     sample_name: str = "sampleX",
     statistics: Path | str = "deduplication_stats.json",
 ) -> None:
@@ -49,7 +49,7 @@ def deduplicate(
         .item()
     )
 
-    if read_type == "pe":
+    if read_type == ReadType.PE:
         logger.info("Read type is PE")
         logger.info("Identifying unique fragment IDs")
         query = (
@@ -65,7 +65,7 @@ def deduplicate(
             .agg(pl.col("parent_id").first().alias("pid"))
             .select(pl.col("pid").unique())
         )
-    elif read_type == "flashed":
+    elif read_type == ReadType.FLASHED:
         logger.info("Read type is Flashed")
         logger.info("Identifying unique fragment IDs")
 
