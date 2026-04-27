@@ -1,7 +1,8 @@
 import os
 import pathlib
 import re
-from typing import Dict, List, Union, Literal
+from collections.abc import Sequence
+from typing import Literal, Self
 import json
 import itertools
 import pandas as pd
@@ -32,7 +33,7 @@ def is_on(param: str) -> bool:
         return False
 
 
-def is_off(param: str):
+def is_off(param: str) -> bool:
     """Returns True if parameter in "off" values"""
     values = ["", "None", "none", "F", "f", "no"]
     if str(param).lower() in values:
@@ -60,7 +61,7 @@ def convert_empty_yaml_entry_to_string(param: str) -> str:
         return param
 
 
-def format_config_dict(config: Dict) -> Dict:
+def format_config_dict(config: dict) -> dict:
     """
     Formats the config dictionary to ensure that all entries are strings.
 
@@ -83,7 +84,7 @@ def format_config_dict(config: Dict) -> Dict:
     return config
 
 
-def get_design_matrix(fastqs: List[Union[str, pathlib.Path]]):
+def get_design_matrix(fastqs: Sequence[str | pathlib.Path]) -> pd.DataFrame:
     df = pd.DataFrame(fastqs, columns=["fn"])
     df["filename"] = df["fn"].apply(str).str.split(".fastq").str[0]
     df["sample"] = df["filename"].str.extract(r".*/(.*?)_R?[12].fastq.*")
@@ -128,7 +129,7 @@ def get_blacklist(config):
         return blacklist
 
 
-def has_high_viewpoint_number(viewpoints: str, config: Dict):
+def has_high_viewpoint_number(viewpoints: str, config: dict) -> bool | None:
     n_viewpoints = pr.read_bed(viewpoints).shape[0]
     if n_viewpoints > 500:
         if not config["analysis_optional"].get("force_bigwig_generation", False):
@@ -164,7 +165,7 @@ def can_perform_binning(config):
         return perform_binning
 
 
-def group_files_by_regex(files: List, regex: str):
+def group_files_by_regex(files: Sequence, regex: str) -> pd.Series:
     df = pd.DataFrame(files, columns=["fn"])
     extracted_substrings = df["fn"].astype(str).str.extract(regex)
     df = df.join(extracted_substrings)
@@ -187,7 +188,7 @@ class FastqSamples:
         )
 
     @classmethod
-    def from_files(cls, files: List[Union[pathlib.Path, str]]) -> "FastqSamples":
+    def from_files(cls, files: Sequence[pathlib.Path | str]) -> Self:
         if not len(files) > 0:
             logger.error("No fastq files found.")
             raise ValueError("No fastq files found.")
@@ -258,7 +259,7 @@ def validate_blacklist(blacklist):
     return blacklist_ok
 
 
-def configure_annotation_parameters(workflow: snakemake.Workflow, config: Dict) -> Dict:
+def configure_annotation_parameters(workflow: snakemake.Workflow, config: dict) -> dict:
     """Load defaults from annotation_defaults.json and overwrite with the current files"""
 
     path = pathlib.Path(__file__).absolute()
@@ -306,7 +307,7 @@ def format_annotation_parameters(*args, **kwargs):
     return " ".join(annotation_args)
 
 
-def format_priority_chromosome_list(config: Dict):
+def format_priority_chromosome_list(config: dict):
     """Format priority chromosome list for use in the shell script."""
 
     priority_chroms = config["analysis_optional"].get("priority_chromosomes", "")
@@ -337,7 +338,7 @@ def identify_columns_based_on_condition(design: pd.DataFrame):
     return condition_args_str
 
 
-def validate_custom_filtering(config: Dict):
+def validate_custom_filtering(config: dict):
     custom_filter_stages = config["analysis"].get("custom_filtering", "")
     if not custom_filter_stages:
         cf = ""
@@ -363,7 +364,7 @@ def get_count_files(wc, perform_binning: bool = False):
     return counts
 
 
-def get_normalisation_from_config(wc, config: Dict):
+def get_normalisation_from_config(wc, config: dict):
     regions = config["normalisation"]["regions"]
 
     if regions is not None or isinstance(regions, str):
@@ -382,8 +383,8 @@ def get_files_to_plot(
     wc,
     design: pd.DataFrame,
     assay: Literal["capture", "tri", "tiled"],
-    sample_names: List[str],
-    summary_methods: List[str],
+    sample_names: list[str],
+    summary_methods: list[str],
     compare_samples: bool = False,
 ):
     files = {
@@ -424,7 +425,7 @@ def get_files_to_plot(
     return files
 
 
-def get_plotting_coordinates(wc, config: Dict):
+def get_plotting_coordinates(wc, config: dict):
     plot_coords = config["plot"].get("coordinates", None)
 
     if plot_coords and pathlib.Path(plot_coords).exists():
@@ -450,9 +451,9 @@ def get_pileups(
     design: pd.DataFrame,
     samples_aggregate: bool,
     samples_compare: bool,
-    sample_names: List[str],
-    summary_methods: List[str],
-    viewpoints: List[str],
+    sample_names: list[str],
+    summary_methods: list[str],
+    viewpoints: list[str],
 ) -> list[str]:
     bigwigs = []
     if assay in ["capture", "tri"]:
