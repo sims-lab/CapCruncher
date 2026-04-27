@@ -1,9 +1,15 @@
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Literal
 
 import typer
 
-from capcruncher.cli.common import HELP_SETTINGS
+from capcruncher.cli.common import (
+    CompressionLevelOption,
+    HELP_SETTINGS,
+    MinimumSliceLengthOption,
+    NCoresOption,
+    NReadsOption,
+)
 
 
 fastq_app = typer.Typer(
@@ -34,40 +40,14 @@ def split(
         "--output_prefix",
         help="Output prefix for deduplicated fastq file(s).",
     ),
-    compression_level: Annotated[
-        int,
-        typer.Option(
-            "--compression-level",
-            "--compression_level",
-            min=0,
-            max=9,
-            help="Level of compression for output files.",
-        ),
-    ] = 5,
-    n_reads: Annotated[
-        int,
-        typer.Option(
-            "-n",
-            "--n-reads",
-            "--n_reads",
-            min=1,
-            help="Number of reads per fastq file.",
-        ),
-    ] = 1_000_000,
+    compression_level: CompressionLevelOption = 5,
+    n_reads: NReadsOption = 1_000_000,
     gzip: bool = typer.Option(
         False,
         "--gzip/--no-gzip",
         help="Determines if files are gziped or not.",
     ),
-    n_cores: Annotated[
-        int,
-        typer.Option(
-            "-p",
-            "--n-cores",
-            "--n_cores",
-            min=1,
-        ),
-    ] = 1,
+    n_cores: NCoresOption = 1,
     suffix: str = typer.Option(
         "",
         "-s",
@@ -114,14 +94,7 @@ def digest(
         "--output-file",
         "--output_file",
     ),
-    minimum_slice_length: Annotated[
-        int,
-        typer.Option(
-            "--minimum-slice-length",
-            "--minimum_slice_length",
-            min=1,
-        ),
-    ] = 18,
+    minimum_slice_length: MinimumSliceLengthOption = 18,
     statistics: str = typer.Option(
         "stats",
         "--statistics",

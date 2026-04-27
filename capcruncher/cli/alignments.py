@@ -1,6 +1,6 @@
 import typer
 
-from capcruncher.cli.common import HELP_SETTINGS
+from capcruncher.cli.common import HELP_SETTINGS, NCoresOption
 
 
 alignments_app = typer.Typer(
@@ -61,13 +61,7 @@ def annotate(
         "--duplicates",
         help="Method to use for reconciling duplicate slices.",
     ),
-    n_cores: int = typer.Option(
-        1,
-        "-p",
-        "--n-cores",
-        "--n_cores",
-        help="Intersections are performed in parallel, set this to the number of intersections required.",
-    ),
+    n_cores: NCoresOption = 1,
     invalid_bed_action: str = typer.Option(
         "error",
         "--invalid-bed-action",

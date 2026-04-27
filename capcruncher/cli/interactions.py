@@ -1,8 +1,13 @@
-from typing import Annotated, Literal
+from typing import Literal
 
 import typer
 
-from capcruncher.cli.common import HELP_SETTINGS, run_imported
+from capcruncher.cli.common import (
+    HELP_SETTINGS,
+    NCoresOption,
+    SubsampleOption,
+    run_imported,
+)
 
 
 interactions_app = typer.Typer(
@@ -153,15 +158,7 @@ def count(
         "--remove_capture",
         help="Prevents analysis of capture fragment interactions.",
     ),
-    subsample: Annotated[
-        float,
-        typer.Option(
-            "--subsample",
-            min=0,
-            max=1,
-            help="Subsamples reporters before analysis of interactions.",
-        ),
-    ] = 0,
+    subsample: SubsampleOption = 0,
     fragment_map: str | None = typer.Option(
         None,
         "-f",
@@ -174,16 +171,7 @@ def count(
         "--viewpoint-path",
         help="Path to viewpoints file.",
     ),
-    n_cores: Annotated[
-        int,
-        typer.Option(
-            "-p",
-            "--n-cores",
-            "--n_cores",
-            min=1,
-            help="Number of cores to use for counting.",
-        ),
-    ] = 1,
+    n_cores: NCoresOption = 1,
     assay: Literal["capture", "tri", "tiled"] = typer.Option(
         "capture",
         "--assay",
@@ -285,13 +273,7 @@ def store_bins(
         "--overlap_fraction",
         help="Minimum overlap between genomic bins and restriction fragments for overlap.",
     ),
-    n_cores: int = typer.Option(
-        4,
-        "-p",
-        "--n-cores",
-        "--n_cores",
-        help="Number of cores used for binning.",
-    ),
+    n_cores: NCoresOption = 4,
     scale_factor: float = typer.Option(
         1e6,
         "--scale-factor",
@@ -404,13 +386,7 @@ def bedgraphs_concat(
         "--scale_factor",
         help="Scale factor to use for bedgraph normalisation.",
     ),
-    n_cores: int = typer.Option(
-        1,
-        "-p",
-        "--n-cores",
-        "--n_cores",
-        help="Number of cores to use for extracting bedgraphs.",
-    ),
+    n_cores: NCoresOption = 1,
 ) -> None:
     run_imported(
         "capcruncher.api.interactions_compare:concat",
