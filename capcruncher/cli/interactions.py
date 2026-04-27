@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 import typer
 
@@ -153,11 +153,15 @@ def count(
         "--remove_capture",
         help="Prevents analysis of capture fragment interactions.",
     ),
-    subsample: float = typer.Option(
-        0,
-        "--subsample",
-        help="Subsamples reporters before analysis of interactions.",
-    ),
+    subsample: Annotated[
+        float,
+        typer.Option(
+            "--subsample",
+            min=0,
+            max=1,
+            help="Subsamples reporters before analysis of interactions.",
+        ),
+    ] = 0,
     fragment_map: str | None = typer.Option(
         None,
         "-f",
@@ -170,13 +174,16 @@ def count(
         "--viewpoint-path",
         help="Path to viewpoints file.",
     ),
-    n_cores: int = typer.Option(
-        1,
-        "-p",
-        "--n-cores",
-        "--n_cores",
-        help="Number of cores to use for counting.",
-    ),
+    n_cores: Annotated[
+        int,
+        typer.Option(
+            "-p",
+            "--n-cores",
+            "--n_cores",
+            min=1,
+            help="Number of cores to use for counting.",
+        ),
+    ] = 1,
     assay: Literal["capture", "tri", "tiled"] = typer.Option(
         "capture",
         "--assay",

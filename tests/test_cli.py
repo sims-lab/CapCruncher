@@ -11,7 +11,10 @@ from types import SimpleNamespace
 
 from capcruncher.cli import cli
 from capcruncher.cli import pipeline as cli_pipeline
-from capcruncher.api.interactions_count import write_countable_reporters
+from capcruncher.api.interactions_count import (
+    InteractionCountOptions,
+    write_countable_reporters,
+)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -1134,6 +1137,49 @@ def test_countable_reporters_reject_actual_non_viewpoint_values(tmp_path):
     ).to_parquet(reporters)
 
     with pytest.raises(ValueError, match="reporters_pe_80"):
+        write_countable_reporters(reporters, viewpoints, output)
+
+
+def test_count_options_validate_paths_and_ranges(tmp_path):
+    reporters = tmp_path / "reporters.parquet"
+    viewpoints = tmp_path / "viewpoints.bed"
+    reporters.touch()
+    viewpoints.touch()
+
+    options = InteractionCountOptions(
+        reporters=reporters,
+        viewpoint_path=viewpoints,
+        output=tmp_path / "counts.hdf5",
+        n_cores=2,
+        subsample=0.25,
+    )
+
+    assert options.n_cores == 2
+    assert options.subsample == 0.25
+
+    with pytest.raises(ValueError, match="greater than or equal to 0"):
+        InteractionCountOptions(
+            reporters=reporters,
+            viewpoint_path=viewpoints,
+            subsample=-0.1,
+        )
+
+    with pytest.raises(ValueError, match="Input path does not exist"):
+        InteractionCountOptions(
+            reporters=tmp_path / "missing.parquet",
+            viewpoint_path=viewpoints,
+        )
+
+
+def test_countable_reporters_require_viewpoint_column(tmp_path):
+    viewpoints = tmp_path / "viewpoints.bed"
+    reporters = tmp_path / "reporters.parquet"
+    output = tmp_path / "countable"
+
+    viewpoints.write_text("chr14\t69902454\t69903469\tSlc25A37\n")
+    pd.DataFrame({"parent_id": [1]}).to_parquet(reporters)
+
+    with pytest.raises(ValueError, match="missing required column"):
         write_countable_reporters(reporters, viewpoints, output)
 
 
