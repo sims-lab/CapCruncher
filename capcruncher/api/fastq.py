@@ -1,5 +1,6 @@
 import glob
 import os
+import pathlib
 import re
 import shutil
 import subprocess
@@ -10,9 +11,96 @@ from typing import Any, Literal
 
 from joblib import Parallel, delayed
 from loguru import logger
+from pydantic import BaseModel, Field, PositiveInt, field_validator, model_validator
 
 PLATFORM = sys.platform
 type FilePath = str | os.PathLike[str]
+
+
+def _as_existing_paths(paths: Sequence[FilePath]) -> tuple[str, ...]:
+    normalised_paths = tuple(os.fspath(path) for path in paths)
+    missing_paths = [path for path in normalised_paths if not pathlib.Path(path).exists()]
+    if missing_paths:
+        raise ValueError(f"Input path(s) do not exist: {', '.join(missing_paths)}")
+    return normalised_paths
+
+
+class FastqSplitOptions(BaseModel):
+    """Validated options for FASTQ splitting."""
+
+    input_files: tuple[str, ...]
+    method: Literal["python", "unix", "seqkit"] = "unix"
+    split_type: Literal["n-reads", "n-parts"] = "n-reads"
+    output_prefix: str = "split"
+    compression_level: int = Field(default=5, ge=0, le=9)
+    n_reads: PositiveInt = 1_000_000
+    n_parts: PositiveInt = 1
+    suffix: str = ""
+    gzip: bool = True
+    n_cores: PositiveInt = 1
+
+    @field_validator("input_files", mode="before")
+    @classmethod
+    def validate_input_files(cls, value: Sequence[FilePath]) -> tuple[str, ...]:
+        return _as_existing_paths(value)
+
+    @field_validator("input_files")
+    @classmethod
+    def validate_fastq_count(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not value:
+            raise ValueError("At least one FASTQ file is required.")
+        if len(value) > 2:
+            raise ValueError("FASTQ splitting accepts one file or one read pair.")
+        return value
+
+
+class FastqDigestOptions(BaseModel):
+    """Validated options for FASTQ digestion."""
+
+    fastqs: tuple[str, ...]
+    restriction_site: str = Field(min_length=1)
+    mode: Literal["flashed", "pe"] = "pe"
+    output_file: str = "out.fastq.gz"
+    minimum_slice_length: PositiveInt = 18
+    statistics: str = "digest.json"
+    sample_name: str = Field(default="sampleX", min_length=1)
+
+    @field_validator("fastqs", mode="before")
+    @classmethod
+    def validate_fastqs(cls, value: Sequence[FilePath]) -> tuple[str, ...]:
+        return _as_existing_paths(value)
+
+    @model_validator(mode="after")
+    def validate_mode_file_count(self) -> "FastqDigestOptions":
+        if self.mode == "flashed" and len(self.fastqs) != 1:
+            raise ValueError("Flashed mode requires exactly one FASTQ file.")
+        if self.mode == "pe" and len(self.fastqs) != 2:
+            raise ValueError("PE mode requires exactly two FASTQ files.")
+        return self
+
+
+class FastqDeduplicationOptions(BaseModel):
+    """Validated options for paired FASTQ deduplication."""
+
+    fastq_1: tuple[str, ...]
+    fastq_2: tuple[str, ...]
+    output_prefix: str = "deduplicated_"
+    statistics: str = "deduplication_statistics.json"
+    sample_name: str = Field(default="sampleX", min_length=1)
+    shuffle: bool = False
+
+    @field_validator("fastq_1", "fastq_2", mode="before")
+    @classmethod
+    def validate_fastqs(cls, value: Sequence[FilePath]) -> tuple[str, ...]:
+        return _as_existing_paths(value)
+
+    @model_validator(mode="after")
+    def validate_read_pairs(self) -> "FastqDeduplicationOptions":
+        if not self.fastq_1 or not self.fastq_2:
+            raise ValueError("Both FASTQ read lists are required.")
+        if len(self.fastq_1) != len(self.fastq_2):
+            raise ValueError("FASTQ read lists must contain the same number of files.")
+        return self
 
 
 def run_unix_split(
@@ -82,6 +170,28 @@ def split_fastq(
         FastqReadFormatterProcess,
         FastqWriterSplitterProcess,
     )
+
+    options = FastqSplitOptions(
+        input_files=input_files,
+        method=method,
+        split_type=split_type,
+        output_prefix=os.fspath(output_prefix),
+        compression_level=compression_level,
+        n_reads=n_reads,
+        n_parts=n_parts,
+        suffix=suffix,
+        gzip=gzip,
+        n_cores=n_cores,
+    )
+    input_files = options.input_files
+    method = options.method
+    split_type = options.split_type
+    output_prefix = options.output_prefix
+    compression_level = options.compression_level
+    n_reads = options.n_reads
+    gzip = options.gzip
+    n_cores = options.n_cores
+    suffix = options.suffix
 
     if split_type == "n-reads" and method == "python":
         readq = SimpleQueue()
@@ -160,22 +270,29 @@ def digest_fastq(
 
     from capcruncher.utils import get_restriction_site
 
+    options = FastqDigestOptions(
+        fastqs=fastqs,
+        restriction_site=restriction_site,
+        mode=mode,
+        output_file=os.fspath(output_file),
+        minimum_slice_length=minimum_slice_length,
+        statistics=os.fspath(statistics),
+        sample_name=sample_name,
+    )
+
     logger.info("Digesting FASTQ files")
 
-    if len(fastqs) > 1 and mode == "flashed":
-        raise ValueError("Flashed mode can only be used with a single FASTQ file")
-
     stats = digest_fastq_records(
-        fastqs=fastqs,
-        restriction_site=get_restriction_site(restriction_site),
-        output=output_file,
-        read_type=mode.title(),
-        sample_name=sample_name,
-        minimum_slice_length=minimum_slice_length,
+        fastqs=options.fastqs,
+        restriction_site=get_restriction_site(options.restriction_site),
+        output=options.output_file,
+        read_type=options.mode.title(),
+        sample_name=options.sample_name,
+        minimum_slice_length=options.minimum_slice_length,
     )
 
     logger.info("Digestion complete. Generating statistics")
-    with open(statistics, "w") as f:
+    with open(options.statistics, "w") as f:
         f.write(stats.model_dump_json())
 
     return stats
@@ -195,22 +312,31 @@ def deduplicate_fastq(
     from capcruncher.api.statistics import FastqDeduplicationStatistics
     from capcruncher_tools.api import deduplicate_fastq as deduplicate_fastq_records
 
-    df_stats = deduplicate_fastq_records(
-        fastq1=fastq_1,
-        fastq2=fastq_2,
-        output_prefix=output_prefix,
+    options = FastqDeduplicationOptions(
+        fastq_1=fastq_1,
+        fastq_2=fastq_2,
+        output_prefix=os.fspath(output_prefix),
+        statistics=os.fspath(statistics),
         sample_name=sample_name,
         shuffle=shuffle,
     )
 
+    df_stats = deduplicate_fastq_records(
+        fastq1=options.fastq_1,
+        fastq2=options.fastq_2,
+        output_prefix=options.output_prefix,
+        sample_name=options.sample_name,
+        shuffle=options.shuffle,
+    )
+
     dedup_stats = FastqDeduplicationStatistics(
-        sample=sample_name,
+        sample=options.sample_name,
         total=df_stats.query("stat_type == 'read_pairs_total'")["stat"].values[0],
         duplicates=df_stats.query("stat_type == 'read_pairs_duplicated'")[
             "stat"
         ].values[0],
     )
-    with open(statistics, "w") as f:
+    with open(options.statistics, "w") as f:
         f.write(dedup_stats.model_dump_json())
 
     logger.info("Printing deduplication statistics to stdout")

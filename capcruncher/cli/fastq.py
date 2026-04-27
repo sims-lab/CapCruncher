@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 import typer
 
@@ -34,30 +34,40 @@ def split(
         "--output_prefix",
         help="Output prefix for deduplicated fastq file(s).",
     ),
-    compression_level: int = typer.Option(
-        5,
-        "--compression-level",
-        "--compression_level",
-        help="Level of compression for output files.",
-    ),
-    n_reads: int = typer.Option(
-        1_000_000,
-        "-n",
-        "--n-reads",
-        "--n_reads",
-        help="Number of reads per fastq file.",
-    ),
+    compression_level: Annotated[
+        int,
+        typer.Option(
+            "--compression-level",
+            "--compression_level",
+            min=0,
+            max=9,
+            help="Level of compression for output files.",
+        ),
+    ] = 5,
+    n_reads: Annotated[
+        int,
+        typer.Option(
+            "-n",
+            "--n-reads",
+            "--n_reads",
+            min=1,
+            help="Number of reads per fastq file.",
+        ),
+    ] = 1_000_000,
     gzip: bool = typer.Option(
         False,
         "--gzip/--no-gzip",
         help="Determines if files are gziped or not.",
     ),
-    n_cores: int = typer.Option(
-        1,
-        "-p",
-        "--n-cores",
-        "--n_cores",
-    ),
+    n_cores: Annotated[
+        int,
+        typer.Option(
+            "-p",
+            "--n-cores",
+            "--n_cores",
+            min=1,
+        ),
+    ] = 1,
     suffix: str = typer.Option(
         "",
         "-s",
@@ -104,11 +114,14 @@ def digest(
         "--output-file",
         "--output_file",
     ),
-    minimum_slice_length: int = typer.Option(
-        18,
-        "--minimum-slice-length",
-        "--minimum_slice_length",
-    ),
+    minimum_slice_length: Annotated[
+        int,
+        typer.Option(
+            "--minimum-slice-length",
+            "--minimum_slice_length",
+            min=1,
+        ),
+    ] = 18,
     statistics: str = typer.Option(
         "stats",
         "--statistics",

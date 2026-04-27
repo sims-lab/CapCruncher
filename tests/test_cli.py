@@ -15,6 +15,11 @@ from capcruncher.api.interactions_count import (
     InteractionCountOptions,
     write_countable_reporters,
 )
+from capcruncher.api.fastq import (
+    FastqDeduplicationOptions,
+    FastqDigestOptions,
+    FastqSplitOptions,
+)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -733,6 +738,41 @@ def test_fastq_split_python(cli_runner, data_pipeline, tmpdir):
     assert result.exit_code == 0
     assert (output_prefix.parent / "sample_part0_1.fastq.gz").exists()
     assert (output_prefix.parent / "sample_part0_2.fastq.gz").exists()
+
+
+def test_fastq_options_validate_paths_and_pairing(tmp_path):
+    fastq_1 = tmp_path / "reads_1.fastq.gz"
+    fastq_2 = tmp_path / "reads_2.fastq.gz"
+    fastq_1.touch()
+    fastq_2.touch()
+
+    split_options = FastqSplitOptions(
+        input_files=[fastq_1, fastq_2],
+        n_reads=10,
+        n_cores=2,
+        compression_level=6,
+    )
+    assert split_options.input_files == (str(fastq_1), str(fastq_2))
+
+    FastqDigestOptions(
+        fastqs=[fastq_1, fastq_2],
+        restriction_site="dpnii",
+        mode="pe",
+    )
+    FastqDeduplicationOptions(fastq_1=[fastq_1], fastq_2=[fastq_2])
+
+    with pytest.raises(ValueError, match="Input path"):
+        FastqSplitOptions(input_files=[tmp_path / "missing.fastq.gz"])
+
+    with pytest.raises(ValueError, match="Flashed mode requires exactly one"):
+        FastqDigestOptions(
+            fastqs=[fastq_1, fastq_2],
+            restriction_site="dpnii",
+            mode="flashed",
+        )
+
+    with pytest.raises(ValueError, match="same number"):
+        FastqDeduplicationOptions(fastq_1=[fastq_1], fastq_2=[fastq_1, fastq_2])
 
 
 @pytest.mark.parametrize(
