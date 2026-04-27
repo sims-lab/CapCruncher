@@ -11,7 +11,7 @@ import polars as pl
 from capcruncher.types import Assay
 
 
-FilterFunction = Callable[[pl.DataFrame], pl.DataFrame]
+type FilterFunction = Callable[[pl.DataFrame], pl.DataFrame]
 
 
 class FilterStepName(StrEnum):
@@ -46,7 +46,7 @@ class FilterStepName(StrEnum):
             ) from exc
 
 
-FilterStepInput = str | FilterStepName
+type FilterStepInput = str | FilterStepName
 
 
 def _coerce_filter_step_name(value: str | FilterStepName) -> FilterStepName:
@@ -54,14 +54,6 @@ def _coerce_filter_step_name(value: str | FilterStepName) -> FilterStepName:
         return value
     return FilterStepName.parse(value)
 
-
-FilterFunction = Callable[[pl.DataFrame], pl.DataFrame]
-
-
-def _coerce_filter_step_name(value: str | FilterStepName) -> FilterStepName:
-    if isinstance(value, FilterStepName):
-        return value
-    return FilterStepName.parse(value)
 
 @dataclass(frozen=True)
 class RegisteredFilterStep:
