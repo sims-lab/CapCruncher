@@ -1,148 +1,4 @@
-import os
 import pathlib
-import json
-import re
-from typing import Literal
-import capcruncher.pipeline.utils
-
-
-def get_split_1_parts(wildcards):
-
-    import pathlib
-    import json
-    import re
-
-    outdir = checkpoints.split.get(**wildcards).output[0]
-    fq_files = pathlib.Path(outdir).glob("*.fastq.gz")
-    parts = sorted(
-        set(
-            [
-                int(re.search(r"part(\d+)", f.name).group(1))
-                for f in fq_files
-                if re.search(r"part(\d+)", f.name)
-            ]
-        )
-    )
-
-    return parts
-
-
-def get_pickles(wc):
-    return expand(
-        "capcruncher_output/interim/fastq/deduplicated/{{sample}}/{{sample}}_{part}.pkl",
-        part=get_split_1_parts(wc),
-    )
-
-
-def get_fastq_split_1(wildcards):
-    return {
-        f"fq{read}": expand(
-            "capcruncher_output/interim/fastq/split/{{sample}}/{{sample}}_part{part}_{read}.fastq.gz",
-            part=get_split_1_parts(wildcards),
-            read=[read],
-        )
-        for read in ["1", "2"]
-    }
-
-
-def get_deduplicated_fastq_pair(wildcards):
-    import pathlib
-
-    input_dir = checkpoints.deduplication.get(**wildcards).output[0]
-
-    fq = {
-        f"fq{read}": f"{input_dir.rstrip('/')}/{wildcards.sample}_part{wildcards.part}_{read}.fastq.gz"
-        for read in ["1", "2"]
-    }
-
-    if pathlib.Path(fq["fq1"]).exists() and pathlib.Path(fq["fq2"]).exists():
-        return fq
-    else:
-        return {"fq1": [], "fq2": []}
-
-
-def get_flashed_fastq(wildcards):
-    import pathlib
-
-    fq = [
-        f"capcruncher_output/interim/fastq/flashed/{wildcards.sample}/{wildcards.sample}_part{part}.extendedFrags.fastq.gz"
-        for part in get_split_1_parts(wildcards)
-    ]
-    return fq
-
-
-def get_pe_fastq(wildcards):
-    fq = [
-        f"capcruncher_output/interim/fastq/flashed/{wildcards.sample}/{wildcards.sample}_part{part}.notCombined_{read}.fastq.gz"
-        for part in get_split_1_parts(wildcards)
-        for read in ["1", "2"]
-    ]
-    return fq
-
-
-def get_rebalanced_parts(wc, combined: Literal["flashed", "pe"], sample: str = None):
-    if not sample:
-        sample = wc.sample
-
-    if combined == "flashed":
-        checkpoint_output = checkpoints.rebalance_partitions_combined.get(
-            sample=sample
-        ).output[0]
-        parts = glob_wildcards(
-            "capcruncher_output/interim/fastq/rebalanced/{sample}/flashed/{sample_name}_part{part}_flashed_1.fastq.gz"
-        ).part
-    elif combined == "pe":
-        checkpoint_output = checkpoints.rebalance_partitions_pe.get(
-            sample=sample
-        ).output[0]
-        parts = glob_wildcards(
-            "capcruncher_output/interim/fastq/rebalanced/{sample}/pe/{sample_name}_part{part}_pe_1.fastq.gz"
-        ).part
-
-    else:
-        raise ValueError(f"Unknown combined type {combined}")
-
-    return set(parts)
-
-
-def get_rebalanced_fastq_combined(wc):
-    checkpoint_output = checkpoints.rebalance_partitions_combined.get(**wc).output[0]
-    return f"capcruncher_output/interim/fastq/rebalanced/{wc.sample}/flashed/{wc.sample}_part{wc.part}_flashed_1.fastq.gz"
-
-
-def get_rebalanced_fastq_pe(wc):
-    checkpoint_output = checkpoints.rebalance_partitions_pe.get(
-        **wc,
-    ).output[0]
-    return {
-        "pe1": f"capcruncher_output/interim/fastq/rebalanced/{wc.sample}/pe/{wc.sample}_part{wc.part}_pe_1.fastq.gz",
-        "pe2": f"capcruncher_output/interim/fastq/rebalanced/{wc.sample}/pe/{wc.sample}_part{wc.part}_pe_2.fastq.gz",
-    }
-
-
-def get_deduplicated_fastq(wc):
-    checkpoint_output = checkpoints.deduplication.get(sample=wc.sample).output[0]
-    return {
-        "fq1": f"capcruncher_output/interim/fastq/deduplicated/{wc.sample}/{wc.sample}_part{wc.part}_1.fastq.gz",
-        "fq2": f"capcruncher_output/interim/fastq/deduplicated/{wc.sample}/{wc.sample}_part{wc.part}_2.fastq.gz",
-    }
-
-
-def separate_pe_fastq(wc):
-    return {
-        1: expand(
-            "capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.notCombined_{read}.fastq.gz",
-            sample=wc.sample,
-            part=get_split_1_parts(wc),
-            read=["1"],
-        ),
-        2: expand(
-            "capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}.notCombined_{read}.fastq.gz",
-            sample=wc.sample,
-            part=get_split_1_parts(wc),
-            read=["2"],
-        ),
-    }
 
 
 rule fastq_rename:
@@ -276,12 +132,13 @@ checkpoint rebalance_partitions_combined:
     input:
         flashed=lambda wc: get_flashed_fastq(wc),
     output:
-        directory("capcruncher_output/interim/fastq/rebalanced/{sample}/flashed/"),
-        touch(
+        fastq_dir=directory("capcruncher_output/interim/fastq/rebalanced/{sample}/flashed/"),
+        sentinel=touch(
             "capcruncher_output/interim/fastq/rebalanced/{sample}/flashed/.complete.sentinel"
         ),
     params:
-        prefix=lambda wildcards, output: pathlib.Path(output[0]) / wildcards.sample,
+        prefix=lambda wildcards, output: pathlib.Path(output.fastq_dir)
+        / wildcards.sample,
         suffix=lambda wc: f"_flashed",
         fq=lambda wc: ",".join(get_flashed_fastq(wc)),
         n_reads=str(config["split"].get("n_reads", 1e6)),
@@ -292,7 +149,7 @@ checkpoint rebalance_partitions_combined:
         mem=lambda wildcards, attempt: scale_memory(1, attempt),
     shell:
         """
-        mkdir -p {output[0]} &&
+        mkdir -p {output.fastq_dir} &&
         capcruncher \
         fastq \
         split \
@@ -309,7 +166,7 @@ checkpoint rebalance_partitions_combined:
         --suffix \
         {params.suffix} \
         > {log} 2>&1 &&
-        touch {output[1]}
+        touch {output.sentinel}
         """
 
 
@@ -317,12 +174,13 @@ checkpoint rebalance_partitions_pe:
     input:
         fq=get_pe_fastq,
     output:
-        directory("capcruncher_output/interim/fastq/rebalanced/{sample}/pe"),
-        touch(
+        fastq_dir=directory("capcruncher_output/interim/fastq/rebalanced/{sample}/pe"),
+        sentinel=touch(
             "capcruncher_output/interim/fastq/rebalanced/{sample}/pe/.complete.sentinel"
         ),
     params:
-        prefix=lambda wildcards, output: pathlib.Path(output[0]) / wildcards.sample,
+        prefix=lambda wildcards, output: pathlib.Path(output.fastq_dir)
+        / wildcards.sample,
         suffix=lambda wc: f"_pe",
         n_reads=str((config["split"].get("n_reads", 1e6) // 2)),
         fq1=lambda wc: ",".join(separate_pe_fastq(wc)[1]),
@@ -334,7 +192,7 @@ checkpoint rebalance_partitions_pe:
         mem=lambda wildcards, attempt: scale_memory(1, attempt),
     shell:
         """
-        mkdir -p {output[0]} &&
+        mkdir -p {output.fastq_dir} &&
         capcruncher \
         fastq \
         split \
@@ -352,7 +210,7 @@ checkpoint rebalance_partitions_pe:
         --suffix \
         {params.suffix} \
         > {log} 2>&1 &&
-        touch {output[1]}
+        touch {output.sentinel}
         """
 
 

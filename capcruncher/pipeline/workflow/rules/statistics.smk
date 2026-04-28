@@ -1,38 +1,10 @@
-from collections import defaultdict
-import capcruncher.pipeline.utils
-from typing import List
-
-
-def get_digestion_statistics(wc, sample_names: List[str]):
-    
-    stat_files = []
-    for sample in sample_names:
-        for combined in ["flashed", "pe"]:
-            for part in get_rebalanced_parts(wc, combined=combined, sample=sample):
-                stat_files.append(
-                    f"capcruncher_output/interim/statistics/digestion/data/{sample}_part{part}_{combined}.json"
-                )
-    
-    return stat_files
-
-def get_filtering_statistics(wc, sample_names: List[str]):
-
-    stat_files = []
-    for sample in sample_names:
-        for combined in ["flashed", "pe"]:
-            for part in get_rebalanced_parts(wc, combined=combined, sample=sample):
-                stat_files.append(
-                    f"capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.json"
-                )
-    
-    return stat_files
-
-
 rule extract_trimming_data:
     input:
         rules.multiqc_full.output.trimming_data,
     output:
         "capcruncher_output/interim/statistics/trimming/trimming.json",
+    log:
+        "capcruncher_output/logs/extract_trimming_data.log",
     script:
         "../scripts/extract_trimming_data.py"
 
@@ -41,6 +13,8 @@ rule extract_flash_data:
         rules.multiqc_full.output.flash_data,
     output:
         "capcruncher_output/interim/statistics/flash/flash.json",
+    log:
+        "capcruncher_output/logs/extract_flash_data.log",
     script:
         "../scripts/extract_flash_data.py"
 

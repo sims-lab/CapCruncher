@@ -12,6 +12,7 @@ from types import SimpleNamespace
 
 from capcruncher.cli import cli
 from capcruncher.cli import pipeline as cli_pipeline
+from capcruncher.dependencies import DependencyVersionError
 from capcruncher.api.interactions.count import (
     InteractionCountOptions,
 )
@@ -32,6 +33,11 @@ def setup_testing_dir(tmpdir_factory):
     os.chdir(tmpdir)
     yield
     os.chdir(cwd)
+
+
+@pytest.fixture(autouse=True)
+def allow_pipeline_runtime_dependency(monkeypatch):
+    monkeypatch.setattr(cli_pipeline, "require_capcruncher_tools", lambda: "0.2.4")
 
 
 @pytest.fixture(scope="session")
@@ -473,6 +479,33 @@ def test_pipeline_legacy_invocation_warns_with_new_command(
     assert result.exit_code == 0
     assert "Use 'capcruncher pipeline run ...' instead" in result.output
     assert recorded_calls
+
+
+def test_pipeline_fails_before_snakemake_when_capcruncher_tools_is_unsupported(
+    cli_runner, monkeypatch
+):
+    recorded_calls = []
+
+    def fail_dependency_check():
+        raise DependencyVersionError(
+            "capcruncher-tools >=0.2.4,<0.3.0 is required, "
+            "but version 0.1.1 is installed. "
+            "Imported module path: /path/to/capcruncher_tools/__init__.py"
+        )
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        raise AssertionError("snakemake should not run with unsupported dependencies")
+
+    monkeypatch.setattr(cli_pipeline, "require_capcruncher_tools", fail_dependency_check)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(cli, ["pipeline", "run", "--no-logo", "-n"])
+
+    assert result.exit_code == 1
+    assert "capcruncher-tools >=0.2.4,<0.3.0 is required" in result.output
+    assert "Imported module path:" in result.output
+    assert recorded_calls == []
 
 
 def test_pipeline_touches_outputs_after_real_run(cli_runner, tmp_path, monkeypatch):

@@ -8,6 +8,8 @@ from collections.abc import Sequence
 import typer
 
 from capcruncher.cli.common import HELP_SETTINGS
+from capcruncher.dependencies import DependencyVersionError
+from capcruncher.dependencies import require_capcruncher_tools
 
 type PipelineOptions = Sequence[str]
 
@@ -163,6 +165,12 @@ def run_pipeline(
         if has_snakemake_option(pipeline_options, "--profile"):
             raise typer.BadParameter("Use either --preset or --profile, not both.")
         cmd.extend(["--profile", str(resolve_pipeline_preset(preset))])
+
+    try:
+        require_capcruncher_tools()
+    except DependencyVersionError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(1) from exc
 
     # Implicitly deal with a missing --cores option
     if not has_snakemake_option(pipeline_options, "--cores", "-c"):

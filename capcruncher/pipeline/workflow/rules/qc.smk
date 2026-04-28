@@ -11,7 +11,7 @@ rule fastqc:
         zip="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.zip",
     params:
         extra="--quiet",
-        outdir="capcruncher_output/interim/qc/fastqc",
+        outdir=lambda wc, output: pathlib.Path(output.html).parent,
         memory=1024,
     log:
         "capcruncher_output/logs/fastqc/{sample}_{read}.log",
@@ -40,8 +40,10 @@ rule samtools_stats:
     threads: 1
     resources:
         mem=lambda wildcards, attempt: scale_memory(1, attempt),
+    log:
+        "capcruncher_output/logs/samtools_stats/{sample}.log",
     shell:
-        """samtools stats {input.bam} > {output.stats}"""
+        """samtools stats {input.bam} > {output.stats} 2> {log}"""
 
 
 rule multiqc_report:
@@ -61,7 +63,7 @@ rule multiqc_report:
         "capcruncher_output/logs/multiqc.log",
     params:
         outdir=lambda wc, output: str(pathlib.Path(output[0]).parent),
-        dir_analysis="capcruncher_output/interim/qc",
+        dir_analysis=lambda wc, input: str(pathlib.Path(input[0]).parents[1]),
     resources:
         mem=lambda wildcards, attempt: scale_memory(1, attempt),
     shell:

@@ -8,13 +8,15 @@ rule regenerate_fastq:
         fq1="capcruncher_output/results/{sample}/{sample}_1.fastq.gz",
         fq2="capcruncher_output/results/{sample}/{sample}_2.fastq.gz",
     params:
-        output_prefix="capcruncher_output/results/{sample}/{sample}",
+        output_prefix=lambda wc, output: pathlib.Path(output.fq1).parent / wc.sample,
+    log:
+        "capcruncher_output/logs/regenerate_fastq/{sample}.log",
     shell:
         """
         capcruncher utilities regenerate-fastq \
             -p {input.parquet} \
             --output-prefix {params.output_prefix} \
             --fastq1 {input.fq1} \
-            --fastq2 {input.fq2}
+            --fastq2 {input.fq2} \
+            > {log} 2>&1
         """
-        

@@ -1,14 +1,6 @@
 import capcruncher.pipeline.utils
 
 
-def get_mem(wildcards, threads, attempt=1):
-    return scale_thread_memory(3, threads, attempt)
-
-
-def get_outdir(wildcards, output):
-    return str(pathlib.Path(output[0]).parent)
-
-
 rule count:
     input:
         slices=rules.combine_flashed_and_pe_post_deduplication.output.slices,

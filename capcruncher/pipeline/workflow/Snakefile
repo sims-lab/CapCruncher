@@ -1,29 +1,16 @@
 import os
-import sys
 import pathlib
 import shutil
-import json
-import math
 import re
 
 import pandas as pd
-import pyranges1 as pr
 import snakemake
 import snakemake.utils
 
 from capcruncher.utils import convert_bed_to_pr
 
-import importlib.util
-from typing import Literal
-import itertools
-
 
 snakemake.utils.min_version('9.0.0')
-
-# Snakemake 9 no longer exposes snakemake.Workflow at package level, but
-# capcruncher.pipeline.utils still imports it in an annotation at parse time.
-if not hasattr(snakemake, "Workflow"):
-    snakemake.Workflow = object
 
 import capcruncher.pipeline.utils
 
@@ -39,39 +26,7 @@ SCALE_RESOURCES = float(os.environ.get("SCALE_RESOURCES", "1"))
 
 container: DEFAULT_CONTAINER_IMAGE
 
-
-def scale_resource(base_value: int, attempt: int = 1) -> int:
-    return max(1, math.ceil(base_value * 2 ** (int(attempt) - 1) * SCALE_RESOURCES))
-
-
-def scale_memory(base_gb: int, attempt: int = 1) -> str:
-    return f"{scale_resource(base_gb, attempt)}G"
-
-
-def scale_thread_memory(base_gb: int, threads: int, attempt: int = 1) -> str:
-    return scale_memory(base_gb * threads, attempt)
-
-
-def default_fastq_split_method() -> str:
-    configured_method = config.get("split", {}).get("method")
-    if configured_method:
-        return configured_method
-
-    if sys.platform == "darwin" and shutil.which("gsplit") is None:
-        return "python"
-
-    return "unix"
-
-
-def copy_workflow_log(log_value, destination):
-    if isinstance(log_value, (str, bytes, os.PathLike)):
-        shutil.copyfile(log_value, destination)
-        return
-
-    for log_path in reversed(list(log_value)):
-        if pathlib.Path(log_path).exists():
-            shutil.copyfile(log_path, destination)
-            return
+include: "rules/common.smk"
 
 
 # Pipeline set-up

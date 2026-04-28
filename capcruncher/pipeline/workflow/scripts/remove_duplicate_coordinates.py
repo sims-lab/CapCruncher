@@ -1,4 +1,3 @@
-import os
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 import pathlib
@@ -46,18 +45,14 @@ def remove_duplicate_coordinates(
 
 
 def main(snakemake):
-    try:
-        remove_duplicate_coordinates(
-            slices_directory=snakemake.input.slices_directory,
-            output_slices=snakemake.output.slices,
-            output_statistics=snakemake.output.statistics,
-            read_type=snakemake.params.read_type,
-            sample_name=snakemake.params.sample_name,
-            log_path=snakemake.log[0],
-        )
-    except Exception as exc:
-        print(exc)
-        os.makedirs(snakemake.output.slices, exist_ok=True)
+    remove_duplicate_coordinates(
+        slices_directory=snakemake.input.slices_directory,
+        output_slices=snakemake.output.slices,
+        output_statistics=snakemake.output.statistics,
+        read_type=snakemake.params.read_type,
+        sample_name=snakemake.params.sample_name,
+        log_path=snakemake.log[0],
+    )
 
 
 if "snakemake" in globals():

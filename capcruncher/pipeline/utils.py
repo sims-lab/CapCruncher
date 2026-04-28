@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import pathlib
 import re
@@ -12,7 +14,6 @@ from capcruncher import utils
 from capcruncher.types import Assay
 
 from loguru import logger
-import snakemake
 from snakemake.io import expand
 
 
@@ -87,17 +88,17 @@ def format_config_dict(config: dict) -> dict:
 
 def get_design_matrix(fastqs: Sequence[str | pathlib.Path]) -> pd.DataFrame:
     df = pd.DataFrame(fastqs, columns=["fn"])
-    df["filename"] = df["fn"].apply(str).str.split(".fastq").str[0]
-    df["sample"] = df["filename"].str.extract(r".*/(.*?)_R?[12].fastq.*")
-    df["condition"] = df["sample"].str.split(".fastq").str[0].str.split("_").str[-1]
+    df["filename"] = df["fn"].apply(lambda fn: pathlib.Path(fn).name)
+    df["sample"] = df["filename"].str.extract(r"(.+)_R?[12]\.fastq(?:\.gz)?$")
+    df["condition"] = df["sample"].str.rsplit("_", n=1).str[-1]
 
     if df["condition"].isna().any():
-        logger.warn(
+        logger.warning(
             "Failed to identify conditions from fastq files. Please format as sample_CONDITION_READ.fastq(.gz)"
         )
-        df["condition"].fillna("UNKNOWN")
+        df["condition"] = df["condition"].fillna("UNKNOWN")
 
-    return df[["sample_name", "condition"]].drop_duplicates()
+    return df[["sample", "condition"]].drop_duplicates()
 
 
 def get_bin_sizes(config):
@@ -260,7 +261,7 @@ def validate_blacklist(blacklist):
     return blacklist_ok
 
 
-def configure_annotation_parameters(workflow: snakemake.Workflow, config: dict) -> dict:
+def configure_annotation_parameters(workflow, config: dict) -> dict:
     """Load defaults from annotation_defaults.json and overwrite with the current files"""
 
     path = pathlib.Path(__file__).absolute()

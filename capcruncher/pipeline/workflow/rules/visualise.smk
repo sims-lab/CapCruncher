@@ -8,10 +8,12 @@ rule viewpoints_to_bigbed:
         chrom_sizes=config["genome"]["chrom_sizes"],
     output:
         "capcruncher_output/resources/viewpoints/viewpoints.bigBed",
+    log:
+        "capcruncher_output/logs/viewpoints_to_bigbed.log",
     shell:
         """
-        cat {input.viewpoints} | sort -k1,1 -k2,2n > {output}.tmp
-        bedToBigBed {output}.tmp {params.chrom_sizes} {output}
+        sort -k1,1 -k2,2n {input.viewpoints} > {output}.tmp
+        bedToBigBed {output}.tmp {params.chrom_sizes} {output} > {log} 2>&1
         rm {output}.tmp
         """
 
@@ -59,6 +61,8 @@ rule create_ucsc_hub:
         hub_email=config["hub"].get("email"),
         genome_organism=config["genome"].get("organism"),
         genome_default_position=config["genome"].get("genome_default_position"),
+    log:
+        "capcruncher_output/logs/create_ucsc_hub.log",
     script:
         "../scripts/make_ucsc_hub.py"
 

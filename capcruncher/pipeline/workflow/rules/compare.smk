@@ -12,6 +12,8 @@ rule union_bedgraph:
         "capcruncher_output/results/comparisons/counts_per_viewpoint/{norm}/{viewpoint}.tsv",
     params:
         sample_names=" ".join(SAMPLE_NAMES),
+    log:
+        "capcruncher_output/logs/union_bedgraph/{norm}_{viewpoint}.log",
     shell:
         """
         bedtools \
@@ -19,7 +21,7 @@ rule union_bedgraph:
         -i {input} \
         -header \
         -names {params.sample_names} \
-        > {output}
+        > {output} 2> {log}
         """
 
 
@@ -102,10 +104,12 @@ use rule bedgraph_to_bigwig as bigwig_summarised with:
 rule save_design:
     output:
         "capcruncher_output/results/design_matrix.tsv",
-    container:
-        None
-    run:
-        DESIGN.to_csv(output[0], sep="\t", index=False)
+    params:
+        design=DESIGN,
+    log:
+        "capcruncher_output/logs/save_design.log",
+    script:
+        "../scripts/save_design.py"
 
 
 rule differential_interactions:
@@ -125,21 +129,5 @@ rule differential_interactions:
         mem=lambda wildcards, attempt: scale_memory(5, attempt),
     log:
         "capcruncher_output/logs/differential_interactions/{viewpoint}.log",
-    shell:
-        """
-        capcruncher \
-        interactions \
-        differential \
-        {input.counts} \
-        --design-matrix \
-        {input.design_matrix} \
-        -o {params.output_prefix} \
-        -v {params.viewpoint} \
-        -c {params.contrast} \
-        --viewpoint-distance {params.viewpoint_distance} \
-        > {log} 2>&1 ||
-
-        echo "No differential interactions found for {params.viewpoint}"
-        mkdir -p {output}
-
-        """
+    script:
+        "../scripts/run_differential.py"

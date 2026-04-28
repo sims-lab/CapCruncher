@@ -1,28 +1,6 @@
 import capcruncher.pipeline.utils
 
 
-def get_filtered_slices(wildcards):
-    slices = dict()
-    for combined_type in ["flashed", "pe"]:
-        parts = get_rebalanced_parts(wildcards, combined=combined_type)
-        slices[combined_type] = [
-            f"capcruncher_output/interim/filtering/initial/{wildcards.sample}/{wildcards.sample}_part{part}_{combined_type}.slices.parquet"
-            for part in parts
-        ]
-    return slices
-
-
-def get_annotated_slices(wildcards):
-    slices = dict()
-    for combined_type in ["flashed", "pe"]:
-        parts = get_rebalanced_parts(wildcards, combined=combined_type)
-        slices[combined_type] = [
-            f"capcruncher_output/interim/annotate/{wildcards.sample}/{wildcards.sample}_part{part}_{combined_type}.parquet"
-            for part in parts
-        ]
-    return [*slices["flashed"], *slices["pe"]]
-
-
 # rule check_viewpoints_annotated:
 #     input:
 #         slices=get_annotated_slices,
@@ -87,13 +65,10 @@ rule split_flashed_and_pe_datasets:
                 "capcruncher_output/interim/filtering/repartitioned/{sample}/pe/"
             )
         ),
-    shell:
-        """
-        mkdir -p {output.slices_flashed}
-        mkdir -p {output.slices_pe}
-        mv {input.flashed} {output.slices_flashed}
-        mv {input.pe} {output.slices_pe}
-        """
+    log:
+        "capcruncher_output/logs/split_flashed_and_pe_datasets/{sample}.log",
+    script:
+        "../scripts/repartition_filtered_slices.py"
 
 
 rule remove_duplicate_coordinates:
@@ -127,29 +102,12 @@ rule combine_flashed_and_pe_post_deduplication:
     output:
         slices=directory("capcruncher_output/results/{sample}/{sample}.parquet"),
     params:
-        source_dir="capcruncher_output/interim/filtering/deduplicated/{sample}",
-        dest_dir="capcruncher_output/results/{sample}/{sample}.parquet",
-    shell:
-        """
-        mkdir -p {params.dest_dir}
-
-        source_dir="{params.source_dir}"
-        dest_dir="{params.dest_dir}"
-
-        # Move flashed files
-        for fn in "$source_dir/flashed"/*.parquet; do
-            if [ -e "$fn" ]; then
-                mv "$fn" "$dest_dir/flashed-$(basename "$fn")"
-            fi
-        done
-
-        # Move pe files
-        for fn in "$source_dir/pe"/*.parquet; do
-            if [ -e "$fn" ]; then
-                mv "$fn" "$dest_dir/pe-$(basename "$fn")"
-            fi
-        done
-        """
+        source_dir=lambda wc, input: pathlib.Path(input.slices[0]).parent,
+        dest_dir=lambda wc, output: pathlib.Path(output.slices),
+    log:
+        "capcruncher_output/logs/combine_flashed_and_pe_post_deduplication/{sample}.log",
+    script:
+        "../scripts/combine_deduplicated_slices.py"
 
 
 rule cis_and_trans_stats:
@@ -173,6 +131,7 @@ rule cis_and_trans_stats:
         --assay {params.analysis_method} \
         --sample-name {params.sample_name} \
         -o {output.stats} \
+        > {log} 2>&1
         """
 
 

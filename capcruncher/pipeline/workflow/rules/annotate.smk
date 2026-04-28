@@ -11,10 +11,12 @@ rule exclusions:
     params:
         genome=config["genome"]["chrom_sizes"],
         exclusion_zone=config["analysis"]["reporter_exclusion_zone"],
+    log:
+        "capcruncher_output/logs/exclusions.log",
     shell:
         """
         bedtools slop -i {input.viewpoints} -g {params.genome} -b {params.exclusion_zone} |
-        bedtools subtract -a - -b  {input.viewpoints} > {output.exclusions}
+        bedtools subtract -a - -b  {input.viewpoints} > {output.exclusions} 2> {log}
         """
 
 
