@@ -96,7 +96,7 @@ def resolve_pipeline_preset(preset: str) -> pathlib.Path:
         return bundled_path.resolve()
 
     raise typer.BadParameter(
-        f"Unknown pipeline preset '{preset}'. Run 'capcruncher pipeline-init' to install presets or pass a profile path."
+        f"Unknown pipeline preset '{preset}'. Run 'capcruncher pipeline init' to install presets or pass a profile path."
     )
 
 
@@ -371,6 +371,11 @@ def pipeline(
 
     options = tuple(pipeline_options or ctx.args)
     if not options:
+        typer.echo(
+            "Warning: 'capcruncher pipeline' without a subcommand is deprecated. "
+            "Use 'capcruncher pipeline run ...' instead.",
+            err=True,
+        )
         typer.echo("Usage: capcruncher pipeline [run|init|config] [OPTIONS]")
         raise typer.Exit()
 
@@ -492,6 +497,12 @@ def pipeline_init(
 ) -> None:
     """Installs CapCruncher-managed Snakemake presets."""
 
+    typer.echo(
+        "Warning: 'capcruncher pipeline-init' is deprecated. "
+        "Use 'capcruncher pipeline init ...' instead.",
+        err=True,
+    )
+
     invalid_presets = [
         preset_name
         for preset_name in (preset_names or [])
@@ -521,6 +532,11 @@ def pipeline_config(
 ) -> None:
     """Configures the data processing pipeline"""
 
+    typer.echo(
+        "Warning: 'capcruncher pipeline-config' is deprecated. "
+        "Use 'capcruncher pipeline config ...' instead.",
+        err=True,
+    )
     configure_pipeline()
 
 

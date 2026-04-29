@@ -361,6 +361,7 @@ def test_pipeline_init_installs_presets(cli_runner, tmp_path, monkeypatch):
     result = cli_runner.invoke(cli, ["pipeline-init"])
 
     assert result.exit_code == 0
+    assert "Use 'capcruncher pipeline init ...' instead" in result.output
     profiles_dir = tmp_path / "snakemake"
     assert (profiles_dir / "capcruncher-local" / "profile.v9+.yaml").exists()
     assert (profiles_dir / "capcruncher-local-conda" / "profile.v9+.yaml").exists()
@@ -387,6 +388,32 @@ def test_pipeline_init_subcommand_installs_presets(cli_runner, tmp_path, monkeyp
 
     assert result.exit_code == 0
     assert (tmp_path / "snakemake" / "capcruncher-local" / "profile.v9+.yaml").exists()
+    assert "deprecated" not in result.output.lower()
+
+
+def test_pipeline_without_subcommand_warns_to_use_run(cli_runner):
+    result = cli_runner.invoke(cli, ["pipeline"])
+
+    assert result.exit_code == 0
+    assert "'capcruncher pipeline' without a subcommand is deprecated" in result.output
+    assert "Use 'capcruncher pipeline run ...' instead" in result.output
+    assert "Usage: capcruncher pipeline [run|init|config] [OPTIONS]" in result.output
+
+
+def test_pipeline_config_legacy_command_warns_with_replacement(cli_runner, monkeypatch):
+    called = False
+
+    def fake_configure_pipeline():
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(cli_pipeline, "configure_pipeline", fake_configure_pipeline)
+
+    result = cli_runner.invoke(cli, ["pipeline-config"])
+
+    assert result.exit_code == 0
+    assert "Use 'capcruncher pipeline config ...' instead" in result.output
+    assert called
 
 
 def test_pipeline_uses_installed_preset(cli_runner, tmp_path, monkeypatch):
