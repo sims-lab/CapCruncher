@@ -359,6 +359,26 @@ def _run_pipeline_init(
     install_pipeline_presets(output_dir, tuple(preset_names or ()), force)
 
 
+def _warn_bare_pipeline_command() -> None:
+    from rich.console import Console
+    from rich.panel import Panel
+
+    Console(stderr=True).print(
+        Panel.fit(
+            "\n".join(
+                [
+                    "[bold yellow]Deprecated pipeline invocation[/bold yellow]",
+                    "",
+                    "[bold]capcruncher pipeline[/bold] without a subcommand is legacy.",
+                    "Use [bold green]capcruncher pipeline run ...[/bold green] instead.",
+                ]
+            ),
+            border_style="yellow",
+            title="Warning",
+        )
+    )
+
+
 @pipeline_app.callback(invoke_without_command=True)
 def pipeline(
     ctx: typer.Context,
@@ -371,11 +391,7 @@ def pipeline(
 
     options = tuple(pipeline_options or ctx.args)
     if not options:
-        typer.echo(
-            "Warning: 'capcruncher pipeline' without a subcommand is deprecated. "
-            "Use 'capcruncher pipeline run ...' instead.",
-            err=True,
-        )
+        _warn_bare_pipeline_command()
         typer.echo("Usage: capcruncher pipeline [run|init|config] [OPTIONS]")
         raise typer.Exit()
 

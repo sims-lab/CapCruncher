@@ -413,8 +413,9 @@ def test_pipeline_without_subcommand_warns_to_use_run(cli_runner):
     result = cli_runner.invoke(cli, ["pipeline"])
 
     assert result.exit_code == 0
-    assert "'capcruncher pipeline' without a subcommand is deprecated" in result.output
-    assert "Use 'capcruncher pipeline run ...' instead" in result.output
+    assert "Deprecated pipeline invocation" in result.output
+    assert "capcruncher pipeline without a subcommand is legacy" in result.output
+    assert "Use capcruncher pipeline run ... instead" in result.output
     assert "Usage: capcruncher pipeline [run|init|config] [OPTIONS]" in result.output
 
 
