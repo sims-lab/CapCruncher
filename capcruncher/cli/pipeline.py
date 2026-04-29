@@ -163,7 +163,8 @@ def run_pipeline(
 
     if preset:
         if has_snakemake_option(pipeline_options, "--profile"):
-            raise typer.BadParameter("Use either --preset or --profile, not both.")
+            typer.echo("Use either --preset or --profile, not both.", err=True)
+            raise typer.Exit(2)
         cmd.extend(["--profile", str(resolve_pipeline_preset(preset))])
 
     try:
@@ -360,11 +361,15 @@ def _run_pipeline_init(
 
 @pipeline_app.callback(invoke_without_command=True)
 def pipeline(
+    ctx: typer.Context,
     pipeline_options: list[str] | None = typer.Argument(None),
 ) -> None:
     """Run and configure CapCruncher Snakemake workflows."""
 
-    options = tuple(pipeline_options or ())
+    if ctx.invoked_subcommand is not None:
+        return
+
+    options = tuple(pipeline_options or ctx.args)
     if not options:
         typer.echo("Usage: capcruncher pipeline [run|init|config] [OPTIONS]")
         raise typer.Exit()
@@ -381,30 +386,89 @@ def pipeline(
             preset=preset,
             scale_resources=scale_resources,
         )
-    elif command == "init":
+        return
+
+    if command == "init":
         output_dir, preset_names, force = _parse_pipeline_init_options(options[1:])
         _run_pipeline_init(output_dir, preset_names, force)
-    elif command == "config":
+        return
+
+    if command == "config":
         if any(option in {"-h", "--help"} for option in options[1:]):
             typer.echo("Usage: capcruncher pipeline config [OPTIONS]")
             raise typer.Exit()
         configure_pipeline()
-    else:
-        typer.echo(
-            "Warning: 'capcruncher pipeline ...' is deprecated. "
-            "Use 'capcruncher pipeline run ...' instead.",
-            err=True,
-        )
-        run_options, show_help, logo, preset, scale_resources = (
-            _parse_pipeline_run_options(options)
-        )
-        run_pipeline(
-            run_options,
-            show_help=show_help,
-            logo=logo,
-            preset=preset,
-            scale_resources=scale_resources,
-        )
+        return
+
+    typer.echo(
+        "Warning: 'capcruncher pipeline ...' is deprecated. "
+        "Use 'capcruncher pipeline run ...' instead.",
+        err=True,
+    )
+    run_options, show_help, logo, preset, scale_resources = _parse_pipeline_run_options(
+        options
+    )
+    run_pipeline(
+        run_options,
+        show_help=show_help,
+        logo=logo,
+        preset=preset,
+        scale_resources=scale_resources,
+    )
+
+
+@pipeline_app.command(
+    name="run",
+    context_settings={
+        **PIPELINE_FORWARD_CONTEXT,
+        "help_option_names": [],
+    },
+)
+def pipeline_run(ctx: typer.Context) -> None:
+    """Run the data processing pipeline."""
+
+    run_options, show_help, logo, preset, scale_resources = _parse_pipeline_run_options(
+        tuple(ctx.args)
+    )
+    run_pipeline(
+        run_options,
+        show_help=show_help,
+        logo=logo,
+        preset=preset,
+        scale_resources=scale_resources,
+    )
+
+
+@pipeline_app.command(name="init")
+def pipeline_init_command(
+    output_dir: pathlib.Path | None = typer.Option(
+        None,
+        "--output-dir",
+        file_okay=False,
+        dir_okay=True,
+        help="Directory where CapCruncher-managed pipeline presets should be installed.",
+    ),
+    preset_names: list[str] | None = typer.Option(
+        None,
+        "--preset",
+        help="Install only the selected preset. Repeat to install multiple presets.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Overwrite existing preset directories if they already exist.",
+    ),
+) -> None:
+    """Install CapCruncher-managed Snakemake presets."""
+
+    _run_pipeline_init(output_dir, preset_names, force)
+
+
+@pipeline_app.command(name="config")
+def pipeline_config_command() -> None:
+    """Configure the data processing pipeline."""
+
+    configure_pipeline()
 
 
 def pipeline_init(
