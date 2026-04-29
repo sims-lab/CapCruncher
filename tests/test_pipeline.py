@@ -7,6 +7,9 @@ from cookiecutter.main import cookiecutter
 from datetime import datetime
 
 
+pytestmark = [pytest.mark.pipeline, pytest.mark.slow]
+
+
 # Fixtures
 @pytest.fixture(scope="module")
 def test_dir(tmpdir_factory):

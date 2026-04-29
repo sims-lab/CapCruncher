@@ -646,6 +646,27 @@ def test_countable_reporter_handoff_preserves_pipeline_partitions(
     ) == ["Slc25A37"]
 
 
+def test_reporter_summary_counts_unused_viewpoint_categories_as_zero(tmp_path):
+    from capcruncher.api.interactions.reporters import summarise_reporter_viewpoints
+
+    reporters = tmp_path / "reporters.parquet"
+    pl.DataFrame(
+        {
+            "viewpoint": pl.Series(
+                ["Slc25A37", None],
+                dtype=pl.Enum(["Slc25A37", "unused_viewpoint"]),
+            )
+        }
+    ).write_parquet(reporters)
+
+    summary = summarise_reporter_viewpoints(reporters)
+
+    assert summary.viewpoints == ["Slc25A37", "unused_viewpoint"]
+    assert summary.viewpoint_sizes == {"Slc25A37": 1}
+
+
+@pytest.mark.pipeline
+@pytest.mark.slow
 def test_capcruncher_tools_counts_expected_pipeline_pixels(
     capture_pipeline_run, tmp_path
 ):

@@ -79,13 +79,18 @@ jobs:
       - name: Install the package
         shell: bash -el {0}
         run: |
-          pip install .[full]
+          pip install ".[full,config,plot]"
 
-      - name: Test with pytest and generate report
+      - name: Test quick suite with pytest
         shell: bash -el {0}
         run: |
           pip install pytest-cov pytest-order pytest-xdist
-          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 4
+          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 4 -m "not pipeline"
+
+      - name: Test pipeline suite with pytest
+        shell: bash -el {0}
+        run: |
+          pytest -vv -s --log-cli-level info --cov=./ --cov-append --cov-report=xml --cores 4 -m "pipeline"
 
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v4

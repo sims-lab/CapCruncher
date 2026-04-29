@@ -1,8 +1,32 @@
 import pyranges1 as pr
 import pandas as pd
+import pytest
 
 from capcruncher.api.interactions.cooler.binning import CoolerBinner
+from capcruncher.api.interactions.cooler.create import create_cooler_cc
 from capcruncher.api.interactions.cooler.viewpoints import Viewpoint
+
+
+def test_create_cooler_rejects_empty_pixel_table(tmp_path):
+    bins = pd.DataFrame(
+        {
+            "chrom": ["chr1"],
+            "start": [0],
+            "end": [100],
+            "name": [0],
+        }
+    )
+    viewpoints = tmp_path / "viewpoints.bed"
+    viewpoints.write_text("chr1\t0\t100\tvp1\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="empty pixels table"):
+        create_cooler_cc(
+            tmp_path / "empty_counts.hdf5",
+            bins=bins,
+            pixels=pd.DataFrame(),
+            viewpoint_name="vp1",
+            viewpoint_path=viewpoints,
+        )
 
 
 def test_viewpoint_from_bed_returns_pyranges(tmp_path):

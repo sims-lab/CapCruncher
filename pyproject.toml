@@ -131,6 +131,13 @@ skip_string_normalization = true
 python-version = "3.12"
 root = ["."]
 
+[tool.pytest.ini_options]
+markers = [
+    "order: test ordering marker provided by pytest-order",
+    "pipeline: end-to-end pipeline tests that run Snakemake jobs",
+    "slow: tests that are intentionally slower than the default suite",
+]
+
 [tool.ty.src]
 include = ["capcruncher", "tests"]
 

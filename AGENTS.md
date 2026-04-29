@@ -21,6 +21,9 @@
   is proven broken after updating.
 - `capcruncher-tools` should be at the latest Polars-compatible release in
   requirements and workflow envs.
+- Reporter counting should decide whether to call `capcruncher-tools` from a
+  quick row-count summary. Viewpoint categories with zero reporter rows should
+  warn and skip cooler creation rather than writing empty cooler groups.
 
 ## Modernization Constraints
 
@@ -52,6 +55,11 @@
   `snakemake --touch`.
 - `--scale-resources` is CapCruncher-specific. It sets `SCALE_RESOURCES` for
   workflow resource functions; it is not a native Snakemake setting.
+- Pipeline tests are marked with `pipeline` and `slow`. CI runs quick tests with
+  `-m "not pipeline"` and then runs the slow pipeline suite separately with
+  `-m "pipeline"`.
+- When running pipeline tests, pass `--cores 4` unless there is a specific reason
+  to reproduce single-core behavior.
 
 ## Containers
 
@@ -105,6 +113,8 @@ conda run -n cc pytest tests/test_cli.py -q
 conda run -n cc pytest tests/test_workflow_scripts.py tests/test_plotting.py -q
 conda run -n cc pytest tests/test_annotate.py tests/test_pileup.py tests/test_storage_api.py -q
 conda run -n cc pytest tests/test_utils.py -q -k 'bed_validation_and_formatting or intersect_bins_and_interval_conversion or read_dataframes'
+conda run -n cc pytest -q -m "not pipeline"
+conda run -n cc pytest -q -m "pipeline" --cores 4
 conda run -n cc python -m py_compile capcruncher/api/storage.py capcruncher/cli/cli_pipeline.py capcruncher/pipeline/workflow/scripts/make_ucsc_hub.py capcruncher/utils.py
 ```
 

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 import functools
+from multiprocessing import get_context
 import os
 import re
 import tempfile
@@ -316,6 +318,23 @@ def _bin_coolers_local(tasks: list[tuple[str, str, int, dict]]) -> list[str]:
     ]
 
 
+def _bin_coolers_process(
+    tasks: list[tuple[str, str, int, dict]], n_cores: int
+) -> list[str]:
+    process_kwargs: dict = {"max_workers": n_cores}
+    try:
+        process_kwargs["mp_context"] = get_context("fork")
+    except ValueError:
+        pass
+
+    with ProcessPoolExecutor(**process_kwargs) as executor:
+        futures = [
+            executor.submit(_bin_cooler, clr_in, clr_out, binsize, **kwargs)
+            for clr_in, clr_out, binsize, kwargs in tasks
+        ]
+        return [future.result() for future in futures]
+
+
 def bins(
     cooler_path: Path | str,
     output: Path | str,
@@ -359,13 +378,8 @@ def bins(
 
     if n_cores > 1 and len(binning_tasks) > 1:
         try:
-            with ProcessPoolExecutor(max_workers=n_cores) as executor:
-                futures = [
-                    executor.submit(_bin_cooler, clr_in, clr_out, binsize, **kwargs)
-                    for clr_in, clr_out, binsize, kwargs in binning_tasks
-                ]
-                clr_tempfiles = [future.result() for future in futures]
-        except OSError as exc:
+            clr_tempfiles = _bin_coolers_process(binning_tasks, n_cores)
+        except (OSError, RuntimeError, BrokenProcessPool) as exc:
             logger.warning(
                 f"Process executor unavailable ({exc}); falling back to local binning."
             )

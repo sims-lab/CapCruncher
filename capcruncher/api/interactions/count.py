@@ -123,16 +123,33 @@ def count_interactions(
             "partitions": reporter_summary.partitions,
         }
 
+        counted_viewpoints = []
+        for viewpoint in reporter_summary.viewpoints:
+            if reporter_summary.viewpoint_sizes.get(viewpoint, 0) == 0:
+                logger.warning(
+                    "No reporter rows found for viewpoint category "
+                    f"{viewpoint}; skipping cooler creation"
+                )
+            else:
+                counted_viewpoints.append(viewpoint)
+
         coolers = []
         for viewpoint, counts in tqdm(
             iter_count_results(
-                reporter_summary.viewpoints,
+                counted_viewpoints,
                 count_kwargs,
                 executor_value,
                 options.n_cores,
             ),
-            total=len(reporter_summary.viewpoints),
+            total=len(counted_viewpoints),
         ):
+            if counts.empty:
+                logger.warning(
+                    "No interactions found for viewpoint "
+                    f"{viewpoint}; skipping cooler creation"
+                )
+                continue
+
             cooler_uri = create_cooler_cc(
                 output_prefix=os.fspath(Path(tmpdir) / f"{uuid4().hex}.hdf5"),
                 pixels=counts,
@@ -145,6 +162,11 @@ def count_interactions(
             coolers.append(cooler_uri.split("::")[0])
 
         logger.info(f"Making final cooler at {options.output}")
+        if not coolers:
+            logger.warning(
+                "No non-empty interaction counts were generated; "
+                f"writing an empty HDF5 container at {options.output}"
+            )
         merge_coolers(coolers, output=Path(options.output))
 
     return os.fspath(options.output)

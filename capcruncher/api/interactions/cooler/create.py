@@ -10,6 +10,26 @@ import pyranges1 as pr
 from capcruncher.types import Assay
 from capcruncher.api.interactions.cooler.viewpoints import Viewpoint
 
+PIXEL_COLUMNS = ["bin1_id", "bin2_id", "count"]
+
+
+def _normalise_pixels(pixels: pd.DataFrame) -> pd.DataFrame:
+    pixels = pd.DataFrame(pixels).copy()
+
+    if pixels.empty:
+        raise ValueError("Cannot create a cooler group from an empty pixels table.")
+
+    missing_columns = [
+        column for column in PIXEL_COLUMNS if column not in pixels.columns
+    ]
+    if missing_columns:
+        raise ValueError(
+            "Pixels table is missing required column(s): "
+            + ", ".join(missing_columns)
+        )
+
+    return pixels
+
 
 def create_cooler_cc(
     output_prefix: Path | str,
@@ -45,6 +65,7 @@ def create_cooler_cc(
     )
 
     bins = pd.DataFrame(bins).copy()
+    pixels = _normalise_pixels(pixels)
 
     gr_bins = pr.PyRanges(
         bins.rename(
