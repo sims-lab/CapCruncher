@@ -293,6 +293,7 @@ def digest_fastq(
 ) -> Any:
     """Digest FASTQ files and write digestion statistics."""
 
+    from capcruncher.api.statistics import DigestionStats
     from capcruncher_tools.api import digest_fastq as digest_fastq_records
 
     from capcruncher.utils import get_restriction_site
@@ -323,7 +324,13 @@ def digest_fastq(
     with open(options.statistics, "w") as f:
         f.write(stats.model_dump_json())
 
-    return stats
+    if hasattr(stats, "data"):
+        return DigestionStats.model_validate(stats.data)
+
+    if hasattr(stats, "model_dump"):
+        return DigestionStats.model_validate(stats.model_dump())
+
+    return DigestionStats.model_validate(stats)
 
 
 def deduplicate_fastq(
