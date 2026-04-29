@@ -419,6 +419,41 @@ def test_pipeline_without_subcommand_warns_to_use_run(cli_runner):
     assert "Usage: capcruncher pipeline [run|init|config] [OPTIONS]" in result.output
 
 
+def test_pipeline_run_help_separates_capcruncher_and_snakemake_options(
+    cli_runner, monkeypatch
+):
+    recorded_calls = []
+
+    class CompletedProcess:
+        returncode = 0
+        stdout = (
+            "usage: snakemake [-h] [--cores N] [--config KEY=VALUE] [TARGET ...]\n"
+            "\n"
+            "options:\n"
+            "  --cores N\n"
+            "  --config KEY=VALUE\n"
+        )
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append((cmd, kwargs))
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(cli, ["pipeline", "run", "--help"])
+
+    assert result.exit_code == 0
+    assert "capcruncher pipeline run" in result.output
+    assert "CapCruncher Options" in result.output
+    assert "--preset TEXT" in result.output
+    assert "--scale-resources FLOAT" in result.output
+    assert "Snakemake options and targets" in result.output
+    assert "Underlying Snakemake Help" in result.output
+    assert "Snakemake usage: snakemake" in result.output
+    assert "--cores N" in result.output
+    assert recorded_calls[0][0][-1] == "--help"
+
+
 def test_pipeline_config_legacy_command_warns_with_replacement(cli_runner, monkeypatch):
     called = False
 

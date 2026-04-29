@@ -144,14 +144,9 @@ def run_pipeline(
     ]
 
     if show_help:
-        # Run snakemake with --help
-        # Capture the output and replace usage: snakemake with usage: capcruncher pipeline
-        # Print the output
         cmd.append("--help")
         _completed = subprocess.run(cmd, capture_output=True, shell=False, text=True)
-        output = _completed.stdout
-        output = output.replace("usage: snakemake", "usage: capcruncher pipeline")
-        typer.echo(f"\n{output}")
+        _print_pipeline_run_help(_completed.stdout)
         raise typer.Exit()
 
     if pipeline_options:
@@ -265,6 +260,75 @@ def _float_option_value(value: str, option: str) -> float:
         return float(value)
     except ValueError as exc:
         raise typer.BadParameter(f"Option '{option}' requires a numeric value.") from exc
+
+
+def _print_pipeline_run_help(snakemake_help: str) -> None:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+
+    console = Console()
+    console.print(
+        Panel.fit(
+            "\n".join(
+                [
+                    "[bold]capcruncher pipeline run[/bold] "
+                    "[CAPCRUNCHER OPTIONS] [SNAKEMAKE OPTIONS] [TARGETS]",
+                    "",
+                    "CapCruncher consumes the options listed below. Everything else is passed to Snakemake.",
+                ]
+            ),
+            title="Usage",
+            border_style="cyan",
+        )
+    )
+
+    capcruncher_options = Table(
+        title="CapCruncher Options",
+        show_header=True,
+        header_style="bold cyan",
+    )
+    capcruncher_options.add_column("Option", no_wrap=True)
+    capcruncher_options.add_column("Description")
+    capcruncher_options.add_row(
+        "--preset TEXT",
+        "Use an installed CapCruncher Snakemake profile. "
+        "Aliases such as 'local' are accepted. Cannot be combined with --profile.",
+    )
+    capcruncher_options.add_row(
+        "--scale-resources FLOAT",
+        "Set CapCruncher's SCALE_RESOURCES environment value for workflow resource functions.",
+    )
+    capcruncher_options.add_row(
+        "--logo / --no-logo",
+        "Show or suppress the CapCruncher logo before running Snakemake.",
+    )
+    capcruncher_options.add_row(
+        "-h, --help",
+        "Show this combined CapCruncher and Snakemake help.",
+    )
+    console.print(capcruncher_options)
+
+    console.print(
+        Panel.fit(
+            "\n".join(
+                [
+                    "[bold]Snakemake options and targets[/bold]",
+                    "",
+                    "Use Snakemake options after the CapCruncher options, for example:",
+                    "[green]capcruncher pipeline run --preset local -c 4 -n results/file.parquet[/green]",
+                    "",
+                    "Common Snakemake options include -c/--cores, -n/--dry-run, "
+                    "--config, --configfile, --profile, and explicit workflow targets.",
+                ]
+            ),
+            border_style="green",
+        )
+    )
+
+    output = snakemake_help.replace("usage: snakemake", "Snakemake usage: snakemake")
+    console.print("[bold]Underlying Snakemake Help[/bold]")
+    console.print(output.rstrip())
 
 
 def _parse_pipeline_run_options(
