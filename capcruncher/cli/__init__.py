@@ -51,8 +51,16 @@ app.add_typer(genome_app, name="genome")
 app.add_typer(alignments_app, name="alignments")
 app.add_typer(interactions_app, name="interactions")
 app.add_typer(pipeline_app, name="pipeline")
-app.command(name="pipeline-init", deprecated=True)(pipeline_init)
-app.command(name="pipeline-config", deprecated=True)(pipeline_config)
+app.command(
+    name="pipeline-init",
+    deprecated=True,
+    help="Deprecated. Use 'capcruncher pipeline init' instead.",
+)(pipeline_init)
+app.command(
+    name="pipeline-config",
+    deprecated=True,
+    help="Deprecated. Use 'capcruncher pipeline config' instead.",
+)(pipeline_config)
 app.add_typer(plot_app, name="plot")
 app.add_typer(utilities_app, name="utilities")
 

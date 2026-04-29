@@ -111,6 +111,24 @@ def test_cli_runs(cli_runner):
     assert "pipeline-init" in result.output
     assert "pipeline-config" in result.output
     assert result.output.count("(deprecated)") >= 2
+    assert "capcruncher pipeline init" in result.output
+
+
+@pytest.mark.parametrize(
+    "command,replacement",
+    [
+        (["pipeline-init", "--help"], "capcruncher pipeline init"),
+        (["pipeline-config", "--help"], "capcruncher pipeline config"),
+    ],
+)
+def test_legacy_pipeline_command_help_names_replacements(
+    cli_runner, command, replacement
+):
+    result = cli_runner.invoke(cli, command)
+
+    assert result.exit_code == 0
+    assert "(deprecated)" in result.output
+    assert f"Use '{replacement}' instead" in result.output
 
 
 def test_cli_import_does_not_import_heavy_runtime_modules():
