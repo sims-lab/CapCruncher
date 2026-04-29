@@ -11,46 +11,17 @@ import pandas as pd
 import pyranges1 as pr
 
 from capcruncher import utils
+from capcruncher.pipeline.validation import (
+    format_pipeline_config,
+    is_none,
+    is_off,
+    is_on,
+    normalise_hub_color_by,
+)
 from capcruncher.types import Assay
 
 from loguru import logger
 from snakemake.io import expand
-
-
-def is_on(param: str) -> bool:
-    """
-    Returns True if parameter in "on" values
-    On values:
-        - true
-        - t
-        - on
-        - yes
-        - y
-        - 1
-    """
-    values = ["true", "t", "on", "yes", "y", "1"]
-    if str(param).lower() in values:
-        return True
-    else:
-        return False
-
-
-def is_off(param: str) -> bool:
-    """Returns True if parameter in "off" values"""
-    values = ["", "None", "none", "F", "f", "no"]
-    if str(param).lower() in values:
-        return True
-    else:
-        return False
-
-
-def is_none(param: str) -> bool:
-    """Returns True if parameter is none"""
-    values = ["", "none"]
-    if str(param).lower() in values:
-        return True
-    else:
-        return False
 
 
 def convert_empty_yaml_entry_to_string(param: str) -> str:
@@ -65,25 +36,10 @@ def convert_empty_yaml_entry_to_string(param: str) -> str:
 
 def format_config_dict(config: dict) -> dict:
     """
-    Formats the config dictionary to ensure that all entries are strings.
+    Normalise and validate the pipeline config in place.
 
     """
-    for key, value in config.items():
-        if isinstance(value, dict):
-            config[key] = format_config_dict(value)
-        else:
-            entry = convert_empty_yaml_entry_to_string(value)
-
-            if is_on(entry):
-                config[key] = True
-            elif is_off(entry):
-                config[key] = False
-            elif is_none(entry):
-                config[key] = False
-            else:
-                config[key] = entry
-
-    return config
+    return format_pipeline_config(config)
 
 
 def get_design_matrix(fastqs: Sequence[str | pathlib.Path]) -> pd.DataFrame:

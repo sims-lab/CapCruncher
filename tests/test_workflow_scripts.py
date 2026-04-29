@@ -95,6 +95,110 @@ def test_pipeline_utils_imports_without_snakemake_workflow_attribute():
     ]
 
 
+def test_pipeline_config_normalises_legacy_hub_color_by():
+    from capcruncher.pipeline.utils import format_config_dict
+
+    config = {"hub": {"color_by": "samplename"}}
+
+    assert format_config_dict(config)["hub"]["color_by"] == "sample"
+
+
+def test_pipeline_config_rejects_unknown_hub_color_by():
+    from capcruncher.pipeline.utils import format_config_dict
+
+    with pytest.raises(ValueError, match="hub.color_by"):
+        format_config_dict({"hub": {"color_by": "sample_name_typo"}})
+
+
+def test_pipeline_config_validates_assay_and_normalises_bin_sizes():
+    from capcruncher.pipeline.validation import format_pipeline_config
+
+    config = {
+        "analysis": {
+            "method": "Capture",
+            "bin_sizes": "10000 20000",
+        }
+    }
+
+    assert format_pipeline_config(config)["analysis"] == {
+        "method": "capture",
+        "bin_sizes": [10000, 20000],
+    }
+
+    with pytest.raises(ValueError, match="analysis.method"):
+        format_pipeline_config({"analysis": {"method": "hic"}})
+
+
+def test_pipeline_config_requires_twobit_for_custom_hub_genome():
+    from capcruncher.pipeline.validation import format_pipeline_config
+
+    with pytest.raises(ValueError, match="genome.twobit"):
+        format_pipeline_config(
+            {
+                "genome": {"custom": True},
+                "hub": {"create": True},
+            }
+        )
+
+
+def test_pipeline_config_validates_ambiguous_workflow_options():
+    from capcruncher.pipeline.validation import format_pipeline_config
+
+    config = {
+        "align": {"aligner": "Bowtie2"},
+        "analysis": {"restriction_enzyme": "dpnii", "reporter_exclusion_zone": 1000},
+        "analysis_optional": {
+            "minimum_viewpoint_overlap": 0.5,
+            "priority_chromosomes": "chr1,chr2",
+        },
+        "compare": {"summary_methods": "mean"},
+        "plot": {"normalisation": "raw"},
+        "split": {"method": "python", "n_reads": 1000},
+    }
+
+    formatted = format_pipeline_config(config)
+
+    assert formatted["align"]["aligner"] == "bowtie2"
+    assert formatted["compare"]["summary_methods"] == "mean"
+    assert formatted["split"] == {"n_reads": 1000, "method": "python"}
+
+
+@pytest.mark.parametrize(
+    "config,error",
+    [
+        ({"align": {"aligner": "bwa"}}, "align.aligner"),
+        ({"analysis": {"restriction_enzyme": "not-an-enzyme"}}, "restriction_enzyme"),
+        ({"analysis": {"reporter_exclusion_zone": -1}}, "reporter_exclusion_zone"),
+        (
+            {"analysis_optional": {"minimum_viewpoint_overlap": 1.5}},
+            "minimum_viewpoint_overlap",
+        ),
+        ({"compare": {"summary_methods": "median"}}, "compare.summary_methods"),
+        ({"plot": {"normalisation": "scaled"}}, "plot.normalisation"),
+        ({"split": {"method": "awk"}}, "split.method"),
+        ({"split": {"n_reads": 0}}, "split.n_reads"),
+    ],
+)
+def test_pipeline_config_rejects_ambiguous_workflow_option_typos(config, error):
+    from capcruncher.pipeline.validation import format_pipeline_config
+
+    with pytest.raises(ValueError, match=error):
+        format_pipeline_config(config)
+
+
+def test_pipeline_config_bridges_custom_genome_flag_for_hub_rule():
+    from capcruncher.pipeline.validation import format_pipeline_config
+
+    formatted = format_pipeline_config(
+        {
+            "genome": {"custom": True, "twobit": "genome.2bit"},
+            "hub": {"create": True},
+        }
+    )
+
+    assert formatted["hub"]["custom_genome"] is True
+
+
 def test_generated_design_matrix_uses_current_sample_column(tmp_path):
     from capcruncher.pipeline.utils import get_design_matrix
 
@@ -895,7 +999,7 @@ def test_make_ucsc_hub_uses_modern_tracknado_builder(monkeypatch, tmp_path):
             bigwigs_comparison=[],
             viewpoints=tmp_path / "viewpoints.bigBed",
         ),
-        color_by="sample",
+        color_by="samplename",
         genome="mm10",
         hub_name="capcruncher",
         hub_email="test@example.org",

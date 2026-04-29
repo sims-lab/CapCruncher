@@ -1,13 +1,13 @@
 # ruff: noqa: F821
 
-from __future__ import annotations
-
 import pathlib
 import re
 import sys
 from collections.abc import Iterable
 
 from loguru import logger
+
+from capcruncher.pipeline.validation import normalise_hub_color_by
 
 
 SUMMARY_TRACK_PATTERN = re.compile(
@@ -139,6 +139,7 @@ def build_hub(
     genome_organism: str | None = None,
     genome_default_position: str | None = None,
 ):
+    color_by = normalise_hub_color_by(color_by)
     custom_genome_twobit: str | pathlib.Path = ""
     custom_genome_organism = genome
     if custom_genome:
@@ -159,8 +160,9 @@ def build_hub(
         .group_by("category", "normalisation", as_supertrack=True)
         .group_by("sample", "viewpoint", "aggregation")
         .overlay_by("overlay")
-        .color_by(color_by or "sample")
     )
+    if color_by:
+        builder = builder.color_by(color_by)
 
     if custom_genome:
         builder = builder.with_custom_genome(

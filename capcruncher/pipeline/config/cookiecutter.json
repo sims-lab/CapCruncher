@@ -24,7 +24,7 @@
   "ucsc_hub_directory": "PATH FOR UCSC HUB DIRECTORY",
   "ucsc_hub_name": "UCSC hub name",
   "ucsc_hub_email": "Email address (UCSC required)",
-  "ucsc_track_color_by": ["none", "samplename", "method"],
+  "ucsc_track_color_by": ["sample", "category", "normalisation", "viewpoint", "aggregation", "none", "samplename", "method"],
   "make_plots": ["yes", "no"],
   "plotting_coordinates": "PATH TO PLOTTING COORDINATES",
   "plotting_normalisation": ["raw", "n_interactions", "n_rf_n_interactions", "ice", "icen_cis", "icen_scale"],

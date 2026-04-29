@@ -548,7 +548,12 @@ def bedgraphs_differential(
         help="Minimum q-value to test for differential interactions.",
     ),
 ) -> None:
-    """Perform differential testing on CapCruncher HDF5 files."""
+    """Perform differential testing on CapCruncher HDF5 files.
+
+    Running this on every interaction breaks the model's assumption of
+    independence. This is provided as is. For a more statistically sound
+    comparison, limit testing to regions of interest.
+    """
     _run_differential(
         interaction_files=interaction_files,
         output_prefix=output_prefix,

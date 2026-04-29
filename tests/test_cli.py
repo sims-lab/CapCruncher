@@ -127,6 +127,7 @@ def test_legacy_pipeline_command_help_names_replacements(
     result = cli_runner.invoke(cli, command)
 
     assert result.exit_code == 0
+    assert "breaks the model's assumption of independence" in result.output
     assert "(deprecated)" in result.output
     assert f"Use '{replacement}' instead" in result.output
 

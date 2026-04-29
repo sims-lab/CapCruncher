@@ -109,6 +109,12 @@ hub:
     # (Required for hub)
     email: "{{cookiecutter.ucsc_hub_email}}"
 
+    # Track metadata column used to color hub tracks.
+    # Choose from sample, category, normalisation, viewpoint, aggregation, none.
+    # Legacy values samplename and method are accepted and normalised.
+    # (Optional)
+    color_by: "{{cookiecutter.ucsc_track_color_by}}"
+
 execution:
 
     # Default container image for Snakemake container or Apptainer execution.
