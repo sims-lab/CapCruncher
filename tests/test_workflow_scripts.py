@@ -465,6 +465,8 @@ def test_write_viewpoints_with_interactions_writes_per_sample_json(
     assert json.loads((tmp_path / "sample-b.json").read_text()) == ["b.cool-vp"]
 
 
+@pytest.mark.pipeline
+@pytest.mark.slow
 def test_workflow_scripts_run_on_capture_pipeline_inputs(
     capture_pipeline_run, tmp_path
 ):
@@ -542,6 +544,8 @@ def test_workflow_scripts_run_on_capture_pipeline_inputs(
     assert deduplication_stats.exists()
 
 
+@pytest.mark.pipeline
+@pytest.mark.slow
 def test_capture_pipeline_golden_outputs(capture_pipeline_run):
     import cooler
 
@@ -615,6 +619,8 @@ def test_capture_pipeline_golden_outputs(capture_pipeline_run):
         assert binned_cooler.info["metadata"]["n_interactions_total"] == 130
 
 
+@pytest.mark.pipeline
+@pytest.mark.slow
 def test_countable_reporter_handoff_preserves_pipeline_partitions(
     capture_pipeline_run, tmp_path
 ):
