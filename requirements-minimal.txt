@@ -6,7 +6,7 @@ loguru>=0.7,<1
 numpy>=2,<3
 pandas>=2.2,<3
 plotly>=6,<7
-polars>=1.34,<2
+polars>=1.34,<1.40
 pyarrow>=16
 pyranges1
 pyyaml
