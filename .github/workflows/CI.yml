@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CACHE_VERSION: 2
+  CACHE_VERSION: 3
 
 jobs:
   bowtie2-index:
@@ -123,7 +123,7 @@ jobs:
           uv pip install --system --no-deps ".[full,config,plot]"
           uv pip install --system --no-deps "capcruncher-tools>=0.2.4,<0.3.0" "plotnado[toml]>=0.3,<0.4"
           uv pip install --system pytest-cov pytest-order pytest-xdist
-          python -c "import polars, capcruncher_tools, plotnado; print(f'polars {polars.__version__}')"
+          python -c "import polars, scipy.optimize, pydeseq2, capcruncher_tools, plotnado; print(f'polars {polars.__version__}')"
 
       - name: Test quick suite with pytest
         run: |
