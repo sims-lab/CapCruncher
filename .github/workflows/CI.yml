@@ -17,6 +17,7 @@ env:
 
 jobs:
   tests:
+    name: Tests (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     defaults:
@@ -25,13 +26,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        include:
+          - name: linux
+            os: ubuntu-latest
+            run_pipeline: true
+            upload_coverage: true
+          - name: macos
+            os: macos-13
+            run_pipeline: false
+            upload_coverage: false
 
     steps:
       - uses: actions/checkout@v6
 
       - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install --yes libcurl4-openssl-dev
@@ -57,7 +66,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-suffix: tests
+          cache-suffix: tests-${{ matrix.name }}
           python-version: "3.12"
 
       - name: Check installed packages
@@ -76,10 +85,12 @@ jobs:
           pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 4 -m "not pipeline"
 
       - name: Test pipeline suite with pytest
+        if: matrix.run_pipeline
         run: |
           pytest -vv -s --log-cli-level info --cov=./ --cov-append --cov-report=xml --cores 4 -m "pipeline"
 
       - name: Upload Coverage to Codecov
+        if: matrix.upload_coverage
         uses: codecov/codecov-action@v5
         with:
           env_vars: OS,PYTHON
