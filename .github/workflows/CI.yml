@@ -23,18 +23,25 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install Bowtie2
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bowtie2
+
+      - name: Detect Bowtie2 version
+        id: bowtie2-version
+        run: |
+          bowtie2 --version
+          version="$(bowtie2 --version | awk 'NR == 1 { print $NF }')"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
       - name: Restore Bowtie2 index cache
         id: bowtie2-cache
         uses: actions/cache@v4
         with:
           path: tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/*.bt2
-          key: bowtie2-index-${{ hashFiles('tests/data/data_for_pipeline_run/chr14.fa.gz') }}-${{ env.CACHE_VERSION }}
-
-      - name: Install Bowtie2
-        if: steps.bowtie2-cache.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes bowtie2
+          # Rebuild only when the test FASTA or Bowtie2 index format changes.
+          key: bowtie2-index-${{ steps.bowtie2-version.outputs.version }}-${{ hashFiles('tests/data/data_for_pipeline_run/chr14.fa.gz') }}
 
       - name: Build Bowtie2 index
         if: steps.bowtie2-cache.outputs.cache-hit != 'true'
