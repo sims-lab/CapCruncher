@@ -35,7 +35,7 @@ jobs:
           python-version: "3.12"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v8
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           cache-suffix: release-source
@@ -86,7 +86,7 @@ jobs:
           python-version: "3.12"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v8
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           cache-suffix: release-wheel-${{ matrix.name }}
@@ -125,7 +125,7 @@ jobs:
 
     steps:
       - name: Set up uv
-        uses: astral-sh/setup-uv@v8
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           cache-suffix: release-publish
