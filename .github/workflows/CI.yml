@@ -16,8 +16,45 @@ env:
   CACHE_VERSION: 1
 
 jobs:
+  bowtie2-index:
+    name: Prepare Bowtie2 index
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Restore Bowtie2 index cache
+        id: bowtie2-cache
+        uses: actions/cache@v4
+        with:
+          path: tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/*.bt2
+          key: bowtie2-index-${{ hashFiles('tests/data/data_for_pipeline_run/chr14.fa.gz') }}-${{ env.CACHE_VERSION }}
+
+      - name: Install Bowtie2
+        if: steps.bowtie2-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bowtie2
+
+      - name: Build Bowtie2 index
+        if: steps.bowtie2-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p tests/data/data_for_pipeline_run/chr14_bowtie2_indicies
+          bowtie2-build \
+            tests/data/data_for_pipeline_run/chr14.fa.gz \
+            tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/bt2 \
+            --threads 4
+
+      - name: Upload Bowtie2 index artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chr14-bowtie2-index
+          path: tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/*.bt2
+          if-no-files-found: error
+
   tests:
     name: Tests (${{ matrix.name }})
+    needs: bowtie2-index
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     defaults:
@@ -39,18 +76,17 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Download Bowtie2 index
+        uses: actions/download-artifact@v4
+        with:
+          name: chr14-bowtie2-index
+          path: tests/data/data_for_pipeline_run/chr14_bowtie2_indicies
+
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install --yes libcurl4-openssl-dev
-
-      - name: Restore bowtie2 cache
-        uses: actions/cache@v4
-        with:
-          path: tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/*.bt2
-          key: bowtie2-${{ runner.os }}-${{ env.CACHE_VERSION }}
-        id: bowtie2_cache
 
       - name: Set up micromamba environment
         uses: mamba-org/setup-micromamba@v2
