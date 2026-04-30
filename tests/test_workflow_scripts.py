@@ -484,6 +484,39 @@ def test_extract_flash_stats_aggregates_multiqc_rows(tmp_path):
     ]
 
 
+def test_extract_flash_stats_derives_combined_pairs_from_current_multiqc(tmp_path):
+    script = load_workflow_script("extract_flash_data.py")
+    flash_summary = tmp_path / "flash.tsv"
+
+    pd.DataFrame(
+        {
+            "Sample": ["SAMPLE-A_part0_1", "SAMPLE-A_part1_1", "SAMPLE-B_part0_1"],
+            "totalpairs": [147, 142, 225],
+            "discardpairs": [0, 2, 5],
+            "uncombopairs": [55, 57, 99],
+        }
+    ).to_csv(flash_summary, sep="\t", index=False)
+
+    stats = script.extract_flash_stats(flash_summary)
+
+    assert [stat.model_dump() for stat in stats] == [
+        {
+            "sample": "SAMPLE-A",
+            "n_combined": 175,
+            "n_uncombined": 112,
+            "n_total": 287,
+            "percentage_combined": 60.97560975609756,
+        },
+        {
+            "sample": "SAMPLE-B",
+            "n_combined": 121,
+            "n_uncombined": 99,
+            "n_total": 220,
+            "percentage_combined": 55.00000000000001,
+        },
+    ]
+
+
 def test_extract_trimming_stats_aggregates_multiqc_rows(tmp_path):
     script = load_workflow_script("extract_trimming_data.py")
     trimming_summary = tmp_path / "trimming.tsv"
