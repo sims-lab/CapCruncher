@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator, model_validator
 
 from capcruncher.types import (
     Assay,
     FastqSplitMethod,
+    FLAG_OFF_VALUES,
+    FLAG_ON_VALUES,
+    FLAG_NONE_VALUES,
     SummaryMethod,
     VALID_ASSAYS,
     VALID_FASTQ_SPLIT_METHODS,
@@ -43,16 +46,32 @@ ALIGNERS = {"bowtie", "bowtie2"}
 PRIORITY_CHROMOSOME_MODES = {"viewpoints"}
 
 
+def _coerce_flag_value(v: Any) -> bool:
+    if isinstance(v, bool):
+        return v
+    if v is None:
+        return False
+    s = str(v).strip().lower()
+    if s in FLAG_ON_VALUES:
+        return True
+    if s in FLAG_OFF_VALUES | FLAG_NONE_VALUES:
+        return False
+    return v
+
+
+FlagValue = Annotated[bool, BeforeValidator(_coerce_flag_value)]
+
+
 def is_on(param: Any) -> bool:
-    return str(param).lower() in {"true", "t", "on", "yes", "y", "1"}
+    return str(param).strip().lower() in FLAG_ON_VALUES
 
 
 def is_off(param: Any) -> bool:
-    return str(param).lower() in {"", "none", "f", "false", "off", "no", "n", "0"}
+    return str(param).strip().lower() in FLAG_OFF_VALUES
 
 
 def is_none(param: Any) -> bool:
-    return str(param).lower() in {"", "none", "null"}
+    return str(param).strip().lower() in FLAG_NONE_VALUES
 
 
 def normalise_scalar_config_value(value: Any) -> Any:

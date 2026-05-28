@@ -8,7 +8,41 @@ from pathlib import Path
 from typing import Iterable
 
 import pandas as pd
+import pandera.pandas as pa
+from pandera.typing.pandas import Series as PASeries
 import pyranges1 as pr
+
+
+class BedSchema(pa.DataFrameModel):
+    """Pandera schema for a minimal BED DataFrame (BED3+).
+
+    Enforces chrom as str (avoids mixed int/str dtype — root cause of issue #234),
+    non-negative coordinates, and end > start.
+    """
+
+    chrom: PASeries[str] = pa.Field(nullable=False)
+    start: PASeries[int] = pa.Field(ge=0)
+    end: PASeries[int] = pa.Field(ge=1)
+
+    class Config:
+        coerce = True
+        strict = False  # extra columns (name, score, strand …) are allowed
+
+    @pa.dataframe_check
+    @classmethod
+    def end_gt_start(cls, df: pd.DataFrame) -> pd.Series:
+        return df["end"] > df["start"]
+
+
+def validate_bed_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """Validate and coerce a BED DataFrame against BedSchema.
+
+    Returns the coerced DataFrame. Raises SchemaError on invalid data.
+    Only validates when the required columns (chrom, start, end) are present.
+    """
+    if not {"chrom", "start", "end"}.issubset(df.columns):
+        return df
+    return BedSchema.validate(df)
 
 type BedInput = str | os.PathLike | pd.DataFrame | pr.PyRanges
 
@@ -292,6 +326,9 @@ def convert_bed_to_dataframe(bed: BedInput) -> pd.DataFrame:
         raise TypeError(f"Unsupported BED input type: {type(bed)!r}")
 
     bed_conv = _standardize_bed_columns(bed_conv, capitalized=False)
+
+    if not bed_conv.empty:
+        bed_conv = validate_bed_dataframe(bed_conv)
 
     return bed_conv
 

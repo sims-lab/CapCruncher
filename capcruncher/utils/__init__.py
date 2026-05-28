@@ -16,6 +16,7 @@ from typing import Any
 
 import pandas as pd
 
+from capcruncher.types import FLAG_OFF_VALUES, FLAG_ON_VALUES, FLAG_NONE_VALUES
 from capcruncher.utils.bed import (
     BED_COLUMN_ALIASES,
     BED_COLUMN_CASE,
@@ -23,6 +24,7 @@ from capcruncher.utils.bed import (
     BED_COLUMN_NAMES as _BED_COLUMN_NAMES,
     INTERSECT_COLUMNS,
     BedInput,
+    BedSchema,
     _prepare_intersection_frame,
     _read_bed_dataframe,
     _standardize_bed_columns,
@@ -34,6 +36,7 @@ from capcruncher.utils.bed import (
     intersect_bins,
     is_valid_bed,
     split_intervals_on_chrom,
+    validate_bed_dataframe,
 )
 from capcruncher.utils.genomics import (
     convert_interval_to_coords,
@@ -57,6 +60,7 @@ __all__ = [
     "BED_COLUMN_NAMES",
     "INTERSECT_COLUMNS",
     "BedInput",
+    "BedSchema",
     "_prepare_intersection_frame",
     "_read_bed_dataframe",
     "_standardize_bed_columns",
@@ -68,6 +72,7 @@ __all__ = [
     "intersect_bins",
     "is_valid_bed",
     "split_intervals_on_chrom",
+    "validate_bed_dataframe",
     # genomics
     "convert_interval_to_coords",
     "get_human_readable_number_of_bp",
@@ -106,27 +111,15 @@ def cycle_argument(arg: list) -> Iterable:
 
 
 def is_on(param: str) -> bool:
-    """Returns True if parameter in "on" values"""
-    values = ["true", "t", "on", "yes", "y", "1"]
-    return str(param).lower() in values
+    return str(param).strip().lower() in FLAG_ON_VALUES
 
 
 def is_off(param: str) -> bool:
-    """Returns True if parameter in "off" values"""
-    values = ["", "None", "none", "F", "f"]
-    if str(param).lower() in values:
-        return True
-    else:
-        return False
+    return str(param).strip().lower() in FLAG_OFF_VALUES
 
 
 def is_none(param: str) -> bool:
-    """Returns True if parameter is none"""
-    values = ["", "none"]
-    if str(param).lower() in values:
-        return True
-    else:
-        return False
+    return str(param).strip().lower() in FLAG_NONE_VALUES
 
 
 def hash_column(col: Iterable, hash_type: int = 64) -> list:

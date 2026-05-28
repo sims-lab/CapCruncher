@@ -114,6 +114,10 @@ VALID_FASTQ_SPLIT_TYPES: tuple[FastqSplitType, ...] = tuple(FastqSplitType)
 VALID_CIS_OR_TRANS: tuple[CisOrTrans, ...] = tuple(CisOrTrans)
 VALID_BINNING_METHODS: tuple[BinningMethod, ...] = tuple(BinningMethod)
 
+FLAG_ON_VALUES: frozenset[str] = frozenset({"true", "t", "on", "yes", "y", "1"})
+FLAG_OFF_VALUES: frozenset[str] = frozenset({"false", "f", "off", "no", "n", "0"})
+FLAG_NONE_VALUES: frozenset[str] = frozenset({"", "none", "null"})
+
 Choice = TypeVar("Choice", bound=StrEnum)
 
 
