@@ -60,8 +60,8 @@ Repository    = "https://github.com/sims-lab/CapCruncher.git"
 
 
 [dependency-groups]
-dev  = ["ruff>=0.11", "pre-commit>=4", "ty>=0.0.32"]
-test = ["pytest>=8", "pytest-cov>=6", "pytest-order", "pytest-xdist"]
+dev  = ["ruff>=0.11", "pre-commit>=4", "ty>=0.0.32", "pytest>=8", "pytest-cov>=6", "pytest-order", "pytest-xdist"]
+test = [{include-group = "dev"}]
 docs = [
     "mkdocs-material>=9",
     "mkdocstrings-python",
@@ -199,8 +199,12 @@ replace-imports-with-any = [
 ]
 allowed-unresolved-imports = [
     "capcruncher_tools.**",
+    "click.**",
+    "cookiecutter.**",
+    "pandera.**",
     "plotnado.**",
     "pydeseq2.**",
+    "ray.**",
     "tracknado.**",
     "xopen.**",
     "xxhash.**",

@@ -287,6 +287,10 @@ ray = [
 [package.dev-dependencies]
 dev = [
     { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-order" },
+    { name = "pytest-xdist" },
     { name = "ruff" },
     { name = "ty" },
 ]
@@ -302,10 +306,13 @@ docs = [
     { name = "pygments" },
 ]
 test = [
+    { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-order" },
     { name = "pytest-xdist" },
+    { name = "ruff" },
+    { name = "ty" },
 ]
 
 [package.metadata]
@@ -345,6 +352,10 @@ provides-extras = ["full", "ray", "differential", "plot", "hub", "hpc", "config"
 [package.metadata.requires-dev]
 dev = [
     { name = "pre-commit", specifier = ">=4" },
+    { name = "pytest", specifier = ">=8" },
+    { name = "pytest-cov", specifier = ">=6" },
+    { name = "pytest-order" },
+    { name = "pytest-xdist" },
     { name = "ruff", specifier = ">=0.11" },
     { name = "ty", specifier = ">=0.0.32" },
 ]
@@ -360,10 +371,13 @@ docs = [
     { name = "pygments" },
 ]
 test = [
+    { name = "pre-commit", specifier = ">=4" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-cov", specifier = ">=6" },
     { name = "pytest-order" },
     { name = "pytest-xdist" },
+    { name = "ruff", specifier = ">=0.11" },
+    { name = "ty", specifier = ">=0.0.32" },
 ]
 
 [[package]]
