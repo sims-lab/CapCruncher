@@ -2,7 +2,6 @@ from collections.abc import Callable, Sequence
 import multiprocessing
 import os
 from pathlib import Path
-import traceback
 from typing import Any, cast
 
 from loguru import logger
@@ -127,7 +126,7 @@ class FastqReadFormatterProcess(multiprocessing.Process):
             self.outq.put("END")
 
         except Exception:
-            traceback.format_exc()
+            logger.exception("Formatter worker failed")
             self.outq.put("END")
 
 
@@ -208,4 +207,4 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
                 self.n_files_written += 1
 
         except Exception:
-            traceback.format_exc()
+            logger.exception("Writer worker failed")

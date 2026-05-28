@@ -84,3 +84,35 @@ def test_midpoint_fragment_mapping_uses_integer_coordinates():
 
     assert mapped["Start_b"].tolist() == [4]
     assert mapped["End_b"].tolist() == [5]
+
+
+def test_create_cooler_with_numeric_chromosome_names(tmp_path):
+    # Regression for #234: numeric chrom names (e.g. "9") must be read as str
+    # to prevent mixed int/str dtype causing duplicate keys and TypeError in cooler
+    viewpoints = tmp_path / "viewpoints.bed"
+    viewpoints.write_text("9\t0\t100\tcapture_vp1\n", encoding="utf-8")
+
+    bins = pd.DataFrame(
+        {
+            "chrom": ["9", "9"],
+            "start": [0, 1000],
+            "end": [1000, 2000],
+            "name": [0, 1],
+        }
+    )
+    pixels = pd.DataFrame(
+        {
+            "bin1_id": [0],
+            "bin2_id": [1],
+            "count": [5],
+        }
+    )
+
+    # Must not raise TypeError or KeyError from mixed chrom dtype
+    create_cooler_cc(
+        tmp_path / "test.hdf5",
+        bins=bins,
+        pixels=pixels,
+        viewpoint_name="vp1",
+        viewpoint_path=viewpoints,
+    )

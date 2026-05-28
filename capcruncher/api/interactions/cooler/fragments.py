@@ -30,6 +30,7 @@ def fragments(
         sep="\t",
         header=None,
         names=["chrom", "start", "end", "name"],
+        dtype={"chrom": str},
     )
 
     if counts.endswith(".hdf5"):

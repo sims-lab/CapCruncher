@@ -165,6 +165,7 @@ def _read_bed_dataframe(bed: BedInput, nrows=None) -> pd.DataFrame:
         header=None,
         comment="#",
         nrows=nrows,
+        dtype={0: str},
     )
 
     df.columns = [
@@ -539,7 +540,7 @@ def is_tabix(file: str):
         _is_tabix = True
 
     except OSError as e:
-        logger.warn(e)
+        logger.warning(e)
 
     return _is_tabix
 

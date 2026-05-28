@@ -475,7 +475,7 @@ def cooler_to_bedgraph(
         viewpoint_coords = re.split("[:-]", viewpoint_coords)
 
         viewpoint_chrom = viewpoint_coords[0]
-        viewpoint_start = min(0, int(viewpoint_coords[1]) - viewpoint_distance)
+        viewpoint_start = max(0, int(viewpoint_coords[1]) - viewpoint_distance)
         viewpoint_chromsize = cooler.Cooler(clr).chromsizes[viewpoint_chrom]
         viewpoint_end = min(
             int(viewpoint_coords[1]) + viewpoint_distance, viewpoint_chromsize

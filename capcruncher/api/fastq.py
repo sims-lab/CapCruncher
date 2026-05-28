@@ -1,6 +1,7 @@
 import glob
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -160,9 +161,9 @@ def run_unix_split(
             cat_executable = "gzcat"
 
     cmd = (
-        f"{cat_executable} {fn} | "
+        f"{cat_executable} {shlex.quote(str(fn))} | "
         f"{split_executable} FILTER -l {n_reads * 4} -d "
-        f"--additional-suffix={split_suffix} - {output_prefix}_part;"
+        f"--additional-suffix={split_suffix} - {shlex.quote(str(output_prefix))}_part;"
     )
     if gzip:
         cmd = cmd.replace("FILTER", f"--filter='pigz -p {n_cores} > $FILE.gz'")
