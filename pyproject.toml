@@ -198,14 +198,5 @@ replace-imports-with-any = [
     "snakemake.**",
 ]
 allowed-unresolved-imports = [
-    "capcruncher_tools.**",
-    "click.**",
-    "cookiecutter.**",
-    "pandera.**",
-    "plotnado.**",
-    "pydeseq2.**",
     "ray.**",
-    "tracknado.**",
-    "xopen.**",
-    "xxhash.**",
 ]

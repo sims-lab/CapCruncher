@@ -46,8 +46,8 @@ jobs:
           enable-cache: true
           cache-suffix: typecheck
 
-      - name: Install dev dependencies
-        run: uv sync --group dev
+      - name: Install dev dependencies and all extras
+        run: uv sync --group dev --extra full --extra differential --extra config --extra plot --extra hub
 
       - name: Run ty
         run: uv run ty check
