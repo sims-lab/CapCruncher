@@ -80,11 +80,24 @@ for part, offset in enumerate(range(0, len(lines), n_lines)):
     flash = bin_dir / "flash"
     flash.write_text(
         """#!/usr/bin/env python
-import os
 import subprocess
 import sys
 
-subprocess.run(["flash2", *sys.argv[1:]], check=False)
+args = sys.argv[1:]
+# flash2 does not support --compress-prog-args; strip it and its value
+filtered = []
+skip_next = False
+for arg in args:
+    if skip_next:
+        skip_next = False
+        continue
+    if arg == "--compress-prog-args":
+        skip_next = True
+        continue
+    filtered.append(arg)
+
+result = subprocess.run(["flash2", *filtered], check=False)
+sys.exit(result.returncode)
 """,
         encoding="utf-8",
     )

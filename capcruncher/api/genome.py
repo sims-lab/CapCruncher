@@ -46,7 +46,8 @@ def digest_genome(
         )
 
         df = (
-            df.sort(["chrom", "start"])
+            df.filter(pl.col("end") > pl.col("start"))
+            .sort(["chrom", "start"])
             .drop(["name"])
             .with_row_index("name")[["chrom", "start", "end", "name"]]
         )

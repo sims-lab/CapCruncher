@@ -331,11 +331,21 @@ def convert_bed_to_dataframe(bed: BedInput) -> pd.DataFrame:
     if not bed_conv.empty:
         try:
             bed_conv = validate_bed_dataframe(bed_conv)
-        except pandera_errors.SchemaError as exc:
+        except pandera_errors.SchemaError:
             from loguru import logger
 
-            logger.warning(f"BED validation failed, treating as empty: {exc}")
-            bed_conv = pd.DataFrame()
+            if {"start", "end"}.issubset(bed_conv.columns):
+                end_num = pd.Series(pd.to_numeric(bed_conv["end"], errors="coerce"))
+                start_num = pd.Series(pd.to_numeric(bed_conv["start"], errors="coerce"))
+                valid_mask = end_num.gt(start_num)
+                n_dropped = int(len(valid_mask) - valid_mask.sum())
+                if n_dropped:
+                    logger.warning(f"Dropped {n_dropped} BED rows where end <= start")
+                bed_conv = pd.DataFrame(bed_conv.loc[valid_mask]).reset_index(drop=True)
+                if not bed_conv.empty:
+                    bed_conv = validate_bed_dataframe(bed_conv)
+            else:
+                bed_conv = pd.DataFrame()
 
     return bed_conv
 
