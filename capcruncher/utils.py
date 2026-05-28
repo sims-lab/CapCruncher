@@ -4,7 +4,7 @@ import pickle
 import re
 from pathlib import Path
 from functools import wraps
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Iterator
 
 import pandas as pd
 import pyranges1 as pr
@@ -77,7 +77,7 @@ INTERSECT_COLUMNS = [
 ]
 
 
-def cycle_argument(arg):
+def cycle_argument(arg: list) -> Iterable:
     """Allows for the same argument to be stated once but repeated for all files"""
 
     if len(arg) == 1:
@@ -86,7 +86,7 @@ def cycle_argument(arg):
         return arg
 
 
-def read_dataframes(filenames: Iterable, **kwargs):
+def read_dataframes(filenames: Iterable, **kwargs) -> list[pd.DataFrame]:
     from loguru import logger
 
     dframes = []
@@ -124,7 +124,7 @@ def is_on(param: str) -> bool:
     return str(param).lower() in values
 
 
-def is_off(param: str):
+def is_off(param: str) -> bool:
     """Returns True if parameter in "off" values"""
     values = ["", "None", "none", "F", "f"]
     if str(param).lower() in values:
@@ -152,7 +152,7 @@ def get_human_readable_number_of_bp(bp: int) -> str:
     return f"{bp / 1e6}mb"
 
 
-def _read_bed_dataframe(bed: BedInput, nrows=None) -> pd.DataFrame:
+def _read_bed_dataframe(bed: BedInput, nrows: int | None = None) -> pd.DataFrame:
     if isinstance(bed, pr.PyRanges):
         return bed.copy()
 
@@ -464,7 +464,7 @@ def categorise_tracks(ser: pd.Series) -> list:
         "subtraction": "Samples_Compared",
     }
     categories = []
-    for index, value in ser.iteritems():
+    for index, value in ser.items():
         for key in mapping:
             if key in value:
                 categories.append(mapping[key])
@@ -528,7 +528,7 @@ def convert_bed_to_dataframe(bed: BedInput) -> pd.DataFrame:
     return bed_conv
 
 
-def is_tabix(file: str):
+def is_tabix(file: str) -> bool:
     import pysam
     from loguru import logger
 
@@ -622,7 +622,7 @@ def convert_interval_to_coords(
         return (name, f"{chrom}:{start}-{end}")
 
 
-def gtf_line_to_bed12_line(df):
+def gtf_line_to_bed12_line(df: pd.DataFrame) -> str:
     df = df.sort_values(["seqname", "start"])
     geneid = df["geneid"].iloc[0]
     exons = df.query('feature == "exon"')
@@ -689,7 +689,7 @@ def get_file_type(fn: os.PathLike) -> str:
 
 def get_cooler_uri(
     store: os.PathLike | str, viewpoint: str, resolution: str | int | None
-):
+) -> str:
     store = os.fspath(store)
     cooler_fragment = r"(?P<store>.*?).hdf5::/(?!.*/resolutions/)(?P<viewpoint>.*?)$"
     cooler_binned = (
@@ -715,7 +715,7 @@ def get_cooler_uri(
     return uri
 
 
-def get_restriction_site(restriction_enzyme: str):
+def get_restriction_site(restriction_enzyme: str) -> str:
     """
     Gets the restriction site for a given restriction enzyme.
 
