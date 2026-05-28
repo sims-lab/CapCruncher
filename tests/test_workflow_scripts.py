@@ -49,7 +49,7 @@ def test_workflow_environment_tracks_runtime_dependency_split():
     assert "biopython" in pyproject_text
     assert "capcruncher-tools>=0.2.4,<0.3.0" in pyproject_text
     assert "capcruncher-tools>=0.2.4,<0.3.0" in env_text
-    assert "typer>=0.24.2,<0.25.0" in env_text
+    assert "typer>=0.26.0,<0.27.0" in env_text
     assert "cookiecutter" not in env_text
     assert "seaborn" not in env_text
 

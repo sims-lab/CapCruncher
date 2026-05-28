@@ -28,3 +28,13 @@ repos:
     rev: v2.0.1
     hooks:
       - id: snakefmt
+
+  - repo: local
+    hooks:
+      - id: pixi-lock
+        name: pixi lock
+        language: system
+        entry: pixi install
+        files: ^pixi\.toml$
+        pass_filenames: false
+        stages: [pre-push]
