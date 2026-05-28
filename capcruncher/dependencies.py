@@ -4,7 +4,6 @@ import importlib
 import importlib.metadata
 import re
 
-
 CAPCRUNCHER_TOOLS_DISTRIBUTION = "capcruncher-tools"
 CAPCRUNCHER_TOOLS_MODULE = "capcruncher_tools"
 CAPCRUNCHER_TOOLS_REQUIREMENT = ">=0.2.4,<0.3.0"
@@ -50,9 +49,7 @@ def require_capcruncher_tools() -> str:
             f"Imported module path: {module_path}"
         ) from exc
 
-    if not _version_satisfies(
-        installed_version, CAPCRUNCHER_TOOLS_REQUIREMENT
-    ):
+    if not _version_satisfies(installed_version, CAPCRUNCHER_TOOLS_REQUIREMENT):
         raise DependencyVersionError(
             f"{CAPCRUNCHER_TOOLS_DISTRIBUTION} {CAPCRUNCHER_TOOLS_REQUIREMENT} "
             f"is required, but version {installed_version} is installed. "

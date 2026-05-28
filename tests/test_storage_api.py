@@ -1,5 +1,5 @@
-import pyranges1 as pr
 import pandas as pd
+import pyranges1 as pr
 import pytest
 
 from capcruncher.api.interactions.cooler.binning import CoolerBinner
@@ -44,8 +44,7 @@ def test_viewpoint_from_bed_returns_pyranges(tmp_path):
 def test_viewpoint_from_bed_matches_literal_viewpoint_name(tmp_path):
     bed_path = tmp_path / "viewpoints.bed"
     bed_path.write_text(
-        "chr1\t10\t20\tcapture_Slc25A37\n"
-        "chr1\t30\t40\tcapture_Slc25A37_extra\n"
+        "chr1\t10\t20\tcapture_Slc25A37\nchr1\t30\t40\tcapture_Slc25A37_extra\n"
     )
 
     viewpoint = Viewpoint.from_bed(

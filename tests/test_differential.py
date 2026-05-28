@@ -6,6 +6,7 @@ from capcruncher.api.interactions.differential import get_differential_interacti
 
 try:
     import pydeseq2  # noqa: F401
+
     HAS_PYDESEQ2 = True
 except ImportError:
     HAS_PYDESEQ2 = False
@@ -19,18 +20,14 @@ def test_get_differential_interactions_uses_pydeseq2_results_df(monkeypatch):
             captured["n_cpus"] = n_cpus
 
     class FakeDeseqDataSet:
-        def __init__(
-            self, counts, metadata, design, refit_cooks, inference
-        ):
+        def __init__(self, counts, metadata, design, refit_cooks, inference):
             captured["counts"] = counts
             captured["metadata"] = metadata
             captured["design"] = design
             captured["refit_cooks"] = refit_cooks
             captured["inference"] = inference
             self.obsm = {
-                "design_matrix": pd.DataFrame(
-                    columns=["Intercept", "condition[T.B]"]
-                )
+                "design_matrix": pd.DataFrame(columns=["Intercept", "condition[T.B]"])
             }
 
         def deseq2(self):
@@ -113,9 +110,9 @@ def test_differential_reports_empty_counts_after_threshold(monkeypatch, tmp_path
     )
 
     design = tmp_path / "design.tsv"
-    pd.DataFrame(
-        {"sample": ["sample-a", "sample-b"], "condition": ["A", "B"]}
-    ).to_csv(design, sep="\t", index=False)
+    pd.DataFrame({"sample": ["sample-a", "sample-b"], "condition": ["A", "B"]}).to_csv(
+        design, sep="\t", index=False
+    )
 
     with pytest.raises(ValueError, match="No differential interactions found"):
         differential.differential(
@@ -155,5 +152,13 @@ def test_differential_interactions_end_to_end():
     )
 
     assert isinstance(results, pd.DataFrame)
-    for col in ("baseMean", "log2FoldChange", "pvalue", "padj", "chrom", "start", "end"):
+    for col in (
+        "baseMean",
+        "log2FoldChange",
+        "pvalue",
+        "padj",
+        "chrom",
+        "start",
+        "end",
+    ):
         assert col in results.columns, f"Missing column: {col}"

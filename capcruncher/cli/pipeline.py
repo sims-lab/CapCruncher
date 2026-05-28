@@ -1,15 +1,14 @@
 import os
-from importlib import resources
 import pathlib
 import shutil
 import subprocess
 from collections.abc import Sequence
+from importlib import resources
 
 import typer
 
 from capcruncher.cli.common import HELP_SETTINGS
-from capcruncher.dependencies import DependencyVersionError
-from capcruncher.dependencies import require_capcruncher_tools
+from capcruncher.dependencies import DependencyVersionError, require_capcruncher_tools
 
 type PipelineOptions = Sequence[str]
 
@@ -177,7 +176,7 @@ def run_pipeline(
         cmd.append("--show-failed-logs")
 
     if logo:
-        with open(dir_package / "data" / "logo.txt", "r", encoding="utf-8") as f:
+        with open(dir_package / "data" / "logo.txt", encoding="utf-8") as f:
             typer.echo(f.read())
 
     env = os.environ.copy()
@@ -259,7 +258,9 @@ def _float_option_value(value: str, option: str) -> float:
     try:
         return float(value)
     except ValueError as exc:
-        raise typer.BadParameter(f"Option '{option}' requires a numeric value.") from exc
+        raise typer.BadParameter(
+            f"Option '{option}' requires a numeric value."
+        ) from exc
 
 
 def _print_pipeline_run_help(snakemake_help: str) -> None:

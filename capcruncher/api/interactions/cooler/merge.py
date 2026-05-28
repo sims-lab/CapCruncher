@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
 import json
 import os
 import tempfile
+from collections.abc import Iterable
 from pathlib import Path
 
 import h5py
 from loguru import logger
+
 
 def link_common_cooler_tables(clr: Path | str) -> None:
     """Reduces cooler storage space by linking "bins" table.
@@ -98,7 +99,9 @@ def get_merged_cooler_metadata(coolers: Iterable[Path | str]) -> dict:
     return metadata
 
 
-def merge_coolers(coolers: tuple[Path | str, ...] | list[Path | str], output: Path | str):
+def merge_coolers(
+    coolers: tuple[Path | str, ...] | list[Path | str], output: Path | str
+):
     """
     Merges capcruncher cooler files together.
 
@@ -110,6 +113,7 @@ def merge_coolers(coolers: tuple[Path | str, ...] | list[Path | str], output: Pa
      output (os.PathLike): Path from merged cooler file.
     """
     from collections import defaultdict
+
     import cooler
 
     logger.info("Merging cooler files")
@@ -137,7 +141,7 @@ def merge_coolers(coolers: tuple[Path | str, ...] | list[Path | str], output: Pa
     # Initial pass to perform copying for all coolers without a matching group
     need_merging = list()
     with h5py.File(output, mode="w") as dest:
-        for ii, (viewpoint, cooler_uris) in enumerate(coolers_to_merge.items()):
+        for _, (viewpoint, cooler_uris) in enumerate(coolers_to_merge.items()):
             if len(cooler_uris) < 2:  # Only merge if two or more, else just copy
                 (file_path, group_path) = cooler_uris[0].split("::")
 
@@ -166,9 +170,9 @@ def merge_coolers(coolers: tuple[Path | str, ...] | list[Path | str], output: Pa
         metadata = get_merged_cooler_metadata(cooler_uris)
 
         with h5py.File(output, mode="a") as dest:
-            dest[viewpoint.replace("::", "/resolutions/")].attrs[
-                "metadata"
-            ] = json.dumps(metadata)
+            dest[viewpoint.replace("::", "/resolutions/")].attrs["metadata"] = (
+                json.dumps(metadata)
+            )
 
     # Reduce space by linking common tables (bins, chroms)
     link_common_cooler_tables(output)

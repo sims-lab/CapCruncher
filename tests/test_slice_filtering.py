@@ -1,13 +1,20 @@
-import pytest
 import os
 import pathlib
 
 import pandas as pd
 import polars as pl
+import pytest
 
-from capcruncher.api.filtering.pipeline import CCSliceFilter, TriCSliceFilter, TiledCSliceFilter
-from capcruncher.api.alignments.filter import merge_annotations, remove_unused_categories
+from capcruncher.api.alignments.filter import (
+    merge_annotations,
+    remove_unused_categories,
+)
 from capcruncher.api.alignments.io import parse_bam
+from capcruncher.api.filtering.pipeline import (
+    CCSliceFilter,
+    TiledCSliceFilter,
+    TriCSliceFilter,
+)
 
 
 @pytest.fixture(scope="module")
@@ -221,5 +228,7 @@ def test_yaml_filter_profiles_are_not_supported(tmp_path):
     profile = tmp_path / "filter_profile.yml"
     profile.write_text("pre-filtering:\n  - get_unfiltered_slices\n")
 
-    with pytest.raises(ValueError, match="YAML filter profiles are no longer supported"):
+    with pytest.raises(
+        ValueError, match="YAML filter profiles are no longer supported"
+    ):
         CCSliceFilter(pd.DataFrame(), filter_profile=profile)

@@ -1,11 +1,10 @@
-from collections.abc import Callable, Sequence
 import multiprocessing
 import os
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, cast
 
 from loguru import logger
-
 from pysam import FastxFile
 from xopen import xopen
 
@@ -63,7 +62,7 @@ class FastqReaderProcess(multiprocessing.Process):
         try:
             buffer = []
             rc = 0
-            for read_counter, read in enumerate(zip(*input_files_pysam)):
+            for read_counter, read in enumerate(zip(*input_files_pysam, strict=False)):
                 # print(f"read_counter: {read_counter}, read: {read}, read_buffer: {self.read_buffer}")
                 buffer.append(read)
                 if read_counter % self.read_buffer == 0 and not read_counter == 0:
@@ -108,7 +107,7 @@ class FastqReadFormatterProcess(multiprocessing.Process):
 
     def _format_as_str(self, reads: Sequence[Sequence[object]]) -> list[str]:
         # [(r1, r2), (r1, r2)] -> [r1 combined string, r2 combined string]
-        return ["\n".join([str(rn) for rn in r]) for r in zip(*reads)]
+        return ["\n".join([str(rn) for rn in r]) for r in zip(*reads, strict=False)]
 
     def run(self) -> None:
         try:
@@ -116,9 +115,7 @@ class FastqReadFormatterProcess(multiprocessing.Process):
 
             while not reads == "END":
                 for formatting_to_apply in self.formatting:
-                    reads = formatting_to_apply(
-                        cast(Sequence[Sequence[object]], reads)
-                    )
+                    reads = formatting_to_apply(cast(Sequence[Sequence[object]], reads))
 
                 self.outq.put(reads)
                 reads = self.inq.get()
@@ -160,11 +157,11 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
     def _get_file_handles(self) -> list[Any]:
         if not self.paired_output:
             fnames = [
-                f'{self.output_prefix}_part{self.n_files_written}.fastq{".gz" if self.gzip else ""}',
+                f"{self.output_prefix}_part{self.n_files_written}.fastq{'.gz' if self.gzip else ''}",
             ]
         else:
             fnames = [
-                f'{self.output_prefix}_part{self.n_files_written}_{i+1}.fastq{".gz" if self.gzip else ""}'
+                f"{self.output_prefix}_part{self.n_files_written}_{i + 1}.fastq{'.gz' if self.gzip else ''}"
                 for i in range(2)
             ]
 
@@ -189,18 +186,20 @@ class FastqWriterSplitterProcess(multiprocessing.Process):
                     continue
 
                 elif is_string_input:
-                    for fh, read in zip(self._get_file_handles(), reads):
+                    for fh, read in zip(self._get_file_handles(), reads, strict=False):
                         fh.write(read + "\n")
                         fh.close()
 
                 else:
                     reads_str = [
                         "\n".join([str(r) for r in read_glob])
-                        for read_glob in zip(*reads)
+                        for read_glob in zip(*reads, strict=False)
                     ]
 
-                    for fh, read_set in zip(self._get_file_handles(), reads_str):
-                        fh.write((read_set + "\n"))
+                    for fh, read_set in zip(
+                        self._get_file_handles(), reads_str, strict=False
+                    ):
+                        fh.write(read_set + "\n")
                         fh.close()
 
                 reads = self.inq.get()

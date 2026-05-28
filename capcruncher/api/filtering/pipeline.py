@@ -8,22 +8,23 @@ import pandas as pd
 import polars as pl
 from loguru import logger
 
-from capcruncher.api.statistics import SliceFilterStats
-from capcruncher.types import Assay, ReadType
-
 from capcruncher.api.filtering.plan import DEFAULT_FILTER_PLANS, FilterPlan, FilterStage
 from capcruncher.api.filtering.steps import (
     FILTER_REGISTRY,
     FilterStepInput,
     FilterStepName,
     FilterStepRegistry,
+    _capture_fragments,
     _captures,
+    _coerce_filter_step_name,
     _normalise_slices,
     _slices_with_viewpoint,
-    _capture_fragments,
     _tiled_fragments,
     remove_viewpoint_adjacent_restriction_fragments,
 )
+from capcruncher.api.statistics import SliceFilterStats
+from capcruncher.types import Assay, ReadType
+
 
 class FilterPipeline:
     def __init__(
@@ -98,7 +99,9 @@ class SliceFilter:
     def __init__(
         self,
         slices: pd.DataFrame | pl.DataFrame,
-        filter_stages: FilterPlan | Mapping[str, Sequence[FilterStepInput]] | None = None,
+        filter_stages: FilterPlan
+        | Mapping[str, Sequence[FilterStepInput]]
+        | None = None,
         sample_name: str = "",
         read_type: ReadType | str = ReadType.FLASHED,
         filter_profile: Path | str | None = None,
@@ -171,7 +174,10 @@ class SliceFilter:
 
     @property
     def filter_stages(self) -> dict[str, list[str]]:
-        return {stage.name: [step.value for step in stage.steps] for stage in self.plan.stages}
+        return {
+            stage.name: [step.value for step in stage.steps]
+            for stage in self.plan.stages
+        }
 
     @property
     def slice_stats(self) -> SliceFilterStats:
@@ -180,8 +186,9 @@ class SliceFilter:
     @property
     def filter_stats(self) -> pl.DataFrame:
         return (
-            pl.DataFrame(stat.model_dump() for stat in self.filtering_stats)
-            .rename({"n_fragments": "unique_fragments", "n_slices": "unique_slices"})
+            pl.DataFrame(stat.model_dump() for stat in self.filtering_stats).rename(
+                {"n_fragments": "unique_fragments", "n_slices": "unique_slices"}
+            )
             if self.filtering_stats
             else pl.DataFrame()
         )
@@ -191,13 +198,15 @@ class SliceFilter:
         filter_stats = self.filter_stats
         if filter_stats.is_empty():
             return pl.DataFrame()
-        return filter_stats.rename(
-            {"stage": "stat_type", "unique_fragments": "stat"}
-        ).select("stat_type", "stat").with_columns(
-            pl.lit("ccanalysis").alias("stage"),
-            pl.lit(self.read_type).alias("read_type"),
-            pl.lit(self.sample_name).alias("sample"),
-            pl.lit(0).alias("read_number"),
+        return (
+            filter_stats.rename({"stage": "stat_type", "unique_fragments": "stat"})
+            .select("stat_type", "stat")
+            .with_columns(
+                pl.lit("ccanalysis").alias("stage"),
+                pl.lit(self.read_type).alias("read_type"),
+                pl.lit(self.sample_name).alias("sample"),
+                pl.lit(0).alias("read_number"),
+            )
         )
 
     @property
@@ -208,7 +217,9 @@ class SliceFilter:
     def slices_with_viewpoint(self) -> pl.DataFrame:
         return _slices_with_viewpoint(self.pipeline.slices)
 
-    def filter_slices(self, output_slices: bool | str = False, output_location: Path | str = ".") -> None:
+    def filter_slices(
+        self, output_slices: bool | str = False, output_location: Path | str = "."
+    ) -> None:
         self.pipeline.run(output_slices=output_slices, output_location=output_location)
         self.filtering_stats = self.pipeline.filtering_stats
         self.current_stage = self.pipeline.current_stage
@@ -259,16 +270,13 @@ class CCSliceFilter(SliceFilter):
 
     @property
     def merged_captures_and_reporters(self) -> pl.DataFrame:
-        captures = (
-            self.captures.rename(
-                {
-                    column: f"capture_{column}"
-                    for column in self.captures.columns
-                    if column != "parent_read"
-                }
-            )
-            .rename({"capture_capture": "capture"})
-        )
+        captures = self.captures.rename(
+            {
+                column: f"capture_{column}"
+                for column in self.captures.columns
+                if column != "parent_read"
+            }
+        ).rename({"capture_capture": "capture"})
         reporters = self.reporters.rename(
             {
                 column: f"reporter_{column}"
@@ -305,7 +313,9 @@ class CCSliceFilter(SliceFilter):
     def remove_multi_capture_fragments(self) -> None:
         self._apply(FilterStepName.REMOVE_MULTI_CAPTURE_FRAGMENTS)
 
-    def remove_viewpoint_adjacent_restriction_fragments(self, n_adjacent: int = 1) -> None:
+    def remove_viewpoint_adjacent_restriction_fragments(
+        self, n_adjacent: int = 1
+    ) -> None:
         self.pipeline.slices = remove_viewpoint_adjacent_restriction_fragments(
             self.pipeline.slices, n_adjacent=n_adjacent
         )

@@ -1,6 +1,7 @@
+import pathlib
+
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
-import pathlib
 from loguru import logger
 
 from capcruncher.api.interactions.deduplicate import deduplicate

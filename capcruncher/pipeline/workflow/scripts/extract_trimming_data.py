@@ -9,7 +9,11 @@ def extract_trimming_stats(trimming_summary_path):
     df_stats = pl.read_csv(trimming_summary_path, separator="\t")
     df_stats_agg = (
         df_stats.with_columns(
-            pl.col("Sample").str.split("_").list.last().cast(pl.Int64).alias("read_number"),
+            pl.col("Sample")
+            .str.split("_")
+            .list.last()
+            .cast(pl.Int64)
+            .alias("read_number"),
             pl.col("Sample").str.extract(r"(.+)_part\d+_\d+", 1).alias("sample"),
         )
         .group_by("sample", "read_number")

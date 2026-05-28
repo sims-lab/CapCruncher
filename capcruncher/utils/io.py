@@ -5,15 +5,14 @@ from __future__ import annotations
 import os
 import pickle
 from collections.abc import Iterable
-from typing import Any
 
 import pandas as pd
 
 from capcruncher.types import (
-    DictDType,
-    DictFormat,
     VALID_DICT_DTYPES,
     VALID_DICT_FORMATS,
+    DictDType,
+    DictFormat,
     validate_choice,
 )
 

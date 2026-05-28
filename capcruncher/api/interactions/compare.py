@@ -1,22 +1,28 @@
-from collections import defaultdict
-from collections.abc import Sequence
 import itertools
 import os
 import re
+from collections import defaultdict
+from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
 
 import cooler
-from loguru import logger
-from pydantic import BaseModel, PositiveFloat, PositiveInt, field_validator, model_validator
-
 import polars as pl
+from loguru import logger
+from pydantic import (
+    BaseModel,
+    PositiveFloat,
+    PositiveInt,
+    field_validator,
+    model_validator,
+)
+
 from capcruncher.types import (
+    VALID_SUMMARY_METHODS,
     CompareFormat,
     Normalisation,
     OutputFormat,
     SummaryMethod,
-    VALID_SUMMARY_METHODS,
     existing_path,
     validate_choices,
 )
@@ -51,11 +57,17 @@ class CompareConcatOptions(BaseModel):
 
     @model_validator(mode="after")
     def validate_normalisation_regions(self) -> "CompareConcatOptions":
-        if self.normalisation == Normalisation.REGION and self.normalisation_regions is None:
+        if (
+            self.normalisation == Normalisation.REGION
+            and self.normalisation_regions is None
+        ):
             raise ValueError(
                 "normalisation_regions is required when normalisation is 'region'."
             )
-        if self.normalisation != Normalisation.REGION and self.normalisation_regions is not None:
+        if (
+            self.normalisation != Normalisation.REGION
+            and self.normalisation_regions is not None
+        ):
             raise ValueError(
                 "normalisation_regions can only be used when normalisation is 'region'."
             )
@@ -93,7 +105,9 @@ class CompareSummariseOptions(BaseModel):
         cls, value: Sequence[str] | None
     ) -> tuple[SummaryMethod, ...]:
         return validate_choices(
-            tuple(value or (SummaryMethod.MEAN,)), VALID_SUMMARY_METHODS, "summary_methods"
+            tuple(value or (SummaryMethod.MEAN,)),
+            VALID_SUMMARY_METHODS,
+            "summary_methods",
         )
 
     @field_validator("group_names", mode="before")
@@ -196,16 +210,13 @@ def concat(
                 get_bedgraph_name_from_cooler(uri): _prepare_bedgraph(
                     CoolerBedGraph(
                         uri, region_to_limit=options.region if options.region else None
-                    ).extract_bedgraph(
-                        normalisation=normalisation, **norm_kwargs
-                    ),
+                    ).extract_bedgraph(normalisation=normalisation, **norm_kwargs),
                     get_bedgraph_name_from_cooler(uri),
                 )
                 for uri in cooler_uris
             }
 
         elif input_format == CompareFormat.BEDGRAPH:
-
             bedgraphs = {
                 os.path.basename(fn): _prepare_bedgraph(
                     pl.read_csv(
@@ -223,14 +234,16 @@ def concat(
             raise NotImplementedError("Auto currently not implemented")
 
         union = None
-        for name, df in bedgraphs.items():
+        for _, df in bedgraphs.items():
             if union is None:
                 union = df
             else:
                 union = union.join(df, on=coordinate_columns, how="full", coalesce=True)
 
         if union is None:
-            union = pl.DataFrame(schema={column: pl.String for column in coordinate_columns})
+            union = pl.DataFrame(
+                schema={column: pl.String for column in coordinate_columns}
+            )
 
         value_columns = [col for col in union.columns if col not in coordinate_columns]
         if value_columns:
@@ -254,9 +267,8 @@ def get_groups(
 
     groups = dict()
 
-    for group_name, group_col in zip(group_names, group_columns):
+    for group_name, group_col in zip(group_names, group_columns, strict=True):
         for col in re.split(r"[,;\s+]", str(group_col)):
-
             try:
                 col = int(col)
                 col_name = columns[col]
@@ -315,7 +327,7 @@ def summarise(
             if options.group_names
             else {col: "summary" for col in count_columns}
         )  # Use all columns if no groups provided
-    
+
     elif options.design_matrix:
         df_design = _read_design_matrix(options.design_matrix)
         # This design file should look like: sample, condition

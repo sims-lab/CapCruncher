@@ -1,15 +1,15 @@
 import os
 import subprocess
+from collections.abc import Iterable
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any, Iterable
+from typing import Any
 
-from loguru import logger
 import typer
+from loguru import logger
 
 from capcruncher.cli.common import HELP_SETTINGS
 from capcruncher.types import Assay
-
 
 utilities_app = typer.Typer(
     help="Contains miscellaneous functions.",
@@ -60,8 +60,9 @@ def gtf_to_bed12(
         None
     """
 
-    from capcruncher.utils import gtf_line_to_bed12_line
     import pandas as pd
+
+    from capcruncher.utils import gtf_line_to_bed12_line
 
     gtf_cols = [
         "seqname",
@@ -80,7 +81,7 @@ def gtf_to_bed12(
     df_gtf = df_gtf.loc[df_gtf["seqname"].str.contains(r"^chr[xXYy]?[1-9]?[0-9]?$")]
 
     with open(output, "w") as w:
-        for gene, df in df_gtf.sort_values(["seqname", "start"]).groupby("geneid"):
+        for _, df in df_gtf.sort_values(["seqname", "start"]).groupby("geneid"):
             w.write(gtf_line_to_bed12_line(df) + "\n")
 
 
@@ -96,6 +97,7 @@ def cis_and_trans_stats(
     ),
 ) -> None:
     import polars as pl
+
     from capcruncher.api.statistics import CisOrTransStats
 
     if not _has_parquet_files(slices):
@@ -136,9 +138,11 @@ def cis_and_trans_stats(
             (pl.col("chrom_capture") == pl.col("chrom_reporter")).alias("is_cis")
         )
 
-        df_cis_and_trans = tbl_merge.group_by(["viewpoint", "is_cis", "pe"]).agg(
-            pl.len().alias("count")
-        ).collect()
+        df_cis_and_trans = (
+            tbl_merge.group_by(["viewpoint", "is_cis", "pe"])
+            .agg(pl.len().alias("count"))
+            .collect()
+        )
 
     else:
         viewpoint_chroms = (
@@ -161,9 +165,8 @@ def cis_and_trans_stats(
         )
 
     df_cis_and_trans = (
-        df_cis_and_trans.to_pandas().rename(
-            columns={"pe": "read_type", "is_cis": "cis/trans"}
-        )
+        df_cis_and_trans.to_pandas()
+        .rename(columns={"pe": "read_type", "is_cis": "cis/trans"})
         .assign(
             sample=sample_name,
             **{
@@ -192,8 +195,12 @@ def dict_to_fasta(d, path):
 
 @utilities_app.command()
 def viewpoint_coordinates(
-    viewpoints: str = typer.Option(..., "-v", "--viewpoints", help="Path to viewpoints."),
-    genome: str = typer.Option(..., "-g", "--genome", help="Path to genome fasta file."),
+    viewpoints: str = typer.Option(
+        ..., "-v", "--viewpoints", help="Path to viewpoints."
+    ),
+    genome: str = typer.Option(
+        ..., "-g", "--genome", help="Path to genome fasta file."
+    ),
     genome_indicies: str = typer.Option(
         ..., "-i", "--genome-indicies", help="Path to genome bowtie2 indices."
     ),
@@ -224,10 +231,11 @@ def viewpoint_coordinates(
         ValueError: If no bowtie2 indices are supplied
     """
 
-    from capcruncher.api.genome import digest_genome
     import pandas as pd
     import pyranges1 as pr
     import pysam
+
+    from capcruncher.api.genome import digest_genome
 
     def bam_to_bed_df(bam_path: os.PathLike):
         rows = []
@@ -304,18 +312,15 @@ def viewpoint_coordinates(
         gr_viewpoints, suffix="_vp", strand_behavior="ignore"
     )
     fragment_name_column = _first_existing_column(intersections, ["Name"])
-    viewpoint_name_column = _first_existing_column(
-        intersections, ["Name_vp", "Name_b"]
-    )
+    viewpoint_name_column = _first_existing_column(intersections, ["Name_vp", "Name_b"])
 
     # Write results to file
     (
         intersections.drop_duplicates(fragment_name_column)
         .assign(
-            oligo_name=lambda df: df[viewpoint_name_column]
-            .astype(str)
-            .str.split("_L")
-            .str[0]
+            oligo_name=lambda df: (
+                df[viewpoint_name_column].astype(str).str.split("_L").str[0]
+            )
         )[["Chromosome", "Start", "End", "oligo_name"]]
         .rename(
             columns={
@@ -459,7 +464,7 @@ def regenerate_fastq(
             with pysam.FastxFile(fastq2) as r2:
                 with xopen(f"{outpath}_1.fastq.gz", "w") as w1:
                     with xopen(f"{outpath}_2.fastq.gz", "w") as w2:
-                        for read_1, read_2 in zip(r1, r2):
+                        for read_1, read_2 in zip(r1, r2, strict=False):
                             if read_1.name in read_names:
                                 w1.write(str(read_1) + "\n")
                                 w2.write(str(read_2) + "\n")
@@ -477,13 +482,16 @@ def make_chicago_maps(
     viewpoints: str = typer.Option(
         ..., "--viewpoints", help="Path to viewpoints file used for capcruncher."
     ),
-    outputdir: str = typer.Option(..., "-o", "--outputdir", help="Path to output directory."),
+    outputdir: str = typer.Option(
+        ..., "-o", "--outputdir", help="Path to output directory."
+    ),
 ) -> None:
     """
     Restriction map file (.rmap) - a bed file containing coordinates of the restriction fragments. By default, 4 columns: chr, start, end, fragmentID.
     Bait map file (.baitmap) - a bed file containing coordinates of the baited restriction fragments, and their associated annotations. By default, 5 columns: chr, start, end, fragmentID, baitAnnotation. The regions specified in this file, including their fragmentIDs, must be an exact subset of those in the .rmap file. The baitAnnotation is a text field that is used only to annotate the output and plots.
     """
     import pathlib
+
     import pyranges1 as pr
 
     # Rename fragments file to suit chicago
@@ -499,23 +507,18 @@ def make_chicago_maps(
         viewpoints, suffix="_vp", strand_behavior="ignore"
     )
     fragment_name_column = _first_existing_column(intersections, ["Name"])
-    viewpoint_name_column = _first_existing_column(
-        intersections, ["Name_vp", "Name_b"]
-    )
+    viewpoint_name_column = _first_existing_column(intersections, ["Name_vp", "Name_b"])
 
-    df_baitmap = (
-        intersections[
-            ["Chromosome", "Start", "End", fragment_name_column, viewpoint_name_column]
-        ]
-        .rename(
-            columns={
-                "Chromosome": "chr",
-                "Start": "start",
-                "End": "end",
-                fragment_name_column: "baitAnnotation",
-                viewpoint_name_column: "fragmentID",
-            }
-        )
+    df_baitmap = intersections[
+        ["Chromosome", "Start", "End", fragment_name_column, viewpoint_name_column]
+    ].rename(
+        columns={
+            "Chromosome": "chr",
+            "Start": "start",
+            "End": "end",
+            fragment_name_column: "baitAnnotation",
+            viewpoint_name_column: "fragmentID",
+        }
     )
 
     df_baitmap.to_csv(

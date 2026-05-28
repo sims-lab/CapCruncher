@@ -10,7 +10,6 @@ import polars as pl
 
 from capcruncher.types import Assay
 
-
 type FilterFunction = Callable[[pl.DataFrame], pl.DataFrame]
 
 
@@ -36,7 +35,7 @@ class FilterStepName(StrEnum):
     REMOVE_RELIGATION = "remove_religation"
 
     @classmethod
-    def parse(cls, value: str) -> "FilterStepName":
+    def parse(cls, value: str) -> FilterStepName:
         try:
             return cls(value)
         except ValueError as exc:
@@ -86,7 +85,9 @@ class FilterStepRegistry:
                         f"Valid steps are: {valid}."
                     )
                 if plan.assay not in step.assays:
-                    valid_assays = ", ".join(sorted(assay.value for assay in step.assays))
+                    valid_assays = ", ".join(
+                        sorted(assay.value for assay in step.assays)
+                    )
                     raise ValueError(
                         f"Filter step {step_name.value!r} is not valid for assay "
                         f"{plan.assay.value!r}. Valid assays: {valid_assays}."
@@ -109,7 +110,9 @@ def _normalise_slices(slices: pd.DataFrame | pl.DataFrame) -> pl.DataFrame:
         if column in df.columns
     ]
     if fill_zero_columns:
-        df = df.with_columns(pl.col(column).fill_null(0) for column in fill_zero_columns)
+        df = df.with_columns(
+            pl.col(column).fill_null(0) for column in fill_zero_columns
+        )
 
     casts: list[pl.Expr] = []
     if "blacklist" in df.columns:
@@ -127,7 +130,9 @@ def _normalise_slices(slices: pd.DataFrame | pl.DataFrame) -> pl.DataFrame:
     if casts:
         df = df.with_columns(casts)
 
-    sort_columns = [column for column in ("parent_read", "slice") if column in df.columns]
+    sort_columns = [
+        column for column in ("parent_read", "slice") if column in df.columns
+    ]
     return df.sort(sort_columns) if sort_columns else df
 
 
@@ -199,9 +204,7 @@ def remove_duplicate_slices_pe(df: pl.DataFrame) -> pl.DataFrame:
         return df
 
     has_pe = (
-        df.head(100)
-        .select(pl.col("pe").cast(pl.Utf8).str.contains("pe").sum())
-        .item()
+        df.head(100).select(pl.col("pe").cast(pl.Utf8).str.contains("pe").sum()).item()
     )
     if has_pe <= 1:
         return df
@@ -211,10 +214,7 @@ def remove_duplicate_slices_pe(df: pl.DataFrame) -> pl.DataFrame:
         .str.split("|")
         .list.first()
         .str.extract(r":(\d+)-", 1),
-        read_end=pl.col("coords")
-        .str.split("|")
-        .list.last()
-        .str.extract(r"-(\d+)$", 1),
+        read_end=pl.col("coords").str.split("|").list.last().str.extract(r"-(\d+)$", 1),
     )
     deduplicated = fragments.unique(
         subset=["read_start", "read_end"], keep="first", maintain_order=True
@@ -246,7 +246,12 @@ def remove_non_reporter_fragments(df: pl.DataFrame) -> pl.DataFrame:
         n_exclusions=pl.col("exclusion_count").sum(),
     )
     with_reporters = fragments.filter(
-        (pl.col("n_mapped") - pl.col("n_capture") - pl.col("n_blacklist") - pl.col("n_exclusions"))
+        (
+            pl.col("n_mapped")
+            - pl.col("n_capture")
+            - pl.col("n_blacklist")
+            - pl.col("n_exclusions")
+        )
         > 0
     )
     return _semi_join_parent_ids(df, with_reporters)
@@ -302,7 +307,9 @@ def _capture_fragments(df: pl.DataFrame) -> pl.DataFrame:
             pl.col("capture_count").sum().alias("capture_count"),
             pl.col("exclusion").n_unique().alias("unique_exclusions"),
             pl.col("exclusion_count").sum().alias("exclusion_count"),
-            pl.col("restriction_fragment").n_unique().alias("unique_restriction_fragments"),
+            pl.col("restriction_fragment")
+            .n_unique()
+            .alias("unique_restriction_fragments"),
             pl.col("blacklist").sum().alias("blacklist"),
             pl.col("coordinates").cast(pl.Utf8).str.join("|").alias("coordinates"),
         )
@@ -333,7 +340,9 @@ def _tiled_fragments(df: pl.DataFrame) -> pl.DataFrame:
             pl.col("mapped").cast(pl.Int64).sum().alias("mapped"),
             pl.col("multimapped").cast(pl.Int64).sum().alias("multimapped"),
             pl.col("capture_count").sum().alias("capture_count"),
-            pl.col("restriction_fragment").n_unique().alias("unique_restriction_fragments"),
+            pl.col("restriction_fragment")
+            .n_unique()
+            .alias("unique_restriction_fragments"),
             pl.col("blacklist").sum().alias("blacklisted_slices"),
             pl.col("coordinates").cast(pl.Utf8).str.join("|").alias("coordinates"),
         )

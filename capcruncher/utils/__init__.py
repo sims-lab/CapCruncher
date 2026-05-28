@@ -9,19 +9,17 @@ Submodules:
 from __future__ import annotations
 
 import itertools
-import os
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable
 from functools import wraps
 from typing import Any
 
 import pandas as pd
 
-from capcruncher.types import FLAG_OFF_VALUES, FLAG_ON_VALUES, FLAG_NONE_VALUES
+from capcruncher.types import FLAG_NONE_VALUES, FLAG_OFF_VALUES, FLAG_ON_VALUES
 from capcruncher.utils.bed import (
     BED_COLUMN_ALIASES,
     BED_COLUMN_CASE,
     BED_COLUMN_NAMES,
-    BED_COLUMN_NAMES as _BED_COLUMN_NAMES,
     INTERSECT_COLUMNS,
     BedInput,
     BedSchema,
@@ -172,7 +170,7 @@ def categorise_tracks(ser: pd.Series) -> list:
         "subtraction": "Samples_Compared",
     }
     categories = []
-    for index, value in ser.items():
+    for _, value in ser.items():
         for key in mapping:
             if key in value:
                 categories.append(mapping[key])

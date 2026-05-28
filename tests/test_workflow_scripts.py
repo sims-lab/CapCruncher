@@ -1,5 +1,5 @@
-import importlib.util
 import builtins
+import importlib.util
 import json
 import os
 import subprocess
@@ -14,9 +14,11 @@ import pytest
 from cookiecutter.main import cookiecutter
 
 import capcruncher.dependencies as dependencies
-from capcruncher.dependencies import CAPCRUNCHER_TOOLS_REQUIREMENT
-from capcruncher.dependencies import DependencyVersionError
-from capcruncher.dependencies import require_capcruncher_tools
+from capcruncher.dependencies import (
+    CAPCRUNCHER_TOOLS_REQUIREMENT,
+    DependencyVersionError,
+    require_capcruncher_tools,
+)
 
 
 def load_workflow_script(script_name):
@@ -39,11 +41,7 @@ def load_workflow_script(script_name):
 def test_workflow_environment_tracks_runtime_dependency_split():
     repo_root = Path(__file__).resolve().parents[1]
     env_path = (
-        repo_root / "capcruncher"
-        / "pipeline"
-        / "workflow"
-        / "envs"
-        / "environment.yml"
+        repo_root / "capcruncher" / "pipeline" / "workflow" / "envs" / "environment.yml"
     )
     env_text = env_path.read_text(encoding="utf-8")
     requirements_minimal = (repo_root / "requirements-minimal.txt").read_text(
@@ -243,19 +241,16 @@ def test_workflow_output_path_manifest_is_stable():
         "capcruncher_output/interim/filtering/deduplicated/{sample}/{combined}",
     }
 
-    missing_paths = [path for path in sorted(expected_paths) if path not in workflow_text]
+    missing_paths = [
+        path for path in sorted(expected_paths) if path not in workflow_text
+    ]
     assert missing_paths == []
 
 
 def test_rebalance_checkpoints_use_named_outputs():
     repo_root = Path(__file__).resolve().parents[1]
     fastq_rules = (
-        repo_root
-        / "capcruncher"
-        / "pipeline"
-        / "workflow"
-        / "rules"
-        / "fastq.smk"
+        repo_root / "capcruncher" / "pipeline" / "workflow" / "rules" / "fastq.smk"
     ).read_text(encoding="utf-8")
 
     assert "fastq_dir=directory(" in fastq_rules
@@ -777,7 +772,10 @@ def test_countable_reporter_handoff_preserves_pipeline_partitions(
     )
     countable_files = sorted(countable_reporters.glob("*.parquet"))
 
-    assert [path.name for path in countable_files] == ["part-0.parquet", "part-1.parquet"]
+    assert [path.name for path in countable_files] == [
+        "part-0.parquet",
+        "part-1.parquet",
+    ]
     assert sum(len(pl.read_parquet(path)) for path in countable_files) == 205
     assert (
         pl.concat([pl.read_parquet(path) for path in countable_files])
@@ -813,8 +811,9 @@ def test_reporter_summary_counts_unused_viewpoint_categories_as_zero(tmp_path):
 def test_capcruncher_tools_counts_expected_pipeline_pixels(
     capture_pipeline_run, tmp_path
 ):
-    from capcruncher.api.interactions.reporters import write_countable_reporters
     from capcruncher_tools.count import count_viewpoint_pixels
+
+    from capcruncher.api.interactions.reporters import write_countable_reporters
 
     reporter_parquet = (
         capture_pipeline_run
@@ -1007,9 +1006,7 @@ def test_make_ucsc_hub_uses_modern_tracknado_builder(monkeypatch, tmp_path):
             calls.append(("color_by", column))
             return self
 
-        def with_custom_genome(
-            self, name, twobit_file, organism, default_position
-        ):
+        def with_custom_genome(self, name, twobit_file, organism, default_position):
             calls.append(
                 ("with_custom_genome", name, twobit_file, organism, default_position)
             )

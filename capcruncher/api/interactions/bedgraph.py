@@ -15,11 +15,10 @@ from capcruncher.api.interactions.cooler.binning import CoolerBinner
 from capcruncher.types import Normalisation
 from capcruncher.utils import is_valid_bed
 
+
 def _bedgraph_to_pyranges(bedgraph: pd.DataFrame) -> pr.PyRanges:
     return pr.PyRanges(
-        bedgraph.rename(
-            columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
-        )
+        bedgraph.rename(columns={"chrom": "Chromosome", "start": "Start", "end": "End"})
     )
 
 
@@ -221,9 +220,7 @@ class CoolerBedGraph:
                 raise ValueError("Region based normalisation requires a BED file.")
             self._normalise_by_regions(bedgraph, scale_factor, region)
 
-    def _normalise_by_n_cis(
-        self, bedgraph: pd.DataFrame, scale_factor: float
-    ) -> None:
+    def _normalise_by_n_cis(self, bedgraph: pd.DataFrame, scale_factor: float) -> None:
         bedgraph["count"] = (bedgraph["count"] / self.n_cis_interactions) * scale_factor
 
     def _normalise_by_regions(
@@ -258,9 +255,9 @@ class CoolerBedGraph:
         self, normalisation: Normalisation = Normalisation.RAW, **norm_kwargs
     ) -> pr.PyRanges:
         return pr.PyRanges(
-            self.extract_bedgraph(
-                normalisation=normalisation, **norm_kwargs
-            ).rename(columns={"chrom": "Chromosome", "start": "Start", "end": "End"})
+            self.extract_bedgraph(normalisation=normalisation, **norm_kwargs).rename(
+                columns={"chrom": "Chromosome", "start": "Start", "end": "End"}
+            )
         )
 
 
@@ -321,9 +318,8 @@ class CoolerBedGraphWindowed(CoolerBedGraph):
             .assign(
                 count_overfrac_norm=lambda df: df["count"] * df["overlap_fraction"],
                 count_overfrac_n_interact_norm=lambda df: (
-                    df["count_overfrac_norm"] / self.n_cis_interactions
-                )
-                * scale_factor,
+                    (df["count_overfrac_norm"] / self.n_cis_interactions) * scale_factor
+                ),
             )
         )
 

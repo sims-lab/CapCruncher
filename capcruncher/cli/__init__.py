@@ -42,7 +42,11 @@ from capcruncher.cli.alignments import alignments_app  # noqa: E402
 from capcruncher.cli.fastq import fastq_app  # noqa: E402
 from capcruncher.cli.genome import genome_app  # noqa: E402
 from capcruncher.cli.interactions import interactions_app  # noqa: E402
-from capcruncher.cli.pipeline import pipeline_app, pipeline_config, pipeline_init  # noqa: E402
+from capcruncher.cli.pipeline import (  # noqa: E402
+    pipeline_app,
+    pipeline_config,
+    pipeline_init,
+)
 from capcruncher.cli.plot import plot_app  # noqa: E402
 from capcruncher.cli.utilities import utilities_app  # noqa: E402
 

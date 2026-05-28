@@ -5,7 +5,11 @@ import pandas as pd
 import pyranges1 as pr
 import pytest
 
-from capcruncher.api.interactions.bedgraph import CCBedgraph, CoolerBedGraph, cooler_to_bedgraph
+from capcruncher.api.interactions.bedgraph import (
+    CCBedgraph,
+    CoolerBedGraph,
+    cooler_to_bedgraph,
+)
 
 
 @pytest.fixture(scope="module")

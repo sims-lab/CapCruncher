@@ -1,7 +1,6 @@
 import pathlib
 import subprocess
 
-
 EXPECTED_EMPTY_MARKERS = (
     "No differential interactions found",
     "No objects to concatenate",

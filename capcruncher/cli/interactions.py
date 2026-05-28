@@ -8,15 +8,14 @@ from capcruncher.cli.common import (
 )
 from capcruncher.types import (
     Assay,
-    PileupFormat,
     CompareFormat,
     Executor,
     Normalisation,
     OutputFormat,
+    PileupFormat,
     ReadType,
     SummaryMethod,
 )
-
 
 interactions_app = typer.Typer(
     help="Contains methods for interaction counting, storing, bedgraph generation, comparisons.",

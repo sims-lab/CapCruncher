@@ -2,9 +2,10 @@
 Aim: Ensure that all viewpoints are found in the annotated slices.
 """
 
-import pyranges1 as pr
-import polars as pl
 import pathlib
+
+import polars as pl
+import pyranges1 as pr
 
 
 def count_annotated_viewpoints(slices):

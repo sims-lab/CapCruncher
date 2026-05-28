@@ -8,14 +8,18 @@ import polars as pl
 from loguru import logger
 from pydantic import BaseModel, field_validator
 
-from capcruncher.api.filtering.pipeline import CCSliceFilter, TiledCSliceFilter, TriCSliceFilter
 from capcruncher.api.alignments.io import parse_bam
+from capcruncher.api.filtering.pipeline import (
+    CCSliceFilter,
+    TiledCSliceFilter,
+    TriCSliceFilter,
+)
 from capcruncher.api.statistics import SliceFilterStatsList
 from capcruncher.types import (
-    Assay,
-    ReadType,
     VALID_ASSAYS,
     VALID_READ_TYPES,
+    Assay,
+    ReadType,
     existing_path,
     validate_choice,
 )
@@ -63,7 +67,9 @@ class AlignmentFilterOptions(BaseModel):
         return validate_choice(value, VALID_READ_TYPES, "read_type")
 
 
-def remove_unused_categories(df: pd.DataFrame | pl.DataFrame) -> pd.DataFrame | pl.DataFrame:
+def remove_unused_categories(
+    df: pd.DataFrame | pl.DataFrame,
+) -> pd.DataFrame | pl.DataFrame:
     """Prune unused pandas categories; Polars categorical columns are already compact."""
     if isinstance(df, pd.DataFrame):
         df = df.copy()
@@ -97,10 +103,12 @@ def merge_annotations(slices: Path | str, annotations: Path | str) -> pl.DataFra
         df_slices = pl.scan_parquet(slices).with_columns(
             pl.col(column).cast(dtype) for column, dtype in join_key_types.items()
         )
-        df_annotations = pl.scan_parquet(annotations).rename(
-            {"Chromosome": "chrom", "Start": "start", "End": "end"}
-        ).with_columns(
-            pl.col(column).cast(dtype) for column, dtype in join_key_types.items()
+        df_annotations = (
+            pl.scan_parquet(annotations)
+            .rename({"Chromosome": "chrom", "Start": "start", "End": "end"})
+            .with_columns(
+                pl.col(column).cast(dtype) for column, dtype in join_key_types.items()
+            )
         )
 
         df_slices = df_slices.join(

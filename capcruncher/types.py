@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 from enum import StrEnum
 from pathlib import Path
-from typing import TypeVar, cast
+from typing import cast
 
 
 class Assay(StrEnum):
@@ -118,8 +118,6 @@ FLAG_ON_VALUES: frozenset[str] = frozenset({"true", "t", "on", "yes", "y", "1"})
 FLAG_OFF_VALUES: frozenset[str] = frozenset({"false", "f", "off", "no", "n", "0"})
 FLAG_NONE_VALUES: frozenset[str] = frozenset({"", "none", "null"})
 
-Choice = TypeVar("Choice", bound=StrEnum)
-
 
 def _choice_value(choice: str | StrEnum) -> str:
     return choice.value if isinstance(choice, StrEnum) else choice
@@ -129,7 +127,7 @@ def _format_choices(valid: Iterable[str | StrEnum]) -> str:
     return ", ".join(_choice_value(choice) for choice in valid)
 
 
-def validate_choice(
+def validate_choice[Choice: StrEnum](
     value: str | Choice, valid: tuple[Choice, ...], option_name: str
 ) -> Choice:
     """Return a string enum option value or raise a clear validation error."""
@@ -146,7 +144,7 @@ def validate_choice(
         ) from exc
 
 
-def validate_choices(
+def validate_choices[Choice: StrEnum](
     values: Iterable[str | Choice], valid: tuple[Choice, ...], option_name: str
 ) -> tuple[Choice, ...]:
     """Return string enum option values or raise a clear validation error."""

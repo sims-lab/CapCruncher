@@ -1,6 +1,7 @@
 """Check that there is only one restriction fragment per viewpoint."""
 
 import pathlib
+
 from loguru import logger
 
 from capcruncher.api.intervals.annotate import annotate_intervals

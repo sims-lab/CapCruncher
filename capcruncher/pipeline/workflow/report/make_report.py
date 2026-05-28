@@ -7,7 +7,6 @@ import pandas as pd
 import plotly.express as px
 import yaml
 
-
 REPORT_TITLE = "CapCruncher Run Report"
 COLORWAY = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9"]
 READ_TYPE_COLORS = ["#0072B2", "#E69F00"]
@@ -50,7 +49,9 @@ def natural_sort_paths(paths: Iterable[str | pathlib.Path]) -> list[pathlib.Path
     return sorted(pathlib.Path(path) for path in paths)
 
 
-def require_paths(paths: Iterable[str | pathlib.Path], label: str) -> list[pathlib.Path]:
+def require_paths(
+    paths: Iterable[str | pathlib.Path], label: str
+) -> list[pathlib.Path]:
     path_list = natural_sort_paths(paths)
     if not path_list:
         raise ValueError(f"No {label} statistics files were found for the report")
@@ -166,7 +167,7 @@ def tab_group(*items: tuple[str, str]) -> str:
     return (
         '<div class="tabs">'
         f'<div class="tab-list" role="tablist">{"".join(buttons)}</div>'
-        f'{"".join(panels)}'
+        f"{''.join(panels)}"
         "</div>"
     )
 
@@ -213,7 +214,9 @@ def load_fastq_flash(path: str | pathlib.Path) -> pd.DataFrame:
     )
 
 
-def load_digestion(paths: Iterable[str | pathlib.Path]) -> tuple[pd.DataFrame, pd.DataFrame]:
+def load_digestion(
+    paths: Iterable[str | pathlib.Path],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     rows = []
     histograms = []
 
@@ -295,9 +298,7 @@ def load_filtering(
         df_filter_stats = pd.concat(
             [
                 df_filter_stats,
-                df_dedup[
-                    ["sample", "read_type", "n_unique_reads", "n_unique_slices"]
-                ]
+                df_dedup[["sample", "read_type", "n_unique_reads", "n_unique_slices"]]
                 .rename(
                     columns={
                         "n_unique_reads": "n_fragments",
@@ -380,7 +381,9 @@ def make_sections(
     df_cis_trans: pd.DataFrame,
 ) -> list[dict[str, str]]:
     df_dedup_summary = (
-        df_dedup.groupby("sample", as_index=False).sum(numeric_only=True).assign(
+        df_dedup.groupby("sample", as_index=False)
+        .sum(numeric_only=True)
+        .assign(
             percentage=lambda df: df["duplicates"] / df["total"] * 100,
             unique=lambda df: df["total"] - df["duplicates"],
         )
@@ -389,11 +392,13 @@ def make_sections(
     sections = []
     include_plotlyjs = True
 
-    df = df_dedup_summary[["sample", "duplicates", "unique"]].melt(
-        id_vars="sample", var_name="read_type", value_name="count"
-    ).assign(
-        read_type=lambda frame: frame["read_type"].map(
-            {"unique": "Unique Reads", "duplicates": "Duplicate Reads"}
+    df = (
+        df_dedup_summary[["sample", "duplicates", "unique"]]
+        .melt(id_vars="sample", var_name="read_type", value_name="count")
+        .assign(
+            read_type=lambda frame: frame["read_type"].map(
+                {"unique": "Unique Reads", "duplicates": "Duplicate Reads"}
+            )
         )
     )
     fig = px.bar(
@@ -450,9 +455,9 @@ def make_sections(
         section(
             "Read pair combination statistics (FLASh)",
             frame_to_table_html(
-                df_flash.rename(columns=lambda col: col.replace("_", " ").title()).round(
-                    2
-                )
+                df_flash.rename(
+                    columns=lambda col: col.replace("_", " ").title()
+                ).round(2)
             ),
         )
     )
@@ -468,10 +473,10 @@ def make_sections(
         .reset_index()
         .assign(
             percentage_digested=lambda df: (
-                df["Post-digestion"] / df["Pre-digestion"] * 100
+                (df["Post-digestion"] / df["Pre-digestion"] * 100)
+                .replace([float("inf"), -float("inf")], 0)
+                .fillna(0)
             )
-            .replace([float("inf"), -float("inf")], 0)
-            .fillna(0)
         )
     )
     df_digestion_table.columns.name = None
@@ -696,12 +701,16 @@ def make_overall_stats(
     df_digestion: pd.DataFrame,
     df_filter: pd.DataFrame,
 ) -> pd.DataFrame:
-    raw = df_dedup[["sample", "total"]].rename(columns={"total": "n_reads"}).assign(
-        stage="Raw", stage_order=0
+    raw = (
+        df_dedup[["sample", "total"]]
+        .rename(columns={"total": "n_reads"})
+        .assign(stage="Raw", stage_order=0)
     )
-    fastq_dedup = df_dedup[["sample", "unique"]].rename(
-        columns={"unique": "n_reads"}
-    ).assign(stage="Fastq Deduplication", stage_order=1)
+    fastq_dedup = (
+        df_dedup[["sample", "unique"]]
+        .rename(columns={"unique": "n_reads"})
+        .assign(stage="Fastq Deduplication", stage_order=1)
+    )
     fastq_trim = (
         df_trim[["sample", "reads_output"]]
         .drop_duplicates()
@@ -967,7 +976,9 @@ document.addEventListener("DOMContentLoaded", initialiseTabs);
 """
 
 
-def render_section(index: int, item: dict[str, str], report_text: dict[str, str]) -> str:
+def render_section(
+    index: int, item: dict[str, str], report_text: dict[str, str]
+) -> str:
     title = item["title"]
     description = report_text.get(title, "")
     return f"""<section id="section-{index}">

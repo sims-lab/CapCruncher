@@ -13,13 +13,14 @@ from typing import Any, cast
 from joblib import Parallel, delayed
 from loguru import logger
 from pydantic import BaseModel, Field, PositiveInt, field_validator, model_validator
+
 from capcruncher.types import (
-    FastqSplitMethod,
-    FastqSplitType,
-    ReadType,
     VALID_FASTQ_SPLIT_METHODS,
     VALID_FASTQ_SPLIT_TYPES,
     VALID_READ_TYPES,
+    FastqSplitMethod,
+    FastqSplitType,
+    ReadType,
     validate_choice,
 )
 
@@ -294,9 +295,9 @@ def digest_fastq(
 ) -> Any:
     """Digest FASTQ files and write digestion statistics."""
 
-    from capcruncher.api.statistics import DigestionStats
     from capcruncher_tools.api import digest_fastq as digest_fastq_records
 
+    from capcruncher.api.statistics import DigestionStats
     from capcruncher.utils import get_restriction_site
 
     options = FastqDigestOptions(
@@ -345,8 +346,9 @@ def deduplicate_fastq(
 ) -> None:
     """Deduplicate paired FASTQ files and write deduplication statistics."""
 
-    from capcruncher.api.statistics import FastqDeduplicationStatistics
     from capcruncher_tools.api import deduplicate_fastq as deduplicate_fastq_records
+
+    from capcruncher.api.statistics import FastqDeduplicationStatistics
 
     output_prefix_for_tools = os.fspath(output_prefix)
     options = FastqDeduplicationOptions(

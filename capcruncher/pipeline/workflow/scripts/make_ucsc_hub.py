@@ -9,16 +9,13 @@ from loguru import logger
 
 from capcruncher.pipeline.validation import normalise_hub_color_by
 
-
 SUMMARY_TRACK_PATTERN = re.compile(
     r"^(?P<sample>[^.]+)\.(?P<aggregation>[^.]+)-summary\.(?P<viewpoint>[^.]+)\.bigWig$"
 )
 COMPARISON_TRACK_PATTERN = re.compile(
     r"^(?P<sample>[^.]+-[^.]+)\.(?P<aggregation>[^.]+)-subtraction\.(?P<viewpoint>[^.]+)\.bigWig$"
 )
-REPLICATE_TRACK_PATTERN = re.compile(
-    r"^(?P<sample>.+)_(?P<viewpoint>[^_]+)\.bigWig$"
-)
+REPLICATE_TRACK_PATTERN = re.compile(r"^(?P<sample>.+)_(?P<viewpoint>[^_]+)\.bigWig$")
 
 
 def capcruncher_track_metadata(path: pathlib.Path) -> dict[str, str]:

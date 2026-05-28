@@ -1,7 +1,8 @@
-import pysam
-import pytest
 import os
 import pathlib
+
+import pysam
+import pytest
 
 
 @pytest.fixture(scope="module")
@@ -63,8 +64,7 @@ def test_digest_fastq(
         output_file=outfile,
         statistics=statistics,
     )
-    
-    
+
     assert stats.read_stats.unfiltered.read1 == n_reads_raw
     assert stats.read_stats.filtered.read1 == n_reads_filt
     assert count_fragments(outfile) == n_reads_filt

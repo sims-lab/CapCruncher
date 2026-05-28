@@ -18,7 +18,7 @@ def write_viewpoints_with_interactions(coolers, samples, outdir):
     outdir = pathlib.Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
-    for sample, cooler_path in zip(samples, coolers):
+    for sample, cooler_path in zip(samples, coolers, strict=True):
         viewpoints = viewpoints_with_interactions(cooler_path)
         with open(outdir / f"{sample}.json", "w") as f:
             json.dump(viewpoints, f)

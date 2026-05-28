@@ -1,7 +1,6 @@
-from typing import Generic, TypeVar
-
 import pandas as pd
 from pydantic import BaseModel, computed_field, field_validator
+
 from capcruncher.types import CisOrTrans, ReadType
 
 
@@ -72,9 +71,6 @@ class FastqTrimmingStatistics(BaseModel):
         )
 
 
-V = TypeVar("V")
-
-
 class SliceNumberStats(BaseModel):
     unfiltered: int
     filtered: int
@@ -90,7 +86,9 @@ class Histogram(BaseModel):
     name: str
     hist: dict[int, int]
 
-    def to_dataframe(self, name: str = "value", read_number: str | None = None) -> pd.DataFrame:
+    def to_dataframe(
+        self, name: str = "value", read_number: str | None = None
+    ) -> pd.DataFrame:
         return (
             pd.DataFrame(self.hist.items(), columns=[name, "count"])
             .assign(**{"read_number": read_number})
@@ -107,13 +105,15 @@ class Histogram(BaseModel):
         )
 
 
-class ReadPairStat(BaseModel, Generic[V]):
+class ReadPairStat[V](BaseModel):
     read1: Histogram | SliceNumberStats | int
     read2: Histogram | SliceNumberStats | int | None = None
 
     def to_dataframe(self) -> pd.DataFrame:
         if not isinstance(self.read1, Histogram):
-            raise TypeError("Only histogram read pair stats can be converted to a dataframe.")
+            raise TypeError(
+                "Only histogram read pair stats can be converted to a dataframe."
+            )
 
         frames = []
         frames.append(
@@ -278,8 +278,8 @@ class SliceFilterStatsList(BaseModel):
     @classmethod
     def from_list(cls, stats: list[SliceFilterStats]) -> "SliceFilterStatsList":
         return cls(stats=stats)
-    
-    
+
+
 class AlignmentDeduplicationStats(BaseModel):
     sample: str
     read_type: ReadType
@@ -292,27 +292,26 @@ class AlignmentDeduplicationStats(BaseModel):
     @classmethod
     def validate_read_type(cls, value: str | ReadType) -> ReadType:
         return _normalise_read_type(value)
-    
+
     @computed_field
     @property
     def percentage_unique_reads(self) -> float:
         return self.n_unique_reads / self.n_total_reads * 100
-    
+
     @computed_field
     @property
     def n_duplicate_reads(self) -> int:
         return self.n_total_reads - self.n_unique_reads
-    
+
     @computed_field
     @property
     def percentage_duplicate_slices(self) -> float:
         return self.n_duplicate_slices / self.n_total_slices * 100
-    
+
     @computed_field
     @property
     def n_duplicate_slices(self) -> int:
         return self.n_total_slices - self.n_unique_slices
-    
 
 
 class CisOrTransStat(BaseModel):

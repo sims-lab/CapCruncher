@@ -2,16 +2,15 @@ import typer
 
 from capcruncher.cli.common import HELP_SETTINGS, NCoresOption
 from capcruncher.types import (
+    VALID_ASSAYS,
+    VALID_READ_TYPES,
     AnnotationAction,
     Assay,
     DuplicateAction,
     InvalidBedAction,
     ReadType,
-    VALID_ASSAYS,
-    VALID_READ_TYPES,
     validate_choice,
 )
-
 
 alignments_app = typer.Typer(
     help="Contains methods for reporter annotating, identifying and deduplication.",
@@ -117,7 +116,9 @@ def annotate(
 
 @alignments_app.command("filter")
 def filter_alignments(
-    method: Assay = typer.Argument(..., help="Filtering method: capture, tri, or tiled."),
+    method: Assay = typer.Argument(
+        ..., help="Filtering method: capture, tri, or tiled."
+    ),
     bam: str = typer.Option(
         ...,
         "-b",

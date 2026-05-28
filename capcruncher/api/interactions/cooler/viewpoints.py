@@ -5,7 +5,8 @@ from typing import Self
 
 import pyranges1 as pr
 
-from capcruncher.types import Assay, VALID_ASSAYS, validate_choice
+from capcruncher.types import VALID_ASSAYS, Assay, validate_choice
+
 
 class Viewpoint:
     def __init__(self, coordinates: pr.PyRanges, assay: Assay | str) -> None:
@@ -13,9 +14,7 @@ class Viewpoint:
         self.assay = validate_choice(assay, VALID_ASSAYS, "assay")
 
     @classmethod
-    def from_bed(
-        cls, bed: Path | str, viewpoint: str, assay: Assay | str
-    ) -> Self:
+    def from_bed(cls, bed: Path | str, viewpoint: str, assay: Assay | str) -> Self:
         """
         Creates a viewpoint object from a bed file.
 
@@ -73,9 +72,7 @@ class Viewpoint:
         viewpoint_chromosomes = self.chromosomes
 
         # Get the bins that are on the same chromosome(s) as the viewpoint
-        df_cis_bins = bins.loc[
-            lambda df: df["Chromosome"].isin(viewpoint_chromosomes)
-        ]
+        df_cis_bins = bins.loc[lambda df: df["Chromosome"].isin(viewpoint_chromosomes)]
 
         # If capture or tri, remove viewpoint bins from cis bins
         if self.assay in {Assay.CAPTURE, Assay.TRI}:
@@ -102,4 +99,3 @@ class Viewpoint:
             _coords.append(f"{row.Chromosome}:{row.Start}-{row.End}")
 
         return _coords
-

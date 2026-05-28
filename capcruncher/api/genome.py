@@ -14,8 +14,8 @@ def digest_genome(
 ) -> None:
     """Digest a genome FASTA and optionally sort the resulting BED file."""
 
-    from capcruncher_tools.api import digest_genome as digest_genome_records
     import polars as pl
+    from capcruncher_tools.api import digest_genome as digest_genome_records
 
     from capcruncher.utils import get_restriction_site
 

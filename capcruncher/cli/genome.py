@@ -2,7 +2,6 @@ import typer
 
 from capcruncher.cli.common import HELP_SETTINGS
 
-
 genome_app = typer.Typer(
     help="Contains methods for genome digestion.",
     context_settings=HELP_SETTINGS,

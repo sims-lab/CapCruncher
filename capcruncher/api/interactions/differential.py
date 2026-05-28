@@ -114,11 +114,9 @@ def get_differential_interactions(
     # Add coordinates
     df_results = df_results.assign(
         chrom=lambda df: df.index.str.split(":").str[0],
-        start=lambda df: df.index.str.split(":")
-        .str[1]
-        .str.split("-")
-        .str[0]
-        .astype(int),
+        start=lambda df: (
+            df.index.str.split(":").str[1].str.split("-").str[0].astype(int)
+        ),
         end=lambda df: df.index.str.split(":").str[1].str.split("-").str[1].astype(int),
     )
 
@@ -207,11 +205,13 @@ def differential(
     df_counts = pd.concat(
         [
             bg.assign(
-                coord=lambda df: df["chrom"].astype(str)
-                + ":"
-                + df["start"].astype(str)
-                + "-"
-                + df["end"].astype(str)
+                coord=lambda df: (
+                    df["chrom"].astype(str)
+                    + ":"
+                    + df["start"].astype(str)
+                    + "-"
+                    + df["end"].astype(str)
+                )
             )
             .set_index("coord")
             .drop(columns=["chrom", "start", "end"])
@@ -240,7 +240,9 @@ def differential(
     # Run comparisons
     for group_a, group_b in comparisons:
         # Filter design matrix
-        df_design_sub = df_design.loc[lambda df: df[contrast].isin([group_a, group_b])]
+        df_design_sub = df_design.loc[
+            lambda df, a=group_a, b=group_b: df[contrast].isin([a, b])
+        ]
 
         # Filter counts
         df_counts_sub = df_counts.loc[:, df_design_sub.index].round().astype(int)

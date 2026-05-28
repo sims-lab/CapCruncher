@@ -1,29 +1,30 @@
-from loguru import logger
-import pandas as pd
-import polars as pl
-import pytest
+import glob
 import os
 import pathlib
 import subprocess
 import sys
-from click.testing import CliRunner
-import glob
 from types import SimpleNamespace
 
-from capcruncher.cli import cli
-from capcruncher.cli import pipeline as cli_pipeline
-from capcruncher.dependencies import DependencyVersionError
+import pandas as pd
+import polars as pl
+import pytest
+from click.testing import CliRunner
+from loguru import logger
+
+from capcruncher.api.fastq import (
+    FastqDeduplicationOptions,
+    FastqDigestOptions,
+    FastqSplitOptions,
+)
 from capcruncher.api.interactions.count import (
     InteractionCountOptions,
 )
 from capcruncher.api.interactions.reporters import (
     write_countable_reporters,
 )
-from capcruncher.api.fastq import (
-    FastqDeduplicationOptions,
-    FastqDigestOptions,
-    FastqSplitOptions,
-)
+from capcruncher.cli import cli
+from capcruncher.cli import pipeline as cli_pipeline
+from capcruncher.dependencies import DependencyVersionError
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -156,9 +157,7 @@ def test_cli_import_does_not_import_heavy_runtime_modules():
         ["interactions", "compare", "differential", "--help"],
     ],
 )
-def test_differential_help_does_not_import_pydeseq2(
-    cli_runner, monkeypatch, command
-):
+def test_differential_help_does_not_import_pydeseq2(cli_runner, monkeypatch, command):
     real_import = __import__
 
     def guarded_import(name, *args, **kwargs):
@@ -388,9 +387,10 @@ def test_pipeline_init_installs_presets(cli_runner, tmp_path, monkeypatch):
     assert (profiles_dir / "capcruncher-slurm" / "profile.v9+.yaml").exists()
     assert (profiles_dir / "capcruncher-slurm-apptainer" / "profile.v9+.yaml").exists()
     assert not list(profiles_dir.glob("*/config.yaml"))
-    assert "executor: slurm" in (
-        profiles_dir / "capcruncher-slurm" / "profile.v9+.yaml"
-    ).read_text()
+    assert (
+        "executor: slurm"
+        in (profiles_dir / "capcruncher-slurm" / "profile.v9+.yaml").read_text()
+    )
     slurm_apptainer_profile = (
         profiles_dir / "capcruncher-slurm-apptainer" / "profile.v9+.yaml"
     ).read_text()
@@ -581,7 +581,9 @@ def test_pipeline_fails_before_snakemake_when_capcruncher_tools_is_unsupported(
         recorded_calls.append(cmd)
         raise AssertionError("snakemake should not run with unsupported dependencies")
 
-    monkeypatch.setattr(cli_pipeline, "require_capcruncher_tools", fail_dependency_check)
+    monkeypatch.setattr(
+        cli_pipeline, "require_capcruncher_tools", fail_dependency_check
+    )
     monkeypatch.setattr(subprocess, "run", fake_run)
 
     result = cli_runner.invoke(cli, ["pipeline", "run", "--no-logo", "-n"])
@@ -635,7 +637,9 @@ def test_pipeline_init_copies_nested_profile_files(tmp_path, monkeypatch):
     monkeypatch.setattr(
         cli_pipeline.resources,
         "files",
-        lambda package: SimpleNamespace(joinpath=lambda *parts: package_root.joinpath(*parts)),
+        lambda package: SimpleNamespace(
+            joinpath=lambda *parts: package_root.joinpath(*parts)
+        ),
     )
 
     destination = cli_pipeline.install_pipeline_preset(
@@ -664,7 +668,9 @@ def test_pipeline_accepts_legacy_preset_alias(cli_runner, tmp_path, monkeypatch)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    result = cli_runner.invoke(cli, ["pipeline", "run", "--preset", "local", "--no-logo", "-n"])
+    result = cli_runner.invoke(
+        cli, ["pipeline", "run", "--preset", "local", "--no-logo", "-n"]
+    )
 
     assert result.exit_code == 0
     expected_profile = tmp_path / "snakemake" / "capcruncher-local"
@@ -774,7 +780,15 @@ def test_pipeline_does_not_add_default_cores_for_equals_form(
 
     result = cli_runner.invoke(
         cli,
-        ["pipeline", "run", "--preset", "capcruncher-local", "--no-logo", "--cores=8", "-n"],
+        [
+            "pipeline",
+            "run",
+            "--preset",
+            "capcruncher-local",
+            "--no-logo",
+            "--cores=8",
+            "-n",
+        ],
     )
 
     assert result.exit_code == 0
@@ -783,7 +797,9 @@ def test_pipeline_does_not_add_default_cores_for_equals_form(
     assert "--cores" not in first_call
 
 
-def test_pipeline_rejects_preset_and_profile_together(cli_runner, tmp_path, monkeypatch):
+def test_pipeline_rejects_preset_and_profile_together(
+    cli_runner, tmp_path, monkeypatch
+):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     init_result = cli_runner.invoke(cli, ["pipeline-init"])
     assert init_result.exit_code == 0
@@ -1463,7 +1479,7 @@ def test_make_chicago_maps(cli_runner, tmpdir, fragments_file, viewpoints_file):
     baitmap_file = os.path.join(outputdir, "viewpoints.baitmap")
     assert os.path.exists(baitmap_file)
 
-    with open(baitmap_file, "r") as file:
+    with open(baitmap_file) as file:
         content = file.read()
         assert "chr1\t100\t200\tfragment1\tviewpoint" in content
 

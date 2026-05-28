@@ -2,6 +2,7 @@ import os
 
 import pandas as pd
 import pytest
+
 from capcruncher.api.intervals.annotate import annotate_intervals
 
 # @pytest.fixture(scope="session")
@@ -105,6 +106,7 @@ def test_multi_intersection(data_path):
         [capture, capture_count, blank],
         ["get", "count", "get"],
         ["capture", "capture_count", "blank"],
+        strict=True,
     ):
         slices = annotate_intervals(
             query=slices,

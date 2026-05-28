@@ -7,8 +7,8 @@ import cooler
 import pandas as pd
 import pyranges1 as pr
 
-from capcruncher.types import Assay
 from capcruncher.api.interactions.cooler.viewpoints import Viewpoint
+from capcruncher.types import Assay
 
 PIXEL_COLUMNS = ["bin1_id", "bin2_id", "count"]
 
@@ -24,8 +24,7 @@ def _normalise_pixels(pixels: pd.DataFrame) -> pd.DataFrame:
     ]
     if missing_columns:
         raise ValueError(
-            "Pixels table is missing required column(s): "
-            + ", ".join(missing_columns)
+            "Pixels table is missing required column(s): " + ", ".join(missing_columns)
         )
 
     return pixels

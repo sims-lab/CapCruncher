@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, PositiveFloat, field_validator, model_val
 from capcruncher.api.interactions.bedgraph import CoolerBedGraph
 from capcruncher.types import Normalisation, PileupFormat
 
+
 class PileupOptions(BaseModel):
     """Validated options for extracting bedgraph or bigWig pileups."""
 
@@ -32,12 +33,18 @@ class PileupOptions(BaseModel):
         return None if value == "" else value
 
     @model_validator(mode="after")
-    def validate_normalisation_regions(self) -> "PileupOptions":
-        if self.normalisation == Normalisation.REGION and self.normalisation_regions is None:
+    def validate_normalisation_regions(self) -> PileupOptions:
+        if (
+            self.normalisation == Normalisation.REGION
+            and self.normalisation_regions is None
+        ):
             raise ValueError(
                 "normalisation_regions is required when normalisation is 'region'."
             )
-        if self.normalisation != Normalisation.REGION and self.normalisation_regions is not None:
+        if (
+            self.normalisation != Normalisation.REGION
+            and self.normalisation_regions is not None
+        ):
             raise ValueError(
                 "normalisation_regions can only be used when normalisation is 'region'."
             )
@@ -111,7 +118,7 @@ def pileup(
 
         if options.format == PileupFormat.BEDGRAPH:
             bedgraph.to_csv(
-                f'{output_prefix}_{viewpoint_name}.bedgraph{".gz" if options.gzip else ""}',
+                f"{output_prefix}_{viewpoint_name}.bedgraph{'.gz' if options.gzip else ''}",
                 sep="\t",
                 header=False,
                 index=False,
@@ -133,4 +140,3 @@ def pileup(
                         ],
                         check=True,
                     )
-

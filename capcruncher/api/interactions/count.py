@@ -8,11 +8,17 @@ from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
 from tqdm import tqdm
 
-from capcruncher.types import Assay, Executor, VALID_ASSAYS, VALID_EXECUTORS, validate_choice
 from capcruncher.api.interactions.pixels import iter_count_results
 from capcruncher.api.interactions.reporters import (
     summarise_reporter_viewpoints,
     write_countable_reporters,
+)
+from capcruncher.types import (
+    VALID_ASSAYS,
+    VALID_EXECUTORS,
+    Assay,
+    Executor,
+    validate_choice,
 )
 
 
@@ -104,16 +110,13 @@ def count_interactions(
 
         import polars as pl
 
-        bins = (
-            pl.read_csv(
-                options.fragment_map,
-                separator="\t",
-                has_header=False,
-                new_columns=["chrom", "start", "end", "name"],
-                schema_overrides={"chrom": pl.String},
-            )
-            .to_pandas()
-        )
+        bins = pl.read_csv(
+            options.fragment_map,
+            separator="\t",
+            has_header=False,
+            new_columns=["chrom", "start", "end", "name"],
+            schema_overrides={"chrom": pl.String},
+        ).to_pandas()
         bins["chrom"] = bins["chrom"].astype("category")
 
         count_kwargs = {

@@ -3,14 +3,13 @@ from pathlib import Path
 import typer
 
 from capcruncher.cli.common import (
-    CompressionLevelOption,
     HELP_SETTINGS,
+    CompressionLevelOption,
     MinimumSliceLengthOption,
     NCoresOption,
     NReadsOption,
 )
 from capcruncher.types import FastqSplitMethod, ReadType
-
 
 fastq_app = typer.Typer(
     help="Contains methods for fastq splitting, deduplicating and digestion.",

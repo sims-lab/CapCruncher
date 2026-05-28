@@ -1,27 +1,24 @@
 from __future__ import annotations
 
+import itertools
+import json
 import os
 import pathlib
 import re
 from collections.abc import Sequence
 from typing import Self
-import json
-import itertools
+
 import pandas as pd
 import pyranges1 as pr
+from loguru import logger
+from snakemake.io import expand
 
 from capcruncher import utils
 from capcruncher.pipeline.validation import (
     format_pipeline_config,
     is_none,
-    is_off,
-    is_on,
-    normalise_hub_color_by,
 )
 from capcruncher.types import Assay
-
-from loguru import logger
-from snakemake.io import expand
 
 
 def convert_empty_yaml_entry_to_string(param: str) -> str:
@@ -133,6 +130,7 @@ def group_files_by_regex(files: Sequence, regex: str) -> pd.Series:
         .rename("files_grouped")
     )
 
+
 def is_valid_viewpoint_name(name: str):
     return re.match(r"^[A-Za-z0-9_\-]+$", name)
 
@@ -158,9 +156,11 @@ class FastqSamples:
         )
 
         df["sample"] = df["sample"].apply(
-            lambda p: pathlib.Path(p).name
-            if isinstance(p, pathlib.Path)
-            else os.path.basename(p)
+            lambda p: (
+                pathlib.Path(p).name
+                if isinstance(p, pathlib.Path)
+                else os.path.basename(p)
+            )
         )
         df["read"] = "fq" + df["read"]
 
@@ -257,7 +257,7 @@ def format_annotation_parameters(*args, **kwargs):
     }
 
     annotation_args = []
-    for annotation, options in parameters.items():
+    for _, options in parameters.items():
         for option, value in options.items():
             if value is not None:
                 annotation_args.append(f"{flags[option]} {value}")

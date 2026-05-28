@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures.process import BrokenProcessPool
 import functools
-from multiprocessing import get_context
 import os
 import re
 import tempfile
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
+from multiprocessing import get_context
 from pathlib import Path
 
 import cooler
@@ -14,8 +14,9 @@ import pandas as pd
 import pyranges1 as pr
 from loguru import logger
 
-from capcruncher.types import Assay, BinningMethod
 from capcruncher.api.interactions.cooler.merge import merge_coolers
+from capcruncher.types import Assay, BinningMethod
+
 
 class CoolerBinner:
     def __init__(
@@ -55,9 +56,9 @@ class CoolerBinner:
             cooler.binnify(binsize=self.binsize, chromsizes=self.cooler.chromsizes)
             .sort_values(by=["chrom", "start", "end"])
             .assign(
-                genomic_bin_id=lambda df: df.reset_index(drop=True)
-                .index.to_series()
-                .values
+                genomic_bin_id=lambda df: (
+                    df.reset_index(drop=True).index.to_series().values
+                )
             )
             .rename(columns={"chrom": "Chromosome", "start": "Start", "end": "End"})
             .pipe(pr.PyRanges)
@@ -88,15 +89,12 @@ class CoolerBinner:
 
         if self.method == BinningMethod.MIDPOINT:
             df_fragment_bins = fragment_bins.copy()
-            midpoint = (
-                df_fragment_bins["Start"].astype(int)
-                + (
-                    (
-                        df_fragment_bins["End"].astype(int)
-                        - df_fragment_bins["Start"].astype(int)
-                    )
-                    // 2
+            midpoint = df_fragment_bins["Start"].astype(int) + (
+                (
+                    df_fragment_bins["End"].astype(int)
+                    - df_fragment_bins["Start"].astype(int)
                 )
+                // 2
             )
             fragment_bins = pr.PyRanges(
                 df_fragment_bins.assign(Start=midpoint, End=midpoint + 1)
@@ -149,9 +147,7 @@ class CoolerBinner:
                 "Overlap": "overlap",
             }
         )
-        table["overlap_fraction"] = table["overlap"] / (
-            table["End"] - table["Start"]
-        )
+        table["overlap_fraction"] = table["overlap"] / (table["End"] - table["Start"])
         return table
 
     @functools.cached_property
@@ -159,11 +155,9 @@ class CoolerBinner:
         """
         Translate genomic bins to fragment bins
         """
-        fragment_to_bins_mapping = (
-            self.fragment_to_genomic_table
-            .set_index("fragment_id")["genomic_bin_id"]
-            .to_dict()
-        )
+        fragment_to_bins_mapping = self.fragment_to_genomic_table.set_index(
+            "fragment_id"
+        )["genomic_bin_id"].to_dict()
         return fragment_to_bins_mapping
 
     @functools.cached_property
@@ -190,11 +184,9 @@ class CoolerBinner:
 
         # Normalize pixels if specified
         if self.n_restriction_fragment_correction:
-            n_fragments_per_bin = (
-                self.fragment_to_genomic_table
-                .set_index("genomic_bin_id")["n_fragments_per_bin"]
-                .to_dict()
-            )
+            n_fragments_per_bin = self.fragment_to_genomic_table.set_index(
+                "genomic_bin_id"
+            )["n_fragments_per_bin"].to_dict()
             pixels = pixels.assign(
                 n_fragments_per_bin1=lambda df: df["genomic_bin1_id"].map(
                     n_fragments_per_bin
@@ -205,22 +197,24 @@ class CoolerBinner:
                 n_fragments_per_bin_correction=lambda df: (
                     df["n_fragments_per_bin1"] + df["n_fragments_per_bin2"]
                 ),
-                count_n_rf_norm=lambda df: df["count"]
-                / df["n_fragments_per_bin_correction"],
+                count_n_rf_norm=lambda df: (
+                    df["count"] / df["n_fragments_per_bin_correction"]
+                ),
             )
 
         if self.n_cis_interaction_correction:
             pixels = pixels.assign(
-                count_n_cis_norm=lambda df: (df["count"] / self.n_cis_interactions)
-                * self.scale_factor,
+                count_n_cis_norm=lambda df: (
+                    (df["count"] / self.n_cis_interactions) * self.scale_factor
+                ),
             )
 
         if self.n_cis_interaction_correction and self.n_restriction_fragment_correction:
             pixels = pixels.assign(
                 count_n_cis_rf_norm=lambda df: (
-                    pixels["count_n_rf_norm"] / self.n_cis_interactions
+                    (pixels["count_n_rf_norm"] / self.n_cis_interactions)
+                    * self.scale_factor
                 )
-                * self.scale_factor
             )
 
         return pixels
@@ -247,9 +241,9 @@ class CoolerBinner:
             )
         )
 
-        return pr_viewpoint.join_overlaps(
-            self.genomic_bins, strand_behavior="ignore"
-        )["genomic_bin_id"].to_list()
+        return pr_viewpoint.join_overlaps(self.genomic_bins, strand_behavior="ignore")[
+            "genomic_bin_id"
+        ].to_list()
 
     def to_cooler(self, store: Path | str) -> str:
         store = os.fspath(store)
@@ -277,10 +271,9 @@ class CoolerBinner:
         )
 
         bins = (
-            pd.DataFrame(self.genomic_bins).copy()
-            .rename(
-                columns={"Chromosome": "chrom", "Start": "start", "End": "end"}
-            )
+            pd.DataFrame(self.genomic_bins)
+            .copy()
+            .rename(columns={"Chromosome": "chrom", "Start": "start", "End": "end"})
             .sort_values("genomic_bin_id")
             .assign(bin_id=lambda df: df["genomic_bin_id"])
             .set_index("genomic_bin_id")
@@ -293,7 +286,13 @@ class CoolerBinner:
             metadata=metadata,
             mode="w" if not os.path.exists(store) else "a",
             columns=pixels.columns[2:],
-            dtypes=dict(zip(pixels.columns[2:], ["float32"] * len(pixels.columns[2:]))),
+            dtypes=dict(
+                zip(
+                    pixels.columns[2:],
+                    ["float32"] * len(pixels.columns[2:]),
+                    strict=True,
+                )
+            ),
             ensure_sorted=True,
             ordered=True,
         )

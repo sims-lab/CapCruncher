@@ -7,16 +7,25 @@ from typing import Any, cast
 import pandas as pd
 import pyranges1 as pr
 from loguru import logger
-from pydantic import BaseModel, PositiveFloat, PositiveInt, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    PositiveFloat,
+    PositiveInt,
+    field_validator,
+    model_validator,
+)
 
-from capcruncher.api.intervals.annotate import annotate_intervals, remove_duplicates_from_bed
+from capcruncher.api.intervals.annotate import (
+    annotate_intervals,
+    remove_duplicates_from_bed,
+)
 from capcruncher.types import (
-    AnnotationAction,
-    DuplicateAction,
-    InvalidBedAction,
     VALID_ANNOTATION_ACTIONS,
     VALID_DUPLICATE_ACTIONS,
     VALID_INVALID_BED_ACTIONS,
+    AnnotationAction,
+    DuplicateAction,
+    InvalidBedAction,
     validate_choice,
     validate_choices,
 )
@@ -258,6 +267,7 @@ def annotate(
             bed_files,
             names,
             cycle_argument(overlap_fractions),
+            strict=False,
         ):
             logger.info(
                 f"Performing {name} intersection with {bed_file} using {action} method with {fraction} overlap fraction. {len(slice_intervals)} slices to intersect."

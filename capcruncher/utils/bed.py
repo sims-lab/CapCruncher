@@ -5,12 +5,11 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Iterable
 
 import pandas as pd
 import pandera.pandas as pa
-from pandera.typing.pandas import Series as PASeries
 import pyranges1 as pr
+from pandera.typing.pandas import Series as PASeries
 
 
 class BedSchema(pa.DataFrameModel):
@@ -43,6 +42,7 @@ def validate_bed_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     if not {"chrom", "start", "end"}.issubset(df.columns):
         return df
     return BedSchema.validate(df)
+
 
 type BedInput = str | os.PathLike | pd.DataFrame | pr.PyRanges
 
@@ -136,14 +136,14 @@ def _standardize_bed_columns(
         alias_key = re.sub(r"[^a-z0-9]", "", str(column).lower())
         canonical = BED_COLUMN_ALIASES.get(alias_key)
         if canonical:
-            rename_map[column] = BED_COLUMN_CASE[canonical] if capitalized else canonical
+            rename_map[column] = (
+                BED_COLUMN_CASE[canonical] if capitalized else canonical
+            )
 
     return df.rename(columns=rename_map)
 
 
-def _prepare_intersection_frame(
-    df: BedInput, name_prefix: str
-) -> pd.DataFrame:
+def _prepare_intersection_frame(df: BedInput, name_prefix: str) -> pd.DataFrame:
     frame = convert_bed_to_dataframe(df)
     if frame.empty:
         return frame

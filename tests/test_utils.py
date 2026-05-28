@@ -1,18 +1,19 @@
-import os
 import builtins
 import importlib
+import os
+import subprocess
 import sys
 
 import pandas as pd
 import pytest
-import subprocess
 from click.testing import CliRunner
+
 from capcruncher.cli import cli
 from capcruncher.utils import (
     bed_has_duplicate_names,
     bed_has_name,
-    convert_bed_to_pr,
     convert_bed_to_dataframe,
+    convert_bed_to_pr,
     convert_interval_to_coords,
     format_coordinates,
     intersect_bins,
@@ -166,9 +167,7 @@ def test_api_package_import_does_not_import_submodules(monkeypatch):
     api = importlib.import_module("capcruncher.api")
 
     assert api.__name__ == "capcruncher.api"
-    assert not any(
-        module.startswith("capcruncher.api.") for module in sys.modules
-    )
+    assert not any(module.startswith("capcruncher.api.") for module in sys.modules)
 
 
 def test_differential_module_imports_without_pydeseq2(monkeypatch):

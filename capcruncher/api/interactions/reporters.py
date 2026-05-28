@@ -61,7 +61,9 @@ def _validate_reporter_columns(reporters_df: pl.DataFrame, parquet_file: Path) -
 
 
 def _read_reporter_columns(reporters: Path | str, columns: list[str]) -> pl.DataFrame:
-    frames = [pl.read_parquet(path, columns=columns) for path in parquet_files(reporters)]
+    frames = [
+        pl.read_parquet(path, columns=columns) for path in parquet_files(reporters)
+    ]
     if not frames:
         return pl.DataFrame()
     return pl.concat(frames, how="diagonal_relaxed")

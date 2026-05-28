@@ -8,8 +8,8 @@ import pyranges1 as pr
 from pandas.api.types import is_numeric_dtype
 
 from capcruncher.types import (
-    AnnotationAction,
     VALID_ANNOTATION_ACTIONS,
+    AnnotationAction,
     validate_choice,
 )
 from capcruncher.utils import convert_bed_to_dataframe, convert_bed_to_pr
@@ -89,7 +89,7 @@ def _split_query_metadata(
     query: pr.PyRanges,
 ) -> tuple[pr.PyRanges, dict[int, object], pd.DataFrame]:
     query = _add_row_ids(query)
-    original_names = dict(zip(query[ROW_ID_COLUMN], query["Name"]))
+    original_names = dict(zip(query[ROW_ID_COLUMN], query["Name"], strict=True))
     metadata_columns = [
         column for column in query.columns if column not in ANNOTATION_EXCLUDE_COLUMNS
     ]
@@ -113,9 +113,7 @@ def _restore_query_metadata(
 ) -> pr.PyRanges:
     if not metadata.empty:
         annotated = (
-            annotated.set_index(ROW_ID_COLUMN)
-            .join(metadata, how="left")
-            .reset_index()
+            annotated.set_index(ROW_ID_COLUMN).join(metadata, how="left").reset_index()
         )
 
     return (
@@ -189,9 +187,8 @@ def _count_annotations(
 
 
 def _failed_annotation(query: pr.PyRanges, name: str) -> pr.PyRanges:
-    return (
-        query.assign(**{name: pd.NA})
-        .assign(**{name: lambda df: df[name].astype(pd.StringDtype())})
+    return query.assign(**{name: pd.NA}).assign(
+        **{name: lambda df: df[name].astype(pd.StringDtype())}
     )
 
 

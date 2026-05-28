@@ -1,18 +1,17 @@
 from __future__ import annotations
 
+import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
-import tomllib
-
-from capcruncher.types import Assay, VALID_ASSAYS, validate_choice
 
 from capcruncher.api.filtering.steps import (
-    FilterStepInput,
     FilterStepName,
     _coerce_filter_step_name,
 )
+from capcruncher.types import VALID_ASSAYS, Assay, validate_choice
+
 
 @dataclass(frozen=True)
 class FilterStage:
@@ -28,7 +27,7 @@ class FilterPlan:
     @classmethod
     def from_mapping(
         cls, data: Mapping[str, object], *, expected_assay: Assay | str | None = None
-    ) -> "FilterPlan":
+    ) -> FilterPlan:
         assay_raw = data.get("assay")
         if not isinstance(assay_raw, str):
             raise ValueError("Filter profile must define string field 'assay'.")
@@ -44,7 +43,9 @@ class FilterPlan:
 
         raw_stages = data.get("stages")
         if not isinstance(raw_stages, list) or not raw_stages:
-            raise ValueError("Filter profile must define at least one [[stages]] entry.")
+            raise ValueError(
+                "Filter profile must define at least one [[stages]] entry."
+            )
 
         stages: list[FilterStage] = []
         seen_stage_names: set[str] = set()
@@ -64,7 +65,9 @@ class FilterPlan:
             if not isinstance(raw_steps, list) or not raw_steps:
                 raise ValueError(f"Filter stage {name!r} must define non-empty steps.")
             if not all(isinstance(step, str) and step.strip() for step in raw_steps):
-                raise ValueError(f"Filter stage {name!r} contains an invalid step name.")
+                raise ValueError(
+                    f"Filter stage {name!r} contains an invalid step name."
+                )
             step_names = cast(list[str], raw_steps)
 
             stages.append(
@@ -79,7 +82,7 @@ class FilterPlan:
     @classmethod
     def from_toml(
         cls, path: Path | str, *, expected_assay: Assay | str | None = None
-    ) -> "FilterPlan":
+    ) -> FilterPlan:
         profile_path = Path(path)
         if profile_path.suffix.lower() in {".yaml", ".yml"}:
             raise ValueError(
@@ -89,7 +92,6 @@ class FilterPlan:
         with profile_path.open("rb") as handle:
             data = tomllib.load(handle)
         return cls.from_mapping(data, expected_assay=expected_assay)
-
 
 
 DEFAULT_FILTER_PLANS: dict[Assay, FilterPlan] = {
@@ -200,5 +202,3 @@ DEFAULT_FILTER_PLANS: dict[Assay, FilterPlan] = {
         ),
     ),
 }
-
-

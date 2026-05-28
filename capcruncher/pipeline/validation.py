@@ -3,22 +3,27 @@ from __future__ import annotations
 import re
 from typing import Annotated, Any
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from capcruncher.types import (
-    Assay,
-    FastqSplitMethod,
+    FLAG_NONE_VALUES,
     FLAG_OFF_VALUES,
     FLAG_ON_VALUES,
-    FLAG_NONE_VALUES,
-    SummaryMethod,
     VALID_ASSAYS,
     VALID_FASTQ_SPLIT_METHODS,
     VALID_SUMMARY_METHODS,
+    Assay,
+    FastqSplitMethod,
     validate_choice,
 )
 from capcruncher.utils import get_restriction_site
-
 
 HUB_COLOR_BY_ALIASES = {
     "samplename": "sample",
@@ -134,7 +139,9 @@ class AnalysisConfig(PipelineBaseModel):
     def validate_method(cls, value: str | bool | None) -> str | None:
         if value is None or value is False:
             return None
-        return validate_choice(str(value).lower(), VALID_ASSAYS, "analysis.method").value
+        return validate_choice(
+            str(value).lower(), VALID_ASSAYS, "analysis.method"
+        ).value
 
     @field_validator("bin_sizes", mode="before")
     @classmethod
@@ -286,9 +293,7 @@ class AnalysisOptionalConfig(PipelineBaseModel):
 
     @field_validator("minimum_viewpoint_overlap")
     @classmethod
-    def validate_minimum_viewpoint_overlap(
-        cls, value: float | None
-    ) -> float | None:
+    def validate_minimum_viewpoint_overlap(cls, value: float | None) -> float | None:
         if value is not None and not 0 <= value <= 1:
             raise ValueError(
                 "analysis_optional.minimum_viewpoint_overlap must be between 0 and 1."
@@ -384,7 +389,7 @@ class PipelineConfig(PipelineBaseModel):
     trim: TrimConfig | None = None
 
     @model_validator(mode="after")
-    def validate_custom_hub_genome(self) -> "PipelineConfig":
+    def validate_custom_hub_genome(self) -> PipelineConfig:
         if not self.hub:
             return self
 

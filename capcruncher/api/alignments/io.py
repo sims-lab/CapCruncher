@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from collections import namedtuple
 import os
+from collections import namedtuple
 from pathlib import Path
 
-from loguru import logger
 import polars as pl
 import pysam
 import xxhash
+from loguru import logger
 
 CCAlignment = namedtuple(
     "CCAlignment",
@@ -145,9 +145,7 @@ def parse_bam(bam: Path | str) -> pl.DataFrame:
     return df_bam
 
 
-def bam_to_parquet(
-    bam: Path | str, output: Path | str
-) -> Path | str:
+def bam_to_parquet(bam: Path | str, output: Path | str) -> Path | str:
     """Converts bam file to parquet file.
 
     Args:
