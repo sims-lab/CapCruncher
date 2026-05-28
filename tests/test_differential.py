@@ -2,6 +2,13 @@ import pandas as pd
 import pytest
 
 from capcruncher.api.interactions import differential
+from capcruncher.api.interactions.differential import get_differential_interactions
+
+try:
+    import pydeseq2  # noqa: F401
+    HAS_PYDESEQ2 = True
+except ImportError:
+    HAS_PYDESEQ2 = False
 
 
 def test_get_differential_interactions_uses_pydeseq2_results_df(monkeypatch):
@@ -120,3 +127,33 @@ def test_differential_reports_empty_counts_after_threshold(monkeypatch, tmp_path
             viewpoint_distance=1000,
             threshold_count=20,
         )
+
+
+@pytest.mark.skipif(not HAS_PYDESEQ2, reason="pydeseq2 not installed")
+def test_differential_interactions_end_to_end():
+    counts = pd.DataFrame(
+        {
+            "SAMPLE-A_REP1": [100, 5],
+            "SAMPLE-A_REP2": [120, 8],
+            "SAMPLE-B_REP1": [10, 200],
+            "SAMPLE-B_REP2": [8, 180],
+        },
+        index=["chr1:100-200", "chr1:300-400"],
+    )
+    design = pd.DataFrame(
+        {"condition": ["A", "A", "B", "B"]},
+        index=["SAMPLE-A_REP1", "SAMPLE-A_REP2", "SAMPLE-B_REP1", "SAMPLE-B_REP2"],
+    )
+
+    results = get_differential_interactions(
+        counts,
+        design,
+        contrast="condition",
+        group_a="A",
+        group_b="B",
+        threshold_q=1.0,
+    )
+
+    assert isinstance(results, pd.DataFrame)
+    for col in ("baseMean", "log2FoldChange", "pvalue", "padj", "chrom", "start", "end"):
+        assert col in results.columns, f"Missing column: {col}"
