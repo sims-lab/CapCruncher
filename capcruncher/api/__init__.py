@@ -58,6 +58,15 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     # fastq
+    # alignments
+    from capcruncher.api.alignments.annotate import AlignmentAnnotateOptions
+    from capcruncher.api.alignments.annotate import annotate as annotate_alignments
+    from capcruncher.api.alignments.filter import (
+        AlignmentFilterOptions,
+        merge_annotations,
+    )
+    from capcruncher.api.alignments.filter import filter as filter_alignments
+    from capcruncher.api.alignments.io import bam_to_parquet, parse_bam
     from capcruncher.api.fastq import (
         FastqDeduplicationOptions,
         FastqDigestOptions,
@@ -66,17 +75,6 @@ if TYPE_CHECKING:
         digest_fastq,
         split_fastq,
     )
-
-    # genome
-    from capcruncher.api.genome import digest_genome
-
-    # alignments
-    from capcruncher.api.alignments.annotate import AlignmentAnnotateOptions
-    from capcruncher.api.alignments.annotate import annotate as annotate_alignments
-    from capcruncher.api.alignments.filter import AlignmentFilterOptions
-    from capcruncher.api.alignments.filter import filter as filter_alignments
-    from capcruncher.api.alignments.filter import merge_annotations
-    from capcruncher.api.alignments.io import bam_to_parquet, parse_bam
 
     # filtering
     from capcruncher.api.filtering.pipeline import (
@@ -88,6 +86,9 @@ if TYPE_CHECKING:
     )
     from capcruncher.api.filtering.steps import FilterStepName, FilterStepRegistry
 
+    # genome
+    from capcruncher.api.genome import digest_genome
+
     # interactions
     from capcruncher.api.interactions.bedgraph import (
         CCBedgraph,
@@ -97,9 +98,17 @@ if TYPE_CHECKING:
     )
     from capcruncher.api.interactions.compare import concat as concat_interactions
     from capcruncher.api.interactions.compare import summarise as summarise_interactions
-    from capcruncher.api.interactions.count import InteractionCountOptions, count_interactions
-    from capcruncher.api.interactions.deduplicate import deduplicate as deduplicate_interactions
-    from capcruncher.api.interactions.differential import differential, get_differential_interactions
+    from capcruncher.api.interactions.count import (
+        InteractionCountOptions,
+        count_interactions,
+    )
+    from capcruncher.api.interactions.deduplicate import (
+        deduplicate as deduplicate_interactions,
+    )
+    from capcruncher.api.interactions.differential import (
+        differential,
+        get_differential_interactions,
+    )
     from capcruncher.api.interactions.pileup import PileupOptions, pileup
     from capcruncher.api.interactions.reporters import (
         ReporterViewpointSummary,

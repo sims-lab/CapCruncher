@@ -5,9 +5,15 @@ from capcruncher.api.interactions.bedgraph import (
     cooler_to_bedgraph,
 )
 from capcruncher.api.interactions.compare import concat, summarise
-from capcruncher.api.interactions.count import InteractionCountOptions, count_interactions
+from capcruncher.api.interactions.count import (
+    InteractionCountOptions,
+    count_interactions,
+)
 from capcruncher.api.interactions.deduplicate import deduplicate
-from capcruncher.api.interactions.differential import differential, get_differential_interactions
+from capcruncher.api.interactions.differential import (
+    differential,
+    get_differential_interactions,
+)
 from capcruncher.api.interactions.pileup import PileupOptions, pileup
 from capcruncher.api.interactions.reporters import (
     ReporterViewpointSummary,
