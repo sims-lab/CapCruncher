@@ -25,8 +25,15 @@ def default_fastq_split_method() -> str:
     if configured_method:
         return configured_method
 
-    if sys.platform == "darwin" and shutil.which("gsplit") is None:
-        return "python"
+    if sys.platform == "darwin":
+        split_cmd = shutil.which("gsplit") or shutil.which("split")
+        if split_cmd is None:
+            return "python"
+        import subprocess as _sp
+
+        probe = _sp.run([split_cmd, "--help"], capture_output=True, text=True)
+        if "--additional-suffix" not in probe.stdout + probe.stderr:
+            return "python"
 
     return "unix"
 

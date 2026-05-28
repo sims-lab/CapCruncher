@@ -152,14 +152,23 @@ def run_unix_split(
         cat_executable = "cat"
 
     if PLATFORM == "darwin":
-        if shutil.which("gsplit") is None:
+        gnu_split = shutil.which("gsplit") or shutil.which("split")
+        if gnu_split is None:
             raise RuntimeError(
                 "GNU split is required for unix FASTQ splitting on macOS. "
                 "Install coreutils or use --method python."
             )
-        split_executable = "gsplit"
-        if cat_executable == "zcat":
-            cat_executable = "gzcat"
+        import subprocess as _sp
+
+        probe = _sp.run([gnu_split, "--help"], capture_output=True, text=True)
+        if "--additional-suffix" not in probe.stdout + probe.stderr:
+            raise RuntimeError(
+                "GNU split with --additional-suffix support is required on macOS. "
+                "Install coreutils or use --method python."
+            )
+        split_executable = gnu_split
+    if ".gz" in str(fn) and cat_executable == "zcat":
+        cat_executable = "gzip -dc"
 
     cmd = (
         f"{cat_executable} {shlex.quote(str(fn))} | "

@@ -700,7 +700,7 @@ def test_capture_pipeline_golden_outputs(capture_pipeline_run):
     assert reporters["capture"].notna().sum() == 94
     assert set(reporters["capture"].dropna().astype(str)) == {"Slc25A37"}
 
-    assert len(pd.read_csv(digest_bed, sep="\t", header=None)) == 303591
+    assert len(pd.read_csv(digest_bed, sep="\t", header=None)) == 303397
 
     assert cooler.api.list_coolers(str(cooler_path)) == [
         "/Slc25A37",

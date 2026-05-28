@@ -124,7 +124,7 @@ rule flash:
         outdir="capcruncher_output/interim/fastq/flashed/{sample}/{sample}_part{part}",
     shell:
         """
-        flash {input.fq1} {input.fq2} -o {params.outdir} -t {threads} -z --compress-prog-args pigz >{log} 2>&1
+        flash2 {input.fq1} {input.fq2} -o {params.outdir} -t {threads} -z >{log} 2>&1
         """
 
 

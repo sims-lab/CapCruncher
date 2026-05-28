@@ -125,7 +125,7 @@ def build_figure(
     can_group_tracks = can_group_tracks_by_condition(design)
 
     logger.info("Setting up tracks")
-    fig = GenomicFigure()
+    fig = GenomicFigure(theme=None)
     fig.scalebar()
 
     add_bigwig_tracks(
