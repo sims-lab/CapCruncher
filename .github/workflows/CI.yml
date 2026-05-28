@@ -12,16 +12,52 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  CACHE_VERSION: 3
-
 jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-suffix: lint
+
+      - name: Install dev dependencies
+        run: uv sync --group dev
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-suffix: typecheck
+
+      - name: Install dev dependencies
+        run: uv sync --group dev
+
+      - name: Run ty
+        run: uv run ty check
+
   bowtie2-index:
     name: Prepare Bowtie2 index
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install Bowtie2
         run: |
@@ -40,7 +76,6 @@ jobs:
         uses: actions/cache@v4
         with:
           path: tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/*.bt2
-          # Rebuild only when the test FASTA or Bowtie2 index format changes.
           key: bowtie2-index-${{ steps.bowtie2-version.outputs.version }}-${{ hashFiles('tests/data/data_for_pipeline_run/chr14.fa.gz') }}
 
       - name: Build Bowtie2 index
@@ -64,9 +99,6 @@ jobs:
     needs: bowtie2-index
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
-    defaults:
-      run:
-        shell: bash -el {0}
     strategy:
       fail-fast: false
       matrix:
@@ -81,7 +113,7 @@ jobs:
             upload_coverage: false
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Download Bowtie2 index
         uses: actions/download-artifact@v4
@@ -95,44 +127,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes libcurl4-openssl-dev
 
-      - name: Set up micromamba environment
-        uses: mamba-org/setup-micromamba@v2
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0
         with:
-          environment-file: environment.yml
-          cache-environment: true
-          cache-environment-key: micromamba-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_VERSION }}
-          cache-downloads: true
-          cache-downloads-key: micromamba-downloads-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_VERSION }}
-          post-cleanup: all
+          pixi-version: latest
+          cache: true
+          environments: test
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-suffix: tests-${{ matrix.name }}
-          python-version: "3.12"
+      - name: Smoke-test install
+        run: pixi run -e test python -c "import polars, pydeseq2, capcruncher_tools, plotnado; print(f'polars {polars.__version__}')"
 
-      - name: Check installed packages
-        run: |
-          micromamba info
-          python --version
-          uv --version
+      - name: Test quick suite
+        run: pixi run -e test pytest -vv -s --log-cli-level info -n auto -m "not pipeline"
 
-      - name: Install the package
-        run: |
-          uv pip install --system --no-deps ".[full,config,plot]"
-          uv pip install --system --no-deps "capcruncher-tools>=0.2.4,<0.3.0" "plotnado[toml]>=0.3,<0.4"
-          uv pip install --system pytest-cov pytest-order pytest-xdist
-          python -c "import polars, scipy.optimize, pydeseq2, capcruncher_tools, plotnado; print(f'polars {polars.__version__}')"
-
-      - name: Test quick suite with pytest
-        run: |
-          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 4 -m "not pipeline"
-
-      - name: Test pipeline suite with pytest
+      - name: Test pipeline suite
         if: matrix.run_pipeline
-        run: |
-          pytest -vv -s --log-cli-level info --cov=./ --cov-append --cov-report=xml --cores 4 -m "pipeline"
+        run: pixi run -e test pytest -vv -s --log-cli-level info -n auto --cov-append -m "pipeline"
 
       - name: Upload Coverage to Codecov
         if: matrix.upload_coverage
@@ -148,17 +158,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
           cache-suffix: package
