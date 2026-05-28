@@ -67,8 +67,6 @@ def count_interactions(
     **kwargs: Any,
 ) -> Path | str:
     """Count reporter interactions and write CapCruncher cooler output."""
-    import pyranges1 as pr
-
     from capcruncher.api.interactions.cooler.create import create_cooler_cc
     from capcruncher.api.interactions.cooler.merge import merge_coolers
 
@@ -104,15 +102,19 @@ def count_interactions(
         if options.fragment_map is None:
             raise ValueError("fragment_map is required.")
 
-        bins = pr.read_bed(Path(options.fragment_map)).rename(
-            columns={
-                "Chromosome": "chrom",
-                "Start": "start",
-                "End": "end",
-                "Name": "name",
-            }
+        import polars as pl
+
+        bins = (
+            pl.read_csv(
+                options.fragment_map,
+                separator="\t",
+                has_header=False,
+                new_columns=["chrom", "start", "end", "name"],
+                schema_overrides={"chrom": pl.String},
+            )
+            .to_pandas()
         )
-        bins["chrom"] = bins["chrom"].astype("string").astype("category")
+        bins["chrom"] = bins["chrom"].astype("category")
 
         count_kwargs = {
             "parquet": os.fspath(reporters_for_counting / "*.parquet"),
