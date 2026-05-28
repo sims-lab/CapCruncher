@@ -25,17 +25,11 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
           cache-suffix: release-source
@@ -76,17 +70,11 @@ jobs:
             plat_name: macosx_11_0_arm64
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
           cache-suffix: release-wheel-${{ matrix.name }}
@@ -124,8 +112,7 @@ jobs:
       name: pypi
 
     steps:
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
           cache-suffix: release-publish
