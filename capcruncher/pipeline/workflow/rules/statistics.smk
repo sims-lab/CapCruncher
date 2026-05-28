@@ -8,6 +8,7 @@ rule extract_trimming_data:
     script:
         "../scripts/extract_trimming_data.py"
 
+
 rule extract_flash_data:
     input:
         rules.multiqc_full.output.flash_data,

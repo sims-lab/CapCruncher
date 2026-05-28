@@ -1,6 +1,5 @@
 import capcruncher.pipeline.utils
 
-
 # rule check_viewpoints_annotated:
 #     input:
 #         slices=get_annotated_slices,
@@ -21,6 +20,10 @@ rule filter_alignments:
             "capcruncher_output/interim/filtering/initial/{sample}/{sample}_part{part}_{combined}.slices.parquet"
         ),
         statistics="capcruncher_output/interim/statistics/filtering/data/{sample}_part{part}_{combined}.json",
+    log:
+        "capcruncher_output/interim/statistics/filtering/logs/{sample}_part{part}_{combined}.log",
+    resources:
+        mem=lambda wildcards, attempt: scale_memory(5, attempt),
     params:
         analysis_method=config["analysis"]["method"],
         sample_name=lambda wildcards, output: wildcards.sample,
@@ -29,24 +32,20 @@ rule filter_alignments:
         ),
         read_type=lambda wildcards, output: wildcards.combined,
         filter_profile=capcruncher.pipeline.utils.validate_filter_profile(config),
-    resources:
-        mem=lambda wildcards, attempt: scale_memory(5, attempt),
-    log:
-        "capcruncher_output/interim/statistics/filtering/logs/{sample}_part{part}_{combined}.log",
     shell:
         """
         capcruncher \
-        alignments \
-        filter \
-        {params.analysis_method} \
-        -b {input.bam} \
-        -a {input.annotations} \
-        -o {params.output_prefix} \
-        --statistics {output.statistics} \
-        --sample-name {params.sample_name} \
-        --read-type {params.read_type} \
-        --no-fragments \
-        {params.filter_profile} > {log} 2>&1
+            alignments \
+            filter \
+            {params.analysis_method} \
+            -b {input.bam} \
+            -a {input.annotations} \
+            -o {params.output_prefix} \
+            --statistics {output.statistics} \
+            --sample-name {params.sample_name} \
+            --read-type {params.read_type} \
+            --no-fragments \
+            {params.filter_profile} >{log} 2>&1
         """
 
 
@@ -81,14 +80,14 @@ rule remove_duplicate_coordinates:
             )
         ),
         statistics="capcruncher_output/interim/statistics/deduplication_final/data/{sample}_{combined}.json",
+    log:
+        "capcruncher_output/logs/remove_duplicate_coordinates/{sample}_{combined}.log",
+    threads: 12
+    resources:
+        mem=lambda wildcards, attempt: scale_memory(3, attempt),
     params:
         sample_name=lambda wildcards, output: wildcards.sample,
         read_type=lambda wildcards, output: wildcards.combined,
-    resources:
-        mem=lambda wildcards, attempt: scale_memory(3, attempt),
-    threads: 12
-    log:
-        "capcruncher_output/logs/remove_duplicate_coordinates/{sample}_{combined}.log",
     script:
         "../scripts/remove_duplicate_coordinates.py"
 
@@ -101,11 +100,11 @@ rule combine_flashed_and_pe_post_deduplication:
         ),
     output:
         slices=directory("capcruncher_output/results/{sample}/{sample}.parquet"),
+    log:
+        "capcruncher_output/logs/combine_flashed_and_pe_post_deduplication/{sample}.log",
     params:
         source_dir=lambda wc, input: pathlib.Path(input.slices[0]).parent,
         dest_dir=lambda wc, output: pathlib.Path(output.slices),
-    log:
-        "capcruncher_output/logs/combine_flashed_and_pe_post_deduplication/{sample}.log",
     script:
         "../scripts/combine_deduplicated_slices.py"
 
@@ -115,23 +114,23 @@ rule cis_and_trans_stats:
         slices="capcruncher_output/results/{sample}/{sample}.parquet",
     output:
         stats="capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.json",
+    log:
+        "capcruncher_output/logs/cis_and_trans_stats/{sample}.log",
+    resources:
+        mem=lambda wildcards, attempt: scale_memory(3, attempt),
     params:
         sample_name=lambda wildcards, output: wildcards.sample,
         analysis_method=config["analysis"]["method"],
-    resources:
-        mem=lambda wildcards, attempt: scale_memory(3, attempt),
-    log:
-        "capcruncher_output/logs/cis_and_trans_stats/{sample}.log",
     shell:
         """
         capcruncher \
-        utilities \
-        cis-and-trans-stats \
-        {input.slices} \
-        --assay {params.analysis_method} \
-        --sample-name {params.sample_name} \
-        -o {output.stats} \
-        > {log} 2>&1
+            utilities \
+            cis-and-trans-stats \
+            {input.slices} \
+            --assay {params.analysis_method} \
+            --sample-name {params.sample_name} \
+            -o {output.stats} \
+            >{log} 2>&1
         """
 
 

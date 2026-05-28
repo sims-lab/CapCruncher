@@ -9,8 +9,7 @@ import snakemake.utils
 
 from capcruncher.utils import convert_bed_to_pr
 
-
-snakemake.utils.min_version('9.0.0')
+snakemake.utils.min_version("9.0.0")
 
 import capcruncher.pipeline.utils
 
@@ -25,6 +24,7 @@ SCALE_RESOURCES = float(os.environ.get("SCALE_RESOURCES", "1"))
 
 
 container: DEFAULT_CONTAINER_IMAGE
+
 
 include: "rules/common.smk"
 
@@ -62,7 +62,7 @@ for viewpoint in VIEWPOINT_NAMES:
             f"Viewpoint name {viewpoint} contains special characters. "
             "Please remove special characters from viewpoint names."
         )
-        
+
 N_SAMPLES = DESIGN["sample"].nunique()
 ANALYSIS_METHOD = config["analysis"].get("method", "capture")
 BIN_SIZES = capcruncher.pipeline.utils.get_bin_sizes(config)
@@ -139,28 +139,36 @@ rule all:
             "capcruncher_output/results/{sample}/{sample}.hdf5",
             sample=SAMPLE_NAMES,
         ),
-        hub=rules.create_ucsc_hub.output[0]
-        if ANALYSIS_METHOD in ["capture", "tri"] and CREATE_UCSC_HUB
-        else [],
-        differential=expand(
-            "capcruncher_output/results/differential/{viewpoint}",
-            viewpoint=VIEWPOINT_NAMES,
-        )
-        if PERFORM_DIFFERENTIAL_ANALYSIS
-        else [],
-        plots=expand(
-            "capcruncher_output/results/figures/{viewpoint}.pdf",
-            viewpoint=VIEWPOINT_NAMES,
-        )
-        if PERFORM_PLOTTING
-        else [],
-        regenerated_fastq=expand(
-            "capcruncher_output/results/{sample}/{sample}_{read}.fastq.gz",
-            sample=SAMPLE_NAMES,
-            read=["1", "2"],
-        )
-        if REGENERATE_FASTQ
-        else [],
+        hub=(
+            rules.create_ucsc_hub.output[0]
+            if ANALYSIS_METHOD in ["capture", "tri"] and CREATE_UCSC_HUB
+            else []
+        ),
+        differential=(
+            expand(
+                "capcruncher_output/results/differential/{viewpoint}",
+                viewpoint=VIEWPOINT_NAMES,
+            )
+            if PERFORM_DIFFERENTIAL_ANALYSIS
+            else []
+        ),
+        plots=(
+            expand(
+                "capcruncher_output/results/figures/{viewpoint}.pdf",
+                viewpoint=VIEWPOINT_NAMES,
+            )
+            if PERFORM_PLOTTING
+            else []
+        ),
+        regenerated_fastq=(
+            expand(
+                "capcruncher_output/results/{sample}/{sample}_{read}.fastq.gz",
+                sample=SAMPLE_NAMES,
+                read=["1", "2"],
+            )
+            if REGENERATE_FASTQ
+            else []
+        ),
 
 
 onerror:
@@ -175,11 +183,12 @@ onsuccess:
     log_out = "capcruncher.log"
     copy_workflow_log(log, log_out)
     print(f"Pipeline completed successfully. See {log_out} for more information.")
-
     if CLEANUP == "full":
         shutil.rmtree("capcruncher_output/interim/")
-
-    elif CLEANUP == "partial" and pathlib.Path("capcruncher_output/interim/").exists():
+    elif (
+        CLEANUP == "partial"
+        and pathlib.Path("capcruncher_output/interim/").exists()
+    ):
         import subprocess
 
         files_to_remove = []

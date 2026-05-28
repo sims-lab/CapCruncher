@@ -155,7 +155,9 @@ def capcruncher_subprocess_env(capcruncher_test_bin):
 
     env_bin = os.path.dirname(sys.executable)
     base_path = os.environ.get("PATH", "")
-    path = os.pathsep.join(filter(None, [str(capcruncher_test_bin), env_bin, base_path]))
+    path = os.pathsep.join(
+        filter(None, [str(capcruncher_test_bin), env_bin, base_path])
+    )
 
     return {
         **os.environ,

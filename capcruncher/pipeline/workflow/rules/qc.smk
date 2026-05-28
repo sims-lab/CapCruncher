@@ -9,25 +9,25 @@ rule fastqc:
     output:
         html="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
         zip="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.zip",
-    params:
-        extra="--quiet",
-        outdir=lambda wc, output: pathlib.Path(output.html).parent,
-        memory=1024,
     log:
         "capcruncher_output/logs/fastqc/{sample}_{read}.log",
     threads: 1
     resources:
         mem=lambda wildcards, attempt: scale_memory(1, attempt),
+    params:
+        extra="--quiet",
+        outdir=lambda wc, output: pathlib.Path(output.html).parent,
+        memory=1024,
     shell:
         """
-        mkdir -p {params.outdir} &&
-        fastqc \
-            --threads {threads} \
-            --memory {params.memory} \
-            {params.extra} \
-            --outdir {params.outdir} \
-            {input} \
-            > {log} 2>&1
+        mkdir -p {params.outdir} \
+            && fastqc \
+                --threads {threads} \
+                --memory {params.memory} \
+                {params.extra} \
+                --outdir {params.outdir} \
+                {input} \
+                >{log} 2>&1
         """
 
 
@@ -37,13 +37,15 @@ rule samtools_stats:
         bai="capcruncher_output/results/{sample}/{sample}.bam.bai",
     output:
         stats=temp("capcruncher_output/interim/qc/alignment_raw/{sample}.txt"),
+    log:
+        "capcruncher_output/logs/samtools_stats/{sample}.log",
     threads: 1
     resources:
         mem=lambda wildcards, attempt: scale_memory(1, attempt),
-    log:
-        "capcruncher_output/logs/samtools_stats/{sample}.log",
     shell:
-        """samtools stats {input.bam} > {output.stats} 2> {log}"""
+        """
+        samtools stats {input.bam} >{output.stats} 2>{log}
+        """
 
 
 rule multiqc_report:
@@ -61,11 +63,11 @@ rule multiqc_report:
         "capcruncher_output/results/full_qc_report.html",
     log:
         "capcruncher_output/logs/multiqc.log",
+    resources:
+        mem=lambda wildcards, attempt: scale_memory(1, attempt),
     params:
         outdir=lambda wc, output: str(pathlib.Path(output[0]).parent),
         dir_analysis=lambda wc, input: str(pathlib.Path(input[0]).parents[1]),
-    resources:
-        mem=lambda wildcards, attempt: scale_memory(1, attempt),
     shell:
         "multiqc -o {params.outdir} {params.dir_analysis} -n full_qc_report.html --force > {log} 2>&1"
 

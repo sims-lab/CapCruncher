@@ -8,15 +8,15 @@ rule exclusions:
         viewpoints=config["analysis"]["viewpoints"],
     output:
         exclusions="capcruncher_output/interim/annotate/exclude.bed",
+    log:
+        "capcruncher_output/logs/exclusions.log",
     params:
         genome=config["genome"]["chrom_sizes"],
         exclusion_zone=config["analysis"]["reporter_exclusion_zone"],
-    log:
-        "capcruncher_output/logs/exclusions.log",
     shell:
         """
-        bedtools slop -i {input.viewpoints} -g {params.genome} -b {params.exclusion_zone} |
-        bedtools subtract -a - -b  {input.viewpoints} > {output.exclusions} 2> {log}
+        bedtools slop -i {input.viewpoints} -g {params.genome} -b {params.exclusion_zone} \
+            | bedtools subtract -a - -b {input.viewpoints} >{output.exclusions} 2>{log}
         """
 
 
@@ -29,6 +29,11 @@ rule annotate:
         annotated=temp(
             "capcruncher_output/interim/annotate/{sample}/{sample}_part{part}_{combined}.parquet"
         ),
+    log:
+        "capcruncher_output/logs/annotate/{sample}/{sample}_part{part}_{combined}.log",
+    threads: 1
+    resources:
+        mem=lambda wildcards, attempt: scale_memory(4, attempt),
     params:
         annotation_files_and_params=capcruncher.pipeline.utils.format_annotation_parameters(
             workflow, config
@@ -36,25 +41,22 @@ rule annotate:
         priority_chromosomes=capcruncher.pipeline.utils.format_priority_chromosome_list(
             config
         ),
-        prioritize_cis_slices="--prioritize-cis-slices"
-        if config["analysis_optional"].get("prioritize_cis_slices", "")
-        else "",
-    threads: 1
-    resources:
-        mem=lambda wildcards, attempt: scale_memory(4, attempt),
-    log:
-        "capcruncher_output/logs/annotate/{sample}/{sample}_part{part}_{combined}.log",
+        prioritize_cis_slices=(
+            "--prioritize-cis-slices"
+            if config["analysis_optional"].get("prioritize_cis_slices", "")
+            else ""
+        ),
     shell:
         """
         capcruncher \
-        alignments \
-        annotate \
-        {input.bam} \
-        -o \
-        {output.annotated} \
-        {params.annotation_files_and_params} \
-        {params.priority_chromosomes} \
-        {params.prioritize_cis_slices} \
-        -p {threads} \
-        > {log} 2>&1
+            alignments \
+            annotate \
+            {input.bam} \
+            -o \
+            {output.annotated} \
+            {params.annotation_files_and_params} \
+            {params.priority_chromosomes} \
+            {params.prioritize_cis_slices} \
+            -p {threads} \
+            >{log} 2>&1
         """

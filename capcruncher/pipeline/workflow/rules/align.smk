@@ -5,6 +5,9 @@ rule align_bowtie2:
         bam=temp(
             "capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined,(flashed|pe)}.bam"
         ),
+    log:
+        "capcruncher_output/logs/align/{sample}_{part}_{combined}.log",
+    threads: 4
     resources:
         mem=lambda wildcards, attempt: scale_memory(4, attempt),
     params:
@@ -12,13 +15,10 @@ rule align_bowtie2:
         index_flag=config["align"].get("index_flag", ""),
         indices=config["genome"]["aligner_index"],
         options=config["align"].get("options", ""),
-    threads: 4
-    log:
-        "capcruncher_output/logs/align/{sample}_{part}_{combined}.log",
     shell:
         """
-        {params.aligner} {params.index_flag} {params.indices} {params.options} -p {threads} {input.fastq} 2> {log} |
-        samtools view -bS - > {output.bam}
+        {params.aligner} {params.index_flag} {params.indices} {params.options} -p {threads} {input.fastq} 2>{log} \
+            | samtools view -bS - >{output.bam}
         """
 
 
@@ -29,12 +29,12 @@ rule sort_bam_partitions:
         bam=temp(
             "capcruncher_output/interim/aligned/{sample}/{sample}_part{part}_{combined}.sorted.bam"
         ),
-    threads: 4
     log:
         "capcruncher_output/logs/align/{sample}_{part}_{combined}_sort.log",
+    threads: 4
     shell:
         """
-        samtools sort -@ {threads} -o {output.bam} {input.bam} 2> {log}
+        samtools sort -@ {threads} -o {output.bam} {input.bam} 2>{log}
         """
 
 
@@ -47,7 +47,7 @@ rule merge_bam_partitions:
         "capcruncher_output/logs/merge_bam_partitions/{sample}.log",
     shell:
         """
-        samtools merge {output.bam} {input.bam} > {log} 2>&1
+        samtools merge {output.bam} {input.bam} >{log} 2>&1
         """
 
 
@@ -60,5 +60,5 @@ rule index_bam:
         "capcruncher_output/logs/index_bam/{sample}.log",
     shell:
         """
-        samtools index {input.bam} > {log} 2>&1
+        samtools index {input.bam} >{log} 2>&1
         """

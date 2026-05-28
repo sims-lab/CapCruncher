@@ -44,7 +44,7 @@ analysis:
         {%- for bin in genomic_bin_size %}
         - {{bin}}
         {%- endfor %}
-    
+
     # Determines if the pipeline will generate FASTQ files with the filtered reads. This is useful for running other pipelines
     # such as HiCUP or HiC-Pro or CHiCAGO.
     regenerate_fastq: "{{cookiecutter.regenerate_fastq}}"
@@ -147,7 +147,7 @@ plot:
     # * n_rf_n_interactions - Normalised based on the number of cis interations and the number of restriction fragments per bin
     # * ice - Iterative correction and eigenvector decomposition (ICE) normalisation.
     # * icen_cis - ICE normalisation followed by correction for the number of cis interactions.
-    # * icen_scale - ICE normalisation followed by scaling 
+    # * icen_scale - ICE normalisation followed by scaling
     # (Required for plotting)
     normalisation: "{{cookiecutter.plotting_normalisation}}"
 
