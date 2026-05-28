@@ -10,7 +10,7 @@ _build/
 *.pyc
 **.vscode
 build/
-capcruncher.egg-info/
+*.egg-info/
 dist/
 docs/_build/
 pkgs/
@@ -24,5 +24,7 @@ coverage.xml
 tests/data/data_for_pipeline_run/mm9_capture_viewpoints_Slc25A37.bed.gz
 tests/data/data_for_pipeline_run/mm9_capture_viewpoints_Slc25A37.bed.gz.tbi
 .coverage
+.mypy_cache/
+.ruff_cache/
 sps-*
 plans/*
