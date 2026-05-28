@@ -1,4 +1,5 @@
 import os
+import sys
 
 import pytest
 
@@ -76,6 +77,18 @@ for part, offset in enumerate(range(0, len(lines), n_lines)):
         encoding="utf-8",
     )
 
+    flash = bin_dir / "flash"
+    flash.write_text(
+        """#!/usr/bin/env python
+import os
+import subprocess
+import sys
+
+subprocess.run(["flash2", *sys.argv[1:]], check=False)
+""",
+        encoding="utf-8",
+    )
+
     multiqc = bin_dir / "multiqc"
     multiqc.write_text(
         """#!/usr/bin/env python
@@ -112,7 +125,7 @@ data_dir.mkdir(exist_ok=True)
         encoding="utf-8",
     )
 
-    for executable in [capcruncher, gzcat, gsplit, multiqc]:
+    for executable in [capcruncher, flash, gzcat, gsplit, multiqc]:
         executable.chmod(0o755)
 
     return bin_dir
@@ -127,9 +140,13 @@ def capcruncher_subprocess_env(capcruncher_test_bin):
     else:
         pythonpath = repo_root
 
+    env_bin = os.path.dirname(sys.executable)
+    base_path = os.environ.get("PATH", "")
+    path = os.pathsep.join(filter(None, [str(capcruncher_test_bin), env_bin, base_path]))
+
     return {
         **os.environ,
-        "PATH": f"{capcruncher_test_bin}{os.pathsep}{os.environ['PATH']}",
+        "PATH": path,
         "PYTHONPATH": pythonpath,
     }
 
