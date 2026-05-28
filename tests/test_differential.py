@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from capcruncher.api.interactions import differential
+import capcruncher.api.interactions.differential as differential
 from capcruncher.api.interactions.differential import get_differential_interactions
 
 try:

@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 import pandera.pandas as pa
 import pyranges1 as pr
+from pandera import errors as pandera_errors
 from pandera.typing.pandas import Series as PASeries
 
 
@@ -317,7 +318,7 @@ def convert_bed_to_dataframe(bed: BedInput) -> pd.DataFrame:
             bed_conv = pd.DataFrame()
 
     elif isinstance(bed, pr.PyRanges):
-        bed_conv = bed.copy()
+        bed_conv = pd.DataFrame(bed)
 
     elif isinstance(bed, pd.DataFrame):
         bed_conv = bed.copy()
@@ -328,7 +329,13 @@ def convert_bed_to_dataframe(bed: BedInput) -> pd.DataFrame:
     bed_conv = _standardize_bed_columns(bed_conv, capitalized=False)
 
     if not bed_conv.empty:
-        bed_conv = validate_bed_dataframe(bed_conv)
+        try:
+            bed_conv = validate_bed_dataframe(bed_conv)
+        except pandera_errors.SchemaError as exc:
+            from loguru import logger
+
+            logger.warning(f"BED validation failed, treating as empty: {exc}")
+            bed_conv = pd.DataFrame()
 
     return bed_conv
 

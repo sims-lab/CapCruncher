@@ -10,10 +10,7 @@ from capcruncher.api.interactions.count import (
     count_interactions,
 )
 from capcruncher.api.interactions.deduplicate import deduplicate
-from capcruncher.api.interactions.differential import (
-    differential,
-    get_differential_interactions,
-)
+from capcruncher.api.interactions.differential import get_differential_interactions
 from capcruncher.api.interactions.pileup import PileupOptions, pileup
 from capcruncher.api.interactions.reporters import (
     ReporterViewpointSummary,
@@ -33,7 +30,6 @@ __all__ = [
     "cooler_to_bedgraph",
     "count_interactions",
     "deduplicate",
-    "differential",
     "get_differential_interactions",
     "pileup",
     "summarise",

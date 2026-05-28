@@ -145,6 +145,7 @@ def test_cli_import_does_not_import_heavy_runtime_modules():
         capture_output=True,
         check=True,
         text=True,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
     )
 
     assert result.stdout.strip() == ""
