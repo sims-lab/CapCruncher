@@ -251,7 +251,10 @@ _ALIASES: dict[str, tuple[str, str]] = {
     "annotate_alignments": ("capcruncher.api.alignments.annotate", "annotate"),
     "filter_alignments": ("capcruncher.api.alignments.filter", "filter"),
     "concat_interactions": ("capcruncher.api.interactions.compare", "concat"),
-    "deduplicate_interactions": ("capcruncher.api.interactions.deduplicate", "deduplicate"),
+    "deduplicate_interactions": (
+        "capcruncher.api.interactions.deduplicate",
+        "deduplicate",
+    ),
     "summarise_interactions": ("capcruncher.api.interactions.compare", "summarise"),
 }
 
