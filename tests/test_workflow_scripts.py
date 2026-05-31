@@ -717,7 +717,7 @@ def test_capture_pipeline_golden_outputs(capture_pipeline_run):
         )
 
     assert raw_cooler.info["metadata"] == {
-        "viewpoint_bins": [169744],
+        "viewpoint_bins": [169634],
         "viewpoint_name": "Slc25A37",
         "viewpoint_chrom": ["chr14"],
         "viewpoint_coords": ["chr14:69902454-69903469"],

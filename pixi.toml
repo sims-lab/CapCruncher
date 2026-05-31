@@ -63,5 +63,5 @@ test    = {features = ["test"], solve-group = "default"}
 
 [feature.test.tasks]
 test          = "pytest -vv -s --log-cli-level info -n 4 -m 'not pipeline'"
-test-pipeline = "pytest -vv -s --log-cli-level info -n 4 --cov-append -m pipeline --cores 4"
-test-all      = "pytest -vv -s --log-cli-level info -n 4 --cores 4"
+test-pipeline = "pytest -vv -s --log-cli-level info -n 4 --dist loadscope --cov-append -m pipeline --cores 4"
+test-all      = "pytest -vv -s --log-cli-level info -n 4 --dist loadscope --cores 4"

@@ -146,7 +146,7 @@ def build_figure(
         normalization_method=normalization_method,
     )
 
-    if genes:
+    if genes and pathlib.Path(genes).is_file():
         logger.info("Adding genes track")
         fig.genes(data=genes)
         fig.spacer()

@@ -139,6 +139,7 @@ def hub_dir(run_dir_capture):
 def config(
     test_dir,
     package_path,
+    data_path,
     fasta,
     fastqs,
     indicies,
@@ -180,6 +181,7 @@ def config(
             "make_plots": "yes",
             "plotting_coordinates": str(plot_coords),
             "plotting_normalisation": "n_interactions",
+            "plotting_genes": str(data_path.joinpath("mm9_chr14_genes.bed")),
             "differential_contrast": "condition",
             "regenerate_fastq": "yes",
         },
@@ -205,6 +207,7 @@ def config(
 def config_bad(
     test_dir,
     package_path,
+    data_path,
     fasta,
     fastqs,
     indicies,
@@ -246,6 +249,7 @@ def config_bad(
             "make_plots": "yes",
             "plotting_coordinates": str(plot_coords),
             "plotting_normalisation": "n_interactions",
+            "plotting_genes": str(data_path.joinpath("mm9_chr14_genes.bed")),
             "differential_contrast": "condition",
             "regenerate_fastq": "yes",
         },
