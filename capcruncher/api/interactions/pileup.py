@@ -105,8 +105,16 @@ def pileup(
         try:
             cooler.fileops.is_cooler(cooler_group)
         except Exception as exc:
-            logger.info(f"Exception {exc} occured while looking for: {viewpoint_name}")
-            raise RuntimeError(f"Cannot find {viewpoint_name} in cooler file") from exc
+            logger.warning(
+                f"Viewpoint {viewpoint_name} not found in cooler "
+                f"(cooler may be empty): {exc}. Writing empty output."
+            )
+            if options.format == PileupFormat.BEDGRAPH:
+                open(
+                    f"{output_prefix}_{viewpoint_name}.bedgraph{'.gz' if options.gzip else ''}",
+                    "w",
+                ).close()
+            continue
 
         bedgraph = CoolerBedGraph(uri=cooler_group, sparse=sparse).extract_bedgraph(
             normalisation=options.normalisation,

@@ -152,6 +152,9 @@ rule bedgraph_to_bigwig:
     shell:
         """
         sort -k1,1 -k2,2n {input.bedgraph} >{input.bedgraph}.sorted
+        if [ ! -s {input.bedgraph}.sorted ]; then
+            head -1 {params.chrom_sizes} | awk '{{print $1 "\t0\t1\t0.0"}}' >>{input.bedgraph}.sorted
+        fi
         bedGraphToBigWig {input.bedgraph}.sorted {params.chrom_sizes} {output.bigwig} 2>{log}
         rm {input.bedgraph}.sorted
         """

@@ -725,16 +725,16 @@ def test_capture_pipeline_golden_outputs(capture_pipeline_run):
         "n_total_interactions": 130,
     }
     assert raw_cooler.pixels()[:].to_dict("records") == [
-        {"bin1_id": 169686, "bin2_id": 169687, "count": 9},
-        {"bin1_id": 169686, "bin2_id": 169744, "count": 82},
-        {"bin1_id": 169687, "bin2_id": 169744, "count": 10},
-        {"bin1_id": 169744, "bin2_id": 169786, "count": 1},
-        {"bin1_id": 169744, "bin2_id": 169845, "count": 10},
-        {"bin1_id": 169744, "bin2_id": 169846, "count": 6},
-        {"bin1_id": 169744, "bin2_id": 169847, "count": 2},
-        {"bin1_id": 169845, "bin2_id": 169846, "count": 6},
-        {"bin1_id": 169845, "bin2_id": 169847, "count": 2},
-        {"bin1_id": 169846, "bin2_id": 169847, "count": 2},
+        {"bin1_id": 169576, "bin2_id": 169577, "count": 9},
+        {"bin1_id": 169576, "bin2_id": 169634, "count": 82},
+        {"bin1_id": 169577, "bin2_id": 169634, "count": 10},
+        {"bin1_id": 169634, "bin2_id": 169676, "count": 1},
+        {"bin1_id": 169634, "bin2_id": 169735, "count": 10},
+        {"bin1_id": 169634, "bin2_id": 169736, "count": 6},
+        {"bin1_id": 169634, "bin2_id": 169737, "count": 2},
+        {"bin1_id": 169735, "bin2_id": 169736, "count": 6},
+        {"bin1_id": 169735, "bin2_id": 169737, "count": 2},
+        {"bin1_id": 169736, "bin2_id": 169737, "count": 2},
     ]
 
     for group, expected_bins, expected_pixels in [

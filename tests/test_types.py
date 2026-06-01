@@ -1,7 +1,7 @@
 import json
+import os
 from pathlib import Path
 
-import pandas as pd
 import polars as pl
 import pytest
 from click.testing import CliRunner
@@ -12,6 +12,8 @@ from capcruncher.api.interactions.compare import concat, summarise
 from capcruncher.cli import cli
 from capcruncher.types import AnnotationAction, Assay, DuplicateAction, ReadType
 from capcruncher.utils import load_dict, save_dict
+
+_DATA_DIR = Path(os.path.dirname(__file__)) / "data" / "alignment_annotation"
 
 
 def test_alignment_annotate_options_use_string_enums(tmp_path):
@@ -42,31 +44,12 @@ def test_alignment_annotate_options_use_string_enums(tmp_path):
         AlignmentAnnotateOptions(slices=slices, duplicates="keep")
 
 
-def test_annotate_accepts_path_input_for_bam(monkeypatch, tmp_path):
+def test_annotate_accepts_path_input_for_bam(tmp_path):
+    bam_path = _DATA_DIR / "test.pe.bam"
     output = tmp_path / "annotated.parquet"
-    bam_path = tmp_path / "reads.bam"
-    bam_path.touch()
-    calls = []
-
-    def fake_bam_to_bed_dataframe(path):
-        calls.append(Path(path))
-        return pd.DataFrame({"Name": ["read1"]})
-
-    monkeypatch.setattr(
-        "capcruncher.api.alignments.annotate._bam_to_bed_dataframe",
-        fake_bam_to_bed_dataframe,
-    )
-    monkeypatch.setattr(
-        "capcruncher.api.alignments.annotate.convert_bed_to_pr", lambda bed: bed
-    )
-    monkeypatch.setattr(
-        "capcruncher.api.alignments.annotate.remove_duplicates_from_bed",
-        lambda slices, **kwargs: slices,
-    )
 
     annotate(slices=bam_path, output=output)
 
-    assert calls == [bam_path]
     assert output.exists()
 
 
