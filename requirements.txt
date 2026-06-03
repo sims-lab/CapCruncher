@@ -17,7 +17,7 @@ h5py
 ibis-framework[duckdb]>6.1.0,<=8.0.0
 multiqc
 matplotlib>=3.8.4,<3.9.0
-pandera<=0.22.1
+pandera<=0.31.1
 panel<=1.3.0
 papermill
 plotly>5.0.0,<=5.18.0
