@@ -51,37 +51,17 @@ analysis:
 
 genome:
 
-    # Name of genome. UCSC genome names are prefered. Custom names are accepted if chrom_sizes are provided
-    # (Required)
+    # Stored genome profile (optional). Run `capcruncher genome list` to see available profiles.
+    # When set, paths below are ignored unless explicitly overridden.
+    profile: "{{cookiecutter.genome_profile}}"
+
+    # Required when not using a profile:
     name: "{{cookiecutter.genome}}"
-
-    # Path to fasta file containing entire genome sequence separated by chromosome.
-    # (Required)
     fasta: "{{cookiecutter.genome_fasta}}"
-
-    # Path to indicies for the specified aligner (default = bowtie2)
-    # Note: Do not include .Number|rev.bt2
-    # e.g. /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/Bowtie2Index/genome
-    # (Required)
     aligner_index: "{{cookiecutter.genome_indicies}}"
-
-    # Path to chromosome sizes for genome.
-    # If blank will be determined automatically from the genome (must be a UCSC genome)
-    # This should be a two column tsv file with columns: chromosome_name    size
-    # FAI files can also be used.
-    # (Optional)
     chrom_sizes: "{{cookiecutter.genome_chromosome_sizes}}"
-
-    # Determines if this is a custom genome. Only needed for UCSC hub generation.
-    # (Optional)
-    custom: {%- if cookiecutter.is_custom_genome == "no" %} False {%- else %} True {%- endif %}
-
-    # Organism name e.g. Mus Musculus. Only needed for UCSC hub using a custom genome.
-    # (Optional)
+    custom: "{{cookiecutter.is_custom_genome}}"
     organism: "{{cookiecutter.genome_organism}}"
-
-    # Path to twobit file for genome. Only needed for UCSC hub using a custom genome.
-    # (Optional)
     twobit: "{{cookiecutter.genome_two_bit}}"
 
 hub:
@@ -132,7 +112,7 @@ plot:
     # CapCruncher writes PlotNado-compatible TOML templates alongside the generated plots.
     # For advanced/customisable plots, edit those templates or use PlotNado directly:
     # https://alsmith151.github.io/plotnado/
-    create: {%- if cookiecutter.make_plots == "no" %} False {%- else %} True {%- endif %}
+    create: "{{cookiecutter.make_plots}}"
 
     # Path to a bed file containing coordinates for regions to plot .
     # Must be named and the interval name must contain the viewpoint to be plotted.
@@ -182,7 +162,7 @@ analysis_optional:
 
     # Attempts to prevent cis slices from being removed during annotation
     # (Optional)
-    prioritize_cis_slices: {%- if cookiecutter.is_custom_genome == "no" %} False {%- else %} True {%- endif %}
+    prioritize_cis_slices: "no"
 
     # Attempts to prevent slices on specified chromosomes being removed during annotation
     # Choose from:

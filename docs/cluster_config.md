@@ -8,7 +8,7 @@ for local and CI runs, but shared HPC systems generally require Apptainer.
 Install the bundled presets with:
 
 ```bash
-capcruncher pipeline-init
+capcruncher pipeline init
 ```
 
 By default this writes profiles to:
@@ -31,7 +31,7 @@ ${EDITOR:-nano} "${XDG_CONFIG_HOME:-$HOME/.config}/snakemake/capcruncher-local-a
 
 Common edits include `jobs`, `latency-wait`, `retries`, `default-resources`,
 `apptainer-args`, and SLURM executor options. Values in the profile become
-Snakemake defaults. Command-line options passed to `capcruncher pipeline` still
+Snakemake defaults. Command-line options passed to `capcruncher pipeline run` still
 take precedence for that run.
 
 To create a site-specific profile without losing future bundled defaults, copy
@@ -43,23 +43,23 @@ cp -r \
   "${XDG_CONFIG_HOME:-$HOME/.config}/snakemake/my-lab-capcruncher"
 
 ${EDITOR:-nano} "${XDG_CONFIG_HOME:-$HOME/.config}/snakemake/my-lab-capcruncher/profile.v9+.yaml"
-capcruncher pipeline --preset my-lab-capcruncher --jobs 50
+capcruncher pipeline run --preset my-lab-capcruncher --jobs 50
 ```
 
 ## Update Profiles
 
-Running `capcruncher pipeline-init` again will not overwrite existing profiles.
+Running `capcruncher pipeline init` again will not overwrite existing profiles.
 This protects local edits. To refresh the installed CapCruncher defaults after
 upgrading CapCruncher, use `--force`:
 
 ```bash
-capcruncher pipeline-init --force
+capcruncher pipeline init --force
 ```
 
 To refresh only one bundled preset:
 
 ```bash
-capcruncher pipeline-init --preset capcruncher-slurm-apptainer --force
+capcruncher pipeline init --preset capcruncher-slurm-apptainer --force
 ```
 
 `--force` replaces the selected installed profile directories. Back up any local
@@ -69,9 +69,9 @@ edits first, or keep site-specific changes in a copied profile such as
 Run the pipeline with a preset:
 
 ```bash
-capcruncher pipeline --preset capcruncher-local -n
-capcruncher pipeline --preset capcruncher-slurm --jobs 50
-capcruncher pipeline --preset capcruncher-slurm-apptainer --jobs 50
+capcruncher pipeline run --preset capcruncher-local -n
+capcruncher pipeline run --preset capcruncher-slurm --jobs 50
+capcruncher pipeline run --preset capcruncher-slurm-apptainer --jobs 50
 ```
 
 The bundled SLURM preset is a Snakemake 9 profile:
@@ -113,7 +113,7 @@ handling. For example, QoS, reservation, and SLURM log directory can be passed
 through the SLURM executor plugin:
 
 ```bash
-capcruncher pipeline \
+capcruncher pipeline run \
   --preset capcruncher-slurm \
   --slurm-qos normal \
   --slurm-reservation reservation-name \
@@ -126,7 +126,7 @@ SLURM account and partition are resources named `slurm_account` and
 `--set-resources`, or directly in the editable profile:
 
 ```bash
-capcruncher pipeline \
+capcruncher pipeline run \
   --preset capcruncher-slurm \
   --default-resources \
       slurm_account=my-account \
@@ -174,7 +174,7 @@ functions via the rule `attempt`. Use it when most jobs need a global uplift
 without editing the profile:
 
 ```bash
-capcruncher pipeline \
+capcruncher pipeline run \
   --preset capcruncher-slurm-apptainer \
   --scale-resources 1.5 \
   --jobs 50

@@ -375,10 +375,10 @@ def summarise(
 
                 coordinates = coordinates.with_columns(
                     (pl.col(group_a_col) - pl.col(group_b_col)).alias(
-                        f"{group_a}-{group_b}"
+                        f"{group_a}_vs_{group_b}"
                     )
                 )
-                subtraction.append(f"{group_a}-{group_b}")
+                subtraction.append(f"{group_a}_vs_{group_b}")
 
         # Export aggregations
         if options.output_format == OutputFormat.BEDGRAPH:

@@ -38,12 +38,27 @@ FASTQ_SAMPLES = capcruncher.pipeline.utils.FastqSamples.from_files(
 )
 
 ## Convert FASTQ files to design matrix
-if os.path.exists(config["analysis"].get("design", None)):
+_design_path = config["analysis"].get("design", None)
+_design_provided = bool(_design_path) and os.path.exists(_design_path)
+
+if _design_provided:
     DESIGN = pd.read_table(
         config["analysis"]["design"], sep=r"\s+|,|\t", engine="python"
     )
+    import pandera.errors as _pa_errors
+    from capcruncher.pipeline.validation import DesignSchema as _DesignSchema
+
+    try:
+        _DesignSchema.validate(DESIGN)
+    except _pa_errors.SchemaError as _e:
+        raise ValueError(f"Design matrix validation failed:\n{_e}") from _e
 else:
     DESIGN = FASTQ_SAMPLES.design
+
+_all_unknown = (
+    "condition" in DESIGN.columns
+    and (DESIGN["condition"].fillna("UNKNOWN") == "UNKNOWN").all()
+)
 
 ## Export the design to the capcruncher_output directory
 outdir = pathlib.Path("capcruncher_output")
@@ -83,9 +98,10 @@ SUMMARY_METHODS = [
 
 ## Optional
 AGGREGATE_SAMPLES = DESIGN["sample"].nunique() > 1
-COMPARE_SAMPLES = DESIGN["condition"].nunique() > 1
+COMPARE_SAMPLES = (not _all_unknown) and DESIGN["condition"].nunique() > 1
 PERFORM_DIFFERENTIAL_ANALYSIS = (
-    (config["differential"]["contrast"] in DESIGN.columns)
+    (not _all_unknown)
+    and (config["differential"]["contrast"] in DESIGN.columns)
     and COMPARE_SAMPLES
     and (ANALYSIS_METHOD in ["capture", "tri"])
 )

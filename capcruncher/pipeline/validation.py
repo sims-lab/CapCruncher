@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from typing import Annotated, Any
 
+import pandera.pandas as pa
+from pandera.typing.pandas import Series as PASeries
 from pydantic import (
     BaseModel,
     BeforeValidator,
@@ -421,3 +423,16 @@ def format_pipeline_config(config: dict[str, Any]) -> dict[str, Any]:
     config.clear()
     config.update(validated)
     return config
+
+
+class DesignSchema(pa.DataFrameModel):
+    sample: PASeries[str] = pa.Field(nullable=False, unique=True)
+    condition: PASeries[str] = pa.Field(nullable=False)
+
+    @pa.check("condition", name="no_dots_in_condition")
+    @classmethod
+    def condition_no_dots(cls, series: PASeries) -> PASeries:
+        return ~series.str.contains(r"\.", regex=True)
+
+    class Config:
+        coerce = True

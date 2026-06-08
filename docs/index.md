@@ -59,16 +59,16 @@ See the [pipeline guide](pipeline.md) for more detailed instructions including h
 
 #### Pipeline Configuration
 
-The pipeline is configured using a YAML file. It is strongly recommended to use the `capcruncher pipeline-config` command to generate a template configuration file. This command will generate a template configuration file with all available options and descriptions of each option.
+The pipeline is configured using a YAML file. It is strongly recommended to use the `capcruncher pipeline config` command to generate a template configuration file. This command will generate a template configuration file with all available options and descriptions of each option.
 
 ``` bash
-capcruncher pipeline-config --help
+capcruncher pipeline config --help
 ```
 
 #### Running the pipeline
 
-The pipeline is run using the `capcruncher pipeline` command. Ensure that you have a configuration file and the fastq files to process are in the current working directory.
+The pipeline is run using the `capcruncher pipeline run` command. Ensure that you have a configuration file and the fastq files to process are in the current working directory.
 
 ``` bash
-capcruncher pipeline --cores <NUMBER OF CORES TO USE>
+capcruncher pipeline run --cores <NUMBER OF CORES TO USE>
 ```

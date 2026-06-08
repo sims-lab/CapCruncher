@@ -48,8 +48,8 @@ the bundled Snakemake profiles and use the Apptainer-backed preset — Apptainer
 will pull and cache the image automatically on the head node:
 
 ```bash
-capcruncher pipeline-init
-capcruncher pipeline --preset capcruncher-slurm-apptainer --jobs 50
+capcruncher pipeline init
+capcruncher pipeline run --preset capcruncher-slurm-apptainer --jobs 50
 ```
 
 On clusters where compute nodes lack internet access, pull the image to a `.sif`
@@ -63,7 +63,7 @@ apptainer pull capcruncher.sif docker://ghcr.io/sims-lab/capcruncher:latest
 # execution:
 #   container_image: /path/to/capcruncher.sif
 
-capcruncher pipeline --preset capcruncher-slurm-apptainer --jobs 50
+capcruncher pipeline run --preset capcruncher-slurm-apptainer --jobs 50
 ```
 
 For quick interactive use:
@@ -91,7 +91,7 @@ docker run --rm -it \
   -v "$PWD":/work \
   -w /work \
   ghcr.io/sims-lab/capcruncher:latest \
-  pipeline --cores 8
+  pipeline run --cores 8
 ```
 
 See the [Docker and Apptainer guide](docker.md) and

@@ -2,7 +2,7 @@
 
 The CapCruncher pipeline handles the processing of raw data from the sequencer to the generation of a contact matrix, generation of plots and production of a UCSC genome browser track hub.
 
-This pipeline is based on the Snakemake workflow management system. Snakemake is a Python-based workflow management system that allows for the creation of reproducible and scalable data analyses. All elements of the workflow have been wrapped into the CapCruncher Python package. This allows for the pipeline to be run using the `capcruncher pipeline` command rather than having to run the pipeline using Snakemake directly.
+This pipeline is based on the Snakemake workflow management system. Snakemake is a Python-based workflow management system that allows for the creation of reproducible and scalable data analyses. All elements of the workflow have been wrapped into the CapCruncher Python package. This allows for the pipeline to be run using the `capcruncher pipeline run` command rather than having to run the pipeline using Snakemake directly.
 
 Checkout the [Hints and Tips](tips.md) page for some useful tips on configuring and running the pipeline.
 
@@ -10,10 +10,10 @@ Checkout the [Hints and Tips](tips.md) page for some useful tips on configuring 
 
 ### Configuration File
 
-The pipeline is configured using a YAML file. It is strongly recommended to use the `capcruncher pipeline-config` command to generate a template configuration file. This command will generate a template configuration file with all available options and descriptions of each option.
+The pipeline is configured using a YAML file. It is strongly recommended to use the `capcruncher pipeline config` command to generate a template configuration file. This command will generate a template configuration file with all available options and descriptions of each option.
 
 ``` bash
-capcruncher pipeline-config
+capcruncher pipeline config
 ```
 
 This utility will walk through the configuration options and generate a configuration file. It will generate a new directory <DATE>_<PROJECT NAME>_<ASSAY> and place the filled-out `capcruncher_config.yml` file in this directory.
@@ -26,12 +26,111 @@ All options in the configuration file are documented within the file itself. Onl
 
 ### Design File
 
-The design file is a tab/comma/space-delimited file that contains the sample names and the metadata for each sample. This file is completely optional and only used for comparisons between Capture-C and Tri-C data. If it is not provided the pipeline will perform a basic sample name comparison to generate a basic design file. However, this will not be as accurate as a manually generated design file. The `design` file is a tab delimited file with the following columns:
+The design file is a tab/comma/space-delimited file describing the experimental layout. It is required for sample comparisons (Capture-C and Tri-C). Without it, comparisons and differential analysis are disabled.
 
-- `sample`: The name of the FASTQ file (without the _R1.fastq.gz or_2.fastq.gz suffix)
-- `condition`: The Group that the sample belongs to.
+Required columns:
 
-Provide the path to this file in the config file under the `design` key.
+- `sample`: FASTQ basename without the `_R1.fastq.gz` / `_R2.fastq.gz` suffix (must be unique)
+- `condition`: Group the sample belongs to — **must not contain dots**
+
+Optional columns: `replicate`, `contrast` (and any others your downstream analysis needs).
+
+Example:
+
+```text
+sample          condition   replicate
+DMSO_REP1       DMSO        1
+DMSO_REP2       DMSO        2
+TREATMENT_REP1  TREATMENT   1
+TREATMENT_REP2  TREATMENT   2
+```
+
+Provide the path in the config file under `analysis.design`.
+
+#### Auto-generating the design file
+
+Use `capcruncher pipeline design` to infer the design matrix from FASTQ files in the current directory, review it in the terminal, and optionally save it:
+
+```bash
+# Preview
+capcruncher pipeline design
+
+# Save to TSV
+capcruncher pipeline design --output design.tsv
+```
+
+The command assumes the filename convention `<CONDITION>_<REPLICATE>_R[12].fastq[.gz]` — everything before the last underscore is the condition, the last token is the replicate:
+
+```
+DOT1Li-control_1_R1.fastq.gz  →  condition=DOT1Li-control, replicate=1
+SEM-SSRP1-dTag_2_R1.fastq.gz  →  condition=SEM-SSRP1-dTag, replicate=2
+```
+
+If your files use a different convention, supply a regex with a named `condition` group:
+
+```bash
+capcruncher pipeline design --condition-pattern "(?P<condition>[A-Za-z0-9-]+)_\d+$"
+```
+
+!!! warning
+    If no design file is provided and conditions cannot be inferred from FASTQ names, the pipeline sets all conditions to `UNKNOWN` and **disables comparisons and differential analysis**. Provide a design file explicitly to enable these steps.
+
+#### Design validation
+
+When a design file is provided, the pipeline validates it on startup:
+
+- `sample` column must be unique and non-null
+- `condition` column must be non-null and must not contain dots (`.` is the output filename separator)
+
+A clear error is raised before any rules run if validation fails.
+
+### Genome Profiles
+
+Genome profiles store the paths for a reference genome once and reuse them across projects. This avoids repeating long file paths in every config file and reduces the chance of path typos.
+
+#### Creating a profile
+
+```bash
+capcruncher genome add hg38
+```
+
+This prompts for FASTA, aligner index, chrom sizes, organism, and optional `.2bit` path, then saves a YAML file to `~/.capcruncher/genomes/hg38.yml` (or `$XDG_CONFIG_HOME/capcruncher/genomes/`).
+
+#### Listing and inspecting profiles
+
+```bash
+capcruncher genome list       # table of all stored profiles
+capcruncher genome show hg38  # print full YAML for one profile
+```
+
+You can also list profiles while generating a new config:
+
+```bash
+capcruncher pipeline config --list-profiles
+```
+
+#### Using a profile in a config file
+
+Replace the full `genome` block with a single `profile` key:
+
+```yaml
+genome:
+  profile: hg38
+```
+
+Any fields added alongside `profile` override the stored values:
+
+```yaml
+genome:
+  profile: hg38
+  chrom_sizes: /local/override/hg38.sizes  # takes precedence over profile
+```
+
+#### Removing a profile
+
+```bash
+capcruncher genome remove hg38
+```
 
 ### Setting up the input directory
 
@@ -67,14 +166,14 @@ The pipeline will automatically detect the configuration file and the fastq file
 
 ### Basic Usage
 
-The pipeline is run using the `capcruncher pipeline` command.
+The pipeline is run using the `capcruncher pipeline run` command.
 
 ``` bash
 # Usage
-capcruncher pipeline --cores <NUMBER OF CORES TO USE>
+capcruncher pipeline run --cores <NUMBER OF CORES TO USE>
 
 # Example
-capcruncher pipeline --cores 8
+capcruncher pipeline run --cores 8
 ```
 
 ### HPC Cluster Usage (Recommended if available)
@@ -86,10 +185,10 @@ For further information see both the [Snakemake documentation](https://snakemake
 This is a quick example of how to run the pipeline with a pre-generated profile. This is not a complete guide and you will need to modify the configuration to suit your cluster.
 
 ``` bash
-capcruncher pipeline -c <NUMBER OF CORES e.g. 20> --preset <PRESET NAME>
+capcruncher pipeline run -c <NUMBER OF CORES e.g. 20> --preset <PRESET NAME>
 ```
 
-Install bundled editable profiles with `capcruncher pipeline-init`. They are
+Install bundled editable profiles with `capcruncher pipeline init`. They are
 written to `${XDG_CONFIG_HOME:-~/.config}/snakemake`, where they can be edited
 like normal Snakemake profiles. See the [cluster setup guide](cluster_config.md)
 for update and customization instructions.
@@ -104,10 +203,10 @@ The pipeline can be run using the bundled Snakemake 9 Apptainer presets.
 
 ``` bash
 # Local mode
-capcruncher pipeline --preset capcruncher-local-apptainer --cores <NUMBER OF CORES TO USE>
+capcruncher pipeline run --preset capcruncher-local-apptainer --cores <NUMBER OF CORES TO USE>
 
 # Cluster mode
-capcruncher pipeline --preset capcruncher-slurm-apptainer --cores <NUMBER OF CORES TO USE>
+capcruncher pipeline run --preset capcruncher-slurm-apptainer --cores <NUMBER OF CORES TO USE>
 ```
 
 You can also run the CapCruncher container directly with Apptainer:
@@ -117,7 +216,7 @@ apptainer exec \
   --bind "$PWD":/work \
   --pwd /work \
   docker://ghcr.io/sims-lab/capcruncher:latest \
-  capcruncher pipeline --cores 8
+  capcruncher pipeline run --cores 8
 ```
 
 ### Docker Usage
@@ -131,7 +230,7 @@ docker run --rm -it \
   -v "$PWD":/work \
   -w /work \
   ghcr.io/sims-lab/capcruncher:latest \
-  pipeline --cores 8
+  pipeline run --cores 8
 ```
 
 The command must be run from the directory containing `capcruncher_config.yml` and the FASTQ files or mounted symlinks. See the [Docker guide](docker.md) for details.
@@ -147,10 +246,10 @@ In order to avoid disconnecting from the cluster, it is recommended to run the p
 ``` bash
 # tmux example
 tmux new -s capcruncher
-capcruncher pipeline --cores 8 --preset capcruncher-slurm-apptainer
+capcruncher pipeline run --cores 8 --preset capcruncher-slurm-apptainer
 
 # nohup example
-nohup capcruncher pipeline --cores 8 --preset capcruncher-slurm-apptainer &
+nohup capcruncher pipeline run --cores 8 --preset capcruncher-slurm-apptainer &
 ```
 
 ## Pipeline Steps

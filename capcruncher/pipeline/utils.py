@@ -10,6 +10,7 @@ from typing import Self
 
 import pandas as pd
 import pyranges1 as pr
+import yaml
 from loguru import logger
 from snakemake.io import expand
 
@@ -31,27 +32,81 @@ def convert_empty_yaml_entry_to_string(param: str) -> str:
         return param
 
 
+def _genome_profiles_dir() -> pathlib.Path:
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    base = (
+        pathlib.Path(xdg).expanduser() if xdg else pathlib.Path.home() / ".capcruncher"
+    )
+    return base / "genomes"
+
+
+def load_genome_profile(name: str) -> dict:
+    profiles_dir = _genome_profiles_dir()
+    profile_path = profiles_dir / f"{name}.yml"
+    if not profile_path.exists():
+        available = (
+            [p.stem for p in sorted(profiles_dir.glob("*.yml"))]
+            if profiles_dir.exists()
+            else []
+        )
+        hint = (
+            f"Available profiles: {', '.join(available)}"
+            if available
+            else "No profiles found. Run `capcruncher genome add` to create one."
+        )
+        raise ValueError(f"Genome profile '{name}' not found. {hint}")
+    return yaml.safe_load(profile_path.read_text())
+
+
 def format_config_dict(config: dict) -> dict:
     """
     Normalise and validate the pipeline config in place.
 
+    Resolves genome profiles before Pydantic validation so that
+    ``genome: {profile: hg38}`` expands to the full genome block.
     """
+    genome_section = config.get("genome", {})
+    if isinstance(genome_section, dict) and "profile" in genome_section:
+        profile_name = genome_section.pop("profile")
+        profile_data = load_genome_profile(profile_name)
+        config["genome"] = {**profile_data, **genome_section}
+
     return format_pipeline_config(config)
 
 
-def get_design_matrix(fastqs: Sequence[str | pathlib.Path]) -> pd.DataFrame:
+def infer_design_from_fastqs(
+    fastqs: Sequence[str | pathlib.Path],
+    condition_pattern: str | None = None,
+) -> pd.DataFrame:
+    """Infer a design matrix from FASTQ filenames.
+
+    Expected convention: <CONDITION>_<REPLICATE>_R[12].fastq[.gz]
+    condition_pattern: optional regex with a named group ``condition`` to
+    override the default rsplit-based extraction.
+    """
     df = pd.DataFrame(fastqs, columns=["fn"])
     df["filename"] = df["fn"].apply(lambda fn: pathlib.Path(fn).name)
     df["sample"] = df["filename"].str.extract(r"(.+)_R?[12]\.fastq(?:\.gz)?$")
-    df["condition"] = df["sample"].str.rsplit("_", n=1).str[-1]
+
+    if condition_pattern:
+        extracted = df["sample"].str.extract(condition_pattern)
+        df["condition"] = (
+            extracted["condition"] if "condition" in extracted.columns else pd.NA
+        )
+    else:
+        df["condition"] = df["sample"].str.rsplit("_", n=1).str[0]
+
+    df["replicate"] = df["sample"].str.rsplit("_", n=1).str[1]
 
     if df["condition"].isna().any():
         logger.warning(
-            "Failed to identify conditions from fastq files. Please format as sample_CONDITION_READ.fastq(.gz)"
+            "Could not infer conditions from FASTQ names. "
+            "Expected <CONDITION>_<REPLICATE>_R[12].fastq[.gz]. "
+            "Setting condition to UNKNOWN."
         )
         df["condition"] = df["condition"].fillna("UNKNOWN")
 
-    return df[["sample", "condition"]].drop_duplicates()
+    return df[["sample", "condition", "replicate"]].drop_duplicates(subset=["sample"])
 
 
 def get_bin_sizes(config):
@@ -170,13 +225,10 @@ class FastqSamples:
             .reset_index()
         )
 
-        # Format to check for
-        # CONDITION-A_REPLICATE-IDENTIFIER_READNUMBER
-        try:
-            df[["condition", "replicate"]] = df["sample"].str.split("_", expand=True)
-        except ValueError:
-            logger.warning("Failed to identify conditions from fastq files.")
-            df["condition"] = "UNKNOWN"
+        design_info = infer_design_from_fastqs(files)
+        df = df.merge(
+            design_info[["sample", "condition", "replicate"]], on="sample", how="left"
+        )
 
         return cls(design=df)
 
@@ -366,7 +418,7 @@ def get_files_to_plot(
         bigwigs_comparison = expand(
             "capcruncher_output/results/comparisons/bigwigs/{comparison}.{method}-subtraction.{{viewpoint}}.bigWig",
             comparison=[
-                f"{a}-{b}"
+                f"{a}_vs_{b}"
                 for a, b in itertools.permutations(design["condition"].unique(), 2)
             ],
             method=summary_methods,
@@ -440,7 +492,7 @@ def get_pileups(
                 expand(
                     "capcruncher_output/results/comparisons/bigwigs/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
                     comparison=[
-                        f"{a}-{b}"
+                        f"{a}_vs_{b}"
                         for a, b in itertools.permutations(
                             design["condition"].unique(), 2
                         )

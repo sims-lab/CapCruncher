@@ -40,10 +40,10 @@ docker run --rm -it \
   -v "$PWD":/work \
   -w /work \
   ghcr.io/sims-lab/capcruncher:latest \
-  pipeline --cores 8
+  pipeline run --cores 8
 ```
 
-This runs the entire `capcruncher pipeline` command inside the Docker container and writes `capcruncher_output/` back into the mounted working directory.
+This runs the entire `capcruncher pipeline run` command inside the Docker container and writes `capcruncher_output/` back into the mounted working directory.
 
 If your input files are symlinks to paths outside the current directory, mount those external paths too. Docker cannot read host paths that are not mounted into the container.
 
@@ -56,7 +56,7 @@ docker run --rm -it \
   -v /data/fastqs:/data/fastqs:ro \
   -w /work \
   ghcr.io/sims-lab/capcruncher:latest \
-  pipeline --cores 8
+  pipeline run --cores 8
 ```
 
 ## Run Other CLI Commands
@@ -70,7 +70,7 @@ docker run --rm -it \
   -v "$PWD":/work \
   -w /work \
   ghcr.io/sims-lab/capcruncher:latest \
-  pipeline-config
+  pipeline config
 ```
 
 To open a shell inside the image:
@@ -115,10 +115,10 @@ docker run --rm -it \
   -v "$PWD":/work \
   -w /work \
   ghcr.io/sims-lab/capcruncher:latest \
-  pipeline --preset capcruncher-local-apptainer --cores 8
+  pipeline run --preset capcruncher-local-apptainer --cores 8
 ```
 
-If nested Apptainer is not available on your Docker host, run `pipeline --cores 8` inside Docker instead, or run CapCruncher directly on the host with the `capcruncher-local-apptainer` or `capcruncher-slurm-apptainer` presets.
+If nested Apptainer is not available on your Docker host, run `pipeline run --cores 8` inside Docker instead, or run CapCruncher directly on the host with the `capcruncher-local-apptainer` or `capcruncher-slurm-apptainer` presets.
 
 ## Apptainer on HPC
 
@@ -137,7 +137,7 @@ apptainer exec \
   --bind "$PWD":/work \
   --pwd /work \
   docker://ghcr.io/sims-lab/capcruncher:latest \
-  capcruncher pipeline --cores 8
+  capcruncher pipeline run --cores 8
 ```
 
 For cluster-scale runs, install the editable Snakemake profiles and use the Apptainer preset so each workflow job runs through Snakemake's supported container backend:
@@ -145,8 +145,8 @@ For cluster-scale runs, install the editable Snakemake profiles and use the Appt
 Use the `capcruncher-local-apptainer` or `capcruncher-slurm-apptainer` presets when you want Snakemake to execute workflow jobs through its supported container deployment backend. Those presets use the same container image via the `docker://ghcr.io/sims-lab/capcruncher:latest` URI configured in `capcruncher_config.yml`.
 
 ```bash
-capcruncher pipeline --preset capcruncher-local-apptainer --cores 8
-capcruncher pipeline --preset capcruncher-slurm-apptainer --jobs 50
+capcruncher pipeline run --preset capcruncher-local-apptainer --cores 8
+capcruncher pipeline run --preset capcruncher-slurm-apptainer --jobs 50
 ```
 
 ## Docker vs Apptainer

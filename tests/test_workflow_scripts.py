@@ -195,18 +195,21 @@ def test_pipeline_config_bridges_custom_genome_flag_for_hub_rule():
     assert formatted["hub"]["custom_genome"] is True
 
 
-def test_generated_design_matrix_uses_current_sample_column(tmp_path):
-    from capcruncher.pipeline.utils import get_design_matrix
+def test_infer_design_from_fastqs(tmp_path):
+    from capcruncher.pipeline.utils import infer_design_from_fastqs
 
     fastqs = [
-        tmp_path / "SAMPLE-A_REP1_1.fastq.gz",
-        tmp_path / "SAMPLE-A_REP1_2.fastq.gz",
+        tmp_path / "SAMPLE-A_REP1_R1.fastq.gz",
+        tmp_path / "SAMPLE-A_REP1_R2.fastq.gz",
+        tmp_path / "SAMPLE-A_REP2_R1.fastq.gz",
+        tmp_path / "SAMPLE-A_REP2_R2.fastq.gz",
     ]
 
-    design = get_design_matrix(fastqs)
+    design = infer_design_from_fastqs(fastqs)
 
     assert design.to_dict("records") == [
-        {"sample": "SAMPLE-A_REP1", "condition": "REP1"}
+        {"sample": "SAMPLE-A_REP1", "condition": "SAMPLE-A", "replicate": "REP1"},
+        {"sample": "SAMPLE-A_REP2", "condition": "SAMPLE-A", "replicate": "REP2"},
     ]
 
 
@@ -915,7 +918,7 @@ def test_make_ucsc_hub_builds_tracknado_metadata(tmp_path):
             tmp_path / "SAMPLE-A.mean-summary.Slc25A37.bigWig",
         ],
         bigwigs_comparison=[
-            tmp_path / "SAMPLE-A-SAMPLE-B.mean-subtraction.Slc25A37.bigWig",
+            tmp_path / "SAMPLE-A_vs_SAMPLE-B.mean-subtraction.Slc25A37.bigWig",
         ],
         viewpoints=viewpoints,
     )
@@ -954,7 +957,7 @@ def test_make_ucsc_hub_builds_tracknado_metadata(tmp_path):
         {
             "category": "Subtraction",
             "normalisation": "norm",
-            "sample": "SAMPLE-A-SAMPLE-B",
+            "sample": "SAMPLE-A_vs_SAMPLE-B",
             "aggregation": "mean",
             "ext": "bigWig",
         },

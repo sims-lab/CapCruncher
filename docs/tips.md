@@ -4,7 +4,7 @@
 
 ### Restarting the pipeline after an interruption
 
-If the pipeline is interrupted, it can be restarted by simply running the pipeline command again e.g. `capcruncher pipeline -c 1`.
+If the pipeline is interrupted, it can be restarted by simply running the pipeline command again e.g. `capcruncher pipeline run -c 1`.
 
 CapCruncher will detect which steps have already been completed and will skip them. This is useful if the pipeline is interrupted due to a system failure or if you want to add more samples to the pipeline.
 
@@ -12,11 +12,11 @@ CapCruncher will detect which steps have already been completed and will skip th
 
 Snakemake locks the working directory during the pipeline run. If the pipeline is interrupted, the working directory will remain locked and will not restart. To unlock the working directory, run:
 
-``` bash
-capcruncher pipeline --unlock
+```bash
+capcruncher pipeline run --unlock
 ```
 
-## Interuptions to the pipeline (e.g. error in pipeline)
+## Interruptions to the pipeline (e.g. error in pipeline)
 
 Pipeline errors very frequently are found in a few major areas:
 
@@ -24,7 +24,7 @@ Pipeline errors very frequently are found in a few major areas:
 
 The pipeline cannot find the fastq files to process (e.g. the files are not in the current working directory or are not named correctly) this will cause an error like this:
 
-``` bash
+```bash
 2023-08-03 11:56:17.857 | ERROR    | capcruncher.pipeline.utils:from_files:178 - No fastq files found.
 ValueError in file /ceph/home/a/asmith/software/CapCruncher/capcruncher/pipeline/workflow/Snakefile, line 30:
 No fastq files found.
@@ -44,7 +44,7 @@ aligner_indicies: "/ceph/home/a/asmith/software/CapCruncher/tests/data/data_for_
 
 This refers to the bowtie2 index files here:
 
-``` bash
+```bash
 tree "/ceph/home/a/asmith/software/CapCruncher/tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/"
 /ceph/home/a/asmith/software/CapCruncher/tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/
 |-- bt2.1.bt2
@@ -66,10 +66,9 @@ Including special characters e.g. "\/*?" in the viewpoint name will prevent the 
 #### Viewpoint coordinates are incorrect for the supplied reference genome
 
 !!! warning
-    Errors in the viewpoint coordinates can be difficult to spot as pipeline errors will occur further downstream. The initial error occurs at the filtering step but the pipeline will continue to run
+    Errors in the viewpoint coordinates can be difficult to spot as pipeline errors will occur further downstream. The initial error occurs at the filtering step but the pipeline will continue to run.
 
     In the future the presence of valid viewpoints will be confirmed during the pipeline run but for now it is up to the user to ensure that the viewpoint coordinates are correct.
-
 
 Viewpoint coordinates are supplied in the [config file](pipeline.md#pipeline-configuration) as a [BED](https://genome.ucsc.edu/FAQ/FAQformat.html#format1) file and should be checked against the reference genome.
 
@@ -81,29 +80,48 @@ The viewpoint coordinates specified should be that of the restriction fragment c
 
 The viewpoint coordinates should contain all restriction fragments that have been captured by the tiled oligos. Again these do not have to be basepair level accurate but should be as close as possible.
 
+## Design matrix issues
 
+### Comparisons not being performed
 
+If the pipeline runs without producing comparison or differential analysis outputs, check that:
 
+1. A design file is provided under `analysis.design` in the config.
+2. The design file has at least two distinct values in the `condition` column.
+3. FASTQ filenames follow the `<CONDITION>_<REPLICATE>_R[12].fastq[.gz]` convention if relying on auto-detection.
 
+Without a design file (or when conditions cannot be inferred), the pipeline sets all conditions to `UNKNOWN` and disables comparisons automatically.
 
+Use `capcruncher pipeline design` to preview what the pipeline will infer from your filenames before running:
 
+```bash
+capcruncher pipeline design
+```
 
+### Design validation failure at startup
 
+If the pipeline raises a `Design matrix validation failed` error, common causes are:
 
+- **Duplicate sample names** — each row in `sample` must be unique.
+- **Dot in condition name** — dots (`.`) are used as output filename separators. Replace with hyphens or underscores: `DMSO.treated` → `DMSO-treated`.
+- **Missing required column** — both `sample` and `condition` must be present.
 
+### Genome profile not found
 
+If the pipeline raises `Genome profile '<name>' not found`, run:
 
+```bash
+capcruncher genome list
+```
 
-
-
-
+to see what profiles are stored and confirm the name in the config matches exactly.
 
 ## Adding additional Snakemake options
 
 Additional Snakemake options can be passed to the pipeline command by just adding them to the end of the command. For example, to run the pipeline with 8 cores and prevent the pipeline from removing intermediate files, run:
 
-``` bash
-capcruncher pipeline --cores 8 --notemp
+```bash
+capcruncher pipeline run --cores 8 --notemp
 ```
 
 See the [Snakemake documentation](https://snakemake.readthedocs.io/en/stable/executable.html) for a list of available options.

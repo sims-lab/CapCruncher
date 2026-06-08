@@ -13,7 +13,7 @@ SUMMARY_TRACK_PATTERN = re.compile(
     r"^(?P<sample>[^.]+)\.(?P<aggregation>[^.]+)-summary\.(?P<viewpoint>[^.]+)\.bigWig$"
 )
 COMPARISON_TRACK_PATTERN = re.compile(
-    r"^(?P<sample>[^.]+-[^.]+)\.(?P<aggregation>[^.]+)-subtraction\.(?P<viewpoint>[^.]+)\.bigWig$"
+    r"^(?P<sample>[^.]+_vs_[^.]+)\.(?P<aggregation>[^.]+)-subtraction\.(?P<viewpoint>[^.]+)\.bigWig$"
 )
 REPLICATE_TRACK_PATTERN = re.compile(r"^(?P<sample>.+)_(?P<viewpoint>[^_]+)\.bigWig$")
 
@@ -54,7 +54,7 @@ def capcruncher_track_metadata(path: pathlib.Path) -> dict[str, str]:
                     "Could not parse CapCruncher track path. Expected one of: "
                     "<sample>_<viewpoint>.bigWig, "
                     "<sample>.<aggregation>-summary.<viewpoint>.bigWig, or "
-                    "<sampleA>-<sampleB>.<aggregation>-subtraction.<viewpoint>.bigWig. "
+                    "<sampleA>_vs_<sampleB>.<aggregation>-subtraction.<viewpoint>.bigWig. "
                     f"Got: {path}"
                 )
             metadata.update(replicate_match.groupdict())

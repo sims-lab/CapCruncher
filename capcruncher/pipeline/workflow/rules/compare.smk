@@ -40,7 +40,7 @@ rule compare_interactions:
             expand(
                 "capcruncher_output/interim/comparisons/summaries_and_subtractions/{comparison}.{method}-subtraction.{{viewpoint}}.bedgraph",
                 comparison=[
-                    f"{a}-{b}"
+                    f"{a}_vs_{b}"
                     for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
                 ],
                 method=SUMMARY_METHODS,
@@ -83,7 +83,7 @@ use rule bedgraph_to_bigwig as bigwig_compared with:
     log:
         "capcruncher_output/logs/bedgraph_to_bigwig/{comparison}.{method}-subtraction.{viewpoint}.log",
     wildcard_constraints:
-        comparison=r"[A-Za-z0-9_.]+-[A-Za-z0-9_.]+",
+        comparison=r"[A-Za-z0-9_-]+",
     params:
         chrom_sizes=config["genome"]["chrom_sizes"],
 
@@ -96,7 +96,7 @@ use rule bedgraph_to_bigwig as bigwig_summarised with:
     log:
         "capcruncher_output/logs/bedgraph_to_bigwig/{group}.{method}-summary.{viewpoint}.log",
     wildcard_constraints:
-        comparison=r"[A-Za-z0-9_.]+-[A-Za-z0-9_.]+",
+        group=r"[A-Za-z0-9_-]+",
     params:
         chrom_sizes=config["genome"]["chrom_sizes"],
 

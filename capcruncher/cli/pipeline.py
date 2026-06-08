@@ -551,10 +551,77 @@ def pipeline_init_command(
 
 
 @pipeline_app.command(name="config")
-def pipeline_config_command() -> None:
+def pipeline_config_command(
+    list_profiles: bool = typer.Option(
+        False,
+        "--list-profiles",
+        help="Print stored genome profiles and exit.",
+    ),
+) -> None:
     """Configure the data processing pipeline."""
+    if list_profiles:
+        from capcruncher.cli.genome import genome_profile_list
+
+        genome_profile_list()
+        raise typer.Exit()
 
     configure_pipeline()
+
+
+@pipeline_app.command(name="design")
+def pipeline_design_command(
+    output: pathlib.Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Write inferred design matrix to this TSV path instead of printing.",
+    ),
+    condition_pattern: str | None = typer.Option(
+        None,
+        "--condition-pattern",
+        help=(
+            "Regex with a named group 'condition' for custom filename conventions. "
+            "Default: everything before the last underscore is the condition."
+        ),
+    ),
+) -> None:
+    """Infer a design matrix from *.fastq.gz files in the current directory.
+
+    Expected filename convention: <CONDITION>_<REPLICATE>_R[12].fastq[.gz]
+
+    Prints a preview table; use --output/-o to save as TSV.
+    """
+    import glob
+
+    from capcruncher.pipeline.utils import infer_design_from_fastqs
+
+    fastqs = sorted(glob.glob("*.fastq.gz") + glob.glob("*.fastq"))
+    if not fastqs:
+        typer.secho(
+            "No *.fastq[.gz] files found in current directory.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    design = infer_design_from_fastqs(fastqs, condition_pattern=condition_pattern)
+
+    try:
+        from rich.console import Console
+        from rich.table import Table
+
+        table = Table(title="Inferred Design Matrix", show_lines=True)
+        for col in design.columns:
+            table.add_column(col, style="cyan")
+        for row in design.itertuples(index=False):
+            table.add_row(*[str(v) if v is not None else "" for v in row])
+        Console().print(table)
+    except ImportError:
+        typer.echo(design.to_string(index=False))
+
+    if output:
+        design.to_csv(output, sep="\t", index=False)
+        typer.echo(f"Design matrix written to {output}")
 
 
 def pipeline_init(

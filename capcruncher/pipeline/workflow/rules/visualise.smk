@@ -41,7 +41,7 @@ rule create_ucsc_hub:
             expand(
                 "capcruncher_output/results/comparisons/bigwigs/{comparison}.{method}-subtraction.{viewpoint}.bigWig",
                 comparison=[
-                    f"{a}-{b}"
+                    f"{a}_vs_{b}"
                     for a, b in itertools.permutations(DESIGN["condition"].unique(), 2)
                 ],
                 method=SUMMARY_METHODS,
@@ -56,8 +56,8 @@ rule create_ucsc_hub:
     log:
         "capcruncher_output/logs/create_ucsc_hub.log",
     wildcard_constraints:
-        comparison=r"[A-Za-z0-9_.]+-[A-Za-z0-9_.]+",
-        group=r"[A-Za-z0-9_.]+",
+        comparison=r"[A-Za-z0-9_-]+",
+        group=r"[A-Za-z0-9_-]+",
     params:
         color_by=config["hub"].get("color_by", "sample"),
         genome=config["genome"]["name"],
@@ -92,8 +92,8 @@ rule plot:
     log:
         "capcruncher_output/logs/plot/{viewpoint}.log",
     wildcard_constraints:
-        comparison=r"[A-Za-z0-9_.]+-[A-Za-z0-9_.]+",
-        group=r"[A-Za-z0-9_.]+",
+        comparison=r"[A-Za-z0-9_-]+",
+        group=r"[A-Za-z0-9_-]+",
     threads: 1
     params:
         coordinates=lambda wc: capcruncher.pipeline.utils.get_plotting_coordinates(

@@ -7,6 +7,7 @@
   "__project_id": "{{ cookiecutter.project_name.lower().replace(' ', '_') }}",
   "design": "PATH TO DESIGN FILE (optional)",
   "viewpoints": "PATH TO VIEWPOINTS FILE",
+  "genome_profile": "",
   "genome": "hg38",
   "is_custom_genome": ["no", "yes"],
   "genome_organism": "Species name (optional)",
