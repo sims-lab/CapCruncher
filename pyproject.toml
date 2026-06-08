@@ -51,7 +51,17 @@ ray          = ["ray>=2.8.0,<3.0.0"]
 differential = ["pydeseq2>=0.5.4,<0.6.0"]
 plot         = ["plotnado[toml]>=0.3,<0.4"]
 hub          = ["tracknado>=0.3.1,<0.4.0"]
-hpc          = ["snakemake-executor-plugin-slurm"]
+hpc          = [
+    "snakemake-executor-plugin-slurm",
+    "snakemake-executor-plugin-cluster-generic",
+    "snakemake-executor-plugin-lsf",
+    "snakemake-executor-plugin-flux",
+    "snakemake-executor-plugin-drmaa",
+    "snakemake-storage-plugin-s3",
+    "snakemake-storage-plugin-gcs",
+    "snakemake-storage-plugin-http",
+    "snakemake-storage-plugin-ftp",
+]
 config       = ["cookiecutter<=2.1.1"]
 all = [
     "click>=8,<9",
@@ -66,6 +76,14 @@ all = [
     "plotnado[toml]>=0.3,<0.4",
     "tracknado>=0.3.1,<0.4.0",
     "snakemake-executor-plugin-slurm",
+    "snakemake-executor-plugin-cluster-generic",
+    "snakemake-executor-plugin-lsf",
+    "snakemake-executor-plugin-flux",
+    "snakemake-executor-plugin-drmaa",
+    "snakemake-storage-plugin-s3",
+    "snakemake-storage-plugin-gcs",
+    "snakemake-storage-plugin-http",
+    "snakemake-storage-plugin-ftp",
     "cookiecutter<=2.1.1",
 ]
 
