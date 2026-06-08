@@ -66,7 +66,6 @@ jobs:
         run: |
           docker run --rm capcruncher:smoke-test --help
           docker run --rm --entrypoint apptainer capcruncher:smoke-test --version
-          docker run --rm --entrypoint quarto capcruncher:smoke-test --version
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6

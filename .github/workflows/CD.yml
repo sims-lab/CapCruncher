@@ -126,3 +126,27 @@ jobs:
 
       - name: Publish distributions to PyPI
         run: uv publish --trusted-publishing always dist/*
+
+  verify-pypi:
+    name: Verify PyPI publish
+    needs: publish
+    if: github.event_name == 'release' || github.event.inputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Wait for PyPI propagation
+        run: sleep 60
+
+      - name: Install published package and verify
+        env:
+          REF: ${{ github.ref_name }}
+        run: |
+          VERSION="${REF#v}"
+          uv pip install --system "capcruncher==${VERSION}"
+          capcruncher --version
+          capcruncher --help
