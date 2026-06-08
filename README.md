@@ -29,28 +29,40 @@ installation, configuration, and pipeline guides.
 
 ## Installation
 
-Install the current release from Bioconda:
+The recommended native install is a Conda/Mamba environment from Bioconda:
 
 ```bash
-mamba install -c bioconda capcruncher
+mamba create -n capcruncher -c conda-forge -c bioconda capcruncher
+conda activate capcruncher
+capcruncher --help
 ```
 
-CapCruncher is also published to PyPI:
+On HPC systems, use Apptainer — it runs rootless and integrates with Slurm.
+Apptainer pulls the image automatically from the registry:
 
 ```bash
-pip install capcruncher
+apptainer exec docker://ghcr.io/sims-lab/capcruncher:latest capcruncher --help
 ```
 
-You can run the packaged Docker image without installing Python dependencies on
-the host:
+On workstations, the Docker image bundles the native bioinformatics tools with
+the Python runtime:
 
 ```bash
 docker run --rm ghcr.io/sims-lab/capcruncher:latest --help
 ```
 
-CapCruncher targets Linux execution. macOS users can run the Linux container via
-Docker Desktop or Colima. For Apptainer, editable Snakemake profiles, and
-development installs, see the [installation guide](docs/installation.md).
+CapCruncher is also published to PyPI for Python-side CLI/API usage, or for
+systems where the native tools are already installed:
+
+```bash
+pip install capcruncher
+```
+
+Pixi is used for development and CI reproducibility, but it is not the standard
+end-user install route. CapCruncher targets Linux execution. macOS users can run
+the Linux container via Docker Desktop or Colima. For fallback native installs,
+Apptainer profiles, and development setup, see the
+[installation guide](docs/installation.md).
 
 ## Quick Start
 

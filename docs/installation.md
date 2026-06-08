@@ -1,28 +1,90 @@
 # Installation
 
 !!! warning
-    CapCruncher is currently only available for Linux. MacOS support is planned for the future.
+    CapCruncher targets Linux execution. macOS users should run the Linux
+    container through Docker Desktop, Colima, or Apptainer.
 
-## Setup
+## Which install method should I use?
 
-It is highly recommended to install CapCruncher in a conda environment. If you do not have conda installed, see the detailed [conda installation section](#detailed-conda-installation).
+| Situation | Recommended method |
+| --- | --- |
+| HPC cluster | [Apptainer](#highly-recommended-containers) — pull once, no root required |
+| Linux workstation | [Bioconda / Mamba](#recommended-native-install) — single command |
+| macOS workstation | [Docker](#highly-recommended-containers) — pipeline tools unavailable natively |
+| Bioconda lags latest release | [conda + uv fallback](#fallback-native-install) |
+| Python analysis only (no pipeline) | [pip](#python-only-install) |
+| Development / contributing | [Pixi](#developer-install) |
 
-## Dependencies
+## Recommended Native Install
 
-There are two main ways to obtain the dependencies required to run CapCruncher:
+The easiest native install is a Conda/Mamba environment from Bioconda:
 
-### Use the Docker image
+```bash
+mamba create -n capcruncher -c conda-forge -c bioconda capcruncher
+conda activate capcruncher
+capcruncher --help
+```
 
-CapCruncher publishes a Docker image containing the CLI, pipeline runtime, native tools, and reporting dependencies:
+This route installs CapCruncher with the native command-line tools required by
+the pipeline, including aligners, FASTQ/QC tools, samtools, and UCSC utilities.
+Use strict channel priority if you manage channels globally:
 
-```{bash}
+```bash
+conda config --set channel_priority strict
+```
+
+If the Bioconda package is behind the latest PyPI release, use the fallback
+environment below.
+
+## Highly Recommended: Containers
+
+Containers avoid native dependency conflicts and are highly recommended for
+reproducible pipeline runs.
+
+### Apptainer (HPC)
+
+Apptainer runs rootless on most HPC clusters. For cluster-scale runs, install
+the bundled Snakemake profiles and use the Apptainer-backed preset — Apptainer
+will pull and cache the image automatically on the head node:
+
+```bash
+capcruncher pipeline-init
+capcruncher pipeline --preset capcruncher-slurm-apptainer --jobs 50
+```
+
+On clusters where compute nodes lack internet access, pull the image to a `.sif`
+file on the head node first, then point the config at the local file:
+
+```bash
+# Pull once on the head node (requires internet)
+apptainer pull capcruncher.sif docker://ghcr.io/sims-lab/capcruncher:latest
+
+# Set the local image path in capcruncher_config.yml
+# execution:
+#   container_image: /path/to/capcruncher.sif
+
+capcruncher pipeline --preset capcruncher-slurm-apptainer --jobs 50
+```
+
+For quick interactive use:
+
+```bash
+apptainer exec docker://ghcr.io/sims-lab/capcruncher:latest capcruncher --help
+```
+
+### Docker (workstations)
+
+Use Docker on a local workstation:
+
+```bash
 docker pull ghcr.io/sims-lab/capcruncher:latest
 docker run --rm ghcr.io/sims-lab/capcruncher:latest --help
 ```
 
-To run a pipeline from a directory containing `capcruncher_config.yml` and input FASTQs:
+Run a pipeline from a directory containing `capcruncher_config.yml` and input
+FASTQs:
 
-```{bash}
+```bash
 docker run --rm -it \
   --user "$(id -u):$(id -g)" \
   -e HOME=/tmp \
@@ -32,133 +94,83 @@ docker run --rm -it \
   pipeline --cores 8
 ```
 
-See the [Docker guide](docker.md) for path mounting, local image builds, and examples for other CLI commands.
+See the [Docker and Apptainer guide](docker.md) and
+[cluster setup guide](cluster_config.md) for mount paths, profile editing, and
+HPC examples.
 
-Docker is intended for local workstation and CI usage. On HPC systems, use
-Apptainer; Docker daemons are generally not available or permitted on shared
-clusters.
+## Fallback Native Install
 
-### Install all dependencies using conda
+If Bioconda is not current enough for your use case, create the maintained
+environment and install the latest CapCruncher package from PyPI:
 
-#### Direct Installation
-
-The easiest way to install these dependencies is to use conda. Run the following command to install CapCruncher and all dependencies:
-
-```{bash}
-mamba install -c bioconda capcruncher
-```
-
-!!! warning
-    The latest version of CapCruncher is not yet available on conda. Please install the latest version from PyPI using the command below.
-
-
-#### Two-step installation using conda and pip
-
-Alternatively, create a new conda environment and install CapCruncher using pip (currently the recommended method):
-
-
-```{bash}
+```bash
 wget https://raw.githubusercontent.com/sims-lab/CapCruncher/master/environment.yml
-conda env create -f environment.yml
+mamba env create -f environment.yml
 conda activate cc
+uv pip install capcruncher
+```
 
-# Install CapCruncher using pip
+The environment file provides the native tools and Python runtime dependencies.
+The final `uv pip install` step installs the current CapCruncher package.
+
+## Python-Only Install
+
+Use pip only when you already have the native tools installed, or when you only
+need Python-side CLI/API commands:
+
+```bash
 pip install capcruncher
-
-# Install the full dependency set used by the pipeline and CLI.
-pip install capcruncher[full]
 ```
 
-### Install CapCruncher in a minimal conda environment and use Apptainer to run the pipeline
+Optional Python features can be installed with extras:
 
-!!! note
-    Apptainer is the supported container runtime for HPC usage. See the [pipeline guide](pipeline.md) for more information. Use the bundled `capcruncher-local-apptainer` or `capcruncher-slurm-apptainer` presets to run workflow steps in containers.
+```bash
+pip install "capcruncher[plot,hub,differential,config,hpc]"
+```
 
+To install every Python-side optional feature:
 
-Create a minimal conda environment and install CapCruncher using pip:
+```bash
+pip install "capcruncher[all]"
+```
 
-```{bash}
-mamba create -n cc "python>=3.12"
+Pure pip does not install native pipeline tools such as `bowtie2`, `samtools`,
+`fastqc`, `flash2`, or UCSC command-line utilities.
+
+## Developer Install
+
+Pixi is the preferred developer and CI environment because it locks Python and
+native dependencies reproducibly:
+
+```bash
+pixi install -e test
+pixi run -e test pytest -q -m "not pipeline"
+```
+
+For editable development without Pixi, use the fallback native environment and
+install the repository in editable mode:
+
+```bash
+mamba env create -f environment.yml
 conda activate cc
-pip install capcruncher[full]
+pip install -e ".[plot,hub,differential,config,hpc]"
 ```
 
-Install the editable Snakemake profiles after installation:
+## Detailed Conda Setup
 
-```{bash}
-capcruncher pipeline-init
+Install Miniforge or Mambaforge if you do not already have Conda/Mamba:
+
+```bash
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+chmod +x Miniforge3-Linux-x86_64.sh
+./Miniforge3-Linux-x86_64.sh
 ```
 
-This writes profiles to `${XDG_CONFIG_HOME:-~/.config}/snakemake`, Snakemake's
-standard user profile directory on Linux. See the [cluster setup guide](cluster_config.md)
-for editing profiles and refreshing them with `capcruncher pipeline-init --force`.
+Initialise Conda for your shell and refresh it:
 
-You can also run the CapCruncher container directly with Apptainer:
-
-```{bash}
-apptainer exec docker://ghcr.io/sims-lab/capcruncher:latest capcruncher --help
-```
-
-
-## Manual Installation (Not Recommended)
-
-### Install Dependencies
-
-See the dependencies in the [environment.yml](https://raw.githubusercontent.com/sims-lab/CapCruncher/master/environment.yml) and [requirements.txt](https://raw.githubusercontent.com/sims-lab/CapCruncher/master/requirements.txt) files. All dependencies can be installed using conda or pip.
-
-### Install CapCruncher from GitHub
-
-Clone the repository and install CapCruncher using pip:
-
-```{bash}
-git clone https://github.com/sims-lab/CapCruncher.git
-cd CapCruncher
-pip install .
-
-# Install the full dependency set used by the pipeline and CLI.
-pip install .[full]
-```
-
-
-## Detailed Conda Installation Instructions
-
-Download and install MambaForge from [here](https://github.com/conda-forge/miniforge#mambaforge) for your system (You will typically need the x86_64 version for most Linux systems).
-
-### Download and run the installer for your system (only Linux is supported at the moment)
-
-```{bash}
-# Download the installer for your system
-wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh
-
-# Allow the installer to be executed
-chmod +x Mambaforge-Linux-x86_64.sh
-
-# Run the installer
-./Mambaforge-Linux-x86_64.sh
-```
-
-Follow the instructions to install MambaForge. It is advised to install MambaForge in a location with a reasonable amount of free space (>2GB) as it will be used to install all dependencies for CapCruncher.
-
-### Initialise MambaForge in your shell
-
-```{bash}
+```bash
 conda init bash
-```
-
-### Refresh your shell
-
-```{bash}
 source ~/.bashrc
 ```
 
-
-### Setup conda channels
-
-```{bash}
-conda config --set channel_priority strict
-conda config --add channels defaults
-conda config --add channels bioconda
-conda config --add channels conda-forge
-```
-
-Now the installation installation of CapCruncher can be completed using the instructions [above](#dependencies).
+Then use the recommended native install command at the top of this page.
