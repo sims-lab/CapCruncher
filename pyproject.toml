@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools >= 61.0", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=77,<80", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 
@@ -9,7 +9,8 @@ authors = [
     { "name" = "Alastair Smith", "email" = "alastair.smith@ndcls.ox.ac.uk" },
 ]
 description = "An end-to-end solution for processing Capture-C, Tri-C and Tiled-C data"
-license = { file = "LICENSE" }
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.12"
 dynamic = ["version"]
@@ -43,12 +44,32 @@ full = [
     "xopen",
     "xxhash>=3,<4",
 ]
+# ray is an optional parallelism backend for `interactions count --executor ray`.
+# Excluded from "all" because its install footprint is heavy and it is not
+# required for standard pipeline runs.
 ray          = ["ray>=2.8.0,<3.0.0"]
 differential = ["pydeseq2>=0.5.4,<0.6.0"]
 plot         = ["plotnado[toml]>=0.3,<0.4"]
 hub          = ["tracknado>=0.3.1,<0.4.0"]
 hpc          = ["snakemake-executor-plugin-slurm"]
 config       = ["cookiecutter<=2.1.1"]
+all = [
+    "click>=8,<9",
+    "cooler>=0.10,<1",
+    "h5py",
+    "joblib>=1,<2",
+    "multiqc",
+    "pandera>=0.31,<1",
+    "pydantic>=2,<3",
+    "pysam>=0.23,<1",
+    "xopen",
+    "xxhash>=3,<4",
+    "pydeseq2>=0.5.4,<0.6.0",
+    "plotnado[toml]>=0.3,<0.4",
+    "tracknado>=0.3.1,<0.4.0",
+    "snakemake-executor-plugin-slurm",
+    "cookiecutter<=2.1.1",
+]
 
 [project.scripts]
 capcruncher = "capcruncher.cli:cli"

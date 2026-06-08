@@ -253,6 +253,23 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "click" },
+    { name = "cookiecutter" },
+    { name = "cooler" },
+    { name = "h5py" },
+    { name = "joblib" },
+    { name = "multiqc" },
+    { name = "pandera" },
+    { name = "plotnado", extra = ["toml"] },
+    { name = "pydantic" },
+    { name = "pydeseq2" },
+    { name = "pysam" },
+    { name = "snakemake-executor-plugin-slurm" },
+    { name = "tracknado" },
+    { name = "xopen" },
+    { name = "xxhash" },
+]
 config = [
     { name = "cookiecutter" },
 ]
@@ -319,35 +336,50 @@ test = [
 requires-dist = [
     { name = "biopython", specifier = ">=1.83,<2" },
     { name = "capcruncher-tools", specifier = ">=0.2.4,<0.3.0" },
+    { name = "click", marker = "extra == 'all'", specifier = ">=8,<9" },
     { name = "click", marker = "extra == 'full'", specifier = ">=8,<9" },
+    { name = "cookiecutter", marker = "extra == 'all'", specifier = "<=2.1.1" },
     { name = "cookiecutter", marker = "extra == 'config'", specifier = "<=2.1.1" },
+    { name = "cooler", marker = "extra == 'all'", specifier = ">=0.10,<1" },
     { name = "cooler", marker = "extra == 'full'", specifier = ">=0.10,<1" },
+    { name = "h5py", marker = "extra == 'all'" },
     { name = "h5py", marker = "extra == 'full'" },
+    { name = "joblib", marker = "extra == 'all'", specifier = ">=1,<2" },
     { name = "joblib", marker = "extra == 'full'", specifier = ">=1,<2" },
     { name = "loguru", specifier = ">=0.7,<1" },
+    { name = "multiqc", marker = "extra == 'all'" },
     { name = "multiqc", marker = "extra == 'full'" },
     { name = "numpy", specifier = ">=2.4,<3" },
     { name = "pandas", specifier = ">=2.2,<3" },
+    { name = "pandera", marker = "extra == 'all'", specifier = ">=0.31,<1" },
     { name = "pandera", marker = "extra == 'full'", specifier = ">=0.31,<1" },
     { name = "plotly", specifier = ">=6,<7" },
+    { name = "plotnado", extras = ["toml"], marker = "extra == 'all'", specifier = ">=0.3,<0.4" },
     { name = "plotnado", extras = ["toml"], marker = "extra == 'plot'", specifier = ">=0.3,<0.4" },
     { name = "polars", specifier = ">=1.39,<1.42" },
     { name = "pyarrow", specifier = ">=24,<25" },
+    { name = "pydantic", marker = "extra == 'all'", specifier = ">=2,<3" },
     { name = "pydantic", marker = "extra == 'full'", specifier = ">=2,<3" },
+    { name = "pydeseq2", marker = "extra == 'all'", specifier = ">=0.5.4,<0.6.0" },
     { name = "pydeseq2", marker = "extra == 'differential'", specifier = ">=0.5.4,<0.6.0" },
     { name = "pyranges1", specifier = ">=1.3,<2" },
+    { name = "pysam", marker = "extra == 'all'", specifier = ">=0.23,<1" },
     { name = "pysam", marker = "extra == 'full'", specifier = ">=0.23,<1" },
     { name = "pyyaml" },
     { name = "ray", marker = "extra == 'ray'", specifier = ">=2.8.0,<3.0.0" },
     { name = "snakemake", specifier = ">=9.21,<10" },
+    { name = "snakemake-executor-plugin-slurm", marker = "extra == 'all'" },
     { name = "snakemake-executor-plugin-slurm", marker = "extra == 'hpc'" },
     { name = "tqdm", specifier = ">=4,<5" },
+    { name = "tracknado", marker = "extra == 'all'", specifier = ">=0.3.1,<0.4.0" },
     { name = "tracknado", marker = "extra == 'hub'", specifier = ">=0.3.1,<0.4.0" },
     { name = "typer", specifier = ">=0.16,<1" },
+    { name = "xopen", marker = "extra == 'all'" },
     { name = "xopen", marker = "extra == 'full'" },
+    { name = "xxhash", marker = "extra == 'all'", specifier = ">=3,<4" },
     { name = "xxhash", marker = "extra == 'full'", specifier = ">=3,<4" },
 ]
-provides-extras = ["full", "ray", "differential", "plot", "hub", "hpc", "config"]
+provides-extras = ["full", "ray", "differential", "plot", "hub", "hpc", "config", "all"]
 
 [package.metadata.requires-dev]
 dev = [
