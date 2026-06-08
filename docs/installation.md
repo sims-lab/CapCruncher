@@ -9,7 +9,7 @@
 | Situation | Recommended method |
 | --- | --- |
 | HPC cluster | [Apptainer](#highly-recommended-containers) — pull once, no root required |
-| Linux workstation | [Bioconda / Mamba](#recommended-native-install) — single command |
+| HPC cluster / Linux workstation | [Bioconda / Mamba](#recommended-native-install) — single command |
 | macOS workstation | [Docker](#highly-recommended-containers) — pipeline tools unavailable natively |
 | Bioconda lags latest release | [conda + uv fallback](#fallback-native-install) |
 | Python analysis only (no pipeline) | [pip](#python-only-install) |
