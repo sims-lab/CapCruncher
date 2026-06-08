@@ -39,9 +39,6 @@ RUN --mount=type=cache,target=/home/mambauser/.cache/pip,uid=1000,gid=1000,shari
         -prune -exec rm -rf '{}' + && \
     rm -rf \
         /opt/capcruncher/dist \
-        /home/mambauser/.cache \
-        /home/mambauser/.conda \
-        /home/mambauser/.mamba \
         /tmp/pip-build-constraints.txt
 
 # ── Stage 2: runtime image ────────────────────────────────────────────────────
