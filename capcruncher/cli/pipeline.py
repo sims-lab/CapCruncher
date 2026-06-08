@@ -37,11 +37,8 @@ PIPELINE_FORWARD_CONTEXT = dict(
 
 pipeline_app = typer.Typer(
     help="Run and configure CapCruncher Snakemake workflows.",
-    context_settings={
-        **HELP_SETTINGS,
-        **PIPELINE_FORWARD_CONTEXT,
-    },
-    invoke_without_command=True,
+    context_settings=HELP_SETTINGS,
+    no_args_is_help=True,
 )
 
 
@@ -370,40 +367,6 @@ def _parse_pipeline_run_options(
     return tuple(remaining), show_help, logo, preset, scale_resources
 
 
-def _parse_pipeline_init_options(
-    options: PipelineOptions,
-) -> tuple[pathlib.Path | None, list[str], bool]:
-    output_dir = None
-    preset_names: list[str] = []
-    force = False
-    index = 0
-
-    while index < len(options):
-        option = options[index]
-
-        if option in {"-h", "--help"}:
-            typer.echo("Usage: capcruncher pipeline init [OPTIONS]")
-            raise typer.Exit()
-        if option == "--output-dir":
-            value, index = _option_value(options, index, option)
-            output_dir = pathlib.Path(value)
-        elif option.startswith("--output-dir="):
-            output_dir = pathlib.Path(option.split("=", 1)[1])
-        elif option == "--preset":
-            value, index = _option_value(options, index, option)
-            preset_names.append(value)
-        elif option.startswith("--preset="):
-            preset_names.append(option.split("=", 1)[1])
-        elif option == "--force":
-            force = True
-        else:
-            raise typer.BadParameter(f"Unknown pipeline init option: {option}")
-
-        index += 1
-
-    return output_dir, preset_names, force
-
-
 def _run_pipeline_init(
     output_dir: pathlib.Path | None,
     preset_names: list[str] | None,
@@ -424,83 +387,9 @@ def _run_pipeline_init(
     install_pipeline_presets(output_dir, tuple(preset_names or ()), force)
 
 
-def _warn_bare_pipeline_command() -> None:
-    from rich.console import Console
-    from rich.panel import Panel
-
-    Console(stderr=True).print(
-        Panel.fit(
-            "\n".join(
-                [
-                    "[bold yellow]Deprecated pipeline invocation[/bold yellow]",
-                    "",
-                    "[bold]capcruncher pipeline[/bold] without a subcommand is legacy.",
-                    "Use [bold green]capcruncher pipeline run ...[/bold green] instead.",
-                ]
-            ),
-            border_style="yellow",
-            title="Warning",
-        )
-    )
-
-
-@pipeline_app.callback(invoke_without_command=True)
-def pipeline(
-    ctx: typer.Context,
-    pipeline_options: list[str] | None = typer.Argument(None),
-) -> None:
+@pipeline_app.callback()
+def pipeline(ctx: typer.Context) -> None:
     """Run and configure CapCruncher Snakemake workflows."""
-
-    if ctx.invoked_subcommand is not None:
-        return
-
-    options = tuple(pipeline_options or ctx.args)
-    if not options:
-        _warn_bare_pipeline_command()
-        typer.echo("Usage: capcruncher pipeline [run|init|config] [OPTIONS]")
-        raise typer.Exit()
-
-    command = options[0]
-    if command == "run":
-        run_options, show_help, logo, preset, scale_resources = (
-            _parse_pipeline_run_options(options[1:])
-        )
-        run_pipeline(
-            run_options,
-            show_help=show_help,
-            logo=logo,
-            preset=preset,
-            scale_resources=scale_resources,
-        )
-        return
-
-    if command == "init":
-        output_dir, preset_names, force = _parse_pipeline_init_options(options[1:])
-        _run_pipeline_init(output_dir, preset_names, force)
-        return
-
-    if command == "config":
-        if any(option in {"-h", "--help"} for option in options[1:]):
-            typer.echo("Usage: capcruncher pipeline config [OPTIONS]")
-            raise typer.Exit()
-        configure_pipeline()
-        return
-
-    typer.echo(
-        "Warning: 'capcruncher pipeline ...' is deprecated. "
-        "Use 'capcruncher pipeline run ...' instead.",
-        err=True,
-    )
-    run_options, show_help, logo, preset, scale_resources = _parse_pipeline_run_options(
-        options
-    )
-    run_pipeline(
-        run_options,
-        show_help=show_help,
-        logo=logo,
-        preset=preset,
-        scale_resources=scale_resources,
-    )
 
 
 @pipeline_app.command(
