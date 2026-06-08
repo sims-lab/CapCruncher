@@ -98,7 +98,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: apptainer/install-apptainer@main
+      - uses: eWaterCycle/setup-apptainer@v2
 
       - name: Pull image via Apptainer
         run: apptainer pull capcruncher.sif docker://ghcr.io/sims-lab/capcruncher:latest
