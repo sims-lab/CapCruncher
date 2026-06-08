@@ -14,7 +14,6 @@ COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /tmp/capcruncher-environmen
 # pkgs dir is a BuildKit cache mount (never written to the layer).
 RUN --mount=type=cache,target=/opt/conda/pkgs,uid=1000,gid=1000,sharing=locked \
     micromamba install -y -n base -c conda-forge -c bioconda \
-        apptainer \
         cxx-compiler \
         rust && \
     micromamba install -y -n base -f /tmp/capcruncher-environment.yml
