@@ -69,25 +69,25 @@ Apptainer profiles, and development setup, see the
 Create a pipeline configuration:
 
 ```bash
-capcruncher pipeline-config
+capcruncher pipeline config
 ```
 
 Install the bundled Snakemake profiles:
 
 ```bash
-capcruncher pipeline-init
+capcruncher pipeline init
 ```
 
 Run from the directory containing `capcruncher_config.yml` and your FASTQ files:
 
 ```bash
-capcruncher pipeline --cores 8 --preset capcruncher-local
+capcruncher pipeline run --cores 8 --preset local
 ```
 
 For an HPC run with Apptainer-backed jobs:
 
 ```bash
-capcruncher pipeline --jobs 50 --preset capcruncher-slurm-apptainer
+capcruncher pipeline run --jobs 50 --preset slurm-apptainer
 ```
 
 For Docker-based workstation usage:
