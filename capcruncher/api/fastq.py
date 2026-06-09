@@ -29,9 +29,16 @@ PLATFORM = sys.platform
 
 def _as_existing_paths(paths: Sequence[Path | str]) -> tuple[Path, ...]:
     normalised_paths = tuple(Path(path) for path in paths)
-    missing_paths = [path for path in normalised_paths if not path.exists()]
+    # Each item may be a comma-joined list of paths (shell passes multiple files as
+    # a single comma-separated argument); check each individual component exists.
+    missing_paths = [
+        component
+        for path in normalised_paths
+        for component in (str(path).split(",") if "," in str(path) else [str(path)])
+        if not Path(component).exists()
+    ]
     if missing_paths:
-        missing = ", ".join(str(path) for path in missing_paths)
+        missing = ", ".join(missing_paths)
         raise ValueError(f"Input path(s) do not exist: {missing}")
     return normalised_paths
 
