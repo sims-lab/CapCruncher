@@ -68,10 +68,12 @@ checkpoint deduplication:
         mem=lambda wildcards, attempt: scale_memory(2, attempt),
     params:
         prefix_fastq="capcruncher_output/interim/fastq/deduplicated/{sample}/",
+        fq1_args=lambda wc, input: " ".join(f"-1 {f}" for f in (input.fq1 if isinstance(input.fq1, list) else [input.fq1])),
+        fq2_args=lambda wc, input: " ".join(f"-2 {f}" for f in (input.fq2 if isinstance(input.fq2, list) else [input.fq2])),
     shell:
         """
         mkdir -p {params.prefix_fastq} \
-            && capcruncher fastq deduplicate -1 {input.fq1} -2 {input.fq2} -o {params.prefix_fastq} --statistics {output.stats} --sample-name {wildcards.sample} >{log} 2>&1
+            && capcruncher fastq deduplicate {params.fq1_args} {params.fq2_args} -o {params.prefix_fastq} --statistics {output.stats} --sample-name {wildcards.sample} >{log} 2>&1
         """
 
 
