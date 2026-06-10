@@ -1,5 +1,4 @@
 executor: local
-printshellcmds: true
 rerun-incomplete: true
 retries: 3
 show-failed-logs: true

@@ -2,7 +2,6 @@ executor: local
 software-deployment-method:
   - conda
 conda-frontend: mamba
-printshellcmds: true
 rerun-incomplete: true
 retries: 3
 show-failed-logs: true

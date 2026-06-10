@@ -4,7 +4,6 @@ latency-wait: 60
 software-deployment-method:
   - apptainer
 apptainer-args: --cleanenv
-printshellcmds: true
 rerun-incomplete: true
 retries: 3
 show-failed-logs: true

@@ -1,7 +1,6 @@
 executor: slurm
 jobs: 100
 latency-wait: 60
-printshellcmds: true
 rerun-incomplete: true
 retries: 3
 show-failed-logs: true
