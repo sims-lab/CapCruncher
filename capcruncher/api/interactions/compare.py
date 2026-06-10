@@ -317,7 +317,12 @@ def summarise(
         perform_subtractions=perform_subtractions,
     )
     logger.info(f"Reading {options.infile}")
-    df_union = pl.read_csv(options.infile, separator="\t")
+    _header = pl.read_csv(options.infile, separator="\t", n_rows=0).columns
+    df_union = pl.read_csv(
+        options.infile,
+        separator="\t",
+        schema_overrides={col: pl.Float64 for col in _header[3:]},
+    )
     count_columns = df_union.columns[3:]
 
     logger.info("Identifying groups")
