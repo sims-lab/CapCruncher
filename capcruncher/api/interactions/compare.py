@@ -317,7 +317,7 @@ def summarise(
         perform_subtractions=perform_subtractions,
     )
     logger.info(f"Reading {options.infile}")
-    _header = pl.read_csv(options.infile, separator="\t", n_rows=0).columns
+    _header = pl.read_csv(options.infile, separator="\t", n_rows=0, infer_schema_length=0).columns
     df_union = pl.read_csv(
         options.infile,
         separator="\t",
