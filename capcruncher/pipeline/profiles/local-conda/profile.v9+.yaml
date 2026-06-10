@@ -1,0 +1,7 @@
+executor: local
+software-deployment-method:
+  - conda
+conda-frontend: mamba
+rerun-incomplete: true
+retries: 3
+show-failed-logs: true

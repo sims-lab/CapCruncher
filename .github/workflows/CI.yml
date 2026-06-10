@@ -1,97 +1,182 @@
-name: CapCruncher CI
+name: CI
 
 on:
-  push:
   pull_request:
-    branches: [master, develop]
+    branches: [develop, master, main]
   workflow_dispatch:
 
-env:
-  CACHE_NUMBER: 1
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  install-and-test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.10"]
-
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-suffix: lint
 
-      - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install dev dependencies
+        run: uv sync --group dev
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-suffix: typecheck
+
+      - name: Install dev dependencies and all extras
+        run: uv sync --group dev --extra full --extra differential --extra config --extra plot --extra hub
+
+      - name: Run ty
+        run: uv run ty check
+
+  bowtie2-index:
+    name: Prepare Bowtie2 index
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Bowtie2
         run: |
           sudo apt-get update
-          sudo apt-get install libcurl4-openssl-dev
+          sudo apt-get install --yes bowtie2
 
-      # - name: Install Mac dependencies
-      #   if: matrix.os == 'macos-latest'
-      #   run: |
-      #     brew install curl-openssl coreutils
+      - name: Detect Bowtie2 version
+        id: bowtie2-version
+        run: |
+          bowtie2 --version
+          version="$(bowtie2 --version | awk 'NR == 1 { print $NF }')"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
-      - name: Restore bowtie2 cache
-        uses: actions/cache@v3
+      - name: Restore Bowtie2 index cache
+        id: bowtie2-cache
+        uses: actions/cache@v4
         with:
           path: tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/*.bt2
-          key: ${{ env.CACHE_NUMBER }}
-        id: bowtie2_cache
+          key: bowtie2-index-${{ steps.bowtie2-version.outputs.version }}-${{ hashFiles('tests/data/data_for_pipeline_run/chr14.fa.gz') }}
 
-      - name: Get Date
-        id: get-date
-        run: echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
-        shell: bash
+      - name: Build Bowtie2 index
+        if: steps.bowtie2-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p tests/data/data_for_pipeline_run/chr14_bowtie2_indicies
+          bowtie2-build \
+            tests/data/data_for_pipeline_run/chr14.fa.gz \
+            tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/bt2 \
+            --threads 4
 
-      - name: Setup Mambaforge
-        uses: conda-incubator/setup-miniconda@v3
+      - name: Upload Bowtie2 index artifact
+        uses: actions/upload-artifact@v4
         with:
-          miniforge-version: latest
-          activate-environment: test
-          use-mamba: true
+          name: chr14-bowtie2-index
+          path: tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/*.bt2
+          if-no-files-found: error
 
-      - name: Cache Conda env
-        uses: actions/cache@v3
+  tests:
+    name: Tests (${{ matrix.name }})
+    needs: bowtie2-index
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-latest
+            run_pipeline: true
+            upload_coverage: true
+          - name: macos
+            os: macos-13
+            run_pipeline: false
+            upload_coverage: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Bowtie2 index
+        uses: actions/download-artifact@v4
         with:
-          path: ${{ env.CONDA }}/envs
-          key: conda-${{ runner.os }}--${{ runner.arch }}--${{
-            steps.get-date.outputs.today }}-${{
-            hashFiles('environment.yml') }}-${{ env.CACHE_NUMBER}}
-        env:
-          # Increase this value to reset cache if etc/example-environment.yml has not changed
-          CACHE_NUMBER: 0
-        id: cache-conda-env
+          name: chr14-bowtie2-index
+          path: tests/data/data_for_pipeline_run/chr14_bowtie2_indicies
 
-      - name: Update environment
-        run: mamba env update -n test -f environment.yml
-        if: steps.cache-conda-env.outputs.cache-hit != 'true'
-
-      - name: Check installed packages
-        shell: bash -el {0}
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
         run: |
-          mamba info
+          sudo apt-get update
+          sudo apt-get install --yes libcurl4-openssl-dev
 
-      - name: Install the package
-        shell: bash -el {0}
-        run: |
-          pip install .[full]
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0
+        with:
+          pixi-version: latest
+          cache: true
+          environments: test
 
-      - name: Test with pytest and generate report
-        shell: bash -el {0}
-        run: |
-          pip install pytest-cov pytest-order pytest-xdist git+https://github.com/alsmith151/CoolBox.git
-          pytest -vv -s --log-cli-level info --cov=./ --cov-report=xml --cores 4
+      - name: Smoke-test install
+        run: pixi run -e test python -c "import polars, pydeseq2, capcruncher_tools, plotnado; print(f'polars {polars.__version__}')"
+
+      - name: Test quick suite
+        run: pixi run -e test pytest -vv -s --log-cli-level info -n auto -m "not pipeline"
+
+      - name: Test pipeline suite
+        if: matrix.run_pipeline
+        run: pixi run -e test pytest -vv -s --log-cli-level info -n auto --cov-append -m "pipeline"
 
       - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v4
+        if: matrix.upload_coverage
+        uses: codecov/codecov-action@v5
         with:
           env_vars: OS,PYTHON
           token: ${{secrets.CODECOV_TOKEN}}
           fail_ci_if_error: true
           files: ./coverage.xml
           verbose: true
+
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-suffix: package
+          python-version: "3.12"
+
+      - name: Build distributions
+        run: uv build
+
+      - name: Check distribution metadata
+        run: uvx twine check --strict dist/*
+
+      - name: Upload distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: capcruncher-dist
+          path: dist/*
+          if-no-files-found: error

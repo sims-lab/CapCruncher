@@ -1,0 +1,69 @@
+name: Repository Health
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"  # Every Monday at 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pypi-install:
+    name: PyPI install health
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install from PyPI
+        run: uv pip install --system capcruncher
+
+      - name: Smoke test
+        run: |
+          capcruncher --version
+          capcruncher --help
+
+  bioconda-install:
+    name: Bioconda install health
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: bioconda-health
+          create-args: >-
+            -c conda-forge -c bioconda
+            capcruncher
+          cache-environment: false
+          cache-downloads: false
+          init-shell: bash
+        # Bioconda package may lag a release; treat failure as a warning
+        continue-on-error: true
+        id: bioconda
+
+      - name: Smoke test
+        if: steps.bioconda.outcome == 'success'
+        shell: bash -el {0}
+        run: |
+          capcruncher --version
+          capcruncher --help
+
+      - name: Report Bioconda lag
+        if: steps.bioconda.outcome == 'failure'
+        run: echo "::warning::capcruncher not yet available on Bioconda or install failed"
+
+  docker-registry:
+    name: Docker registry health
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Pull from registry
+        run: docker pull ghcr.io/sims-lab/capcruncher:latest
+
+      - name: Smoke test
+        run: |
+          docker run --rm ghcr.io/sims-lab/capcruncher:latest --version
+          docker run --rm ghcr.io/sims-lab/capcruncher:latest --help

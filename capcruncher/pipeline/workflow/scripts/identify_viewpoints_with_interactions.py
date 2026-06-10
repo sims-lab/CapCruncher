@@ -1,28 +1,32 @@
-# ruff: noqa: F821
-import os
-import sys
-import cooler
-import pandas as pd
-from collections import defaultdict
-import ujson as json
+import json
 import pathlib
 
+import cooler
 
-coolers = snakemake.input[0]
-samples = snakemake.params.samples
 
-for (sample, clr) in zip(samples, coolers):
-    viewpoints_per_sample = []
-    # Check all groups in the cooler file to see if they have any counts
-    viewpoints = cooler.api.list_coolers(clr)
-
-    for viewpoint in viewpoints:
-        clr = cooler.Cooler(f"{clr}::{viewpoint}")
-        count = clr.pixels()[:].sum()
-
+def viewpoints_with_interactions(cooler_path):
+    viewpoints = []
+    for viewpoint in cooler.api.list_coolers(cooler_path):
+        clr = cooler.Cooler(f"{cooler_path}::{viewpoint}")
+        count = clr.pixels()[:]["count"].sum()
         if count > 0:
-            viewpoints_per_sample.append(viewpoint)
+            viewpoints.append(viewpoint)
+    return viewpoints
 
-    # Save the viewpoints with counts to a file
-    with open(pathlib.Path(snakemake.params.outdir) / f"{sample}.json", "w") as f:
-        json.dump(viewpoints_per_sample, f)
+
+def write_viewpoints_with_interactions(coolers, samples, outdir):
+    outdir = pathlib.Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    for sample, cooler_path in zip(samples, coolers, strict=True):
+        viewpoints = viewpoints_with_interactions(cooler_path)
+        with open(outdir / f"{sample}.json", "w") as f:
+            json.dump(viewpoints, f)
+
+
+if "snakemake" in globals():
+    write_viewpoints_with_interactions(
+        globals()["snakemake"].input[0],
+        globals()["snakemake"].params.samples,
+        globals()["snakemake"].params.outdir,
+    )

@@ -1,0 +1,109 @@
+name: Install Methods
+
+on:
+  pull_request:
+    branches: [develop, master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-wheel:
+    name: Python wheel install
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-suffix: install-python-wheel
+          python-version: "3.12"
+
+      - name: Build wheel
+        run: uv build --wheel
+
+      - name: Install wheel into clean virtual environment
+        run: |
+          python -m venv .venv-install-smoke
+          . .venv-install-smoke/bin/activate
+          uv pip install dist/*.whl
+          python -c "import capcruncher, importlib.metadata; print(importlib.metadata.version('capcruncher'))"
+          capcruncher --version
+          capcruncher --help
+
+  fallback-conda:
+    name: Fallback conda environment
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-suffix: install-conda-wheel
+          python-version: "3.12"
+
+      - name: Build wheel
+        run: uv build --wheel
+
+      - name: Create fallback native environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment.yml
+          environment-name: cc
+          cache-environment: true
+          cache-downloads: true
+          init-shell: bash
+
+      - name: Install package into fallback environment
+        shell: bash -el {0}
+        run: |
+          uv pip install --no-deps dist/*.whl
+          capcruncher --version
+          capcruncher --help
+          capcruncher pipeline --help
+
+  docker-image:
+    name: Docker install smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build Docker image
+        run: docker build -t capcruncher:install-smoke .
+
+      - name: Smoke-test Docker image
+        run: |
+          docker run --rm capcruncher:install-smoke --version
+          docker run --rm capcruncher:install-smoke --help
+          docker run --rm --entrypoint apptainer capcruncher:install-smoke --version
+
+  apptainer-smoke:
+    name: Apptainer install smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: eWaterCycle/setup-apptainer@v2
+
+      - name: Pull image via Apptainer
+        run: apptainer pull capcruncher.sif docker://ghcr.io/sims-lab/capcruncher:latest
+
+      - name: Smoke-test Apptainer image
+        run: |
+          apptainer exec capcruncher.sif capcruncher --version
+          apptainer exec capcruncher.sif capcruncher --help

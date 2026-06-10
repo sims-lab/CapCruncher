@@ -1,24 +1,28 @@
 import os
-import sys
-import pandas as pd
-import numpy as np
-import subprocess
 
-from capcruncher import api
-import ibis
+import polars as pl
 
 
-ibis.options.interactive = False
+def count_identified_viewpoints(parquet_path):
+    if os.path.isdir(parquet_path):
+        parquet_path = os.path.join(parquet_path, "*.parquet")
 
-con = ibis.duckdb.connect(threads=snakemake.threads)
-tbl = con.register(f"parquet://{snakemake.params.slices_dir}", table_name="reporters")
-unique_viewpoints = (tbl[["viewpoint", "pe"]]
-                        .distinct()
-                        .execute(limit=None)
-                        .replace("", pd.NA)
-                        .dropna()
-)
-
-unique_viewpoints.to_csv(snakemake.output[0], sep="\t", index=False)
+    return (
+        pl.scan_parquet(parquet_path)
+        .select(["viewpoint", "pe"])
+        .unique()
+        .filter((pl.col("viewpoint") != "") & pl.col("viewpoint").is_not_null())
+        .filter((pl.col("pe") != "") & pl.col("pe").is_not_null())
+        .collect()
+    )
 
 
+def write_identified_viewpoints(parquet_path, output_path):
+    count_identified_viewpoints(parquet_path).write_csv(output_path, separator="\t")
+
+
+if "snakemake" in globals():
+    write_identified_viewpoints(
+        globals()["snakemake"].params.slices_dir,
+        globals()["snakemake"].output[0],
+    )

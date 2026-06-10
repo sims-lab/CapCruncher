@@ -7,7 +7,6 @@ import mkdocs_gen_files
 nav = mkdocs_gen_files.Nav()
 
 for path in sorted(Path("capcruncher/api").glob("*.py")):  #
-
     module_path = path.relative_to(".").with_suffix("")  #
     doc_path = module_path.with_suffix(".md")  #
     full_doc_path = Path("reference", doc_path)  #

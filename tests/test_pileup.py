@@ -1,10 +1,15 @@
 import pathlib
+from unittest.mock import MagicMock
 
 import pandas as pd
-import pyranges as pr
+import pyranges1 as pr
 import pytest
 
-from capcruncher.api.pileup import CoolerBedGraph
+from capcruncher.api.interactions.bedgraph import (
+    CCBedgraph,
+    CoolerBedGraph,
+    cooler_to_bedgraph,
+)
 
 
 @pytest.fixture(scope="module")
@@ -69,3 +74,104 @@ def test_to_pyranges(cooler_bedgraph):
     # Test the to_pyranges method
     pyranges = cooler_bedgraph.to_pyranges(normalisation="raw")
     assert isinstance(pyranges, pr.PyRanges)
+
+
+def test_to_pyranges_expands_normalisation_kwargs(monkeypatch):
+    bedgraph = CoolerBedGraph.__new__(CoolerBedGraph)
+    captured = {}
+
+    def fake_extract_bedgraph(self, normalisation="raw", **norm_kwargs):
+        captured["normalisation"] = normalisation
+        captured["norm_kwargs"] = norm_kwargs
+        return pd.DataFrame(
+            {
+                "chrom": ["chr1"],
+                "start": [10],
+                "end": [20],
+                "count": [1.0],
+            }
+        )
+
+    monkeypatch.setattr(CoolerBedGraph, "extract_bedgraph", fake_extract_bedgraph)
+
+    converted = bedgraph.to_pyranges(normalisation="region", region="regions.bed")
+
+    assert isinstance(converted, pr.PyRanges)
+    assert captured == {
+        "normalisation": "region",
+        "norm_kwargs": {"region": "regions.bed"},
+    }
+
+
+def test_region_normalisation_uses_interval_overlap(tmp_path):
+    regions = tmp_path / "regions.bed"
+    regions.write_text("chr1\t10\t20\tSlc25A37_region\n")
+
+    bedgraph = CoolerBedGraph.__new__(CoolerBedGraph)
+    bedgraph.viewpoint_name = "Slc25A37"
+    df = pd.DataFrame(
+        {
+            "chrom": ["chr1", "chr1"],
+            "start": [5, 30],
+            "end": [15, 40],
+            "count": [10.0, 5.0],
+        }
+    )
+
+    bedgraph._normalise_by_regions(df, scale_factor=1e6, regions=regions)
+
+    assert df["count"].tolist() == [1e6, 5e5]
+
+
+def test_ccbedgraph_to_pyranges():
+    bedgraph = CCBedgraph(
+        df=pd.DataFrame(
+            {
+                "chrom": ["chr1"],
+                "start": [10],
+                "end": [20],
+                "score": [1.0],
+            }
+        )
+    )
+
+    converted = bedgraph.to_pyranges()
+
+    assert isinstance(converted, pr.PyRanges)
+
+
+def test_cooler_to_bedgraph_clamps_negative_viewpoint_start(monkeypatch):
+    # Regression for #313: viewpoint near chrom start + large distance -> negative start
+    # max(0, ...) must clamp to 0; previously min(0, ...) kept negative values
+    captured = {}
+
+    mock_cooler_instance = MagicMock()
+    mock_cooler_instance.info = {"metadata": {"viewpoint_coords": ["chr1:500-600"]}}
+    mock_cooler_instance.chromsizes = {"chr1": 100_000}
+
+    monkeypatch.setattr(
+        "capcruncher.api.interactions.bedgraph.cooler.Cooler",
+        lambda _: mock_cooler_instance,
+    )
+
+    mock_bedgraph_obj = MagicMock()
+    mock_bedgraph_obj.extract_bedgraph.return_value = pd.DataFrame(
+        {"chrom": ["chr1"], "start": [0], "end": [1000], "count": [1]}
+    )
+
+    def fake_cooler_bedgraph(_, region_to_limit=None):
+        captured["region"] = region_to_limit
+        return mock_bedgraph_obj
+
+    monkeypatch.setattr(
+        "capcruncher.api.interactions.bedgraph.CoolerBedGraph",
+        fake_cooler_bedgraph,
+    )
+
+    cooler_to_bedgraph("fake.hdf5", viewpoint_distance=10_000)
+
+    region = captured["region"]
+    # viewpoint at 500, distance 10000 -> raw start = -9500; must clamp to 0
+    _chrom, coords = region.split(":")
+    start, _end = coords.split("-")
+    assert int(start) >= 0, f"Region start must not be negative, got: {region}"

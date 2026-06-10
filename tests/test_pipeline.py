@@ -1,13 +1,13 @@
 import os
-import subprocess
-import shutil
-import glob
-import pytest
-from loguru import logger
-import numpy as np
 import pathlib
-from cookiecutter.main import cookiecutter
+import subprocess
 from datetime import datetime
+
+import pytest
+from cookiecutter.main import cookiecutter
+from loguru import logger
+
+pytestmark = [pytest.mark.pipeline, pytest.mark.slow]
 
 
 # Fixtures
@@ -46,8 +46,9 @@ def indicies(data_path, genome):
     indicies = data_path.joinpath("chr14_bowtie2_indicies")
     if not indicies.exists():
         try:
-            import requests
             import tarfile
+
+            import requests
 
             url = "https://userweb.molbiol.ox.ac.uk/public/project/milne_group/asmith/capcruncher/test_indicies.tar.gz"
             output = data_path.joinpath("test_indicies.tar.gz")
@@ -86,6 +87,7 @@ def design(data_path):
 @pytest.fixture(scope="module")
 def viewpoints(data_path):
     return data_path.joinpath("mm9_capture_viewpoints_Slc25A37.bed")
+
 
 @pytest.fixture(scope="module")
 def viewpoints_bad(data_path):
@@ -137,6 +139,7 @@ def hub_dir(run_dir_capture):
 def config(
     test_dir,
     package_path,
+    data_path,
     fasta,
     fastqs,
     indicies,
@@ -178,6 +181,7 @@ def config(
             "make_plots": "yes",
             "plotting_coordinates": str(plot_coords),
             "plotting_normalisation": "n_interactions",
+            "plotting_genes": str(data_path.joinpath("mm9_chr14_genes.bed")),
             "differential_contrast": "condition",
             "regenerate_fastq": "yes",
         },
@@ -197,12 +201,13 @@ def config(
     yield
 
     os.chdir(cwd)
-    
-    
+
+
 @pytest.fixture(scope="module", params=["capture"])
 def config_bad(
     test_dir,
     package_path,
+    data_path,
     fasta,
     fastqs,
     indicies,
@@ -244,6 +249,7 @@ def config_bad(
             "make_plots": "yes",
             "plotting_coordinates": str(plot_coords),
             "plotting_normalisation": "n_interactions",
+            "plotting_genes": str(data_path.joinpath("mm9_chr14_genes.bed")),
             "differential_contrast": "condition",
             "regenerate_fastq": "yes",
         },
@@ -262,12 +268,11 @@ def config_bad(
 
     yield
 
-    os.chdir(cwd)    
-
+    os.chdir(cwd)
 
 
 @pytest.mark.order(1)
-def test_pipeline(config, cores):
+def test_pipeline(config, cores, capcruncher_subprocess_env):
     import subprocess
 
     if cores:
@@ -277,7 +282,16 @@ def test_pipeline(config, cores):
 
     try:
         result = subprocess.run(
-            ["capcruncher", "pipeline", "-c", str(cores), "all", "-p", "--show-failed-logs"]
+            [
+                "capcruncher",
+                "pipeline",
+                "-c",
+                str(cores),
+                "all",
+                "-p",
+                "--show-failed-logs",
+            ],
+            env=capcruncher_subprocess_env,
         )
     except Exception as e:
         print(e)
@@ -285,8 +299,9 @@ def test_pipeline(config, cores):
 
     assert result.returncode == 0
 
+
 @pytest.mark.xfail(reason="Viewpoints file is incorrect")
-def test_pipeline_bad_config(config_bad, cores):
+def test_pipeline_bad_config(config_bad, cores, capcruncher_subprocess_env):
     import subprocess
 
     if cores:
@@ -296,7 +311,16 @@ def test_pipeline_bad_config(config_bad, cores):
 
     try:
         result = subprocess.run(
-            ["capcruncher", "pipeline", "-c", str(cores), "all", "-p", "--show-failed-logs"]
+            [
+                "capcruncher",
+                "pipeline",
+                "-c",
+                str(cores),
+                "all",
+                "-p",
+                "--show-failed-logs",
+            ],
+            env=capcruncher_subprocess_env,
         )
     except Exception as e:
         print(e)

@@ -1,130 +1,79 @@
-import click
-from functools import cached_property
-from importlib import import_module, metadata
-from loguru import logger
+from importlib import metadata
 
-CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
+import typer
 
-
-class UnsortedGroup(click.Group):
-    def list_commands(self, ctx):
-        return list(self.commands)
+from capcruncher.cli.common import HELP_SETTINGS
 
 
-class LazyGroup(click.Group):
-    """
-    A click Group that imports the actual implementation only when
-    needed.  This allows for more resilient CLIs where the top-level
-    command does not fail when a subcommand is broken enough to fail
-    at import time.
-    """
-
-    def __init__(self, import_name, **kwargs):
-        self._import_name = import_name
-        super().__init__(**kwargs)
-
-    @cached_property
-    def _impl(self):
-        module, name = self._import_name.split(":", 1)
-        return getattr(import_module(module), name)
-
-    def get_command(self, ctx, cmd_name):
-        return self._impl.get_command(ctx, cmd_name)
-
-    def list_commands(self, ctx):
-        return self._impl.list_commands(ctx)
-
-    def invoke(self, ctx):
-        return self._impl.invoke(ctx)
-
-    def get_usage(self, ctx):
-        return self._impl.get_usage(ctx)
-
-    def get_params(self, ctx):
-        return self._impl.get_params(ctx)
+def get_capcruncher_version() -> str:
+    try:
+        return metadata.version(distribution_name="capcruncher")
+    except metadata.PackageNotFoundError:
+        return "0+unknown"
 
 
-@click.group(cls=UnsortedGroup)
-@click.version_option(metadata.version(distribution_name="capcruncher"))
-def cli():
-    """
-    An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.
-    """
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(get_capcruncher_version())
+        raise typer.Exit()
 
 
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_fastq:cli")
-def fastq():
-    """
-    Fastq splitting, deduplication and digestion.
-    """
-
-
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_genome:cli")
-def genome():
-    """
-    Genome wide methods digestion.
-    """
-
-
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_alignments:cli")
-def alignments():
-    """Alignment annotation, identification and deduplication."""
-
-
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_interactions:cli")
-def interactions():
-    """Reporter counting, storing, comparison and pileups"""
-
-
-@cli.command()
-@click.option(
-    "-r", "--region", required=True, help="Genomic coordinates of the region to plot"
+app = typer.Typer(
+    help="An end to end solution for processing: Capture-C, Tri-C and Tiled-C data.",
+    context_settings=HELP_SETTINGS,
+    no_args_is_help=True,
 )
-@click.option(
-    "-t",
-    "--template",
-    required=True,
-    help="TOML file containing the template for the plot",
+
+
+@app.callback()
+def capcruncher(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        callback=_version_callback,
+        is_eager=True,
+        help="Show the version and exit.",
+    ),
+) -> None:
+    """An end to end solution for processing: Capture-C, Tri-C and Tiled-C data."""
+
+
+from capcruncher.cli.alignments import alignments_app  # noqa: E402
+from capcruncher.cli.fastq import fastq_app  # noqa: E402
+from capcruncher.cli.genome import genome_app  # noqa: E402
+from capcruncher.cli.interactions import interactions_app  # noqa: E402
+from capcruncher.cli.pipeline import (  # noqa: E402
+    pipeline_app,
+    pipeline_config,
+    pipeline_init,
 )
-@click.option(
-    "-o",
-    "--output",
-    default="capcruncher_plot.png",
-    help="Output file path. The file extension determines the output format.",
-)
-def plot(*args, **kwargs):
-    """
-    Generates plots for the outputs produced by CapCruncher
-    """
-    from capcruncher.api.plotting import CCFigure
+from capcruncher.cli.plot import plot_app  # noqa: E402
+from capcruncher.cli.utilities import utilities_app  # noqa: E402
 
-    CCFigure.from_toml(kwargs["template"]).save(
-        kwargs["region"], output=kwargs["output"]
-    )
+app.add_typer(fastq_app, name="fastq")
+app.add_typer(genome_app, name="genome")
+app.add_typer(alignments_app, name="alignments")
+app.add_typer(interactions_app, name="interactions")
+app.add_typer(pipeline_app, name="pipeline")
+app.command(
+    name="pipeline-init",
+    deprecated=True,
+    help="Deprecated. Use 'capcruncher pipeline init' instead.",
+)(pipeline_init)
+app.command(
+    name="pipeline-config",
+    deprecated=True,
+    help="Deprecated. Use 'capcruncher pipeline config' instead.",
+)(pipeline_config)
+app.add_typer(plot_app, name="plot")
+app.add_typer(utilities_app, name="utilities")
 
-
-@cli.group(cls=LazyGroup, import_name="capcruncher.cli.cli_utilities:cli")
-def utilities():
-    """Contains miscellaneous functions"""
-
-
-# Finally, import the pipeline command from the pipeline module
-import capcruncher.cli.cli_pipeline
+cli = typer.main.get_command(app)
 
 
 __all__ = [
-    "alignments_annotate",
-    "alignments_deduplicate",
-    "alignments_filter",
-    "fastq_deduplicate",
-    "fastq_split",
-    "fastq_digest",
-    "fastq_split",
-    "genome_digest",
-    "plot",
-    "reporters_compare",
-    "reporters_count",
-    "reporters_differential",
-    "reporters_pileup",
-    "reporters_store",
+    "HELP_SETTINGS",
+    "app",
+    "cli",
+    "get_capcruncher_version",
 ]

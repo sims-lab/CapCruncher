@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools >= 61.0", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=77,<80", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 
@@ -9,36 +9,138 @@ authors = [
     { "name" = "Alastair Smith", "email" = "alastair.smith@ndcls.ox.ac.uk" },
 ]
 description = "An end-to-end solution for processing Capture-C, Tri-C and Tiled-C data"
-license = { file = "LICENSE" }
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
 readme = "README.md"
-requires-python = ">=3.10"
-dynamic = ["version", "dependencies", "optional-dependencies"]
+requires-python = ">=3.12"
+dynamic = ["version"]
 
+dependencies = [
+    "biopython>=1.83,<2",
+    "capcruncher-tools>=0.2.4,<0.3.0",
+    "loguru>=0.7,<1",
+    "numpy>=2.4,<3",
+    "pandas>=2.2,<3",
+    "plotly>=6,<7",
+    "polars>=1.39,<1.42",
+    "pyarrow>=24,<25",
+    "pyranges1>=1.3,<2",
+    "pyyaml",
+    "snakemake>=9.21,<10",
+    "pandera>=0.31,<1",
+    "pydantic>=2,<3",
+    "tqdm>=4,<5",
+    "typer>=0.16,<1",
+]
 
-[tool.setuptools.packages.find]
-include = ["capcruncher", "capcruncher.*"]
-
-[tool.setuptools.dynamic]
-dependencies = { file = ["requirements-minimal.txt"] }
-
-[tool.setuptools_scm]
-local_scheme = "no-local-version"
-write_to = "capcruncher/_version.py"
-
-[tool.setuptools.dynamic.optional-dependencies]
-full = { file = ["requirements.txt"] }
+[project.optional-dependencies]
+full = [
+    "click>=8,<9",
+    "cooler>=0.10,<1",
+    "h5py",
+    "joblib>=1,<2",
+    "multiqc",
+    "pysam>=0.23,<1",
+    "xopen",
+    "xxhash>=3,<4",
+]
+# ray is an optional parallelism backend for `interactions count --executor ray`.
+# Excluded from "all" because its install footprint is heavy and it is not
+# required for standard pipeline runs.
+ray          = ["ray>=2.8.0,<3.0.0"]
+differential = ["pydeseq2>=0.5.4,<0.6.0"]
+plot         = ["plotnado[toml]>=0.3,<0.4"]
+hub          = ["tracknado>=0.3.1,<0.4.0"]
+hpc          = [
+    "snakemake-executor-plugin-slurm",
+    "snakemake-executor-plugin-cluster-generic",
+    "snakemake-executor-plugin-lsf",
+    "snakemake-executor-plugin-flux",
+    "snakemake-executor-plugin-drmaa",
+    "snakemake-storage-plugin-s3",
+    "snakemake-storage-plugin-gcs",
+    "snakemake-storage-plugin-http",
+    "snakemake-storage-plugin-ftp",
+]
+config       = ["cookiecutter<=2.1.1"]
+all = [
+    "click>=8,<9",
+    "cooler>=0.10,<1",
+    "h5py",
+    "joblib>=1,<2",
+    "multiqc",
+    "pysam>=0.23,<1",
+    "xopen",
+    "xxhash>=3,<4",
+    "pydeseq2>=0.5.4,<0.6.0",
+    "plotnado[toml]>=0.3,<0.4",
+    "tracknado>=0.3.1,<0.4.0",
+    "snakemake-executor-plugin-slurm",
+    "snakemake-executor-plugin-cluster-generic",
+    "snakemake-executor-plugin-lsf",
+    "snakemake-executor-plugin-flux",
+    "snakemake-executor-plugin-drmaa",
+    "snakemake-storage-plugin-s3",
+    "snakemake-storage-plugin-gcs",
+    "snakemake-storage-plugin-http",
+    "snakemake-storage-plugin-ftp",
+    "cookiecutter<=2.1.1",
+]
 
 [project.scripts]
 capcruncher = "capcruncher.cli:cli"
 
 [project.urls]
-repo = "https://github.com/sims-lab/CapCruncher.git"
+Homepage      = "https://github.com/sims-lab/CapCruncher"
+Documentation = "https://sims-lab.github.io/CapCruncher"
+Repository    = "https://github.com/sims-lab/CapCruncher.git"
+
+
+[dependency-groups]
+dev  = ["ruff>=0.11", "pre-commit>=4", "ty>=0.0.32", "pytest>=8", "pytest-cov>=6", "pytest-order", "pytest-xdist"]
+test = [{include-group = "dev"}]
+docs = [
+    "mkdocs-material>=9",
+    "mkdocstrings-python",
+    "mkdocs-click",
+    "pygments",
+    "mkdocs-gen-files",
+    "mkdocs-jupyter",
+    "mkdocs-autorefs",
+    "mkdocs-literate-nav",
+    "mkdocs-section-index",
+]
+
+
+[tool.setuptools.packages.find]
+include = ["capcruncher", "capcruncher.*"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+capcruncher = [
+    "py.typed",
+    "data/*.txt",
+    "pipeline/config/**",
+    "pipeline/profiles/**/*.yaml",
+    "pipeline/workflow/Snakefile",
+    "pipeline/workflow/data/*.json",
+    "pipeline/workflow/envs/*.yml",
+    "pipeline/workflow/report/*.py",
+    "pipeline/workflow/report/*.yml",
+    "pipeline/workflow/rules/*.smk",
+    "pipeline/workflow/scripts/*.py",
+]
+
+[tool.setuptools_scm]
+local_scheme = "no-local-version"
+write_to = "capcruncher/_version.py"
 
 
 [tool.ruff]
-line-length = 88
-select = ["E", "F"]
-ignore = ["E501"]
+line-length    = 88
+target-version = "py312"
 exclude = [
     ".bzr",
     ".direnv",
@@ -52,6 +154,7 @@ exclude = [
     ".svn",
     ".tox",
     ".venv",
+    ".pixi",
     "__pypackages__",
     "_build",
     "buck-out",
@@ -64,39 +167,74 @@ exclude = [
     "old/",
 ]
 
-dummy-variable-rgx = "_[a-z0-9]+(\\s+|:|$)"
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B", "I", "UP"]
+ignore = ["E501"]
+dummy-variable-rgx = "^_$|_[a-z0-9]+(\\s+|:|$)"
 
+[tool.ruff.lint.per-file-ignores]
+"capcruncher/__init__.py"    = ["F401", "E402"]
+"capcruncher/cli/*.py"       = ["B008"]   # typer.Option/Argument are intentional function-call defaults
+"capcruncher/pipeline/rules/scripts/*.py"               = ["F821"]
+"capcruncher/pipeline/workflow/scripts/validation_*.py" = ["F821"]
 
-[tool.ruff.mccabe]
-# Unlike Flake8, default to a complexity level of 10.
-max-complexity = 10
-
-[tool.ruff.per-file-ignores]
-"capcruncher/__init__.py" = ["F401", "E402"]
-"capcruncher/pipeline/rules/scripts/make_report.py" = ["F821"]
-"capcruncher/pipeline/rules/scripts/make_ucsc_hub.py" = ["F821"]
-"capcruncher/pipeline/rules/scripts/combine_stats_read_level.py" = ["F821"]
-"capcruncher/pipeline/rules/scripts/combine_alignment_deduplication_stats.py" = [
-    "F821",
-]
-"capcruncher/pipeline/rules/scripts/combine_cis_and_trans_stats.py" = ["F821"]
-"capcruncher/pipeline/rules/scripts/combine_filtering_stats.py" = ["F821"]
-"capcruncher/pipeline/rules/scripts/combine_deduplication_stats.py" = ["F821"]
-"capcruncher/pipeline/rules/scripts/combine_digestion_stats.py" = ["F821"]
-"capcruncher/pipeline/workflow/scripts/validation_check_n_bins_per_viewpoint.py" = [
-    "F821",
-]
-"capcruncher/pipeline/workflow/scripts/validation_confirm_annotated_viewpoints_present.py" = [
-    "F821",
-]
-
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.format]
+docstring-code-format = true
+
 
 [tool.snakefmt]
 line_length = 88
 include = '\.smk$|^Snakefile|\.py$'
 
-# snakefmt passes these options on to black
-[tool.black]
-skip_string_normalization = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=capcruncher --cov-report=term-missing --cov-report=xml"
+markers = [
+    "order: test ordering marker provided by pytest-order",
+    "pipeline: end-to-end pipeline tests that run Snakemake jobs",
+    "slow: tests that are intentionally slower than the default suite",
+]
+
+
+[tool.ty.environment]
+python-version = "3.12"
+root = ["."]
+
+[tool.ty.src]
+include = ["capcruncher", "tests"]
+
+[tool.ty.rules]
+invalid-argument-type   = "ignore"
+invalid-assignment      = "ignore"
+invalid-method-override = "ignore"
+invalid-parameter-default = "ignore"
+invalid-return-type     = "ignore"
+no-matching-overload    = "ignore"
+not-subscriptable       = "ignore"
+not-iterable            = "ignore"
+call-non-callable       = "ignore"
+unsupported-operator    = "ignore"
+unresolved-attribute    = "ignore"
+unresolved-reference    = "ignore"
+
+[tool.ty.analysis]
+replace-imports-with-any = [
+    "Bio.**",
+    "cooler.**",
+    "h5py.**",
+    "joblib.**",
+    "loguru.**",
+    "numpy.**",
+    "pandas.**",
+    "polars.**",
+    "pyarrow.**",
+    "pyranges1.**",
+    "pysam.**",
+    "snakemake.**",
+]
+allowed-unresolved-imports = [
+    "ray.**",
+]

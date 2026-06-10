@@ -4,7 +4,7 @@ CapCruncher is a package explicitly designed for processing Capture-C, Tri-C and
 
 The package consists of a configurable data processing pipeline and a supporting command line interface to enable fine-grained control over the analysis.
 
-The pipeline is fast, robust and scales from a single workstation to a large HPC cluster. The pipeline is designed to be run on a HPC cluster and can be configured to use a variety of package management systems e.g. conda and singularity.
+The pipeline is fast, robust and scales from a single workstation to a large HPC cluster. The pipeline is designed to be run on a HPC cluster and can be configured to use conda environments or container-backed Snakemake presets.
 
 <!-- !!! warning
     The current version of CapCruncher is in beta and is not yet ready for production use. Please report any issues you encounter to the [issue tracker](https://github.com/sims-lab/CapCruncher/issues/new/choose) -->
@@ -15,7 +15,7 @@ The pipeline is fast, robust and scales from a single workstation to a large HPC
 ### Installation
 
 !!! warning
-    CapCruncher is currently only availible for linux. MacOS support is planned for the future.
+    CapCruncher is currently only available for Linux. MacOS support is planned for the future.
 
 CapCruncher is available on conda and PyPI. To install the latest version, run:
 
@@ -55,20 +55,20 @@ See the [usage guide](usage.md) for more detailed instructions.
 
 The CapCruncher pipeline handles the processing of raw data from the sequencer to the generation of a contact matrix, generation of plots and production of a UCSC genome browser track hub.
 
-See the [pipeline guide](pipeline.md) for more detailed instructions including how to configure the pipeline to run on HPC clusters and using various package management systems e.g. conda and singularity.
+See the [pipeline guide](pipeline.md) for more detailed instructions including how to configure the pipeline to run on HPC clusters using conda or Apptainer-backed Snakemake presets. For workstation or CI usage, see the [Docker guide](docker.md).
 
 #### Pipeline Configuration
 
-The pipeline is configured using a YAML file. It is strongly recommended to use the `capcruncher pipeline-config` command to generate a template configuration file. This command will generate a template configuration file with all available options and descriptions of each option.
+The pipeline is configured using a YAML file. It is strongly recommended to use the `capcruncher pipeline config` command to generate a template configuration file. This command will generate a template configuration file with all available options and descriptions of each option.
 
 ``` bash
-capcruncher pipeline-config --help
+capcruncher pipeline config --help
 ```
 
 #### Running the pipeline
 
-The pipeline is run using the `capcruncher pipeline` command. Ensure that you have a configuration file and the fastq files to process are in the current working directory.
+The pipeline is run using the `capcruncher pipeline run` command. Ensure that you have a configuration file and the fastq files to process are in the current working directory.
 
 ``` bash
-capcruncher pipeline --cores <NUMBER OF CORES TO USE>
+capcruncher pipeline run --cores <NUMBER OF CORES TO USE>
 ```

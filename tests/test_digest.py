@@ -1,8 +1,8 @@
-import pandas as pd
-import pysam
-import pytest
 import os
 import pathlib
+
+import pysam
+import pytest
 
 
 @pytest.fixture(scope="module")
@@ -51,21 +51,20 @@ def count_fragments(fq):
 def test_digest_fastq(
     data_path, tmpdir, fastq_files, enzyme, mode, n_reads_raw, n_reads_filt
 ):
-    from capcruncher.cli.fastq_digest import digest
+    from capcruncher.api.fastq import digest_fastq
 
     infiles = [os.path.join(data_path, fn) for fn in fastq_files]
     outfile = os.path.join(tmpdir, "out.fq")
     statistics = pathlib.Path(outfile).with_suffix(".json")
 
-    stats = digest(
+    stats = digest_fastq(
         infiles,
         enzyme,
         mode=mode,
         output_file=outfile,
         statistics=statistics,
     )
-    
-    
+
     assert stats.read_stats.unfiltered.read1 == n_reads_raw
     assert stats.read_stats.filtered.read1 == n_reads_filt
     assert count_fragments(outfile) == n_reads_filt
@@ -88,11 +87,11 @@ def fasta():
     ],
 )
 def test_digest_genome(fasta, tmpdir, enzyme, n_records_expected):
-    from capcruncher.cli.genome_digest import digest
+    from capcruncher.api.genome import digest_genome
 
     infile = fasta
     outfile = os.path.join(tmpdir, "digested.bed")
 
-    digest(input_fasta=infile, recognition_site=enzyme, output_file=outfile)
+    digest_genome(input_fasta=infile, recognition_site=enzyme, output_file=outfile)
 
     assert os.path.exists(outfile)

@@ -1,28 +1,35 @@
+import logging
 import os
-import sys
 import pathlib
 import shutil
-import json
+import re
 
 import pandas as pd
-import pyranges as pr
+import snakemake
 import snakemake.utils
 
-import capcruncher.pipeline.utils
+logging.getLogger("snakemake").propagate = False
+
 from capcruncher.utils import convert_bed_to_pr
 
-import importlib.util
-from typing import Literal
-import itertools
+snakemake.utils.min_version("9.0.0")
 
-
-snakemake.utils.min_version('7.19.1')
+import capcruncher.pipeline.utils
 
 
 configfile: "capcruncher_config.yml"
 
 
-container: "library://asmith151/capcruncher/capcruncher:latest"
+DEFAULT_CONTAINER_IMAGE = config.get("execution", {}).get(
+    "container_image", "docker://ghcr.io/sims-lab/capcruncher:latest"
+)
+SCALE_RESOURCES = float(os.environ.get("SCALE_RESOURCES", "1"))
+
+
+container: DEFAULT_CONTAINER_IMAGE
+
+
+include: "rules/common.smk"
 
 
 # Pipeline set-up
@@ -34,12 +41,27 @@ FASTQ_SAMPLES = capcruncher.pipeline.utils.FastqSamples.from_files(
 )
 
 ## Convert FASTQ files to design matrix
-if os.path.exists(config["analysis"].get("design", None)):
+_design_path = config["analysis"].get("design", None)
+_design_provided = bool(_design_path) and os.path.exists(_design_path)
+
+if _design_provided:
     DESIGN = pd.read_table(
         config["analysis"]["design"], sep=r"\s+|,|\t", engine="python"
     )
+    import pandera.errors as _pa_errors
+    from capcruncher.pipeline.validation import DesignSchema as _DesignSchema
+
+    try:
+        _DesignSchema.validate(DESIGN)
+    except _pa_errors.SchemaError as _e:
+        raise ValueError(f"Design matrix validation failed:\n{_e}") from _e
 else:
     DESIGN = FASTQ_SAMPLES.design
+
+_all_unknown = (
+    "condition" in DESIGN.columns
+    and (DESIGN["condition"].fillna("UNKNOWN") == "UNKNOWN").all()
+)
 
 ## Export the design to the capcruncher_output directory
 outdir = pathlib.Path("capcruncher_output")
@@ -49,7 +71,7 @@ DESIGN.to_csv("capcruncher_output/design.tsv", sep="\t", index=False)
 
 ## Read viewpoints
 VIEWPOINTS = config["analysis"]["viewpoints"]
-VIEWPOINT_NAMES = convert_bed_to_pr(VIEWPOINTS).df.Name.drop_duplicates().tolist()
+VIEWPOINT_NAMES = convert_bed_to_pr(VIEWPOINTS).Name.drop_duplicates().tolist()
 
 ### Check that viewpoints do not contain any special characters
 for viewpoint in VIEWPOINT_NAMES:
@@ -58,7 +80,7 @@ for viewpoint in VIEWPOINT_NAMES:
             f"Viewpoint name {viewpoint} contains special characters. "
             "Please remove special characters from viewpoint names."
         )
-        
+
 N_SAMPLES = DESIGN["sample"].nunique()
 ANALYSIS_METHOD = config["analysis"].get("method", "capture")
 BIN_SIZES = capcruncher.pipeline.utils.get_bin_sizes(config)
@@ -79,9 +101,10 @@ SUMMARY_METHODS = [
 
 ## Optional
 AGGREGATE_SAMPLES = DESIGN["sample"].nunique() > 1
-COMPARE_SAMPLES = DESIGN["condition"].nunique() > 1
+COMPARE_SAMPLES = (not _all_unknown) and DESIGN["condition"].nunique() > 1
 PERFORM_DIFFERENTIAL_ANALYSIS = (
-    (config["differential"]["contrast"] in DESIGN.columns)
+    (not _all_unknown)
+    and (config["differential"]["contrast"] in DESIGN.columns)
     and COMPARE_SAMPLES
     and (ANALYSIS_METHOD in ["capture", "tri"])
 )
@@ -135,33 +158,41 @@ rule all:
             "capcruncher_output/results/{sample}/{sample}.hdf5",
             sample=SAMPLE_NAMES,
         ),
-        hub=rules.create_ucsc_hub.output[0]
-        if ANALYSIS_METHOD in ["capture", "tri"] and CREATE_UCSC_HUB
-        else [],
-        differential=expand(
-            "capcruncher_output/results/differential/{viewpoint}",
-            viewpoint=VIEWPOINT_NAMES,
-        )
-        if PERFORM_DIFFERENTIAL_ANALYSIS
-        else [],
-        plots=expand(
-            "capcruncher_output/results/figures/{viewpoint}.pdf",
-            viewpoint=VIEWPOINT_NAMES,
-        )
-        if PERFORM_PLOTTING
-        else [],
-        regenerated_fastq=expand(
-            "capcruncher_output/results/{sample}/{sample}_{read}.fastq.gz",
-            sample=SAMPLE_NAMES,
-            read=["1", "2"],
-        )
-        if REGENERATE_FASTQ
-        else [],
+        hub=(
+            rules.create_ucsc_hub.output[0]
+            if ANALYSIS_METHOD in ["capture", "tri"] and CREATE_UCSC_HUB
+            else []
+        ),
+        differential=(
+            expand(
+                "capcruncher_output/results/differential/{viewpoint}",
+                viewpoint=VIEWPOINT_NAMES,
+            )
+            if PERFORM_DIFFERENTIAL_ANALYSIS
+            else []
+        ),
+        plots=(
+            expand(
+                "capcruncher_output/results/figures/{viewpoint}.pdf",
+                viewpoint=VIEWPOINT_NAMES,
+            )
+            if PERFORM_PLOTTING
+            else []
+        ),
+        regenerated_fastq=(
+            expand(
+                "capcruncher_output/results/{sample}/{sample}_{read}.fastq.gz",
+                sample=SAMPLE_NAMES,
+                read=["1", "2"],
+            )
+            if REGENERATE_FASTQ
+            else []
+        ),
 
 
 onerror:
     log_out = "capcruncher_error.log"
-    shutil.copyfile(log, log_out)
+    copy_workflow_log(log, log_out)
     print(
         f"An error occurred. Please check the log file {log_out} for more information."
     )
@@ -169,13 +200,14 @@ onerror:
 
 onsuccess:
     log_out = "capcruncher.log"
-    shutil.copyfile(log, log_out)
+    copy_workflow_log(log, log_out)
     print(f"Pipeline completed successfully. See {log_out} for more information.")
-
     if CLEANUP == "full":
         shutil.rmtree("capcruncher_output/interim/")
-
-    elif CLEANUP == "partial" and pathlib.Path("capcruncher_output/interim/").exists():
+    elif (
+        CLEANUP == "partial"
+        and pathlib.Path("capcruncher_output/interim/").exists()
+    ):
         import subprocess
 
         files_to_remove = []

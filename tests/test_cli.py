@@ -1,10 +1,30 @@
-from loguru import logger
-import pytest
-import os
-from click.testing import CliRunner
 import glob
+import os
+import pathlib
+import subprocess
+import sys
+from types import SimpleNamespace
 
+import pandas as pd
+import polars as pl
+import pytest
+from click.testing import CliRunner
+from loguru import logger
+
+from capcruncher.api.fastq import (
+    FastqDeduplicationOptions,
+    FastqDigestOptions,
+    FastqSplitOptions,
+)
+from capcruncher.api.interactions.count import (
+    InteractionCountOptions,
+)
+from capcruncher.api.interactions.reporters import (
+    write_countable_reporters,
+)
 from capcruncher.cli import cli
+from capcruncher.cli import pipeline as cli_pipeline
+from capcruncher.dependencies import DependencyVersionError
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -14,6 +34,11 @@ def setup_testing_dir(tmpdir_factory):
     os.chdir(tmpdir)
     yield
     os.chdir(cwd)
+
+
+@pytest.fixture(autouse=True)
+def allow_pipeline_runtime_dependency(monkeypatch):
+    monkeypatch.setattr(cli_pipeline, "require_capcruncher_tools", lambda: "0.2.4")
 
 
 @pytest.fixture(scope="session")
@@ -79,8 +104,722 @@ def cli_runner():
 def test_cli_runs(cli_runner):
     """Test checks that the cli is functional and the help option works"""
 
+    import capcruncher.cli
+
+    assert capcruncher.cli.cli is cli
     result = cli_runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
+    assert "pipeline-init" in result.output
+    assert "pipeline-config" in result.output
+    assert result.output.count("(deprecated)") >= 2
+    assert "capcruncher pipeline init" in result.output
+
+
+@pytest.mark.parametrize(
+    "command,replacement",
+    [
+        (["pipeline-init", "--help"], "capcruncher pipeline init"),
+        (["pipeline-config", "--help"], "capcruncher pipeline config"),
+    ],
+)
+def test_legacy_pipeline_command_help_names_replacements(
+    cli_runner, command, replacement
+):
+    result = cli_runner.invoke(cli, command)
+
+    assert result.exit_code == 0
+    assert "(deprecated)" in result.output
+    assert f"Use '{replacement}' instead" in result.output
+
+
+def test_cli_import_does_not_import_heavy_runtime_modules():
+    code = (
+        "import sys; "
+        "import capcruncher.cli; "
+        "blocked = [name for name in ('pandas', 'polars', 'pyranges1') if name in sys.modules]; "
+        "print(','.join(blocked))"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        check=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+    )
+
+    assert result.stdout.strip() == ""
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        ["interactions", "differential", "--help"],
+        ["interactions", "compare", "differential", "--help"],
+    ],
+)
+def test_differential_help_does_not_import_pydeseq2(cli_runner, monkeypatch, command):
+    real_import = __import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "pydeseq2" or name.startswith("pydeseq2."):
+            raise ModuleNotFoundError("No module named 'pydeseq2'", name="pydeseq2")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", guarded_import)
+
+    result = cli_runner.invoke(cli, command)
+
+    assert result.exit_code == 0
+    assert "Running this on every interaction breaks" in result.output
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        ["plot", "-r", "chr1:1-100", "-t", "template.toml", "-o", "plot.png"],
+        ["plot", "render", "-r", "chr1:1-100", "-t", "template.toml", "-o", "plot.png"],
+    ],
+)
+def test_plot_render_commands(cli_runner, monkeypatch, command):
+    import capcruncher.cli.plot as cli_plot
+
+    calls = []
+
+    def fake_render_plot(region, template, output):
+        calls.append((region, template, output))
+
+    monkeypatch.setattr(cli_plot, "render_plot", fake_render_plot)
+
+    result = cli_runner.invoke(cli, command)
+
+    assert result.exit_code == 0
+    assert calls == [("chr1:1-100", "template.toml", "plot.png")]
+
+
+def test_plot_help_does_not_import_plotnado(cli_runner, monkeypatch):
+    real_import = __import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "plotnado" or name.startswith("plotnado."):
+            raise ModuleNotFoundError("No module named 'plotnado'", name="plotnado")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", guarded_import)
+
+    result = cli_runner.invoke(cli, ["plot", "render", "--help"])
+
+    assert result.exit_code == 0
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        [
+            "genome",
+            "digest",
+            "genome.fa",
+            "--recognition-site",
+            "dpnii",
+            "--output-file",
+            "digest.bed",
+            "--sort",
+        ],
+        [
+            "genome",
+            "digest",
+            "genome.fa",
+            "--recognition_site",
+            "dpnii",
+            "--output_file",
+            "digest.bed",
+            "--sort",
+        ],
+    ],
+)
+def test_genome_digest_option_aliases(cli_runner, monkeypatch, command):
+    import capcruncher.api.genome as genome_api
+
+    calls = []
+
+    def fake_digest(**kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setattr(genome_api, "digest_genome", fake_digest)
+
+    result = cli_runner.invoke(cli, command)
+
+    assert result.exit_code == 0
+    assert calls == [
+        {
+            "input_fasta": "genome.fa",
+            "recognition_site": "dpnii",
+            "output_file": "digest.bed",
+            "logfile": "genome_digest.log",
+            "remove_cutsite": True,
+            "sort": True,
+        }
+    ]
+
+
+def test_alignments_typer_option_aliases(cli_runner, monkeypatch):
+    import capcruncher.api.alignments.annotate as alignments_annotate
+    import capcruncher.api.alignments.filter as alignments_filter
+
+    annotate_calls = []
+    filter_calls = []
+
+    def fake_annotate(**kwargs):
+        annotate_calls.append(kwargs)
+
+    def fake_filter(**kwargs):
+        filter_calls.append(kwargs)
+
+    monkeypatch.setattr(alignments_annotate, "annotate", fake_annotate)
+    monkeypatch.setattr(alignments_filter, "filter", fake_filter)
+
+    annotate_result = cli_runner.invoke(
+        cli,
+        [
+            "alignments",
+            "annotate",
+            "slices.bam",
+            "--bed_files",
+            "targets.bed",
+            "--actions",
+            "get",
+            "--names",
+            "targets",
+            "--overlap_fractions",
+            "0.5",
+            "--n_cores",
+            "2",
+            "--invalid_bed_action",
+            "ignore",
+        ],
+    )
+    filter_result = cli_runner.invoke(
+        cli,
+        [
+            "alignments",
+            "filter",
+            "capture",
+            "--bam",
+            "reads.bam",
+            "--annotations",
+            "annotations.parquet",
+            "--output_prefix",
+            "filtered",
+            "--no-fragments",
+        ],
+    )
+
+    assert annotate_result.exit_code == 0
+    assert filter_result.exit_code == 0
+    assert annotate_calls == [
+        {
+            "slices": "slices.bam",
+            "actions": ("get",),
+            "bed_files": ("targets.bed",),
+            "names": ("targets",),
+            "overlap_fractions": (0.5,),
+            "dtypes": ("str",),
+            "output": "annotated.slices.parquet",
+            "duplicates": "remove",
+            "n_cores": 2,
+            "invalid_bed_action": "ignore",
+            "blacklist": "",
+            "prioritize_cis_slices": False,
+            "priority_chroms": "",
+        }
+    ]
+    assert filter_calls == [
+        {
+            "method": "capture",
+            "bam": "reads.bam",
+            "annotations": "annotations.parquet",
+            "filter_profile": None,
+            "output_prefix": "filtered",
+            "statistics": "filtering_stats.json",
+            "sample_name": None,
+            "read_type": "flashed",
+            "fragments": False,
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        ["pipeline", "config", "--help"],
+        ["pipeline-config", "--help"],
+    ],
+)
+def test_pipeline_config_help_does_not_import_cookiecutter(
+    cli_runner, monkeypatch, command
+):
+    real_import = __import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "cookiecutter" or name.startswith("cookiecutter."):
+            raise ModuleNotFoundError(
+                "No module named 'cookiecutter'", name="cookiecutter"
+            )
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", guarded_import)
+
+    result = cli_runner.invoke(cli, command)
+
+    assert result.exit_code == 0
+
+
+def test_pipeline_init_installs_presets(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+
+    result = cli_runner.invoke(cli, ["pipeline-init"])
+
+    assert result.exit_code == 0
+    assert "Use 'capcruncher pipeline init ...' instead" in result.output
+    profiles_dir = tmp_path / "snakemake"
+    assert (profiles_dir / "capcruncher-local" / "profile.v9+.yaml").exists()
+    assert (profiles_dir / "capcruncher-local-conda" / "profile.v9+.yaml").exists()
+    assert (profiles_dir / "capcruncher-local-apptainer" / "profile.v9+.yaml").exists()
+    assert (profiles_dir / "capcruncher-slurm" / "profile.v9+.yaml").exists()
+    assert (profiles_dir / "capcruncher-slurm-apptainer" / "profile.v9+.yaml").exists()
+    assert not list(profiles_dir.glob("*/config.yaml"))
+    assert (
+        "executor: slurm"
+        in (profiles_dir / "capcruncher-slurm" / "profile.v9+.yaml").read_text()
+    )
+    slurm_apptainer_profile = (
+        profiles_dir / "capcruncher-slurm-apptainer" / "profile.v9+.yaml"
+    ).read_text()
+    assert "software-deployment-method:" in slurm_apptainer_profile
+    assert "retries: 3" in slurm_apptainer_profile
+    assert 'mem: "4G"' in slurm_apptainer_profile
+    assert "mem_mb:" not in slurm_apptainer_profile
+
+
+def test_pipeline_init_subcommand_installs_presets(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+
+    result = cli_runner.invoke(cli, ["pipeline", "init"])
+
+    assert result.exit_code == 0
+    assert (tmp_path / "snakemake" / "capcruncher-local" / "profile.v9+.yaml").exists()
+    assert "deprecated" not in result.output.lower()
+
+
+def test_pipeline_without_subcommand_warns_to_use_run(cli_runner):
+    result = cli_runner.invoke(cli, ["pipeline"])
+
+    assert result.exit_code == 0
+    assert "Deprecated pipeline invocation" in result.output
+    assert "capcruncher pipeline without a subcommand is legacy" in result.output
+    assert "Use capcruncher pipeline run ... instead" in result.output
+    assert "Usage: capcruncher pipeline [run|init|config] [OPTIONS]" in result.output
+
+
+def test_pipeline_run_help_separates_capcruncher_and_snakemake_options(
+    cli_runner, monkeypatch
+):
+    recorded_calls = []
+
+    class CompletedProcess:
+        returncode = 0
+        stdout = (
+            "usage: snakemake [-h] [--cores N] [--config KEY=VALUE] [TARGET ...]\n"
+            "\n"
+            "options:\n"
+            "  --cores N\n"
+            "  --config KEY=VALUE\n"
+        )
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append((cmd, kwargs))
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(cli, ["pipeline", "run", "--help"])
+
+    assert result.exit_code == 0
+    assert "capcruncher pipeline run" in result.output
+    assert "CapCruncher Options" in result.output
+    assert "--preset TEXT" in result.output
+    assert "--scale-resources FLOAT" in result.output
+    assert "Snakemake options and targets" in result.output
+    assert "Underlying Snakemake Help" in result.output
+    assert "Snakemake usage: snakemake" in result.output
+    assert "--cores N" in result.output
+    assert recorded_calls[0][0][-1] == "--help"
+
+
+def test_pipeline_config_legacy_command_warns_with_replacement(cli_runner, monkeypatch):
+    called = False
+
+    def fake_configure_pipeline():
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(cli_pipeline, "configure_pipeline", fake_configure_pipeline)
+
+    result = cli_runner.invoke(cli, ["pipeline-config"])
+
+    assert result.exit_code == 0
+    assert "Use 'capcruncher pipeline config ...' instead" in result.output
+    assert called
+
+
+def test_pipeline_uses_installed_preset(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli, ["pipeline", "run", "--preset", "capcruncher-local", "--no-logo", "-n"]
+    )
+
+    assert result.exit_code == 0
+    assert len(recorded_calls) == 1
+    first_call = recorded_calls[0]
+    expected_profile = tmp_path / "snakemake" / "capcruncher-local"
+    assert "--profile" in first_call
+    assert str(expected_profile) in first_call
+    assert "--cores" in first_call
+    assert "1" in first_call
+
+
+def test_pipeline_run_subcommand_uses_installed_preset(
+    cli_runner, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline", "init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli, ["pipeline", "run", "--preset", "capcruncher-local", "--no-logo", "-n"]
+    )
+
+    assert result.exit_code == 0
+    assert len(recorded_calls) == 1
+    first_call = recorded_calls[0]
+    expected_profile = tmp_path / "snakemake" / "capcruncher-local"
+    assert first_call[first_call.index("--profile") + 1] == str(expected_profile)
+    assert "--cores" in first_call
+    assert "1" in first_call
+
+
+def test_pipeline_legacy_invocation_warns_with_new_command(
+    cli_runner, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli, ["pipeline", "--preset", "capcruncher-local", "--no-logo", "-n"]
+    )
+
+    assert result.exit_code == 0
+    assert "Use 'capcruncher pipeline run ...' instead" in result.output
+    assert recorded_calls
+
+
+def test_pipeline_fails_before_snakemake_when_capcruncher_tools_is_unsupported(
+    cli_runner, monkeypatch
+):
+    recorded_calls = []
+
+    def fail_dependency_check():
+        raise DependencyVersionError(
+            "capcruncher-tools >=0.2.4,<0.3.0 is required, "
+            "but version 0.1.1 is installed. "
+            "Imported module path: /path/to/capcruncher_tools/__init__.py"
+        )
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        raise AssertionError("snakemake should not run with unsupported dependencies")
+
+    monkeypatch.setattr(
+        cli_pipeline, "require_capcruncher_tools", fail_dependency_check
+    )
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(cli, ["pipeline", "run", "--no-logo", "-n"])
+
+    assert result.exit_code == 1
+    assert "capcruncher-tools >=0.2.4,<0.3.0 is required" in result.output
+    assert "Imported module path:" in result.output
+    assert recorded_calls == []
+
+
+def test_pipeline_touches_outputs_after_real_run(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli, ["pipeline", "run", "--preset", "capcruncher-local", "--no-logo"]
+    )
+
+    assert result.exit_code == 0
+    assert len(recorded_calls) == 2
+    assert "--touch" not in recorded_calls[0]
+    assert "--touch" in recorded_calls[1]
+
+
+def test_pipeline_init_copies_nested_profile_files(tmp_path, monkeypatch):
+    package_root = tmp_path / "package"
+    source_profile = package_root / "pipeline" / "profiles" / "local"
+    source_profile.mkdir(parents=True)
+    (source_profile / "profile.v9+.yaml").write_text(
+        "executor: local\n", encoding="utf-8"
+    )
+    (source_profile / "scripts").mkdir()
+    (source_profile / "scripts" / "submit.sh").write_text(
+        "#!/usr/bin/env bash\n", encoding="utf-8"
+    )
+
+    monkeypatch.setattr(
+        cli_pipeline.resources,
+        "files",
+        lambda package: SimpleNamespace(
+            joinpath=lambda *parts: package_root.joinpath(*parts)
+        ),
+    )
+
+    destination = cli_pipeline.install_pipeline_preset(
+        "capcruncher-local", tmp_path / "profiles", force=False
+    )
+
+    assert (destination / "profile.v9+.yaml").exists()
+    assert (destination / "scripts" / "submit.sh").exists()
+
+
+def test_pipeline_accepts_legacy_preset_alias(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli, ["pipeline", "run", "--preset", "local", "--no-logo", "-n"]
+    )
+
+    assert result.exit_code == 0
+    expected_profile = tmp_path / "snakemake" / "capcruncher-local"
+    assert recorded_calls[0][recorded_calls[0].index("--profile") + 1] == str(
+        expected_profile
+    )
+
+
+def test_pipeline_preset_forwards_container_config(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "pipeline",
+            "run",
+            "--preset",
+            "capcruncher-local-apptainer",
+            "--no-logo",
+            "-n",
+            "--config",
+            "execution.container_image=docker://example/capcruncher:test",
+        ],
+    )
+
+    assert result.exit_code == 0
+    first_call = recorded_calls[0]
+    expected_profile = tmp_path / "snakemake" / "capcruncher-local-apptainer"
+    assert first_call[first_call.index("--profile") + 1] == str(expected_profile)
+    assert "--config" in first_call
+    assert "execution.container_image=docker://example/capcruncher:test" in first_call
+
+
+def test_pipeline_scale_resources_sets_environment(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append((cmd, kwargs.get("env")))
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "pipeline",
+            "run",
+            "--preset",
+            "capcruncher-slurm-apptainer",
+            "--scale-resources",
+            "1.5",
+            "--no-logo",
+            "-n",
+        ],
+    )
+
+    assert result.exit_code == 0
+    first_call, first_env = recorded_calls[0]
+    expected_profile = tmp_path / "snakemake" / "capcruncher-slurm-apptainer"
+    assert first_call[first_call.index("--profile") + 1] == str(expected_profile)
+    assert first_env["SCALE_RESOURCES"] == "1.5"
+
+
+def test_pipeline_does_not_add_default_cores_for_equals_form(
+    cli_runner, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    recorded_calls = []
+
+    class CompletedProcess:
+        def __init__(self, returncode=0, stdout=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_run(cmd, *args, **kwargs):
+        recorded_calls.append(cmd)
+        return CompletedProcess()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "pipeline",
+            "run",
+            "--preset",
+            "capcruncher-local",
+            "--no-logo",
+            "--cores=8",
+            "-n",
+        ],
+    )
+
+    assert result.exit_code == 0
+    first_call = recorded_calls[0]
+    assert "--cores=8" in first_call
+    assert "--cores" not in first_call
+
+
+def test_pipeline_rejects_preset_and_profile_together(
+    cli_runner, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    init_result = cli_runner.invoke(cli, ["pipeline-init"])
+    assert init_result.exit_code == 0
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "pipeline",
+            "run",
+            "--preset",
+            "local",
+            "--no-logo",
+            "--profile=custom-profile",
+            "-n",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Use either --preset or --profile" in result.output
 
 
 @pytest.mark.parametrize(
@@ -110,6 +849,67 @@ def test_genome_digest(cli_runner, data_pipeline, tmpdir, infile, flags):
     )
     assert result.exit_code == 0
     assert os.path.exists(outfile)
+
+
+def test_fastq_split_python(cli_runner, data_pipeline, tmpdir):
+    output_prefix = pathlib.Path(tmpdir) / "split" / "sample"
+    output_prefix.parent.mkdir()
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "fastq",
+            "split",
+            os.path.join(data_pipeline, "SAMPLE-A_REP1_1.fastq.gz"),
+            os.path.join(data_pipeline, "SAMPLE-A_REP1_2.fastq.gz"),
+            "-m",
+            "python",
+            "-o",
+            str(output_prefix),
+            "-n",
+            "1000000",
+            "--gzip",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert (output_prefix.parent / "sample_part0_1.fastq.gz").exists()
+    assert (output_prefix.parent / "sample_part0_2.fastq.gz").exists()
+
+
+def test_fastq_options_validate_paths_and_pairing(tmp_path):
+    fastq_1 = tmp_path / "reads_1.fastq.gz"
+    fastq_2 = tmp_path / "reads_2.fastq.gz"
+    fastq_1.touch()
+    fastq_2.touch()
+
+    split_options = FastqSplitOptions(
+        input_files=[fastq_1, fastq_2],
+        n_reads=10,
+        n_cores=2,
+        compression_level=6,
+    )
+    assert split_options.input_files == (fastq_1, fastq_2)
+
+    FastqDigestOptions(
+        fastqs=[fastq_1, fastq_2],
+        restriction_site="dpnii",
+        mode="pe",
+    )
+    FastqDeduplicationOptions(fastq_1=[fastq_1], fastq_2=[fastq_2])
+
+    with pytest.raises(ValueError, match="Input path"):
+        FastqSplitOptions(input_files=[tmp_path / "missing.fastq.gz"])
+
+    with pytest.raises(ValueError, match="Flashed mode requires exactly one"):
+        FastqDigestOptions(
+            fastqs=[fastq_1, fastq_2],
+            restriction_site="dpnii",
+            mode="flashed",
+        )
+
+    with pytest.raises(ValueError, match="same number"):
+        FastqDeduplicationOptions(fastq_1=[fastq_1], fastq_2=[fastq_1, fastq_2])
 
 
 @pytest.mark.parametrize(
@@ -408,16 +1208,47 @@ def test_reporters_count(
     assert os.path.exists(output)
 
 
+def test_reporters_count_fixture_matches_viewpoint_file(
+    data_reporters_count, data_pipeline
+):
+    reporters = os.path.join(
+        os.path.dirname(data_reporters_count),
+        "reporter_count",
+        "SAMPLE-A_REP1.parquet",
+    )
+    viewpoints = os.path.join(data_pipeline, "mm9_capture_viewpoints_Slc25A37.bed")
+    viewpoint_names = pd.read_csv(viewpoints, sep="\t", header=None)[3].to_list()
+
+    assert viewpoint_names == ["Slc25A37"]
+
+    for parquet_file in sorted(pathlib.Path(reporters).glob("*.parquet")):
+        reporter_viewpoints = pd.read_parquet(parquet_file, columns=["viewpoint"])[
+            "viewpoint"
+        ]
+        assert reporter_viewpoints.cat.categories.to_list() == viewpoint_names
+        assert reporter_viewpoints.value_counts(dropna=False).to_dict() == {
+            "Slc25A37": len(reporter_viewpoints)
+        }
+
+
 @pytest.mark.parametrize(
-    "cooler_fn,bin_size,output,flags",
+    "command,cooler_fn,bin_size,output,flags",
     [
-        ("SAMPLE-A_REP1.hdf5", int(1e5), "binned.hdf5", []),
+        ("bin", "SAMPLE-A_REP1.hdf5", int(1e5), "binned.hdf5", []),
+        (
+            "fragments-to-bins",
+            "SAMPLE-A_REP1.hdf5",
+            int(1e5),
+            "binned_legacy.hdf5",
+            [],
+        ),
     ],
 )
 def test_reporters_store_binned(
     cli_runner,
     data_reporters_store,
     tmpdir,
+    command,
     cooler_fn,
     bin_size,
     output,
@@ -430,7 +1261,7 @@ def test_reporters_store_binned(
         cli,
         [
             "interactions",
-            "fragments-to-bins",
+            command,
             clr,
             "-o",
             output,
@@ -441,6 +1272,92 @@ def test_reporters_store_binned(
     )
     assert result.exit_code == 0
     assert os.path.exists(output)
+
+
+def test_countable_reporters_only_include_bed_viewpoint_categories(tmp_path):
+    viewpoints = tmp_path / "viewpoints.bed"
+    reporters = tmp_path / "reporters.parquet"
+    output = tmp_path / "countable"
+
+    viewpoints.write_text("chr14\t69902454\t69903469\tSlc25A37\n")
+    pd.DataFrame(
+        {
+            "viewpoint": pd.Categorical(
+                ["Slc25A37", "Slc25A37", "Slc25A37", "None"],
+                categories=["Slc25A37", "reporters_pe_80", "duplicate_coords_1"],
+            ),
+            "parent_id": [1, 2, 3, 4],
+            "restriction_fragment": [10, 20, 30, 40],
+        }
+    ).to_parquet(reporters)
+
+    cleaned = write_countable_reporters(reporters, viewpoints, output)
+    cleaned_df = pl.read_parquet(cleaned).with_columns(
+        pl.col("viewpoint").cast(pl.Utf8)
+    )
+
+    assert cleaned_df["viewpoint"].to_list() == ["Slc25A37"] * 3 + [None]
+
+
+def test_countable_reporters_reject_actual_non_viewpoint_values(tmp_path):
+    viewpoints = tmp_path / "viewpoints.bed"
+    reporters = tmp_path / "reporters.parquet"
+    output = tmp_path / "countable"
+
+    viewpoints.write_text("chr14\t69902454\t69903469\tSlc25A37\n")
+    pd.DataFrame(
+        {
+            "viewpoint": ["Slc25A37", "reporters_pe_80"],
+            "parent_id": [1, 2],
+            "restriction_fragment": [10, 20],
+        }
+    ).to_parquet(reporters)
+
+    with pytest.raises(ValueError, match="reporters_pe_80"):
+        write_countable_reporters(reporters, viewpoints, output)
+
+
+def test_count_options_validate_paths_and_ranges(tmp_path):
+    reporters = tmp_path / "reporters.parquet"
+    viewpoints = tmp_path / "viewpoints.bed"
+    reporters.touch()
+    viewpoints.touch()
+
+    options = InteractionCountOptions(
+        reporters=reporters,
+        viewpoint_path=viewpoints,
+        output=tmp_path / "counts.hdf5",
+        n_cores=2,
+        subsample=0.25,
+    )
+
+    assert options.n_cores == 2
+    assert options.subsample == 0.25
+
+    with pytest.raises(ValueError, match="greater than or equal to 0"):
+        InteractionCountOptions(
+            reporters=reporters,
+            viewpoint_path=viewpoints,
+            subsample=-0.1,
+        )
+
+    with pytest.raises(ValueError, match="Input path does not exist"):
+        InteractionCountOptions(
+            reporters=tmp_path / "missing.parquet",
+            viewpoint_path=viewpoints,
+        )
+
+
+def test_countable_reporters_require_viewpoint_column(tmp_path):
+    viewpoints = tmp_path / "viewpoints.bed"
+    reporters = tmp_path / "reporters.parquet"
+    output = tmp_path / "countable"
+
+    viewpoints.write_text("chr14\t69902454\t69903469\tSlc25A37\n")
+    pd.DataFrame({"parent_id": [1]}).to_parquet(reporters)
+
+    with pytest.raises(ValueError, match="missing required column"):
+        write_countable_reporters(reporters, viewpoints, output)
 
 
 @pytest.mark.parametrize(
@@ -563,6 +1480,30 @@ def test_make_chicago_maps(cli_runner, tmpdir, fragments_file, viewpoints_file):
     baitmap_file = os.path.join(outputdir, "viewpoints.baitmap")
     assert os.path.exists(baitmap_file)
 
-    with open(baitmap_file, "r") as file:
+    with open(baitmap_file) as file:
         content = file.read()
         assert "chr1\t100\t200\tfragment1\tviewpoint" in content
+
+
+def test_cis_and_trans_stats_accepts_empty_parquet_directory(cli_runner, tmp_path):
+    slices = tmp_path / "empty_slices.parquet"
+    slices.mkdir()
+    output = tmp_path / "cis_and_trans.json"
+
+    result = cli_runner.invoke(
+        cli,
+        [
+            "utilities",
+            "cis-and-trans-stats",
+            str(slices),
+            "--assay",
+            "tiled",
+            "--sample-name",
+            "SAMPLE-A",
+            "-o",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert output.read_text() == '{"stats":[]}'

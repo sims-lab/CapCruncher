@@ -26,13 +26,15 @@ analysis:
     reporter_exclusion_zone: 1000
 
     # Path to design matrix describing the experimental design.
-    # This must have two columns: sample    condition
-    # e.g. sample   condition
-    #      SAMPLE1  DMSO
-    #      SAMPLE2  DMSO
-    # If this is not provided, pattern matching will be used to determine the experimental design.
-    # In this case ensure that your FASTQ file names follow the pattern: SAMPLE-NAME-WITH-CONDITION_REPLICATE_[12].fastq(.gz).
-    # (Optional)
+    # Required columns: sample (unique), condition (no dots allowed).
+    # Optional columns: replicate, contrast.
+    # e.g. sample         condition  replicate
+    #      DMSO_REP1      DMSO       1
+    #      DMSO_REP2      DMSO       2
+    #      TREATED_REP1   TREATED    1
+    # Without this file, comparisons and differential analysis are disabled.
+    # Generate from FASTQ names with: capcruncher pipeline design --output design.tsv
+    # (Optional — required for comparisons)
     design: "/ceph/home/a/asmith/software/CapCruncher/tests/data/data_for_pipeline_run/design_matrix.tsv"
 
     # Genomic window size(s) (use spaces to separate bin sizes) to use for binning restriction fragment interaction counts
@@ -51,18 +53,23 @@ analysis:
 
 genome:
 
+    # Stored genome profile (optional). Run `capcruncher genome list` to see available profiles.
+    # When set, the fields below are ignored unless explicitly overridden.
+    # Create profiles with: capcruncher genome add mm9
+    # profile: "mm9"
+
     # Name of genome. UCSC genome names are prefered. Custom names are accepted if chrom_sizes are provided
-    # (Required)
+    # (Required when not using a profile)
     name: "mm9"
 
     # Path to fasta file containing entire genome sequence separated by chromosome.
-    # (Required)
+    # (Required when not using a profile)
     fasta: "/ceph/home/a/asmith/software/CapCruncher/tests/data/data_for_pipeline_run/chr14.fa.gz"
 
     # Path to indicies for the specified aligner (default = bowtie2)
     # Note: Do not include .Number|rev.bt2
     # e.g. /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/Bowtie2Index/genome
-    # (Required)
+    # (Required when not using a profile)
     aligner_index: "/ceph/home/a/asmith/software/CapCruncher/tests/data/data_for_pipeline_run/chr14_bowtie2_indicies/bt2"
 
     # Path to chromosome sizes for genome.
@@ -124,6 +131,9 @@ hub:
 plot:
 
     # Determines if plots are created or not.
+    # CapCruncher writes PlotNado-compatible TOML templates alongside the generated plots.
+    # For advanced/customisable plots, edit those templates or use PlotNado directly:
+    # https://alsmith151.github.io/plotnado/
     create: True
 
     # Path to a bed file containing coordinates for regions to plot .
@@ -139,7 +149,7 @@ plot:
     # * n_rf_n_interactions - Normalised based on the number of cis interations and the number of restriction fragments per bin
     # * ice - Iterative correction and eigenvector decomposition (ICE) normalisation.
     # * icen_cis - ICE normalisation followed by correction for the number of cis interactions.
-    # * icen_scale - ICE normalisation followed by scaling 
+    # * icen_scale - ICE normalisation followed by scaling
     # (Required for plotting)
     normalisation: "n_interactions"
 

@@ -44,44 +44,24 @@ analysis:
         {%- for bin in genomic_bin_size %}
         - {{bin}}
         {%- endfor %}
-    
+
     # Determines if the pipeline will generate FASTQ files with the filtered reads. This is useful for running other pipelines
     # such as HiCUP or HiC-Pro or CHiCAGO.
     regenerate_fastq: "{{cookiecutter.regenerate_fastq}}"
 
 genome:
 
-    # Name of genome. UCSC genome names are prefered. Custom names are accepted if chrom_sizes are provided
-    # (Required)
+    # Stored genome profile (optional). Run `capcruncher genome list` to see available profiles.
+    # When set, paths below are ignored unless explicitly overridden.
+    profile: "{{cookiecutter.genome_profile}}"
+
+    # Required when not using a profile:
     name: "{{cookiecutter.genome}}"
-
-    # Path to fasta file containing entire genome sequence separated by chromosome.
-    # (Required)
     fasta: "{{cookiecutter.genome_fasta}}"
-
-    # Path to indicies for the specified aligner (default = bowtie2)
-    # Note: Do not include .Number|rev.bt2
-    # e.g. /databank/igenomes/Homo_sapiens/UCSC/hg19/Sequence/Bowtie2Index/genome
-    # (Required)
     aligner_index: "{{cookiecutter.genome_indicies}}"
-
-    # Path to chromosome sizes for genome.
-    # If blank will be determined automatically from the genome (must be a UCSC genome)
-    # This should be a two column tsv file with columns: chromosome_name    size
-    # FAI files can also be used.
-    # (Optional)
     chrom_sizes: "{{cookiecutter.genome_chromosome_sizes}}"
-
-    # Determines if this is a custom genome. Only needed for UCSC hub generation.
-    # (Optional)
-    custom: {%- if cookiecutter.is_custom_genome == "no" %} False {%- else %} True {%- endif %}
-
-    # Organism name e.g. Mus Musculus. Only needed for UCSC hub using a custom genome.
-    # (Optional)
+    custom: "{{cookiecutter.is_custom_genome}}"
     organism: "{{cookiecutter.genome_organism}}"
-
-    # Path to twobit file for genome. Only needed for UCSC hub using a custom genome.
-    # (Optional)
     twobit: "{{cookiecutter.genome_two_bit}}"
 
 hub:
@@ -105,17 +85,22 @@ hub:
     # (Required for hub)
     name: "{{cookiecutter.ucsc_hub_name}}"
 
-    # Short hub name
-    # (Optional for hub)
-    short: "{{cookiecutter.ucsc_hub_name}}"
-
-    # Long hub name
-    # (Optional for hub)
-    long: "{{cookiecutter.ucsc_hub_name}}"
-
     # Email address
     # (Required for hub)
     email: "{{cookiecutter.ucsc_hub_email}}"
+
+    # Track metadata column used to color hub tracks.
+    # Choose from sample, category, normalisation, viewpoint, aggregation, none.
+    # Legacy values samplename and method are accepted and normalised.
+    # (Optional)
+    color_by: "{{cookiecutter.ucsc_track_color_by}}"
+
+execution:
+
+    # Default container image for Snakemake container or Apptainer execution.
+    # Use docker:// URIs for the broadest runtime compatibility.
+    # (Optional)
+    container_image: docker://ghcr.io/sims-lab/capcruncher:latest
 
 ###################################
 # Optional configuration options #
@@ -124,7 +109,10 @@ hub:
 plot:
 
     # Determines if plots are created or not.
-    create: {%- if cookiecutter.make_plots == "no" %} False {%- else %} True {%- endif %}
+    # CapCruncher writes PlotNado-compatible TOML templates alongside the generated plots.
+    # For advanced/customisable plots, edit those templates or use PlotNado directly:
+    # https://alsmith151.github.io/plotnado/
+    create: "{{cookiecutter.make_plots}}"
 
     # Path to a bed file containing coordinates for regions to plot .
     # Must be named and the interval name must contain the viewpoint to be plotted.
@@ -139,13 +127,13 @@ plot:
     # * n_rf_n_interactions - Normalised based on the number of cis interations and the number of restriction fragments per bin
     # * ice - Iterative correction and eigenvector decomposition (ICE) normalisation.
     # * icen_cis - ICE normalisation followed by correction for the number of cis interactions.
-    # * icen_scale - ICE normalisation followed by scaling 
+    # * icen_scale - ICE normalisation followed by scaling
     # (Required for plotting)
     normalisation: "{{cookiecutter.plotting_normalisation}}"
 
     # Plot genes using a bed12 formatted file (capcruncher utilities gtf_to_bed12 can be used to generate this).
     # (Optional)
-    genes: PATH_TO_GENES_IN_BED12_FORMAT
+    genes: "{{cookiecutter.plotting_genes}}"
 
 
 align:
@@ -164,12 +152,8 @@ align:
 
 analysis_optional:
 
-    # Path to a YAML file containing the filter order to be applied to slices.
-    # See https://github.com/sims-lab/CapCruncher/blob/master/capcruncher/data/test/ccslicefilter_test.yml
-    # for an example and the filter module of the documentation
-    # https://capcruncher.readthedocs.io/en/latest/capcruncher_module_documentation/capcruncher.tools.html#capcruncher-tools-filter-module
-    # for further details.
-    custom_filtering: PATH_TO_CUSTOM_FILTERING_CONFIG
+    # Path to a TOML file containing the filter profile to apply to slices.
+    filter_profile: PATH_TO_FILTER_PROFILE_TOML
 
     # Path to blacklisted regions bed file. Must be a four column named bed file.
     # Can supply any regions to be removed.
@@ -178,7 +162,7 @@ analysis_optional:
 
     # Attempts to prevent cis slices from being removed during annotation
     # (Optional)
-    prioritize_cis_slices: {%- if cookiecutter.is_custom_genome == "no" %} False {%- else %} True {%- endif %}
+    prioritize_cis_slices: "no"
 
     # Attempts to prevent slices on specified chromosomes being removed during annotation
     # Choose from:

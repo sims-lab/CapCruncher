@@ -1,14 +1,16 @@
-from pydantic import BaseModel, computed_field
-from typing import List, Optional, Union, Dict, TypeVar, Generic
-import pathlib
 import pandas as pd
-from enum import Enum, IntEnum
-from typing import Literal
+from pydantic import BaseModel, computed_field, field_validator
+
+from capcruncher.types import CisOrTrans, ReadType
 
 
-class ReadType(Enum):
-    flashed: str = "flashed"
-    pe: str = "unflashed"
+def _normalise_read_type(value: str | ReadType) -> ReadType:
+    if isinstance(value, ReadType):
+        return value
+    normalised = value.lower()
+    if normalised == "unflashed":
+        normalised = ReadType.PE
+    return ReadType(normalised)
 
 
 class FastqDeduplicationStatistics(BaseModel):
@@ -33,7 +35,7 @@ class FastqTrimmingStatistics(BaseModel):
     """Statistics for Fastq trimming"""
 
     sample: str = "unknown_sample"
-    read_number: Union[int, float]
+    read_number: int | float
     reads_input: int
     reads_output: int
     reads_with_adapter_identified: int
@@ -58,9 +60,10 @@ class FastqTrimmingStatistics(BaseModel):
             reads_with_adapter_identified=entry["r_with_adapters"],
         )
 
-    def __add__(self, other: "FastqTrimmingStatistics"):
+    def __add__(self, other: "FastqTrimmingStatistics") -> "FastqTrimmingStatistics":
         return FastqTrimmingStatistics(
             sample=self.sample,
+            read_number=self.read_number,
             reads_input=self.reads_input + other.reads_input,
             reads_output=self.reads_output + other.reads_output,
             reads_with_adapter_identified=self.reads_with_adapter_identified
@@ -68,14 +71,11 @@ class FastqTrimmingStatistics(BaseModel):
         )
 
 
-V = TypeVar('V')
-
-
 class SliceNumberStats(BaseModel):
     unfiltered: int
     filtered: int
 
-    def __add__(self, other: "SliceNumberStats"):
+    def __add__(self, other: "SliceNumberStats") -> "SliceNumberStats":
         return SliceNumberStats(
             unfiltered=self.unfiltered + other.unfiltered,
             filtered=self.filtered + other.filtered,
@@ -84,18 +84,18 @@ class SliceNumberStats(BaseModel):
 
 class Histogram(BaseModel):
     name: str
-    hist: Dict[int, int]
+    hist: dict[int, int]
 
     def to_dataframe(
-        self, name: Optional[str] = "value", read_number: Optional[str] = None
-    ):
+        self, name: str = "value", read_number: str | None = None
+    ) -> pd.DataFrame:
         return (
             pd.DataFrame(self.hist.items(), columns=[name, "count"])
             .assign(**{"read_number": read_number})
             .sort_values(by=["count", name])
         )
 
-    def __add__(self, other: "Histogram"):
+    def __add__(self, other: "Histogram") -> "Histogram":
         return Histogram(
             name=self.name,
             hist={
@@ -105,45 +105,63 @@ class Histogram(BaseModel):
         )
 
 
-class ReadPairStat(BaseModel, Generic[V]):
-    read1: Union[Histogram, SliceNumberStats, int]
-    read2: Optional[Union[Histogram, SliceNumberStats, int]] = None
+class ReadPairStat[V](BaseModel):
+    read1: Histogram | SliceNumberStats | int
+    read2: Histogram | SliceNumberStats | int | None = None
 
     def to_dataframe(self) -> pd.DataFrame:
+        if not isinstance(self.read1, Histogram):
+            raise TypeError(
+                "Only histogram read pair stats can be converted to a dataframe."
+            )
+
         frames = []
         frames.append(
             self.read1.to_dataframe(read_number="read1", name=self.read1.name)
         )
         if self.read2 is not None:
+            if not isinstance(self.read2, Histogram):
+                raise TypeError(
+                    "Only histogram read pair stats can be converted to a dataframe."
+                )
             frames.append(
                 self.read2.to_dataframe(read_number="read2", name=self.read2.name)
             )
 
         return pd.concat(frames)
 
+    @staticmethod
+    def _add_values(
+        left: Histogram | SliceNumberStats | int,
+        right: Histogram | SliceNumberStats | int,
+    ) -> Histogram | SliceNumberStats | int:
+        if isinstance(left, Histogram) and isinstance(right, Histogram):
+            return left + right
+        if isinstance(left, SliceNumberStats) and isinstance(right, SliceNumberStats):
+            return left + right
+        if isinstance(left, int) and isinstance(right, int):
+            return left + right
+        raise TypeError(f"Cannot add {type(left)!r} and {type(right)!r}")
+
     def __add__(
         self,
-        other: Union[
-            'ReadPairStat[int]',
-            'ReadPairStat[Histogram]',
-            'ReadPairStat[SliceNumberStats]',
-        ],
-    ):
-        read_1 = self.read1 + other.read1
-        read_2 = self.read2 + other.read2 if self.read2 is not None else None
+        other: "ReadPairStat[int] | ReadPairStat[Histogram] | ReadPairStat[SliceNumberStats]",
+    ) -> "ReadPairStat":
+        read_1 = self._add_values(self.read1, other.read1)
+        read_2 = (
+            self._add_values(self.read2, other.read2)
+            if self.read2 is not None and other.read2 is not None
+            else None
+        )
 
-        instance_type = type(self.read1)
-
-        rps = ReadPairStat[instance_type](read1=read_1, read2=read_2)
-
-        return rps
+        return ReadPairStat(read1=read_1, read2=read_2)
 
 
 class DigestionReadPairStats(BaseModel):
     unfiltered: ReadPairStat[int]
     filtered: ReadPairStat[int]
 
-    def __add__(self, other: "DigestionReadPairStats"):
+    def __add__(self, other: "DigestionReadPairStats") -> "DigestionReadPairStats":
         return DigestionReadPairStats(
             unfiltered=self.unfiltered + other.unfiltered,
             filtered=self.filtered + other.filtered,
@@ -155,7 +173,7 @@ class DigestionHistograms(BaseModel):
     filtered: ReadPairStat[Histogram]
     lengths: ReadPairStat[Histogram]
 
-    def __add__(self, other):
+    def __add__(self, other: "DigestionHistograms") -> "DigestionHistograms":
         return DigestionHistograms(
             unfiltered=self.unfiltered + other.unfiltered,
             filtered=self.filtered + other.filtered,
@@ -165,12 +183,17 @@ class DigestionHistograms(BaseModel):
 
 class DigestionStats(BaseModel):
     sample: str
-    read_type: str
+    read_type: ReadType
     read_stats: DigestionReadPairStats
     slice_stats: SliceNumberStats
     histograms: DigestionHistograms
 
-    def __add__(self, other) -> 'DigestionStats':
+    @field_validator("read_type", mode="before")
+    @classmethod
+    def validate_read_type(cls, value: str | ReadType) -> ReadType:
+        return _normalise_read_type(value)
+
+    def __add__(self, other: "DigestionStats") -> "DigestionStats":
         return DigestionStats(
             sample=self.sample,
             read_type=self.read_type,
@@ -192,15 +215,15 @@ class FlashStats(BaseModel):
 
     @computed_field
     @property
-    def percentage_combined(self) -> int:
+    def percentage_combined(self) -> float:
         return self.n_combined / self.n_total * 100
 
 
 class FlashOverallStats(BaseModel):
-    samples: List[FlashStats]
+    samples: list[FlashStats]
 
     @classmethod
-    def from_multiqc(cls, multiqc_data: Union[str, pd.DataFrame]):
+    def from_multiqc(cls, multiqc_data: str | pd.DataFrame) -> "FlashOverallStats":
         if isinstance(multiqc_data, str):
             multiqc_data = pd.read_csv(multiqc_data, sep="\t")
 
@@ -229,12 +252,17 @@ class SliceFilterStats(BaseModel):
     stage: str
     n_fragments: int
     n_slices: int
-    read_type: str
+    read_type: ReadType | str
+
+    @field_validator("read_type", mode="before")
+    @classmethod
+    def validate_read_type(cls, value: str | ReadType) -> ReadType:
+        return _normalise_read_type(value)
 
     @classmethod
     def from_slice_stats_dataframe(
-        cls, df: pd.DataFrame, stage: str, sample: str, read_type: str
-    ):
+        cls, df: pd.DataFrame, stage: str, sample: str, read_type: ReadType | str
+    ) -> "SliceFilterStats":
         return cls(
             sample=sample,
             stage=stage,
@@ -245,56 +273,65 @@ class SliceFilterStats(BaseModel):
 
 
 class SliceFilterStatsList(BaseModel):
-    stats: List[SliceFilterStats]
+    stats: list[SliceFilterStats]
 
     @classmethod
-    def from_list(cls, stats: List[SliceFilterStats]):
+    def from_list(cls, stats: list[SliceFilterStats]) -> "SliceFilterStatsList":
         return cls(stats=stats)
-    
-    
+
+
 class AlignmentDeduplicationStats(BaseModel):
     sample: str
-    read_type: str
+    read_type: ReadType
     n_total_reads: int
     n_unique_reads: int
     n_total_slices: int
     n_unique_slices: int
-    
+
+    @field_validator("read_type", mode="before")
+    @classmethod
+    def validate_read_type(cls, value: str | ReadType) -> ReadType:
+        return _normalise_read_type(value)
+
     @computed_field
     @property
     def percentage_unique_reads(self) -> float:
         return self.n_unique_reads / self.n_total_reads * 100
-    
+
     @computed_field
     @property
     def n_duplicate_reads(self) -> int:
         return self.n_total_reads - self.n_unique_reads
-    
+
     @computed_field
     @property
     def percentage_duplicate_slices(self) -> float:
         return self.n_duplicate_slices / self.n_total_slices * 100
-    
+
     @computed_field
     @property
     def n_duplicate_slices(self) -> int:
         return self.n_total_slices - self.n_unique_slices
-    
 
 
 class CisOrTransStat(BaseModel):
     sample: str
-    read_type: str
+    read_type: ReadType
     viewpoint: str
-    cis_or_trans: Literal["cis", "trans"]
+    cis_or_trans: CisOrTrans
     count: int
+
+    @field_validator("read_type", mode="before")
+    @classmethod
+    def validate_read_type(cls, value: str | ReadType) -> ReadType:
+        return _normalise_read_type(value)
 
 
 class CisOrTransStats(BaseModel):
-    stats: List[CisOrTransStat]
+    stats: list[CisOrTransStat]
 
     @classmethod
-    def from_dataframe(cls, df: pd.DataFrame):
+    def from_dataframe(cls, df: pd.DataFrame) -> "CisOrTransStats":
         stats = []
         for row in df.itertuples():
             stats.append(

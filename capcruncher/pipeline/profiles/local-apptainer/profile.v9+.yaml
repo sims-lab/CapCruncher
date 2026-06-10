@@ -1,0 +1,7 @@
+executor: local
+software-deployment-method:
+  - apptainer
+apptainer-args: --cleanenv
+rerun-incomplete: true
+retries: 3
+show-failed-logs: true

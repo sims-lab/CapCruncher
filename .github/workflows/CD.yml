@@ -1,31 +1,152 @@
-name: CapCruncher CD
+name: Publish Python Package
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the built distributions to PyPI.
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  deploy:
-
+  source:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.10'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build
-    - name: Build package
-      run: python -m build
-    - name: Publish package
-      uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-suffix: release-source
+          python-version: "3.12"
+
+      - name: Build source distribution
+        run: uv build --sdist
+
+      - name: Check distribution metadata
+        run: uvx twine check --strict dist/*
+
+      - name: Upload source distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: capcruncher-sdist
+          path: dist/*
+          if-no-files-found: error
+
+  wheels:
+    name: Build wheel (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: universal
+            os: ubuntu-latest
+            artifact: capcruncher-wheel-any
+            plat_name: ""
+          - name: macos-x86_64
+            os: macos-13
+            artifact: capcruncher-wheel-macos-x86_64
+            plat_name: macosx_10_15_x86_64
+          - name: macos-arm64
+            os: macos-14
+            artifact: capcruncher-wheel-macos-arm64
+            plat_name: macosx_11_0_arm64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-suffix: release-wheel-${{ matrix.name }}
+          python-version: "3.12"
+
+      - name: Build universal wheel
+        if: matrix.plat_name == ''
+        run: uv build --wheel
+
+      - name: Build macOS wheel
+        if: matrix.plat_name != ''
+        run: >
+          uv build --wheel
+          -C--build-option=--python-tag
+          -C--build-option=py3
+          -C--build-option=--plat-name
+          -C--build-option=${{ matrix.plat_name }}
+
+      - name: Check wheel metadata
+        run: uvx twine check --strict dist/*
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+  publish:
+    needs: [source, wheels]
+    if: github.event_name == 'release' || github.event.inputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: pypi
+
+    steps:
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-suffix: release-publish
+
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: capcruncher-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish distributions to PyPI
+        run: uv publish --trusted-publishing always dist/*
+
+  verify-pypi:
+    name: Verify PyPI publish
+    needs: publish
+    if: github.event_name == 'release' || github.event.inputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Wait for PyPI propagation
+        run: sleep 60
+
+      - name: Install published package and verify
+        env:
+          REF: ${{ github.ref_name }}
+        run: |
+          VERSION="${REF#v}"
+          uv pip install --system "capcruncher==${VERSION}"
+          capcruncher --version
+          capcruncher --help

@@ -7,17 +7,28 @@ rule fastqc:
     input:
         "capcruncher_output/interim/fastq/{sample}_{read}.fastq.gz",
     output:
-        html="capcruncher_output/interim/qc/fastqc/{sample}_{read}.html",
-        zip="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.zip",  # the suffix _fastqc.zip is necessary for multiqc to find the file. If not using multiqc, you are free to choose an arbitrary filename
-    params:
-        extra="--quiet",
+        html="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
+        zip="capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.zip",
     log:
         "capcruncher_output/logs/fastqc/{sample}_{read}.log",
     threads: 1
     resources:
-        mem_mb=1024,
-    script:
-        "../scripts/fastqc_wrapper.py"
+        mem=lambda wildcards, attempt: scale_memory(1, attempt),
+    params:
+        extra="--quiet",
+        outdir=lambda wc, output: pathlib.Path(output.html).parent,
+        memory=1024,
+    shell:
+        """
+        mkdir -p {params.outdir} \
+            && fastqc \
+                --threads {threads} \
+                --memory {params.memory} \
+                {params.extra} \
+                --outdir {params.outdir} \
+                {input} \
+                >{log} 2>&1
+        """
 
 
 rule samtools_stats:
@@ -26,17 +37,21 @@ rule samtools_stats:
         bai="capcruncher_output/results/{sample}/{sample}.bam.bai",
     output:
         stats=temp("capcruncher_output/interim/qc/alignment_raw/{sample}.txt"),
+    log:
+        "capcruncher_output/logs/samtools_stats/{sample}.log",
     threads: 1
     resources:
-        mem_mb=1000,
+        mem=lambda wildcards, attempt: scale_memory(1, attempt),
     shell:
-        """samtools stats {input.bam} > {output.stats}"""
+        """
+        samtools stats {input.bam} >{output.stats} 2>{log}
+        """
 
 
 rule multiqc_report:
     input:
         expand(
-            "capcruncher_output/interim/qc/fastqc/{sample}_{read}.html",
+            "capcruncher_output/interim/qc/fastqc/{sample}_{read}_fastqc.html",
             sample=SAMPLE_NAMES,
             read=[1, 2],
         ),
@@ -48,11 +63,11 @@ rule multiqc_report:
         "capcruncher_output/results/full_qc_report.html",
     log:
         "capcruncher_output/logs/multiqc.log",
+    resources:
+        mem=lambda wildcards, attempt: scale_memory(1, attempt),
     params:
         outdir=lambda wc, output: str(pathlib.Path(output[0]).parent),
-        dir_analysis="capcruncher_output/interim/qc",
-    resources:
-        mem_mb=1000,
+        dir_analysis=lambda wc, input: str(pathlib.Path(input[0]).parents[1]),
     shell:
         "multiqc -o {params.outdir} {params.dir_analysis} -n full_qc_report.html --force > {log} 2>&1"
 

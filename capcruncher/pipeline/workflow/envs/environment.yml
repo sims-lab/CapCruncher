@@ -4,32 +4,29 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python>=3.8
+  - python>=3.12
   - pip
   - pip:
-    - wget
-    - lanceotron
-    - git+https://github.com/alsmith151/ucsc_hub_maker.git
+    - plotnado[toml]>=0.3,<0.4
+    - tracknado>=0.3.1,<0.4.0
+    - capcruncher-tools>=0.2.4,<0.3.0
+    - polars>=1.39.0,<1.42.0
+    - pyarrow>=24.0.0,<25.0.0
+    - pyranges1>=1.3,<2
+    - plotly>=6,<7.0.0
+    - typer>=0.26.0,<0.27.0
   - bowtie2
+  - coreutils
   - samtools>1.7
-  - deeptools
   - trim-galore
   - fastqc
+  - flash2
   - multiqc
-  - trackhub
-  - seaborn
+  - pigz
   - click
-  - cookiecutter
-  - ucsc-bigbedtobed
-  - pybigwig
-  - picard-slim
-  - macs2
-  - ucsc-fetchchromsizes
   - ucsc-bedtobigbed
   - ucsc-bedgraphtobigwig
-  - homer
-  - pybedtools
-  - snakemake
-  - subread
-  - star
-  - numpy>=1.19
+  - snakemake>=9.21.0,<10.0.0
+  - numpy>=2.4.6,<3.0.0
+  - pandas>=2.2.3,<3.0.0
+  - pyyaml

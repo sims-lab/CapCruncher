@@ -1,35 +1,100 @@
 name: Build Docs
+
 on:
   push:
     branches:
       - master
       - main
       - docs
+  pull_request:
+    branches:
+      - develop
+      - master
+      - main
+  workflow_dispatch:
+
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash -el {0}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.10"
-      - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
-      - uses: actions/cache@v3
+          enable-cache: true
+          cache-suffix: docs-build
+          python-version: "3.12"
+
+      - uses: actions/cache@v4
         with:
-          key: mkdocs-material-${{ env.cache_id }}
+          key: mkdocs-${{ runner.os }}-${{ hashFiles('mkdocs.yml', 'docs/**') }}
           path: .cache
           restore-keys: |
-            mkdocs-material-
+            mkdocs-${{ runner.os }}-
+
       - name: Install OS dependencies
-        shell: bash -el {0}
         run: |
           sudo apt update
           sudo apt install -y gcc git cmake make libtool g++ perl coreutils libcurl4-openssl-dev
-      - name: Install the package
-        shell: bash -el {0}
+
+      - name: Install package and docs tooling
+        run: uv sync --group docs --extra full
+
+      - name: Build docs
+        run: uv run mkdocs build
+
+      - name: Upload docs site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: capcruncher-docs-site
+          path: site
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-suffix: docs-deploy
+          python-version: "3.12"
+
+      - name: Install OS dependencies
         run: |
-          pip install .[full]
-      - run: pip install mkdocs-material mkdocstrings-python mkdocs-click pygments mkdocs-gen-files mkdocs-jupyter mkdocs-autorefs mkdocs-literate-nav mkdocs-section-index
-      - run: mkdocs gh-deploy --force
+          sudo apt update
+          sudo apt install -y gcc git cmake make libtool g++ perl coreutils libcurl4-openssl-dev
+
+      - name: Install package and docs tooling
+        run: uv sync --group docs --extra full
+
+      - name: Download docs site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: capcruncher-docs-site
+          path: site
+
+      - name: Deploy docs to GitHub Pages
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          uv run mkdocs gh-deploy --force --dirty
