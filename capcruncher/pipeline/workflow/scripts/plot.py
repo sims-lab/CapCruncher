@@ -166,6 +166,7 @@ def save_figure(fig, *, output_fig, output_template, coordinates):
 
 
 def main(snakemake):
+    logger.remove()
     logger.add(snakemake.log[0], format="{time} {level} {message}", level="INFO")
 
     with logger.catch():
