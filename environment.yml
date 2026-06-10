@@ -6,53 +6,53 @@ channels:
 dependencies:
   - python>=3.12,<3.14
   - bedtools>=2.31,<3
+  - biopython>=1.83,<2
   - bowtie2>=2.5,<3
+  - capcruncher-tools>=0.2.4,<0.3.0
+  - click>=8,<9
+  - cookiecutter<=2.1.1
+  - cooler>=0.10,<1
   - coreutils
   - fastqc>=0.12,<1
   - flash2
+  - h5py
+  - joblib>=1,<2
+  - loguru>=0.7,<1
+  - matplotlib>=3.10.9
+  - multiqc
+  - numpy>=2.4,<3
+  - pandas>=2.2,<3.0
+  - pandera>=0.31,<1
   - pigz>=2,<3
+  - plotly>=6,<7
+  - plotnado>=0.3,<0.4
+  - polars>=1.39,<1.42
+  - pyarrow>=24,<25
   - pybigtools
+  - pydeseq2>=0.5.4,<0.6
+  - pydantic>=2,<3
+  - pyranges1>=1.3,<2
   - pysam>=0.23,<1
+  - pyyaml>=6,<7
   - samtools>=1.6,<2
+  - snakemake>=9.21,<10
+  - snakemake-executor-plugin-cluster-generic
+  - snakemake-executor-plugin-drmaa
+  - snakemake-executor-plugin-lsf
+  - snakemake-executor-plugin-slurm
+  - snakemake-storage-plugin-ftp
+  - snakemake-storage-plugin-gcs
+  - snakemake-storage-plugin-http
+  - snakemake-storage-plugin-s3
+  - tomli-w
+  - tracknado>=0.3.1,<0.4.0
+  - tqdm>=4,<5
   - trim-galore>=0.6,<1
+  - typer>=0.16,<1
   - ucsc-bedgraphtobigwig>=482
   - ucsc-bedtobigbed>=482
+  - xopen
+  - xxhash>=3,<4
   - pip
   - pip:
-      - biopython>=1.83,<2
-      - click>=8,<9
-      - "cookiecutter<=2.1.1"
-      - cooler>=0.10,<1
-      - h5py
-      - joblib>=1,<2
-      - loguru>=0.7,<1
-      - matplotlib>=3.10.9
-      - multiqc
-      - numpy>=2.4,<3
-      - pandas>=2.2,<3.0
-      - pandera>=0.31,<1
-      - plotly>=6,<7
-      - polars>=1.39,<1.42
-      - pyarrow>=24,<25
-      - pydeseq2>=0.5.4,<0.6
-      - pydantic>=2,<3
-      - pyranges1>=1.3,<2
-      - pyyaml>=6,<7
-      - snakemake>=9.21,<10
-      - snakemake-executor-plugin-slurm
-      - snakemake-executor-plugin-cluster-generic
-      - snakemake-executor-plugin-lsf
       - snakemake-executor-plugin-flux
-      - snakemake-executor-plugin-drmaa
-      - snakemake-storage-plugin-s3
-      - snakemake-storage-plugin-gcs
-      - snakemake-storage-plugin-http
-      - snakemake-storage-plugin-ftp
-      - tomli-w
-      - tqdm>=4,<5
-      - typer>=0.16,<1
-      - xopen
-      - xxhash>=3,<4
-      - capcruncher-tools>=0.2.4,<0.3.0
-      - plotnado[toml]>=0.3,<0.4
-      - tracknado>=0.3.1,<0.4.0
