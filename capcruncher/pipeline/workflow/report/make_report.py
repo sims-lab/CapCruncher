@@ -5,12 +5,20 @@ from collections.abc import Iterable
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+from loguru import logger
 import yaml
 
 REPORT_TITLE = "CapCruncher Run Report"
+MAX_CHART_HEIGHT = 800
+MANY_SAMPLES_THRESHOLD = 20
+LOW_READS_THRESHOLD = 50
+
 COLORWAY = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9"]
 READ_TYPE_COLORS = ["#0072B2", "#E69F00"]
 DEDUP_COLORS = ["#009E73", "#6C757D"]
+CIS_TRANS_COLORS = ["#0072B2", "#E69F00"]
+
 COMMON_LABELS = {
     "count": "Count",
     "filter_status": "Digestion Status",
@@ -24,16 +32,32 @@ COMMON_LABELS = {
     "stage_label": "Stage",
     "viewpoint": "Viewpoint",
     "cis_or_trans": "Reporter Type",
+    "pct_of_start": "% of Pre-filtering Reads",
+    "capture_efficiency": "Capture Efficiency (%)",
+    "cis_ratio": "Cis (%)",
+    "percentage_religation": "Re-ligation (%)",
+    "n_total_reporters": "Total Reporters",
+    "n_religation": "Re-ligations",
+    "distance_bin": "Cis Distance",
+    "distance_count": "Reporters",
 }
 STAGE_LABELS = {
     "pre-filtering": "Pre-filtering",
     "mapped": "Mapped",
     "contains_single_capture": "Contains One Viewpoint",
+    "contains_capture": "Contains Capture",
     "contains_capture_and_reporter": "Contains Viewpoint and Reporter",
     "duplicate_filtered": "Partial PCR Duplicate Removal",
     "final_duplicate_removal": "Final PCR Duplicate Removal",
+    "has_reporter": "Has Reporter",
+    "not_blacklisted": "Not Blacklisted",
+    "tric_reporter": "Tri-C Reporter",
 }
 
+
+# ---------------------------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------------------------
 
 def load_json(path: str | pathlib.Path):
     with pathlib.Path(path).open() as handle:
@@ -126,7 +150,7 @@ def polish_figure(
             "x": 0,
             "title_text": "",
         },
-        margin={"l": 150, "r": 36, "t": 78, "b": 96},
+        margin={"l": 80, "r": 36, "t": 78, "b": 96},
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
     )
@@ -178,6 +202,28 @@ def figure_range_max(series: pd.Series) -> int | float:
         return 1
     return maximum + maximum * 0.1
 
+
+def strip_animation_controls(fig):
+    fig.update_layout(updatemenus=[])
+    if fig.layout.sliders:
+        # Hide the redundant "Sample: XYZ" overlay that overlaps the plot area
+        fig.layout.sliders[0].currentvalue = {"visible": False}
+        fig.layout.sliders[0].pad = {"r": 10, "b": 10, "t": 40}
+        fig.layout.sliders[0].x = 0
+        fig.layout.sliders[0].len = 1
+
+
+def section(title: str, body: str) -> dict[str, str]:
+    return {"title": title, "body": body}
+
+
+def _chart_height(n_items: int, per_item: int = 40, minimum: int = 300) -> int:
+    return min(MAX_CHART_HEIGHT, max(minimum, per_item * n_items))
+
+
+# ---------------------------------------------------------------------------
+# Data loaders
+# ---------------------------------------------------------------------------
 
 def load_fastq_deduplication(paths: Iterable[str | pathlib.Path]) -> pd.DataFrame:
     df = pd.DataFrame([load_json(path) for path in paths])
@@ -331,45 +377,225 @@ def load_cis_trans(paths: Iterable[str | pathlib.Path]) -> pd.DataFrame:
     )
 
 
-def build_report(
-    output: str | pathlib.Path,
-    fastq_deduplication_paths: Iterable[str | pathlib.Path],
-    fastq_trimming_path: str | pathlib.Path,
-    fastq_flash_path: str | pathlib.Path,
-    fastq_digestion_paths: Iterable[str | pathlib.Path],
-    reporter_filtering_paths: Iterable[str | pathlib.Path],
-    reporter_deduplication_paths: Iterable[str | pathlib.Path],
-    reporter_cis_trans_paths: Iterable[str | pathlib.Path],
-):
-    df_dedup = load_fastq_deduplication(
-        require_paths(fastq_deduplication_paths, "FASTQ deduplication")
+def load_religation(paths: Iterable[str | pathlib.Path]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load re-ligation and cis-distance stats produced by count_religation.py."""
+    religation_rows = []
+    distance_rows = []
+    for path in paths:
+        data = load_json(path)
+        religation_rows.extend(data.get("religation", []))
+        distance_rows.extend(data.get("cis_distances", []))
+    df_religation = pd.DataFrame(religation_rows) if religation_rows else pd.DataFrame()
+    df_distances = pd.DataFrame(distance_rows) if distance_rows else pd.DataFrame()
+    return df_religation, df_distances
+
+
+# ---------------------------------------------------------------------------
+# Derived metric helpers
+# ---------------------------------------------------------------------------
+
+def _pct_retained(df_filter: pd.DataFrame) -> pd.DataFrame:
+    """Add pct_of_start column: fragments at each stage / pre-filtering fragments."""
+    pre = (
+        df_filter[df_filter["stage"] == "pre-filtering"]
+        .groupby(["sample", "read_type"])["n_fragments"]
+        .sum()
+        .reset_index()
+        .rename(columns={"n_fragments": "_pre"})
     )
-    df_trim = load_fastq_trimming(fastq_trimming_path)
-    df_flash = load_fastq_flash(fastq_flash_path)
-    df_digestion, df_lengths = load_digestion(
-        require_paths(fastq_digestion_paths, "FASTQ digestion")
-    )
-    df_filter = load_filtering(
-        require_paths(reporter_filtering_paths, "reporter filtering"),
-        require_paths(reporter_deduplication_paths, "reporter deduplication"),
-    )
-    df_cis_trans = load_cis_trans(
-        require_paths(reporter_cis_trans_paths, "cis/trans reporter")
+    return df_filter.merge(pre, on=["sample", "read_type"], how="left").assign(
+        pct_of_start=lambda df: (df["n_fragments"] / df["_pre"] * 100).round(1)
+    ).drop(columns=["_pre"])
+
+
+def make_scorecard(
+    df_dedup_summary: pd.DataFrame,
+    df_filter: pd.DataFrame,
+    df_cis_trans: pd.DataFrame,
+) -> pd.DataFrame:
+    """Build per-sample run summary scorecard table."""
+    card = df_dedup_summary[["sample", "total", "percentage"]].copy().rename(
+        columns={"total": "Total Reads", "percentage": "Duplication %"}
     )
 
-    sections = make_sections(
-        df_dedup=df_dedup,
-        df_trim=df_trim,
-        df_flash=df_flash,
-        df_digestion=df_digestion,
-        df_lengths=df_lengths,
-        df_filter=df_filter,
-        df_cis_trans=df_cis_trans,
+    # Alignment rate: mapped / pre-filtering at fragment level
+    pre = (
+        df_filter[df_filter["stage"] == "pre-filtering"]
+        .groupby("sample")["n_fragments"].sum().reset_index()
+        .rename(columns={"n_fragments": "_pre"})
+    )
+    mapped = (
+        df_filter[df_filter["stage"] == "mapped"]
+        .groupby("sample")["n_fragments"].sum().reset_index()
+        .rename(columns={"n_fragments": "_mapped"})
+    )
+    if not mapped.empty:
+        aln = pre.merge(mapped, on="sample", how="left")
+        aln["Alignment %"] = (aln["_mapped"] / aln["_pre"] * 100).round(1)
+        card = card.merge(aln[["sample", "Alignment %"]], on="sample", how="left")
+
+    # Capture efficiency
+    cap_stages = ["contains_single_capture", "contains_capture"]
+    captured = (
+        df_filter[df_filter["stage"].isin(cap_stages)]
+        .groupby("sample")["n_fragments"].sum().reset_index()
+        .rename(columns={"n_fragments": "_captured"})
+    )
+    if not captured.empty:
+        eff = pre.merge(captured, on="sample", how="left")
+        eff["Capture Efficiency %"] = (eff["_captured"] / eff["_pre"] * 100).round(1)
+        card = card.merge(eff[["sample", "Capture Efficiency %"]], on="sample", how="left")
+
+    # Viewpoints detected
+    vp = (
+        df_cis_trans[df_cis_trans["count"] > 0]
+        .groupby("sample")["viewpoint"].nunique().reset_index()
+        .rename(columns={"viewpoint": "Viewpoints Detected"})
+    )
+    card = card.merge(vp, on="sample", how="left")
+
+    # Overall cis %
+    totals = df_cis_trans.groupby(["sample", "cis_or_trans"])["count"].sum().unstack(fill_value=0).reset_index()
+    if "Cis" in totals.columns and "Trans" in totals.columns:
+        totals["Overall Cis %"] = (totals["Cis"] / (totals["Cis"] + totals["Trans"]) * 100).round(1)
+        card = card.merge(totals[["sample", "Overall Cis %"]], on="sample", how="left")
+
+    return card.rename(columns={"sample": "Sample"}).round(2)
+
+
+def make_capture_efficiency(df_filter: pd.DataFrame) -> pd.DataFrame:
+    cap_stages = ["contains_single_capture", "contains_capture"]
+    pre = (
+        df_filter[df_filter["stage"] == "pre-filtering"]
+        .groupby(["sample", "read_type"])["n_fragments"].sum().reset_index()
+        .rename(columns={"n_fragments": "Total Fragments"})
+    )
+    cap = (
+        df_filter[df_filter["stage"].isin(cap_stages)]
+        .groupby(["sample", "read_type"])["n_fragments"].sum().reset_index()
+        .rename(columns={"n_fragments": "Captured Fragments"})
+    )
+    df = pre.merge(cap, on=["sample", "read_type"], how="left").fillna(0)
+    df["capture_efficiency"] = (df["Captured Fragments"] / df["Total Fragments"] * 100).round(1)
+    return df
+
+
+def make_viewpoint_summary(df_cis_trans: pd.DataFrame) -> pd.DataFrame:
+    """Per-viewpoint summary: n_samples detected, total reporters, median, cis ratio."""
+    totals = (
+        df_cis_trans.groupby(["sample", "viewpoint", "cis_or_trans"])["count"]
+        .sum().unstack(fill_value=0).reset_index()
+    )
+    if "Cis" not in totals.columns:
+        totals["Cis"] = 0
+    if "Trans" not in totals.columns:
+        totals["Trans"] = 0
+    totals["total"] = totals["Cis"] + totals["Trans"]
+    totals["cis_pct"] = (totals["Cis"] / totals["total"].replace(0, pd.NA) * 100).round(1)
+
+    summary = (
+        totals.groupby("viewpoint")
+        .agg(
+            n_samples_detected=("total", lambda x: (x > 0).sum()),
+            total_reporters=("total", "sum"),
+            median_reporters=("total", "median"),
+            mean_cis_pct=("cis_pct", "mean"),
+        )
+        .reset_index()
+        .round(1)
+    )
+    summary["Status"] = summary["median_reporters"].apply(
+        lambda v: "NOT DETECTED" if v == 0 else ("LOW READS" if v < LOW_READS_THRESHOLD else "OK")
+    )
+    return summary.rename(columns={
+        "viewpoint": "Viewpoint",
+        "n_samples_detected": "Samples Detected",
+        "total_reporters": "Total Reporters",
+        "median_reporters": "Median Reporters/Sample",
+        "mean_cis_pct": "Mean Cis %",
+    })
+
+
+def make_cis_trans_ratios(df_cis_trans: pd.DataFrame) -> pd.DataFrame:
+    piv = (
+        df_cis_trans.groupby(["sample", "viewpoint", "read_type", "cis_or_trans"])["count"]
+        .sum().unstack(fill_value=0).reset_index()
+    )
+    if "Cis" not in piv.columns:
+        piv["Cis"] = 0
+    if "Trans" not in piv.columns:
+        piv["Trans"] = 0
+    piv["Total"] = piv["Cis"] + piv["Trans"]
+    piv["cis_ratio"] = (piv["Cis"] / piv["Total"].replace(0, pd.NA) * 100).round(1)
+    piv.columns.name = None
+    return piv.rename(columns={"sample": "Sample", "viewpoint": "Viewpoint", "read_type": "Read Type"})
+
+
+def make_viewpoint_uniformity(df_cis_trans: pd.DataFrame) -> pd.DataFrame:
+    """Total reporters per viewpoint per sample (for distribution histogram)."""
+    return (
+        df_cis_trans.groupby(["sample", "viewpoint"])["count"]
+        .sum().reset_index()
+        .rename(columns={"count": "total_reporters"})
     )
 
-    pathlib.Path(output).parent.mkdir(parents=True, exist_ok=True)
-    pathlib.Path(output).write_text(render_html(sections), encoding="utf-8")
 
+# ---------------------------------------------------------------------------
+# Overall stats (unchanged logic, kept for pipeline run section)
+# ---------------------------------------------------------------------------
+
+def make_overall_stats(
+    df_dedup: pd.DataFrame,
+    df_trim: pd.DataFrame,
+    df_digestion: pd.DataFrame,
+    df_filter: pd.DataFrame,
+) -> pd.DataFrame:
+    raw = (
+        df_dedup[["sample", "total"]]
+        .rename(columns={"total": "n_reads"})
+        .assign(stage="Raw", stage_order=0)
+    )
+    fastq_dedup = (
+        df_dedup[["sample", "unique"]]
+        .rename(columns={"unique": "n_reads"})
+        .assign(stage="Fastq Deduplication", stage_order=1)
+    )
+    fastq_trim = (
+        df_trim[["sample", "reads_output"]]
+        .drop_duplicates()
+        .groupby("sample", as_index=False)
+        .min()
+        .rename(columns={"reads_output": "n_reads"})
+        .assign(stage="Fastq Trimming", stage_order=2)
+    )
+    fastq_digest = (
+        df_digestion.query(
+            "filter_status == 'Post-digestion' and read_number == 'Read 1'"
+        )
+        .groupby("sample", as_index=False)["count"]
+        .sum()
+        .rename(columns={"count": "n_reads"})
+        .assign(stage="Fastq Digestion", stage_order=3)
+    )
+    aln_filter = (
+        df_filter.groupby(["sample", "stage", "stage_order"], as_index=False)[
+            "n_fragments"
+        ]
+        .sum()
+        .rename(columns={"n_fragments": "n_reads"})
+        .assign(
+            stage=lambda df: df["stage"].str.replace("_", " ").str.title(),
+            stage_order=lambda df: df["stage_order"] + 4,
+        )
+    )
+    return pd.concat(
+        [raw, fastq_dedup, fastq_trim, fastq_digest, aln_filter], ignore_index=True
+    ).sort_values(["sample", "stage_order"])
+
+
+# ---------------------------------------------------------------------------
+# Section assembly
+# ---------------------------------------------------------------------------
 
 def make_sections(
     df_dedup: pd.DataFrame,
@@ -379,7 +605,14 @@ def make_sections(
     df_lengths: pd.DataFrame,
     df_filter: pd.DataFrame,
     df_cis_trans: pd.DataFrame,
+    df_religation: pd.DataFrame | None = None,
+    df_distances: pd.DataFrame | None = None,
 ) -> list[dict[str, str]]:
+
+    n_samples = df_dedup["sample"].nunique()
+    include_plotlyjs = True
+    sections = []
+
     df_dedup_summary = (
         df_dedup.groupby("sample", as_index=False)
         .sum(numeric_only=True)
@@ -388,10 +621,19 @@ def make_sections(
             unique=lambda df: df["total"] - df["duplicates"],
         )
     )
+    df_filter_pct = _pct_retained(df_filter)
 
-    sections = []
-    include_plotlyjs = True
+    # ------------------------------------------------------------------
+    # 1. Run Summary Scorecard
+    # ------------------------------------------------------------------
+    logger.info("Building run summary scorecard")
+    scorecard = make_scorecard(df_dedup_summary, df_filter, df_cis_trans)
+    sections.append(section("Run Summary", frame_to_table_html(scorecard)))
 
+    # ------------------------------------------------------------------
+    # 2. FASTQ PCR Duplicate Removal
+    # ------------------------------------------------------------------
+    logger.info("Building FASTQ PCR deduplication section")
     df = (
         df_dedup_summary[["sample", "duplicates", "unique"]]
         .melt(id_vars="sample", var_name="read_type", value_name="count")
@@ -410,6 +652,7 @@ def make_sections(
         labels=COMMON_LABELS,
         category_orders={"read_type": ["Unique Reads", "Duplicate Reads"]},
         color_discrete_sequence=DEDUP_COLORS,
+        height=_chart_height(n_samples),
     )
     polish_figure(fig, x_title="Reads", y_title="")
     sections.append(
@@ -440,17 +683,21 @@ def make_sections(
     )
     include_plotlyjs = False
 
+    # ------------------------------------------------------------------
+    # 3. Trimming
+    # ------------------------------------------------------------------
     sections.append(
         section(
             "Trimming",
             frame_to_table_html(
-                df_trim.rename(columns=lambda col: col.replace("_", " ").title()).round(
-                    2
-                )
+                df_trim.rename(columns=lambda col: col.replace("_", " ").title()).round(2)
             ),
         )
     )
 
+    # ------------------------------------------------------------------
+    # 4. Read pair combination (FLASh)
+    # ------------------------------------------------------------------
     sections.append(
         section(
             "Read pair combination statistics (FLASh)",
@@ -462,6 +709,10 @@ def make_sections(
         )
     )
 
+    # ------------------------------------------------------------------
+    # 5. In silico digestion — read pair level
+    # ------------------------------------------------------------------
+    logger.info("Building digestion sections")
     df_digestion_table = (
         df_digestion.pivot_table(
             index=["sample", "read_type", "read_number"],
@@ -517,6 +768,10 @@ def make_sections(
         )
     )
 
+    # ------------------------------------------------------------------
+    # 6. In silico digestion — slice level (capped x-axis)
+    # ------------------------------------------------------------------
+    _x_max = int(df_lengths["slice_length"].quantile(0.99)) + 10 if not df_lengths.empty else 300
     fig = px.histogram(
         df_lengths.sort_values("sample"),
         x="slice_length",
@@ -525,7 +780,7 @@ def make_sections(
         facet_col="read_type",
         color="read_type",
         animation_frame="sample",
-        range_x=(0, df_lengths["slice_length"].max() + 1),
+        range_x=(0, _x_max),
         barmode="group",
         template="plotly_white",
         labels=COMMON_LABELS | {"slice_length": "Slice Length"},
@@ -547,9 +802,66 @@ def make_sections(
         )
     )
 
-    df_filter_plot = df_filter.assign(
+    # ------------------------------------------------------------------
+    # 7. Capture Efficiency
+    # ------------------------------------------------------------------
+    logger.info("Building capture efficiency section")
+    df_cap_eff = make_capture_efficiency(df_filter)
+    use_animation = n_samples > MANY_SAMPLES_THRESHOLD
+    if use_animation:
+        fig_cap = px.bar(
+            df_cap_eff,
+            x="capture_efficiency",
+            y="sample",
+            color="read_type",
+            animation_frame="sample",
+            template="plotly_white",
+            labels=COMMON_LABELS | {"sample": "Sample"},
+            range_x=(0, 100),
+            color_discrete_sequence=READ_TYPE_COLORS,
+            height=_chart_height(1, minimum=300),
+        )
+    else:
+        fig_cap = px.bar(
+            df_cap_eff,
+            x="capture_efficiency",
+            y="sample",
+            color="read_type",
+            barmode="group",
+            template="plotly_white",
+            labels=COMMON_LABELS | {"sample": "Sample"},
+            range_x=(0, 100),
+            color_discrete_sequence=READ_TYPE_COLORS,
+            height=_chart_height(n_samples),
+        )
+    polish_figure(fig_cap, x_title="Capture Efficiency (%)", y_title="")
+    sections.append(
+        section(
+            "Capture Efficiency",
+            tab_group(
+                (
+                    "Table",
+                    frame_to_table_html(
+                        df_cap_eff.rename(columns={
+                            "sample": "Sample",
+                            "read_type": "Read Type",
+                            "capture_efficiency": "Capture Efficiency (%)",
+                        })[["Sample", "Read Type", "Total Fragments", "Captured Fragments", "Capture Efficiency (%)"]]
+                    ),
+                ),
+                ("Bar Chart", plot_html(fig_cap, include_plotlyjs)),
+            ),
+        )
+    )
+
+    # ------------------------------------------------------------------
+    # 8. Alignment filtering — with % retained column + dropout funnel tab
+    # ------------------------------------------------------------------
+    logger.info("Building alignment filtering section")
+    df_filter_plot = df_filter_pct.assign(
         stage_label=lambda df: df["stage"].map(stage_label)
     )
+
     fig_fragments = px.line(
         df_filter_plot,
         x="stage_label",
@@ -563,12 +875,7 @@ def make_sections(
         category_orders={"read_type": ["Combined", "Non-Combined"]},
         color_discrete_sequence=READ_TYPE_COLORS,
     )
-    polish_figure(
-        fig_fragments,
-        x_title="Filtering Stage",
-        y_title="Fragments",
-        x_tickangle=-30,
-    )
+    polish_figure(fig_fragments, x_title="Filtering Stage", y_title="Fragments", x_tickangle=-30)
     strip_animation_controls(fig_fragments)
 
     fig_slices = px.line(
@@ -584,13 +891,26 @@ def make_sections(
         category_orders={"read_type": ["Combined", "Non-Combined"]},
         color_discrete_sequence=READ_TYPE_COLORS,
     )
-    polish_figure(
-        fig_slices,
-        x_title="Filtering Stage",
-        y_title="Slices",
-        x_tickangle=-30,
-    )
+    polish_figure(fig_slices, x_title="Filtering Stage", y_title="Slices", x_tickangle=-30)
     strip_animation_controls(fig_slices)
+
+    # Dropout funnel: % reads retained at each stage
+    fig_dropout = px.line(
+        df_filter_plot,
+        x="stage_label",
+        y="pct_of_start",
+        color="read_type",
+        animation_frame="sample",
+        markers=True,
+        range_y=(0, 105),
+        template="plotly_white",
+        labels=COMMON_LABELS,
+        category_orders={"read_type": ["Combined", "Non-Combined"]},
+        color_discrete_sequence=READ_TYPE_COLORS,
+    )
+    polish_figure(fig_dropout, x_title="Filtering Stage", y_title="% of Pre-filtering Reads", x_tickangle=-30)
+    strip_animation_controls(fig_dropout)
+
     sections.append(
         section(
             "Alignment filtering statistics",
@@ -599,72 +919,218 @@ def make_sections(
                     "Table",
                     frame_to_table_html(
                         df_filter_plot[
-                            [
-                                "sample",
-                                "read_type",
-                                "stage_label",
-                                "n_fragments",
-                                "n_slices",
-                            ]
-                        ].rename(
-                            columns={
-                                "sample": "Sample",
-                                "read_type": "Read Type",
-                                "stage_label": "Stage",
-                                "n_fragments": "Fragments",
-                                "n_slices": "Slices",
-                            }
-                        )
+                            ["sample", "read_type", "stage_label", "n_fragments", "n_slices", "pct_of_start"]
+                        ].rename(columns={
+                            "sample": "Sample",
+                            "read_type": "Read Type",
+                            "stage_label": "Stage",
+                            "n_fragments": "Fragments",
+                            "n_slices": "Slices",
+                            "pct_of_start": "% Retained",
+                        })
                     ),
                 ),
                 ("Fragments", plot_html(fig_fragments, include_plotlyjs)),
                 ("Slices", plot_html(fig_slices, include_plotlyjs)),
+                ("Dropout (%)", plot_html(fig_dropout, include_plotlyjs)),
             ),
         )
     )
 
+    # ------------------------------------------------------------------
+    # 9. Re-ligation statistics (optional)
+    # ------------------------------------------------------------------
+    if df_religation is not None and not df_religation.empty:
+        logger.info("Building re-ligation section")
+        n_vp = df_religation["viewpoint"].nunique() if "viewpoint" in df_religation.columns else 1
+        fig_relig = px.bar(
+            df_religation,
+            x="percentage_religation",
+            y="viewpoint",
+            color="read_type" if "read_type" in df_religation.columns else None,
+            animation_frame="sample",
+            template="plotly_white",
+            labels=COMMON_LABELS,
+            range_x=(0, 100),
+            color_discrete_sequence=READ_TYPE_COLORS,
+            height=_chart_height(n_vp, per_item=30),
+        )
+        polish_figure(fig_relig, x_title="Re-ligation (%)", y_title="Viewpoint")
+        strip_animation_controls(fig_relig)
+        sections.append(
+            section(
+                "Re-ligation statistics",
+                tab_group(
+                    (
+                        "Table",
+                        frame_to_table_html(
+                            df_religation.rename(columns={
+                                "sample": "Sample",
+                                "viewpoint": "Viewpoint",
+                                "read_type": "Read Type",
+                                "n_total_reporters": "Total Reporters",
+                                "n_religation": "Re-ligations",
+                                "percentage_religation": "Re-ligation (%)",
+                            })
+                        ),
+                    ),
+                    ("Bar Chart", plot_html(fig_relig, include_plotlyjs)),
+                ),
+            )
+        )
+
+    # ------------------------------------------------------------------
+    # 10. Identified reporter statistics (simplified cis/trans chart)
+    # ------------------------------------------------------------------
+    logger.info("Building identified reporter section")
+    n_viewpoints = df_cis_trans["viewpoint"].nunique()
     fig = px.bar(
         df_cis_trans,
         x="count",
         y="viewpoint",
         color="cis_or_trans",
-        pattern_shape="read_type",
+        facet_col="read_type",
         animation_frame="sample",
-        facet_row="cis_or_trans",
         template="plotly_white",
         labels=COMMON_LABELS,
         category_orders={
             "cis_or_trans": ["Cis", "Trans"],
             "read_type": ["Combined", "Non-Combined"],
         },
-        color_discrete_sequence=READ_TYPE_COLORS,
+        color_discrete_sequence=CIS_TRANS_COLORS,
         range_x=(0, figure_range_max(df_cis_trans["count"])),
+        height=_chart_height(n_viewpoints, per_item=30),
     )
     fig.for_each_annotation(
         lambda annotation: annotation.update(text=annotation.text.split("=")[-1])
     )
-    polish_figure(fig, x_title="Reporters", y_title="Viewpoint")
+    polish_figure(fig, x_title="Reporters", y_title="")
     strip_animation_controls(fig)
     sections.append(
         section(
             "Identified reporter statistics",
             frame_to_table_html(
-                df_cis_trans.rename(
-                    columns={
-                        "sample": "Sample",
-                        "read_type": "Read Type",
-                        "cis_or_trans": "Cis/Trans",
-                        "viewpoint": "Viewpoint",
-                        "count": "Count",
-                    }
-                )
+                df_cis_trans.rename(columns={
+                    "sample": "Sample",
+                    "read_type": "Read Type",
+                    "cis_or_trans": "Cis/Trans",
+                    "viewpoint": "Viewpoint",
+                    "count": "Count",
+                })
             )
             + plot_html(fig, include_plotlyjs),
         )
     )
 
+    # ------------------------------------------------------------------
+    # 11. Viewpoint detection summary
+    # ------------------------------------------------------------------
+    logger.info("Building viewpoint detection summary")
+    vp_summary = make_viewpoint_summary(df_cis_trans)
+    sections.append(
+        section("Viewpoint Detection Summary", frame_to_table_html(vp_summary))
+    )
+
+    # ------------------------------------------------------------------
+    # 12. Cis/trans ratio
+    # ------------------------------------------------------------------
+    logger.info("Building cis/trans ratio section")
+    df_ratios = make_cis_trans_ratios(df_cis_trans)
+    fig_ratio = px.scatter(
+        df_ratios,
+        x="cis_ratio",
+        y="Viewpoint",
+        color="Read Type",
+        animation_frame="Sample",
+        template="plotly_white",
+        labels=COMMON_LABELS,
+        range_x=(0, 100),
+        color_discrete_sequence=READ_TYPE_COLORS,
+        height=_chart_height(n_viewpoints, per_item=30),
+    )
+    # Reference line at 50%
+    fig_ratio.add_vline(x=50, line_dash="dash", line_color="#6C757D", opacity=0.5)
+    polish_figure(fig_ratio, x_title="Cis (%)", y_title="")
+    strip_animation_controls(fig_ratio)
+    sections.append(
+        section(
+            "Cis/Trans Ratio",
+            tab_group(
+                (
+                    "Table",
+                    frame_to_table_html(
+                        df_ratios[["Sample", "Viewpoint", "Read Type", "Cis", "Trans", "Total", "cis_ratio"]]
+                        .rename(columns={"cis_ratio": "Cis (%)"})
+                    ),
+                ),
+                ("Cis % by Viewpoint", plot_html(fig_ratio, include_plotlyjs)),
+            ),
+        )
+    )
+
+    # ------------------------------------------------------------------
+    # 13. Cis interaction distance distribution (optional)
+    # ------------------------------------------------------------------
+    if df_distances is not None and not df_distances.empty:
+        logger.info("Building cis distance distribution section")
+        distance_order = ["<1kb", "1kb-10kb", "10kb-100kb", "100kb-1Mb", "1Mb-10Mb", ">10Mb"]
+        present_bins = [b for b in distance_order if b in df_distances["distance_bin"].values]
+        fig_dist = px.bar(
+            df_distances,
+            x="distance_bin",
+            y="distance_count",
+            color="read_type" if "read_type" in df_distances.columns else None,
+            facet_col="viewpoint" if df_distances["viewpoint"].nunique() <= 6 else None,
+            animation_frame="sample",
+            template="plotly_white",
+            labels=COMMON_LABELS,
+            category_orders={"distance_bin": present_bins, "read_type": ["Combined", "Non-Combined"]},
+            color_discrete_sequence=READ_TYPE_COLORS,
+            barmode="group",
+        )
+        if "viewpoint" in (fig_dist.layout.annotations or [{}]):
+            fig_dist.for_each_annotation(
+                lambda annotation: annotation.update(text=annotation.text.split("=")[-1])
+            )
+        polish_figure(fig_dist, x_title="Cis Distance", y_title="Reporters")
+        strip_animation_controls(fig_dist)
+        sections.append(
+            section(
+                "Cis Interaction Distance Distribution",
+                plot_html(fig_dist, include_plotlyjs),
+            )
+        )
+
+    # ------------------------------------------------------------------
+    # 14. Reads per viewpoint uniformity
+    # ------------------------------------------------------------------
+    logger.info("Building viewpoint uniformity section")
+    df_uniformity = make_viewpoint_uniformity(df_cis_trans)
+    fig_uni = px.histogram(
+        df_uniformity,
+        x="total_reporters",
+        animation_frame="sample",
+        template="plotly_white",
+        labels=COMMON_LABELS | {"total_reporters": "Total Reporters per Viewpoint"},
+        color_discrete_sequence=COLORWAY,
+        nbins=30,
+    )
+    polish_figure(fig_uni, x_title="Total Reporters per Viewpoint", y_title="Viewpoints")
+    strip_animation_controls(fig_uni)
+    sections.append(
+        section(
+            "Reads per Viewpoint Uniformity",
+            plot_html(fig_uni, include_plotlyjs),
+        )
+    )
+
+    # ------------------------------------------------------------------
+    # 15. Pipeline run statistics
+    # ------------------------------------------------------------------
+    logger.info("Building pipeline run statistics section")
     df_stats = make_overall_stats(df_dedup_summary, df_trim, df_digestion, df_filter)
-    fig = px.line(
+
+    fig_per_sample = px.line(
         df_stats,
         x="stage",
         y="n_reads",
@@ -674,88 +1140,47 @@ def make_sections(
         markers=True,
         labels=COMMON_LABELS,
     )
-    polish_figure(fig, x_title="", y_title="Reads", x_tickangle=-30)
-    strip_animation_controls(fig)
+    polish_figure(fig_per_sample, x_title="", y_title="Reads", x_tickangle=-30)
+    strip_animation_controls(fig_per_sample)
+
+    # Summary box plot across all samples per stage
+    fig_summary = px.box(
+        df_stats,
+        x="stage",
+        y="n_reads",
+        template="plotly_white",
+        labels=COMMON_LABELS,
+        points="all",
+        color_discrete_sequence=COLORWAY,
+    )
+    polish_figure(fig_summary, x_title="", y_title="Reads", x_tickangle=-30)
+
     sections.append(
         section(
             "Pipeline run statistics",
-            frame_to_table_html(
-                df_stats[["sample", "stage", "n_reads"]].rename(
-                    columns={
-                        "sample": "Sample",
-                        "stage": "Stage",
-                        "n_reads": "Reads",
-                    }
-                )
-            )
-            + plot_html(fig, include_plotlyjs),
+            tab_group(
+                (
+                    "Table",
+                    frame_to_table_html(
+                        df_stats[["sample", "stage", "n_reads"]].rename(columns={
+                            "sample": "Sample",
+                            "stage": "Stage",
+                            "n_reads": "Reads",
+                        })
+                    ),
+                ),
+                ("Per Sample", plot_html(fig_per_sample, include_plotlyjs)),
+                ("All Samples Summary", plot_html(fig_summary, include_plotlyjs)),
+            ),
         )
     )
 
     return sections
 
 
-def make_overall_stats(
-    df_dedup: pd.DataFrame,
-    df_trim: pd.DataFrame,
-    df_digestion: pd.DataFrame,
-    df_filter: pd.DataFrame,
-) -> pd.DataFrame:
-    raw = (
-        df_dedup[["sample", "total"]]
-        .rename(columns={"total": "n_reads"})
-        .assign(stage="Raw", stage_order=0)
-    )
-    fastq_dedup = (
-        df_dedup[["sample", "unique"]]
-        .rename(columns={"unique": "n_reads"})
-        .assign(stage="Fastq Deduplication", stage_order=1)
-    )
-    fastq_trim = (
-        df_trim[["sample", "reads_output"]]
-        .drop_duplicates()
-        .groupby("sample", as_index=False)
-        .min()
-        .rename(columns={"reads_output": "n_reads"})
-        .assign(stage="Fastq Trimming", stage_order=2)
-    )
-    fastq_digest = (
-        df_digestion.query(
-            "filter_status == 'Post-digestion' and read_number == 'Read 1'"
-        )
-        .groupby("sample", as_index=False)["count"]
-        .sum()
-        .rename(columns={"count": "n_reads"})
-        .assign(stage="Fastq Digestion", stage_order=3)
-    )
-    aln_filter = (
-        df_filter.groupby(["sample", "stage", "stage_order"], as_index=False)[
-            "n_fragments"
-        ]
-        .sum()
-        .rename(columns={"n_fragments": "n_reads"})
-        .assign(
-            stage=lambda df: df["stage"].str.replace("_", " ").str.title(),
-            stage_order=lambda df: df["stage_order"] + 4,
-        )
-    )
-    return pd.concat(
-        [raw, fastq_dedup, fastq_trim, fastq_digest, aln_filter], ignore_index=True
-    ).sort_values(["sample", "stage_order"])
-
-
-def strip_animation_controls(fig):
-    fig.update_layout(updatemenus=[])
-    if fig.layout.sliders:
-        fig.layout.sliders[0].currentvalue = {"prefix": "Sample: "}
-        fig.layout.sliders[0].pad = {"r": 10, "b": 5, "t": 10}
-        fig.layout.sliders[0].x = 0
-        fig.layout.sliders[0].len = 1
-
-
-def section(title: str, body: str) -> dict[str, str]:
-    return {"title": title, "body": body}
-
+# ---------------------------------------------------------------------------
+# HTML rendering
+# ---------------------------------------------------------------------------
 
 def render_html(sections: list[dict[str, str]]) -> str:
     text_path = pathlib.Path(__file__).with_name("report_text.yml")
@@ -992,7 +1417,68 @@ def strip_tags(value: str) -> str:
     return value.replace("<em>", "").replace("</em>", "")
 
 
+# ---------------------------------------------------------------------------
+# Entry points
+# ---------------------------------------------------------------------------
+
+def build_report(
+    output: str | pathlib.Path,
+    fastq_deduplication_paths: Iterable[str | pathlib.Path],
+    fastq_trimming_path: str | pathlib.Path,
+    fastq_flash_path: str | pathlib.Path,
+    fastq_digestion_paths: Iterable[str | pathlib.Path],
+    reporter_filtering_paths: Iterable[str | pathlib.Path],
+    reporter_deduplication_paths: Iterable[str | pathlib.Path],
+    reporter_cis_trans_paths: Iterable[str | pathlib.Path],
+    *,
+    religation_paths: Iterable[str | pathlib.Path] | None = None,
+):
+    logger.info("Loading statistics files")
+    df_dedup = load_fastq_deduplication(
+        require_paths(fastq_deduplication_paths, "FASTQ deduplication")
+    )
+    df_trim = load_fastq_trimming(fastq_trimming_path)
+    df_flash = load_fastq_flash(fastq_flash_path)
+    df_digestion, df_lengths = load_digestion(
+        require_paths(fastq_digestion_paths, "FASTQ digestion")
+    )
+    df_filter = load_filtering(
+        require_paths(reporter_filtering_paths, "reporter filtering"),
+        require_paths(reporter_deduplication_paths, "reporter deduplication"),
+    )
+    df_cis_trans = load_cis_trans(
+        require_paths(reporter_cis_trans_paths, "cis/trans reporter")
+    )
+
+    df_religation = None
+    df_distances = None
+    if religation_paths is not None:
+        relig_path_list = natural_sort_paths(religation_paths)
+        if relig_path_list:
+            logger.info("Loading re-ligation statistics")
+            df_religation, df_distances = load_religation(relig_path_list)
+
+    logger.info("Assembling report sections")
+    sections = make_sections(
+        df_dedup=df_dedup,
+        df_trim=df_trim,
+        df_flash=df_flash,
+        df_digestion=df_digestion,
+        df_lengths=df_lengths,
+        df_filter=df_filter,
+        df_cis_trans=df_cis_trans,
+        df_religation=df_religation,
+        df_distances=df_distances,
+    )
+
+    logger.info(f"Writing report to {output}")
+    pathlib.Path(output).parent.mkdir(parents=True, exist_ok=True)
+    pathlib.Path(output).write_text(render_html(sections), encoding="utf-8")
+    logger.info("Report complete")
+
+
 def main(snakemake):
+    religation_paths = getattr(snakemake.input, "religation_stats", None)
     build_report(
         output=snakemake.output[0],
         fastq_deduplication_paths=snakemake.input.fastq_deduplication,
@@ -1002,6 +1488,7 @@ def main(snakemake):
         reporter_filtering_paths=snakemake.input.reporters_filtering,
         reporter_deduplication_paths=snakemake.input.reporters_deduplication,
         reporter_cis_trans_paths=snakemake.input.cis_and_trans_stats,
+        religation_paths=religation_paths,
     )
 
 

@@ -20,6 +20,21 @@ rule extract_flash_data:
         "../scripts/extract_flash_data.py"
 
 
+rule count_religation:
+    input:
+        slices="capcruncher_output/results/{sample}/{sample}.parquet",
+    output:
+        stats="capcruncher_output/interim/statistics/religation/data/{sample}.json",
+    log:
+        "capcruncher_output/logs/count_religation/{sample}.log",
+    resources:
+        mem=lambda wildcards, attempt: scale_memory(3, attempt),
+    params:
+        sample_name=lambda wildcards: wildcards.sample,
+    script:
+        "../scripts/count_religation.py"
+
+
 rule make_report:
     input:
         fastq_deduplication=expand(
@@ -37,6 +52,10 @@ rule make_report:
         ),
         cis_and_trans_stats=expand(
             "capcruncher_output/interim/statistics/cis_and_trans_reporters/data/{sample}.json",
+            sample=SAMPLE_NAMES,
+        ),
+        religation_stats=expand(
+            "capcruncher_output/interim/statistics/religation/data/{sample}.json",
             sample=SAMPLE_NAMES,
         ),
     output:

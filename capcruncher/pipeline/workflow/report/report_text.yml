@@ -1,31 +1,76 @@
-FASTQ PCR Duplicate Removal:
-  <p>Fastq files (after partitioning) are examined for fragments (R1 + R2) that appear to be PCR duplicates.</p>
-  <p>Duplicates are identified by comparing the concatenated R1 and R2 sequences and filtering out exact matches. </p>
-  <p>This is only the first pass of PCR duplicate removal as single base changes will be ignored. The aim here is to remove as many duplicate fragments as possible to reduce the amount of downstream processing required.</p>
-  <p>Approximately 5-20% of fragments are typically removed by this step.</p>
+Run Summary: |
+  <p>A per-sample overview of key quality metrics derived from the full pipeline run.
+  Use this table to quickly identify samples with unusually high duplication rates,
+  low capture efficiency, or low viewpoint detection before inspecting individual sections.</p>
+  <p><strong>Alignment %</strong> &mdash; reads with at least one aligned slice as a fraction of all pre-filtering reads.
+  <strong>Capture Efficiency %</strong> &mdash; reads containing a viewpoint slice.
+  <strong>Overall Cis %</strong> &mdash; reporters on the same chromosome as their viewpoint across all viewpoints.</p>
 
-Trimming:
+FASTQ PCR Duplicate Removal: |
+  <p>Fastq files (after partitioning) are examined for fragments (R1 + R2) that appear to be PCR duplicates.</p>
+  <p>Duplicates are identified by comparing the concatenated R1 and R2 sequences and filtering out exact matches.</p>
+  <p>This is only the first pass of PCR duplicate removal as single base changes will be ignored. The aim here is to remove as many duplicate fragments as possible to reduce the amount of downstream processing required.</p>
+  <p>Approximately 5&ndash;20% of fragments are typically removed by this step.</p>
+
+Trimming: |
   <p>Following initial PCR duplicate removal fastq files are trimmed to remove sequencing adapters.</p>
   <p>These tables provide a brief summary of the number of adapters identified and removed.</p>
 
-Read pair combination statistics (FLASh):
-  After the removal of adapters read pairs are combined (if any overlap exists) using FLASh to generate combined fragments (refered to as flashed). Non-combined read pairs that do not have a sufficient overlap  (refered to as paired-end or pe) are maintained as read pairs in separate fastq files.
+Read pair combination statistics (FLASh): |
+  After the removal of adapters read pairs are combined (if any overlap exists) using FLASh to generate combined fragments (referred to as flashed). Non-combined read pairs that do not have a sufficient overlap (referred to as paired-end or pe) are maintained as read pairs in separate fastq files.
 
-Fastq <em>in silico</em> digestion statistics (read pair level):
-  <p>Following read pair combination, the combined or non-combined fragments are examined for recognition sites of the restriction enzyme used for the assay. A valid digesion of a fragment (above the minimum threshold set) results in one or more restriction fragments, refered to as slices.</p>
+Fastq <em>in silico</em> digestion statistics (read pair level): |
+  <p>Following read pair combination, the combined or non-combined fragments are examined for recognition sites of the restriction enzyme used for the assay. A valid digestion of a fragment (above the minimum threshold set) results in one or more restriction fragments, referred to as slices.</p>
   <p>Flashed read pairs are treated differently from paired-end read pairs as we expect to observe the ligation junction in the flashed fragment. Therefore, if no recognition sites are identified, the fragment is marked as invalid and is discarded. Non-combined (paired-end) reads are unlikely to contain the ligation junction and therefore if no restriction sites are identified, the individual read pairs are not discarded.</p>
 
-Fastq <em>in silico</em> digestion statistics (slice level):
-  <p> A histogram of the number of slices (<em>in silico</em> restriction fragments) generated per read fragment.
-  <p>All identified slices must be longer than the minimum length specified (default 18 bp) to be considered valid. </p>
+Fastq <em>in silico</em> digestion statistics (slice level): |
+  <p>A histogram of the slice length distribution after <em>in silico</em> restriction digestion.
+  The x-axis is capped at the 99th percentile to keep the scale interpretable.</p>
+  <p>All identified slices must be longer than the minimum length specified (default 18 bp) to be considered valid.</p>
 
-Alignment filtering statistics:
-  <p>After alignment to the reference genome and annotation with viewpoint probes, excluded regions and restriction fragments. Aligned slices are filtered and all fragments that do not contain one viewpoint slice and one or more reporter slice(s) (i.e. slices that are not viewpoint or appear in excluded regions) are removed.</p>
-  <p>This chart shows the number of read pairs removed at each stage of the filtering, split by flashed/pe status.</p>
+Capture Efficiency: |
+  <p>The percentage of reads that contain at least one viewpoint (capture) slice, split by read type (Combined/Non-Combined).
+  This is the fraction of the library enriched for your capture sites.</p>
+  <p>Typical values range from 1&ndash;30% depending on the number of viewpoints, capture probe density, and library complexity.
+  Consistently low values across all samples may indicate probe failure or a mismatch between the probe set and the reference genome used.</p>
 
-Identified reporter statistics:
-  <p>Slices from the same read fragment as a viewpoint slices are termed "reporters", these are used to determine interations with the viewpoint restriction fragment.</p>
-  <p>This chart displays the number of cis (same chromosome as viewpoint) or trans (different chromosome to viewpoint) reporters identified, separated by viewpoint.</p>
+Alignment filtering statistics: |
+  <p>After alignment to the reference genome and annotation with viewpoint probes, excluded regions and restriction fragments, aligned slices are filtered to retain only fragments containing one viewpoint slice and at least one reporter slice.</p>
+  <p>The <strong>Dropout (%)</strong> tab shows the percentage of pre-filtering reads remaining at each stage, making it easy to spot which step causes the most loss.</p>
+  <p>The <strong>% Retained</strong> column in the table is calculated relative to the pre-filtering read count.</p>
 
-Pipeline run statistics:
-  <p>This chart displays the combined statistics from the entire pipeline run summarised at the read pair level.</p>
+Re-ligation statistics: |
+  <p>Re-ligation artefacts are reads where the reporter restriction fragment is immediately adjacent
+  (&plusmn;1 fragment ID) to the viewpoint fragment. These arise when a restriction fragment that
+  was cleaved at the viewpoint cut site simply re-ligates back to its neighbour rather than to a
+  distal fragment.</p>
+  <p>High re-ligation rates (&gt;10%) may indicate incomplete digestion or sub-optimal ligation
+  conditions. Rates are shown as a percentage of all reporters for each viewpoint.</p>
+
+Identified reporter statistics: |
+  <p>Slices from the same read fragment as a viewpoint slice are termed "reporters"; these are used to determine interactions with the viewpoint restriction fragment.</p>
+  <p>This chart displays the number of cis (same chromosome as viewpoint) or trans (different chromosome to viewpoint) reporters identified, separated by viewpoint and read type.</p>
+
+Viewpoint Detection Summary: |
+  <p>A summary of how many samples each viewpoint was detected in, along with total and median reporter counts and the mean cis percentage across samples.</p>
+  <p>Viewpoints flagged as <strong>LOW READS</strong> have a median of fewer than 50 reporters per sample and may warrant investigation (poor probe hybridisation, restriction site inaccessibility, or a gap in the reference assembly).
+  <strong>NOT DETECTED</strong> viewpoints had zero reporters in every sample.</p>
+
+Cis/Trans Ratio: |
+  <p>The percentage of reporters on the same chromosome as the viewpoint (cis), shown per viewpoint and read type.
+  The dashed line marks 50% &mdash; most active genomic loci are expected to have the majority of their interactions in cis.</p>
+  <p>Viewpoints with very low cis ratios (&lt;30%) may indicate non-specific capture, a highly active region with many trans contacts, or a viewpoint near a chromosome end.</p>
+
+Cis Interaction Distance Distribution: |
+  <p>For cis reporters (same chromosome as the viewpoint), the distribution of genomic distances between reporter and viewpoint midpoints.</p>
+  <p>Most interactions should fall in the 1&thinsp;kb&ndash;10&thinsp;Mb range. A strong excess of interactions &lt;1&thinsp;kb suggests proximity-ligation artefacts or incomplete digestion; a flat distribution across all distance bins suggests non-specific capture.</p>
+
+Reads per Viewpoint Uniformity: |
+  <p>A histogram of the total number of reporters per viewpoint within each sample.
+  A narrow distribution indicates that capture probes are performing uniformly; a long right tail indicates that a few viewpoints dominate the library.</p>
+  <p>Use the sample slider to compare uniformity across samples.</p>
+
+Pipeline run statistics: |
+  <p>Combined statistics from the entire pipeline run summarised at the read pair level.</p>
+  <p>The <strong>Per Sample</strong> tab shows the read journey through the pipeline for a single sample at a time.
+  The <strong>All Samples Summary</strong> tab shows a box plot of the distribution across all samples at each stage, making outliers immediately visible.</p>
