@@ -177,8 +177,15 @@ def run_unix_split(
     if ".gz" in str(fn) and cat_executable == "zcat":
         cat_executable = "gzip -dc"
 
+    fn_str = str(fn)
+    if " " in fn_str:
+        # Space-separated list of files (from comma→space conversion for multi-file input)
+        fn_quoted = " ".join(shlex.quote(f) for f in fn_str.split())
+    else:
+        fn_quoted = shlex.quote(fn_str)
+
     cmd = (
-        f"{cat_executable} {shlex.quote(str(fn))} | "
+        f"{cat_executable} {fn_quoted} | "
         f"{split_executable} FILTER -l {n_reads * 4} -d "
         f"--additional-suffix={split_suffix} - {shlex.quote(str(output_prefix))}_part;"
     )
